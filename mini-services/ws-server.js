@@ -260,6 +260,15 @@ function httpJson(url, timeoutMs = 5000) {
   });
 }
 
+function launchBrowser(browserPath, args) {
+  const browser = spawn(browserPath, args, {
+    detached: true,
+    stdio: 'ignore',
+  });
+  browser.unref();
+  return browser;
+}
+
 async function waitForCdpPage(port, targetUrl) {
   const deadline = Date.now() + 10000;
   while (Date.now() < deadline) {
@@ -313,6 +322,26 @@ function createCdpClient(wsUrl) {
       ws.once('error', reject);
     }),
   };
+}
+
+async function focusCdpPage(cdp, target) {
+  try {
+    await cdp.send('Page.bringToFront');
+  } catch (_) {
+    // Best effort only. Capture should still work if the OS blocks focus changes.
+  }
+
+  try {
+    const result = await cdp.send('Browser.getWindowForTarget', { targetId: target.id });
+    if (result?.windowId) {
+      await cdp.send('Browser.setWindowBounds', {
+        windowId: result.windowId,
+        bounds: { windowState: 'maximized' },
+      });
+    }
+  } catch (_) {
+    // Some Chromium builds or policies may reject window bounds changes.
+  }
 }
 
 function getRecordingPaths(testCaseId, sessionId) {
@@ -556,17 +585,16 @@ async function startCdpCapture(session, targetUrl) {
 
   const port = 9300 + Math.floor(Math.random() * 500);
   const userDataDir = path.join(os.tmpdir(), `qadesk-manual-${session.sessionId}`);
-  const browser = spawn(browserPath, [
+  const browserArgs = [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${userDataDir}`,
     '--no-first-run',
     '--no-default-browser-check',
+    '--new-window',
+    '--start-maximized',
     targetUrl,
-  ], {
-    detached: true,
-    stdio: 'ignore',
-  });
-  browser.unref();
+  ];
+  const browser = launchBrowser(browserPath, browserArgs);
 
   const target = await waitForCdpPage(port, targetUrl);
   const cdp = createCdpClient(target.webSocketDebuggerUrl);
@@ -713,6 +741,7 @@ async function startCdpCapture(session, targetUrl) {
   await cdp.send('Runtime.enable');
   await cdp.send('Network.enable');
   await cdp.send('Page.enable');
+  await focusCdpPage(cdp, target);
   sessionInfo.recording = startFrameRecorder(session, cdp, targetUrl);
   return { port, mode: 'cdp' };
 }

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
-  Filter, Layers, Loader2, Maximize2, Minus, Play, Plus, RefreshCw, Search, Sparkles, Square, Trash2, Wrench, X
+  FileDown, Filter, Layers, Loader2, Maximize2, Minus, Play, Plus, RefreshCw, Search, Sparkles, Square, Trash2, Wrench, X
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -494,12 +494,16 @@ export function TestCaseDetailDialog({
     }, 180);
   };
 
+  const openEvidenceReport = () => {
+    if (!viewTestCase) return;
+    window.open(`/api/evidence?testCaseId=${encodeURIComponent(viewTestCase.id)}`, '_blank', 'noopener,noreferrer');
+  };
+
   useEffect(() => {
     const viewport = recordingViewportRef.current;
     if (!isRecordingFullscreen || !viewport) return undefined;
 
     const handleWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey) return;
       event.preventDefault();
       setRecordingZoom((current) => (
         Math.min(3, Math.max(0.5, Number((current + (event.deltaY > 0 ? -0.1 : 0.1)).toFixed(2))))
@@ -1591,6 +1595,15 @@ export function TestCaseDetailDialog({
               className="h-10 px-6 font-bold gap-2 border-violet-200 text-violet-700 hover:bg-violet-50"
             >
               <Sparkles className="w-4 h-4" /> Refine AI
+            </Button>
+          )}
+          {viewTestCase && (
+            <Button
+              variant="outline"
+              onClick={openEvidenceReport}
+              className="h-10 px-6 font-bold gap-2 border-sky-200 text-sky-700 hover:bg-sky-50"
+            >
+              <FileDown className="w-4 h-4" /> Evidence Report
             </Button>
           )}
           {viewTestCase && (

@@ -971,35 +971,55 @@ export async function POST(req: NextRequest) {
     const context = await buildProjectContext(projectId, question, selectedTestCaseId);
     if (!context) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
-    // AGENTIC LOGIC: Decide the workflow based on the request.
-    const isDraftRequest = isCreateTestCaseRequest(question) || isCreateFollowUpRequest(question, history);
-    
-    if (isDraftRequest) {
-      const draftResult = await createTestCaseDrafts(projectId, buildDraftQuestion(question, history), context);
-      return NextResponse.json({
-        answer: draftResult.answer,
-        drafts: draftResult.drafts,
-      });
-    }
+    const modules = await db.module.findMany({
+      where: { projectId },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+
+    // Prepare ID sequence in case the AI wants to draft
+    const idSequence = await getNextIdSequence(projectId, null, MAX_DRAFT_TEST_CASES);
 
     const systemPrompt = `You are "QA Copilot", a Senior QA Automation & Strategy Partner.
 Your goal is to be a thinking partner for the QA Engineer.
 
-GUIDELINES FOR COMMON SENSE:
-1. PROACTIVE STRATEGY: Use the "PROJECT PULSE" to give prioritized advice. If many tests are failing, suggest focusing there.
-2. TECHNICAL EMPATHY: Distinguish between fatal errors and expected setup issues (e.g., 400 on clear-session).
-3. UI-CENTRIC LANGUAGE: Always translate dev jargon (API, DTO, N+1) into user-facing QA scenarios.
-4. HONEST COVERAGE: If a task isn't covered, don't guess. Say it's missing and offer to help draft a new testcase.
-5. FORMATTING: Use Indonesian. Use markdown tables for coverage/lists (Task | Status | Related ID | Reason).
+GUIDELINES:
+1. COMMON SENSE: Use the "PROJECT PULSE" to provide proactive advice. 
+2. AGENTIC DRAFTING: You decide when to provide test case drafts. If the user asks to create, generate, or if you suggest new tests, include them in the "test_cases" list.
+3. UI-CENTRIC: Translate dev jargon (API, DTO, N+1) into user-facing QA scenarios.
+4. INDONESIAN: Always answer in Indonesian.
+5. FORMAT: Return ONLY a valid JSON object.
+
+JSON SCHEMA:
+{
+  "answer": "string (conversational response in Indonesian, use markdown for tables/bullets)",
+  "test_cases": [
+    {
+      "testCaseId": "string (use provided IDs: ${idSequence.nextIds.join(', ')})",
+      "page": "string",
+      "subMenu": "string",
+      "testType": "Positive or Negative",
+      "testAction": "string",
+      "steps": "string (multiline with - )",
+      "expectedResult": "string",
+      "priority": "Critical or High or Medium or Low",
+      "moduleId": "string (UUID from Available Modules) or null"
+    }
+  ]
+}
+
+AVAILABLE MODULES:
+${modules.map(m => `- ${m.name}: ${m.id}`).join('\n')}
 
 STRICT DATA RULES:
-- Never hallucinate Testcase IDs.
-- Only use facts from the provided PROJECT CONTEXT.`;
+- Never hallucinate Testcase IDs. Use ONLY the ones provided above if creating new ones.
+- Refer to existing IDs (e.g., A-001) only if they are in the PROJECT CONTEXT.`;
 
     const completion = await groq.chat.completions.create({
       model: AI_MODEL,
-      temperature: 0.35,
-      max_tokens: MAX_OUTPUT_TOKENS,
+      temperature: 0.3,
+      max_tokens: 2000,
+      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `PROJECT CONTEXT:\n${context}` },
@@ -1008,11 +1028,30 @@ STRICT DATA RULES:
       ],
     });
 
-    const rawAnswer = completion.choices[0]?.message?.content?.trim() || 'Maaf, AI tidak menghasilkan jawaban.';
-    const answer = isCoverageQuestion(question)
-      ? normalizeCoverageAnswer(await removeHallucinatedTestCaseIds(projectId, rawAnswer))
-      : rawAnswer;
-    return NextResponse.json({ answer });
+    const raw = completion.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(raw);
+    
+    // Clean and normalize any generated drafts
+    const rawDrafts = Array.isArray(parsed.test_cases) ? parsed.test_cases : [];
+    const drafts: TestCaseDraft[] = rawDrafts.map((draft: any) => ({
+      testCaseId: String(draft.testCaseId || ''),
+      page: toQaFriendlyText(draft.page),
+      subMenu: toQaFriendlyText(draft.subMenu),
+      weight: '',
+      testType: draft.testType === 'Negative' ? 'Negative' : 'Positive',
+      testAction: toQaFriendlyText(draft.testAction),
+      steps: String(draft.steps || '').split('\n').map(line => toQaFriendlyText(line)).join('\n'),
+      expectedResult: toQaFriendlyText(draft.expectedResult),
+      priority: ['Critical', 'High', 'Medium', 'Low'].includes(String(draft.priority)) ? String(draft.priority) : 'Medium',
+      moduleId: inferModuleId(draft, modules),
+    })).filter(d => d.testCaseId && d.page && d.testAction);
+
+    let answer = String(parsed.answer || 'Maaf, AI tidak menghasilkan jawaban.');
+    if (isCoverageQuestion(question)) {
+      answer = normalizeCoverageAnswer(await removeHallucinatedTestCaseIds(projectId, answer));
+    }
+
+    return NextResponse.json({ answer, drafts });
   } catch (error) {
     console.error('POST /api/ai/chat error:', error);
     return NextResponse.json({ error: 'Gagal memproses chat AI.' }, { status: 500 });

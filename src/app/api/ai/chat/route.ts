@@ -1,0 +1,1020 @@
+import { db } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+import Groq from 'groq-sdk';
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+
+export const maxDuration = 60;
+
+const AI_MODEL = process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const MAX_OUTPUT_TOKENS = 900;
+const MAX_HISTORY_MESSAGES = 6;
+const MAX_CONTEXT_CHARS = 9000;
+const MAX_DRAFT_TEST_CASES = 5;
+const TESTCASE_ID_PATTERN = /\b[A-Z]{1,4}-\d{2,4}\b/g;
+const GENERIC_KEYWORDS = new Set([
+  'add',
+  'and',
+  'api',
+  'atau',
+  'both',
+  'cache',
+  'case',
+  'correct',
+  'data',
+  'date',
+  'dengan',
+  'developer',
+  'dia',
+  'fix',
+  'for',
+  'from',
+  'get',
+  'ini',
+  'input',
+  'include',
+  'list',
+  'management',
+  'method',
+  'original',
+  'pass',
+  'provided',
+  'reduce',
+  'remove',
+  'response',
+  'service',
+  'status',
+  'support',
+  'table',
+  'task',
+  'test',
+  'testcase',
+  'total',
+  'update',
+  'user',
+  'validation',
+  'yang',
+]);
+
+type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+type TestCaseDraft = {
+  testCaseId: string;
+  page: string;
+  subMenu: string;
+  weight: string;
+  testType: string;
+  testAction: string;
+  steps: string;
+  expectedResult: string;
+  priority: string;
+  moduleId: string | null;
+};
+
+type IdSequence = {
+  prefix: string;
+  width: number;
+  lastNumber: number;
+  nextIds: string[];
+};
+
+type ModuleOption = {
+  id: string;
+  name: string;
+};
+
+type KnowledgeRow = {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  updatedAt: string;
+};
+
+type CoverageTestCaseRow = {
+  testCaseId: string;
+  page: string;
+  subMenu: string | null;
+  testAction: string;
+  steps: string;
+  expectedResult: string;
+  module: { name: string } | null;
+};
+
+function limitText(value: unknown, max = 700) {
+  const text = String(value ?? '').trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max)}... [trimmed]`;
+}
+
+function keywordCandidates(question: string) {
+  const normalized = question
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_/().:]+/g, ' ');
+
+  return Array.from(new Set(
+    normalized
+      .split(/[^a-zA-Z0-9-]+/)
+      .map(word => word.trim().toLowerCase())
+      .filter(word => word.length >= 4)
+      .filter(word => !GENERIC_KEYWORDS.has(word))
+      .slice(0, 18)
+  ));
+}
+
+function isCoverageQuestion(question: string) {
+  return /testcase.*(berhubungan|terkait|cover|coverage|sesuai)|task.*(developer|dikerjakan)|ada.*testcase|tidak ada/i.test(question);
+}
+
+async function removeHallucinatedTestCaseIds(projectId: string, answer: string) {
+  const mentionedIds = Array.from(new Set(answer.match(TESTCASE_ID_PATTERN) || []));
+  if (mentionedIds.length === 0) return answer;
+
+  const existingRows = await db.testCase.findMany({
+    where: {
+      projectId,
+      testCaseId: { in: mentionedIds },
+    },
+    select: { testCaseId: true },
+  });
+  const existingIds = new Set(existingRows.map((row) => row.testCaseId));
+  const invalidIds = mentionedIds.filter((id) => !existingIds.has(id));
+  if (invalidIds.length === 0) return answer;
+
+  const invalidPattern = new RegExp(`\\b(${invalidIds.map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'g');
+
+  return answer
+    .split('\n')
+    .map((line) => {
+      invalidPattern.lastIndex = 0;
+      if (!invalidPattern.test(line)) return line;
+      invalidPattern.lastIndex = 0;
+
+      if (line.trim().startsWith('|')) {
+        const cells = line.split('|').map((cell) => cell.trim());
+        if (cells.length >= 5) {
+          cells[2] = cells[2].replace(/\bAda\b/g, 'Tidak ada');
+          cells[3] = cells[3].replace(invalidPattern, '-');
+          cells[4] = 'Belum ada testcase yang terlihat langsung terkait di database project ini.';
+          return cells.join(' | ');
+        }
+      }
+
+      return line.replace(invalidPattern, '-');
+    })
+    .join('\n');
+}
+
+function normalizeCoverageAnswer(answer: string) {
+  const normalized = answer
+    .split('\n')
+    .map((line) => {
+      if (!line.trim().startsWith('|')) return line;
+
+      const cells = line.split('|').map((cell) => cell.trim());
+      if (cells.length < 5) return line;
+
+      const coverage = cells[2]?.toLowerCase();
+      const testCaseId = cells[3];
+      const hasRealId = TESTCASE_ID_PATTERN.test(testCaseId || '');
+      TESTCASE_ID_PATTERN.lastIndex = 0;
+
+      if (coverage === 'ada' && !hasRealId) {
+        cells[2] = 'Tidak ada';
+        if (!cells[4] || /tidak ada testcase/i.test(cells[4])) {
+          cells[4] = 'Belum ada testcase yang terlihat langsung terkait di database project ini.';
+        }
+        return cells.join(' | ');
+      }
+
+      return line;
+    })
+    .join('\n')
+    .replace(/^\s*\*\s+Ada\s*$/gim, '* Tidak ada');
+
+  return normalizeCoverageTodoSection(normalized);
+}
+
+function isCreateTestCaseRequest(question: string) {
+  if (/\b(bahasa qa|bahasa tester|jangan terlalu technical|tidak terlalu technical|ubah bahasa|translate|terjemahkan|jelaskan|mapping|coverage|berhubungan|terkait)\b/i.test(question)) {
+    return false;
+  }
+
+  return /\b(buat|buatkan|generate|create|tambahkan|draft)\s+(\d+\s+)?(testcase|test case|skenario test|negative case|positive case)\b/i.test(question)
+    || /\b(testcase|test case)\s+(baru|untuk|negative|positive)\b/i.test(question);
+}
+
+function normalizeIntentText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isShortCreateIntent(question: string) {
+  const normalizedQuestion = normalizeIntentText(question);
+  return /^(baiklah\s+)?(oke|okay|ok|ya|iya|gas|lanjut)?\s*(buatkan|buat|generate|draft|tambahkan)\s*(saja|dong|ya)?$/.test(normalizedQuestion);
+}
+
+function isCreateFollowUpRequest(question: string, history: ChatMessage[]) {
+  if (!isShortCreateIntent(question)) return false;
+
+  return history.some(message =>
+    /perlu dibuat testcase|buatkan testcase|draft testcase|testcase baru|skenario test|belum tercakup oleh test case|pekerjaan developer/i.test(message.content)
+  );
+}
+
+function isBackendOnlyTask(task: string) {
+  return /\b(openapi|swagger|documentation|dokumentasi|withcount|n\+1|cache access token|firebaseclient|cache token|token cache|private method|extract mapsession|redundant|finalsubtotalafterdiscount variable)\b/i.test(task);
+}
+
+function hasVisibleQaOutcome(task: string) {
+  return /\b(avatar|dining table|table name|mobile menu|discount|tax|grand_total|grand total|total_amount|subtotal|financial|calculatefinancials|processtransactionpayment|status label|active|open|session history|datatables|home statistic|statistic|summary|session list|status filter|date range|pagination|start_date|end_date|per_page)\b/i.test(task);
+}
+
+function isActionableQaTask(task: string) {
+  if (isBackendOnlyTask(task) && !hasVisibleQaOutcome(task)) return false;
+  return hasVisibleQaOutcome(task);
+}
+
+function coverageProfile(task: string) {
+  const lower = task.toLowerCase();
+
+  if (/avatar/.test(lower)) {
+    return { label: 'avatar/profile', required: ['avatar'], optional: ['profile', 'profil', 'user'] };
+  }
+  if (/dining table|table name|mobile menu|nomor meja|nama meja/.test(lower)) {
+    return { label: 'mobile menu table name', required: ['meja'], optional: ['mobile', 'menu', 'url', 'scan'] };
+  }
+  if (/discount|diskon|tax|pajak|grand_total|grand total|subtotal|total_amount|calculatefinancials|processtransactionpayment/.test(lower)) {
+    return { label: 'financial calculation', required: [], optional: ['discount', 'diskon', 'tax', 'pajak', 'grand', 'subtotal', 'total', 'amount'] };
+  }
+  if (/status label|active|open|table session/.test(lower)) {
+    return { label: 'table session status', required: [], optional: ['table session', 'active', 'open', 'status'] };
+  }
+  if (/session history|riwayat sesi|datatables|session list|status filter|date range|pagination|start_date|end_date|per_page/.test(lower)) {
+    return { label: 'session history', required: [], optional: ['session history', 'riwayat sesi', 'datatables', 'filter', 'date', 'tanggal', 'pagination'] };
+  }
+  if (/home statistic|statistic|statistik/.test(lower)) {
+    return { label: 'home statistic', required: [], optional: ['home statistic', 'statistik home', 'statistic', 'statistik'] };
+  }
+
+  return null;
+}
+
+function rowText(row: CoverageTestCaseRow) {
+  return [
+    row.testCaseId,
+    row.module?.name,
+    row.page,
+    row.subMenu,
+    row.testAction,
+    row.steps,
+    row.expectedResult,
+  ].join(' ').toLowerCase();
+}
+
+function findCoverageMatch(task: string, rows: CoverageTestCaseRow[]) {
+  const profile = coverageProfile(task);
+  if (!profile) return null;
+
+  let best: { row: CoverageTestCaseRow; score: number } | null = null;
+
+  for (const row of rows) {
+    const text = rowText(row);
+    if (profile.required.some(term => !text.includes(term))) continue;
+
+    const score = profile.optional.reduce((total, term) => total + (text.includes(term) ? 1 : 0), 0);
+    const requiredScore = profile.required.length * 2;
+    const totalScore = score + requiredScore;
+    const threshold = profile.required.length > 0 ? requiredScore + 1 : 2;
+
+    if (totalScore < threshold) continue;
+    if (!best || totalScore > best.score) best = { row, score: totalScore };
+  }
+
+  return best?.row || null;
+}
+
+async function buildDeterministicCoverageAnswer(projectId: string, question: string) {
+  const taskSource = question
+    .split(/\r?\n/)
+    .map(line => line.trim().replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, ''))
+    .filter(Boolean);
+  const tasks = Array.from(new Set(taskSource.filter(line => (
+    /^(fix|feat|add|pass|remove|align|extract|update|include|cache|correct|calculatefinancials|session|home|pagination|input|openapi)/i.test(line)
+  ))));
+
+  if (tasks.length === 0) return null;
+
+  const rows = await db.testCase.findMany({
+    where: { projectId },
+    select: {
+      testCaseId: true,
+      page: true,
+      subMenu: true,
+      testAction: true,
+      steps: true,
+      expectedResult: true,
+      module: { select: { name: true } },
+    },
+  });
+
+  const tableRows = tasks.map((task) => {
+    const technicalOnly = isBackendOnlyTask(task) && !hasVisibleQaOutcome(task);
+    const match = technicalOnly ? null : findCoverageMatch(task, rows);
+
+    return {
+      task,
+      coverage: match ? 'Ada' : 'Tidak ada',
+      testCaseId: match?.testCaseId || '-',
+      reason: match
+        ? `Terkait langsung dengan ${coverageProfile(task)?.label || 'area yang sama'} pada ${match.module?.name || 'testcase'}.`
+        : technicalOnly
+          ? 'Backend/internal only; tidak perlu testcase UI khusus.'
+          : 'Belum ada testcase yang terlihat langsung terkait di database project ini.',
+      technicalOnly,
+    };
+  });
+
+  const actionableMissing = tableRows
+    .filter(row => row.coverage === 'Tidak ada' && !row.technicalOnly && isActionableQaTask(row.task))
+    .map(row => row.task);
+  const technicalChecks = tableRows
+    .filter(row => row.technicalOnly)
+    .map(row => row.task);
+
+  const lines = [
+    'Berikut coverage berdasarkan testcase yang benar-benar ada di database project ini.',
+    '',
+    '| Task | Coverage | Testcase ID | Reason |',
+    '| --- | --- | --- | --- |',
+    ...tableRows.map(row => `| ${row.task} | ${row.coverage} | ${row.testCaseId} | ${row.reason} |`),
+  ];
+
+  if (actionableMissing.length > 0) {
+    lines.push('', 'Perlu dibuat testcase:', ...actionableMissing.map(task => `- ${task}`));
+  }
+
+  if (technicalChecks.length > 0) {
+    lines.push('', 'Cukup regression/technical check:', ...technicalChecks.map(task => `- ${task}`));
+  }
+
+  return lines.join('\n');
+}
+
+function extractDeveloperTasksFromText(text: string) {
+  return text
+    .split(/\r?\n/)
+    .map(line => line.trim().replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, ''))
+    .filter(line => /^(fix|feat|add|pass|remove|align|extract|update|include|cache|correct|calculatefinancials|session|home|pagination|input|openapi)\b/i.test(line))
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
+function normalizeCoverageTodoSection(answer: string) {
+  const lines = answer.split('\n');
+  const output: string[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!/perlu dibuat testcase\s*:/i.test(line)) {
+      output.push(line);
+      index += 1;
+      continue;
+    }
+
+    const actionable: string[] = [];
+    const technical: string[] = [];
+    output.push(line);
+    index += 1;
+
+    while (index < lines.length) {
+      const current = lines[index];
+      const trimmed = current.trim();
+      if (!trimmed) {
+        index += 1;
+        continue;
+      }
+
+      const bulletMatch = trimmed.match(/^[-*]\s+(.+)$/);
+      if (!bulletMatch) break;
+
+      const task = bulletMatch[1].trim();
+      if (isActionableQaTask(task)) actionable.push(task);
+      else technical.push(task);
+      index += 1;
+    }
+
+    const uniqueActionable = Array.from(new Set(actionable));
+    const uniqueTechnical = Array.from(new Set(technical));
+
+    if (uniqueActionable.length > 0) {
+      output.push(...uniqueActionable.map(task => `- ${task}`));
+    } else {
+      output.push('- Tidak ada task baru yang layak dibuat menjadi testcase UI khusus.');
+    }
+
+    if (uniqueTechnical.length > 0) {
+      output.push('', 'Cukup regression/technical check:');
+      output.push(...uniqueTechnical.map(task => `- ${task}`));
+    }
+  }
+
+  return output.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
+function extractActionableTasksFromHistory(history: ChatMessage[]) {
+  const tasks = history
+    .slice(-8)
+    .flatMap(message => extractDeveloperTasksFromText(message.content));
+
+  return Array.from(new Set(tasks)).filter(isActionableQaTask).slice(0, MAX_DRAFT_TEST_CASES);
+}
+
+function buildDraftQuestion(question: string, history: ChatMessage[]) {
+  if (!isCreateFollowUpRequest(question, history)) return question;
+
+  const actionableTasks = extractActionableTasksFromHistory(history);
+  const priorUserContext = history
+    .slice(-6)
+    .map(message => `${message.role.toUpperCase()}:\n${message.content}`)
+    .join('\n\n');
+
+  return [
+    actionableTasks.length > 0
+      ? `ACTIONABLE QA TASKS ONLY:\n${actionableTasks.map(task => `- ${task}`).join('\n')}`
+      : '',
+    '',
+    priorUserContext,
+    '',
+    'User follow-up request:',
+    question,
+    '',
+    'Instruction: buatkan draft testcase hanya untuk task yang punya dampak terlihat di UI/UX atau hasil bisnis. Abaikan task backend-only seperti cache token, OpenAPI, N+1, refactor private method, atau penghapusan variable internal jika tidak ada output yang terlihat oleh QA.',
+  ].join('\n').trim();
+}
+
+function parseTestCaseId(value: string) {
+  const match = value.match(/^(.+?-)(\d+)$/);
+  if (!match) return null;
+  return {
+    prefix: match[1],
+    number: Number(match[2]),
+    width: match[2].length,
+  };
+}
+
+async function getNextIdSequence(projectId: string, moduleId: string | null, count: number): Promise<IdSequence> {
+  const testCases = await db.testCase.findMany({
+    where: {
+      projectId,
+      ...(moduleId ? { moduleId } : {}),
+    },
+    select: { testCaseId: true },
+  });
+
+  let prefix = 'A-';
+  let width = 3;
+  let lastNumber = 0;
+
+  for (const testCase of testCases) {
+    const parsed = parseTestCaseId(testCase.testCaseId);
+    if (!parsed) continue;
+    if (parsed.number > lastNumber) {
+      prefix = parsed.prefix;
+      width = parsed.width;
+      lastNumber = parsed.number;
+    }
+  }
+
+  const nextIds = Array.from({ length: count }, (_, index) => {
+    const nextNumber = lastNumber + index + 1;
+    return `${prefix}${String(nextNumber).padStart(width, '0')}`;
+  });
+
+  return { prefix, width, lastNumber, nextIds };
+}
+
+function requestedDraftCount(question: string) {
+  const numberMatch = question.match(/\b(\d{1,2})\s*(testcase|test case|skenario|case)\b/i);
+  if (numberMatch) return Math.min(Math.max(Number(numberMatch[1]), 1), MAX_DRAFT_TEST_CASES);
+
+  const developerTaskLines = question
+    .split(/\n|(?=\b(?:fix|feat|add|pass|remove|align|extract)\b)/i)
+    .map(line => line.trim())
+    .filter(line => /^(fix|feat|add|pass|remove|align|extract)\b/i.test(line));
+
+  if (developerTaskLines.length >= 2) {
+    const actionableCount = developerTaskLines.filter(isActionableQaTask).length;
+    return Math.min(Math.max(actionableCount || developerTaskLines.length, 1), MAX_DRAFT_TEST_CASES);
+  }
+
+  return 1;
+}
+
+function toQaFriendlyText(value: unknown) {
+  let text = String(value || '').trim();
+  if (!text) return '';
+
+  text = text
+    .replace(/\bAPI\s+endpoint\b/gi, 'halaman')
+    .replace(/\bendpoint\s+API\b/gi, 'halaman')
+    .replace(/\bendpoint\b/gi, 'halaman')
+    .replace(/\bcontroller\b/gi, 'fitur')
+    .replace(/\bservice\b/gi, 'fitur')
+    .replace(/\bmethod\b/gi, 'proses')
+    .replace(/\bfunction\b/gi, 'proses')
+    .replace(/\bDTO\b/gi, 'data')
+    .replace(/\bOpenAPI\b/gi, 'dokumentasi')
+    .replace(/\bN\+1\b/gi, 'performa')
+    .replace(/\bcache access token\b/gi, 'proses autentikasi')
+    .replace(/\btoken cache\b/gi, 'sesi login')
+    .replace(/\bcache token\b/gi, 'sesi login')
+    .replace(/\baccess token\b/gi, 'sesi login')
+    .replace(/\bFirebaseClient\b/gi, 'proses notifikasi')
+    .replace(/\bPosHomeStatisticController\b/gi, 'statistik POS')
+    .replace(/\bURL avatar\b/gi, 'avatar')
+    .replace(/\bavatar URL\b/gi, 'avatar')
+    .replace(/\bURL menu makanan\b/gi, 'halaman menu makanan')
+    .replace(/\bmobile menu URL\b/gi, 'halaman menu mobile')
+    .replace(/\bcalculateFinancials\(\)/gi, 'perhitungan pembayaran')
+    .replace(/\bprocessTransactionPayment\(\)/gi, 'proses pembayaran')
+    .replace(/\bfinalSubtotalAfterDiscount\b/gi, 'subtotal setelah diskon')
+    .replace(/\btotalSubtotal\b/gi, 'subtotal')
+    .replace(/mengakses\s+halaman\s+/gi, 'membuka halaman ')
+    .replace(/halaman\s+statistik\s+POS\s+statistik\s+POS/gi, 'halaman statistik POS')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  text = text
+    .replace(/proses autentikasi aktif/gi, 'proses autentikasi berjalan stabil')
+    .replace(/fitur statistik POS dengan GET .*/gi, 'statistik POS')
+    .replace(/mengisi avatar/gi, 'memastikan avatar pengguna tersedia')
+    .replace(/mengupdate/gi, 'memperbarui')
+    .replace(/\bmengoreksi\b/gi, 'memverifikasi')
+    .replace(/\bmenambahkan halaman statistik\b/gi, 'membuka halaman statistik')
+    .replace(/\bhalaman statistik telah ditambahkan\b/gi, 'halaman statistik ditampilkan')
+    .trim();
+
+  return text;
+}
+
+function inferModuleId(draft: Partial<TestCaseDraft>, modules: ModuleOption[]) {
+  if (draft.moduleId && modules.some(module => module.id === draft.moduleId)) return draft.moduleId;
+
+  const text = [
+    draft.page,
+    draft.subMenu,
+    draft.testAction,
+    draft.steps,
+    draft.expectedResult,
+  ].map(value => String(value || '').toLowerCase()).join(' ');
+
+  const findModule = (namePattern: RegExp) => modules.find(module => namePattern.test(module.name.toLowerCase()))?.id || null;
+
+  if (/\b(scan|mobile menu|menu mobile|qr|customer order|dining table|nama meja|meja makan)\b/.test(text)) {
+    return findModule(/scan-to-order/);
+  }
+  if (/\b(pos|statistik|session|sesi|riwayat|table session|payment|pembayaran|discount|diskon|tax|pajak|grand total|order)\b/.test(text)) {
+    return findModule(/\bpos\b/);
+  }
+  if (/\b(kiosk|kios)\b/.test(text)) {
+    return findModule(/kiosk/);
+  }
+  if (/\b(kitchen|kds|dapur)\b/.test(text)) {
+    return findModule(/kitchen|kds/);
+  }
+  if (/\b(queue|antrian)\b/.test(text)) {
+    return findModule(/queue/);
+  }
+
+  return null;
+}
+
+async function createTestCaseDrafts(projectId: string, question: string, context: string) {
+  const modules = await db.module.findMany({
+    where: { projectId },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  });
+  const count = requestedDraftCount(question);
+  const idSequence = await getNextIdSequence(projectId, null, count);
+
+  const systemPrompt = `You are a QA testcase drafting assistant.
+Return ONLY valid JSON with keys "answer" and "test_cases".
+Each test case must be ready to review in a form, not saved automatically.
+Use Indonesian for testAction, steps, and expectedResult.
+Use the provided next testCaseId values exactly in order.
+Do not use data from another project.
+When the source is developer task text, convert it into user-facing QA/UI-UX regression scenarios.
+Do not repeat coverage analysis tables.
+Do not mention API endpoint, controller, service, function, DTO, OpenAPI, cache token, N+1, or internal variable names in testAction/steps/expectedResult.
+Write what the QA will see or do in the product, for example "membuka halaman statistik POS" instead of "mengakses API endpoint statistik".
+If several developer tasks are tightly related, group them into one practical testcase instead of creating duplicate low-value cases.
+For backend-only work that cannot be seen from UI, create a regression testcase only when there is a visible user outcome such as displayed data, totals, filters, history, login/profile data, or payment/order amount.
+If the user request includes an "ACTIONABLE QA TASKS ONLY" section, create drafts only for those bullet items and ignore the rest of the conversation.`;
+
+  const userMessage = `PROJECT CONTEXT:
+${context}
+
+Available modules:
+${modules.map(module => `- ${module.name}: ${module.id}`).join('\n') || '- No modules'}
+
+Module selection guidance:
+- POS: POS dashboard, session history, table session, transaction total, discount, tax, grand total, payment, order summary.
+- Scan-to-Order: mobile menu URL, dining table name in customer mobile ordering flow.
+- Kiosk: kiosk ordering flow.
+- Customer Queue Display: queue display.
+- Kitchen Display System (KDS): kitchen/order preparation display.
+Choose the matching moduleId when the area is clear. Use null only when no module matches.
+
+Next testCaseId values to use exactly: ${idSequence.nextIds.join(', ')}
+
+User request:
+${question}
+
+JSON schema:
+{
+  "answer": "short Indonesian explanation",
+  "test_cases": [
+    {
+      "testCaseId": "string",
+      "page": "string",
+      "subMenu": "string",
+      "weight": "",
+      "testType": "Positive or Negative",
+      "testAction": "string",
+      "steps": "- step 1\\n- step 2",
+      "expectedResult": "string",
+      "priority": "Critical or High or Medium or Low",
+      "moduleId": "module id or null"
+    }
+  ]
+}`;
+
+  const completion = await groq.chat.completions.create({
+    model: AI_MODEL,
+    temperature: 0.25,
+    max_tokens: 1600,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content || '{}';
+  const parsed = JSON.parse(raw);
+  const generated = Array.isArray(parsed.test_cases) ? parsed.test_cases : [];
+  const drafts: TestCaseDraft[] = generated.slice(0, count).map((draft: Partial<TestCaseDraft>, index: number) => ({
+    testCaseId: idSequence.nextIds[index] || String(draft.testCaseId || ''),
+    page: toQaFriendlyText(draft.page),
+    subMenu: toQaFriendlyText(draft.subMenu),
+    weight: '',
+    testType: draft.testType === 'Negative' ? 'Negative' : 'Positive',
+    testAction: toQaFriendlyText(draft.testAction),
+    steps: String(draft.steps || '')
+      .split('\n')
+      .map(line => toQaFriendlyText(line))
+      .join('\n'),
+    expectedResult: toQaFriendlyText(draft.expectedResult),
+    priority: ['Critical', 'High', 'Medium', 'Low'].includes(String(draft.priority)) ? String(draft.priority) : 'Medium',
+    moduleId: inferModuleId(draft, modules),
+  })).filter(draft => draft.testCaseId && draft.page && draft.testAction && draft.steps && draft.expectedResult);
+
+  return {
+    answer: String(parsed.answer || `Saya buatkan ${drafts.length} draft testcase. Review dulu sebelum disimpan.`),
+    drafts,
+  };
+}
+
+function buildContainsFilters(question: string) {
+  const keywords = keywordCandidates(question);
+  if (keywords.length === 0) return [];
+
+  return keywords.flatMap(keyword => [
+    { testCaseId: { contains: keyword } },
+    { page: { contains: keyword } },
+    { subMenu: { contains: keyword } },
+    { testAction: { contains: keyword } },
+    { expectedResult: { contains: keyword } },
+    { status: { contains: keyword } },
+    { priority: { contains: keyword } },
+  ]);
+}
+
+function knowledgeScore(item: KnowledgeRow, keywords: string[]) {
+  if (item.type === 'QA_RULES' || item.type === 'TEST_STRATEGY') return 8;
+  const haystack = `${item.type} ${item.title} ${item.content}`.toLowerCase();
+  return keywords.reduce((score, keyword) => score + (haystack.includes(keyword) ? 4 : 0), 0);
+}
+
+async function readRelevantKnowledge(projectId: string, question: string) {
+  const keywords = keywordCandidates(question);
+  const rows = await db.$queryRawUnsafe<KnowledgeRow[]>(
+    `SELECT id, type, title, content, updatedAt
+     FROM ProjectKnowledge
+     WHERE projectId = ?
+     ORDER BY updatedAt DESC
+     LIMIT 40`,
+    projectId
+  );
+
+  const relevant = rows
+    .map(item => ({ item, score: knowledgeScore(item, keywords) }))
+    .filter(entry => entry.score > 0 || keywords.length === 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map(({ item }) => `### ${item.type}: ${item.title}\n${limitText(item.content, 1200)}`);
+
+  return relevant.length > 0
+    ? limitText(relevant.join('\n\n'), 5000)
+    : '';
+}
+
+async function buildProjectContext(projectId: string, question: string, selectedTestCaseId?: string) {
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      automationContext: true,
+      _count: { select: { testCases: true, modules: true, bugFixItems: true } },
+    },
+  });
+
+  if (!project) return null;
+
+  const [modules, statusGroups, bugStatusGroups, priorityGroups] = await Promise.all([
+    db.module.findMany({
+      where: { projectId },
+      select: { id: true, name: true, _count: { select: { testCases: true, bugFixItems: true } } },
+      orderBy: { name: 'asc' },
+      take: 30,
+    }),
+    db.testCase.groupBy({
+      by: ['status'],
+      where: { projectId },
+      _count: { id: true },
+    }),
+    db.bugFix.groupBy({
+      by: ['status'],
+      where: { projectId },
+      _count: { id: true },
+    }),
+    db.testCase.groupBy({
+      by: ['priority'],
+      where: { projectId },
+      _count: { id: true },
+    }),
+  ]);
+
+  const selectedRecord = selectedTestCaseId
+    ? await db.testCase.findFirst({
+      where: {
+        projectId,
+        OR: [{ id: selectedTestCaseId }, { testCaseId: selectedTestCaseId }],
+      },
+      select: {
+        id: true,
+        testCaseId: true,
+        page: true,
+        subMenu: true,
+        testType: true,
+        testAction: true,
+        steps: true,
+        expectedResult: true,
+        actualResult: true,
+        status: true,
+        progress: true,
+        priority: true,
+        remarks: true,
+        module: { select: { name: true } },
+      },
+    })
+    : null;
+
+  const containsFilters = buildContainsFilters(question);
+  const coverageQuestion = isCoverageQuestion(question);
+  const keywords = keywordCandidates(question);
+  const projectKnowledge = await readRelevantKnowledge(projectId, question);
+  const [matchingTestCases, recentTestCases, matchingBugFixes] = await Promise.all([
+    db.testCase.findMany({
+      where: {
+        projectId,
+        ...(containsFilters.length > 0 ? { OR: containsFilters } : {}),
+      },
+      select: {
+        id: true,
+        testCaseId: true,
+        page: true,
+        subMenu: true,
+        testType: true,
+        testAction: true,
+        expectedResult: true,
+        actualResult: true,
+        status: true,
+        progress: true,
+        priority: true,
+        remarks: true,
+        module: { select: { name: true } },
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 12,
+    }),
+    db.testCase.findMany({
+      where: { projectId },
+      select: {
+        testCaseId: true,
+        page: true,
+        subMenu: true,
+        status: true,
+        priority: true,
+        testAction: true,
+        module: { select: { name: true } },
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 8,
+    }),
+    db.bugFix.findMany({
+      where: {
+        projectId,
+        ...(containsFilters.length > 0 ? { OR: containsFilters } : {}),
+      },
+      select: {
+        id: true,
+        testCaseId: true,
+        page: true,
+        subMenu: true,
+        testAction: true,
+        expectedResult: true,
+        actualResult: true,
+        status: true,
+        priority: true,
+        module: { select: { name: true } },
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 8,
+    }),
+  ]);
+
+  const lines = [
+    `PROJECT: ${project.name} (${project.id})`,
+    `Description: ${limitText(project.description, 500) || '-'}`,
+    `Automation context: ${limitText(project.automationContext, 900) || '-'}`,
+    `Totals: ${project._count.testCases} test cases, ${project._count.modules} modules, ${project._count.bugFixItems} bug fixes`,
+    `TestCase status: ${statusGroups.map(item => `${item.status}=${item._count.id}`).join(', ') || '-'}`,
+    `BugFix status: ${bugStatusGroups.map(item => `${item.status}=${item._count.id}`).join(', ') || '-'}`,
+    `Priority: ${priorityGroups.map(item => `${item.priority}=${item._count.id}`).join(', ') || '-'}`,
+    '',
+    'MODULES:',
+    ...modules.map(module => `- ${module.name}: ${module._count.testCases} testcases, ${module._count.bugFixItems} bugfix`),
+    '',
+    `SEARCH KEYWORDS USED: ${keywords.length ? keywords.join(', ') : '-'}`,
+    '',
+    'PROJECT PULSE (Health Check):',
+    `- Critical/High Issues: ${priorityGroups.filter(p => ['Critical', 'High'].includes(p.priority)).reduce((acc, p) => acc + p._count.id, 0)} items pending.`,
+    `- Failed Tests: ${statusGroups.find(s => s.status === 'FAILED')?._count.id || 0} cases need attention.`,
+    `- Ready to Retest: ${statusGroups.find(s => s.status === 'READY TO RETEST')?._count.id || 0} fixes waiting for verification.`,
+  ];
+
+  if (projectKnowledge) {
+    lines.push(
+      '',
+      'PROJECT KNOWLEDGE:',
+      projectKnowledge,
+    );
+  }
+
+  if (selectedRecord) {
+    lines.push(
+      '',
+      'CURRENTLY OPEN TEST CASE:',
+      `- [${selectedRecord.testCaseId}] ${selectedRecord.module?.name || 'No module'} > ${selectedRecord.page}${selectedRecord.subMenu ? ` > ${selectedRecord.subMenu}` : ''}`,
+      `  Status=${selectedRecord.status}, Progress=${selectedRecord.progress}, Priority=${selectedRecord.priority}, Type=${selectedRecord.testType}`,
+      `  Action=${limitText(selectedRecord.testAction, 500)}`,
+      `  Steps=${limitText(selectedRecord.steps, 900)}`,
+      `  Expected=${limitText(selectedRecord.expectedResult, 600)}`,
+      `  Actual=${limitText(selectedRecord.actualResult, 400) || '-'}`,
+      `  Remarks=${limitText(selectedRecord.remarks, 400) || '-'}`,
+    );
+  }
+
+  if (matchingTestCases.length > 0) {
+    lines.push(
+      '',
+      'MATCHING TEST CASES:',
+      ...matchingTestCases.map(testCase => {
+        const prefix = `[${testCase.testCaseId}] ${testCase.module?.name || 'No module'} > ${testCase.page}${testCase.subMenu ? ` > ${testCase.subMenu}` : ''}`;
+        return `- ${prefix} | ${testCase.status} | ${testCase.priority} | action=${limitText(testCase.testAction, 260)} | expected=${limitText(testCase.expectedResult, 220)}`;
+      }),
+    );
+  } else if (coverageQuestion) {
+    lines.push(
+      '',
+      'MATCHING TEST CASES:',
+      '- No direct matching testcase found from searchable fields. Do not use recent testcase fallback for this coverage question.',
+    );
+  } else {
+    lines.push(
+      '',
+      'RECENT TEST CASES:',
+      ...recentTestCases.map(testCase => {
+        const prefix = `[${testCase.testCaseId}] ${testCase.module?.name || 'No module'} > ${testCase.page}${testCase.subMenu ? ` > ${testCase.subMenu}` : ''}`;
+        return `- ${prefix} | ${testCase.status} | ${testCase.priority} | ${limitText(testCase.testAction, 260)}`;
+      }),
+    );
+  }
+
+  if (matchingBugFixes.length > 0) {
+    lines.push(
+      '',
+      'MATCHING BUG FIX ITEMS:',
+      ...matchingBugFixes.map(bug => `- [${bug.testCaseId}] ${bug.module?.name || 'No module'} > ${bug.page}${bug.subMenu ? ` > ${bug.subMenu}` : ''} | ${bug.status} | ${bug.priority} | actual=${limitText(bug.actualResult, 220)}`),
+    );
+  }
+
+  return limitText(lines.join('\n'), MAX_CONTEXT_CHARS);
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const projectId = String(body.projectId || '').trim();
+    const question = String(body.question || '').trim();
+    const selectedTestCaseId = body.selectedTestCaseId ? String(body.selectedTestCaseId) : undefined;
+    const history = Array.isArray(body.messages)
+      ? (body.messages as ChatMessage[])
+        .filter(message => ['user', 'assistant'].includes(message.role) && String(message.content || '').trim())
+        .slice(-MAX_HISTORY_MESSAGES)
+        .map(message => ({ role: message.role, content: limitText(message.content, 900) }))
+      : [];
+
+    if (!projectId) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
+    if (!question) return NextResponse.json({ error: 'Question is required' }, { status: 400 });
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ error: 'GROQ_API_KEY belum dikonfigurasi.' }, { status: 503 });
+    }
+
+    const context = await buildProjectContext(projectId, question, selectedTestCaseId);
+    if (!context) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+
+    // AGENTIC LOGIC: Decide the workflow based on the request.
+    const isDraftRequest = isCreateTestCaseRequest(question) || isCreateFollowUpRequest(question, history);
+    
+    if (isDraftRequest) {
+      const draftResult = await createTestCaseDrafts(projectId, buildDraftQuestion(question, history), context);
+      return NextResponse.json({
+        answer: draftResult.answer,
+        drafts: draftResult.drafts,
+      });
+    }
+
+    const systemPrompt = `You are "QA Copilot", a Senior QA Automation & Strategy Partner.
+Your goal is to be a thinking partner for the QA Engineer.
+
+GUIDELINES FOR COMMON SENSE:
+1. PROACTIVE STRATEGY: Use the "PROJECT PULSE" to give prioritized advice. If many tests are failing, suggest focusing there.
+2. TECHNICAL EMPATHY: Distinguish between fatal errors and expected setup issues (e.g., 400 on clear-session).
+3. UI-CENTRIC LANGUAGE: Always translate dev jargon (API, DTO, N+1) into user-facing QA scenarios.
+4. HONEST COVERAGE: If a task isn't covered, don't guess. Say it's missing and offer to help draft a new testcase.
+5. FORMATTING: Use Indonesian. Use markdown tables for coverage/lists (Task | Status | Related ID | Reason).
+
+STRICT DATA RULES:
+- Never hallucinate Testcase IDs.
+- Only use facts from the provided PROJECT CONTEXT.`;
+
+    const completion = await groq.chat.completions.create({
+      model: AI_MODEL,
+      temperature: 0.35,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `PROJECT CONTEXT:\n${context}` },
+        ...history,
+        { role: 'user', content: question },
+      ],
+    });
+
+    const rawAnswer = completion.choices[0]?.message?.content?.trim() || 'Maaf, AI tidak menghasilkan jawaban.';
+    const answer = isCoverageQuestion(question)
+      ? normalizeCoverageAnswer(await removeHallucinatedTestCaseIds(projectId, rawAnswer))
+      : rawAnswer;
+    return NextResponse.json({ answer });
+  } catch (error) {
+    console.error('POST /api/ai/chat error:', error);
+    return NextResponse.json({ error: 'Gagal memproses chat AI.' }, { status: 500 });
+  }
+}

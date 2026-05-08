@@ -37,46 +37,49 @@ export function ProjectModuleDialogs({
   onCreateProject,
   onCreateModule,
 }: ProjectModuleDialogsProps) {
+  const inputClass = 'border-border/60 bg-secondary/50 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/30 rounded-xl';
+  const labelClass = 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground';
+
   return (
     <>
       <Dialog open={showCreateProject} onOpenChange={setShowCreateProject}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="border-border bg-card text-foreground elevation-3 rounded-2xl sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Buat Project Baru</DialogTitle>
-            <DialogDescription>Project digunakan untuk mengelompokkan test case berdasarkan aplikasi yang diuji.</DialogDescription>
+            <DialogTitle className="text-foreground">Buat Project Baru</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Project digunakan untuk mengelompokkan test case berdasarkan aplikasi yang diuji.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Nama Project *</Label>
-              <Input value={newProjectName} onChange={(event) => setNewProjectName(event.target.value)} placeholder="contoh: Servios CMS" />
+              <Label className={labelClass}>Nama Project *</Label>
+              <Input className={inputClass} value={newProjectName} onChange={(event) => setNewProjectName(event.target.value)} placeholder="contoh: Servios CMS" />
             </div>
             <div className="space-y-2">
-              <Label>Deskripsi</Label>
-              <Textarea value={newProjectDesc} onChange={(event) => setNewProjectDesc(event.target.value)} placeholder="Deskripsi project (opsional)" rows={3} />
+              <Label className={labelClass}>Deskripsi</Label>
+              <Textarea className={inputClass} value={newProjectDesc} onChange={(event) => setNewProjectDesc(event.target.value)} placeholder="Deskripsi project (opsional)" rows={3} />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateProject(false)}>Batal</Button>
-            <Button onClick={onCreateProject} disabled={!newProjectName.trim()}>Buat Project</Button>
+          <DialogFooter className="border-t border-border/50 pt-4">
+            <Button variant="outline" onClick={() => setShowCreateProject(false)} className="rounded-xl">Batal</Button>
+            <Button onClick={onCreateProject} disabled={!newProjectName.trim()} variant="majestic" className="rounded-xl">Buat Project</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showCreateModule} onOpenChange={setShowCreateModule}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="border-border bg-card text-foreground elevation-3 rounded-2xl sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Buat Module Baru</DialogTitle>
-            <DialogDescription>Module digunakan untuk mengorganisir test case berdasarkan fitur atau bagian dari aplikasi.</DialogDescription>
+            <DialogTitle className="text-foreground">Buat Module Baru</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Module digunakan untuk mengorganisir test case berdasarkan fitur atau bagian dari aplikasi.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Nama Module *</Label>
-              <Input value={newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="contoh: CMS Login, Order Management" />
+              <Label className={labelClass}>Nama Module *</Label>
+              <Input className={inputClass} value={newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="contoh: CMS Login, Order Management" />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateModule(false)}>Batal</Button>
-            <Button onClick={onCreateModule} disabled={!newModuleName.trim()}>Buat Module</Button>
+          <DialogFooter className="border-t border-border/50 pt-4">
+            <Button variant="outline" onClick={() => setShowCreateModule(false)} className="rounded-xl">Batal</Button>
+            <Button onClick={onCreateModule} disabled={!newModuleName.trim()} variant="majestic" className="rounded-xl">Buat Module</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

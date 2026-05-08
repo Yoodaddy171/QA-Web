@@ -9,9 +9,10 @@ const groq = new Groq({
 export const maxDuration = 60;
 
 const AI_MODEL = process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
-const MAX_OUTPUT_TOKENS = 900;
+const MAX_OUTPUT_TOKENS = 1100;
 const MAX_HISTORY_MESSAGES = 6;
-const MAX_CONTEXT_CHARS = 9000;
+const MAX_HISTORY_CHARS = 3000;
+const MAX_CONTEXT_CHARS = 12000;
 const MAX_DRAFT_TEST_CASES = 5;
 const TESTCASE_ID_PATTERN = /\b[A-Z]{1,4}-\d{2,4}\b/g;
 const GENERIC_KEYWORDS = new Set([
@@ -105,6 +106,8 @@ type CoverageTestCaseRow = {
   expectedResult: string;
   module: { name: string } | null;
 };
+
+type AgentDraft = Partial<TestCaseDraft>;
 
 function limitText(value: unknown, max = 700) {
   const text = String(value ?? '').trim();
@@ -343,9 +346,9 @@ async function buildDeterministicCoverageAnswer(projectId: string, question: str
     };
   });
 
-  const actionableMissing = tableRows
+  const actionableMissing = uniqueActionableTasks(tableRows
     .filter(row => row.coverage === 'Tidak ada' && !row.technicalOnly && isActionableQaTask(row.task))
-    .map(row => row.task);
+    .map(row => row.task));
   const technicalChecks = tableRows
     .filter(row => row.technicalOnly)
     .map(row => row.task);
@@ -376,6 +379,87 @@ function extractDeveloperTasksFromText(text: string) {
     .filter(line => /^(fix|feat|add|pass|remove|align|extract|update|include|cache|correct|calculatefinancials|session|home|pagination|input|openapi)\b/i.test(line))
     .map(line => line.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
+}
+
+function extractTodoTestCaseTasks(text: string) {
+  const lines = text.split(/\r?\n/);
+  const tasks: string[] = [];
+  let insideTodo = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^perlu dibuat testcase\s*:/i.test(trimmed)) {
+      insideTodo = true;
+      continue;
+    }
+
+    if (!insideTodo) continue;
+    if (!trimmed) continue;
+    if (/^(cukup regression|technical check|catatan|summary|ringkasan|coverage)\s*:/i.test(trimmed)) break;
+    if (/^\|/.test(trimmed)) break;
+
+    const candidate = trimmed
+      .replace(/^[-*]\s+/, '')
+      .replace(/^\d+\.\s+/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (/^(fix|feat|add|pass|remove|align|extract|update|include|cache|correct|calculatefinancials|session|home|pagination|input|openapi)\b/i.test(candidate)) {
+      tasks.push(candidate);
+      continue;
+    }
+
+    break;
+  }
+
+  return tasks;
+}
+
+function taskGroupKey(task: string) {
+  const lower = task.toLowerCase();
+
+  if (/avatar/.test(lower)) return 'avatar';
+  if (/home[-\s]?statistic|poshomestatistic|statistik/.test(lower)) return 'home-statistic';
+  if (/session history|riwayat sesi|datatables|session list|status filter|date range|rentang tanggal|pagination|start_date|end_date|per_page|input validation|validasi input/.test(lower)) return 'session-history';
+  if (/dining table|table name|mobile menu|nama meja|meja makan/.test(lower)) return 'mobile-table';
+  if (/discount|diskon|tax|pajak|grand_total|grand total|subtotal|total_amount|calculatefinancials|processtransactionpayment/.test(lower)) return 'financial';
+
+  return normalizeIntentText(task).slice(0, 100);
+}
+
+function representativeTaskForGroup(groupKey: string, tasks: string[]) {
+  if (groupKey === 'home-statistic') {
+    return 'home statistic POS menampilkan ringkasan sesi open dan closed';
+  }
+  if (groupKey === 'session-history') {
+    const joined = tasks.join(' ').toLowerCase();
+    const details = [
+      /status filter|open, closed|status/.test(joined) ? 'filter status' : '',
+      /date range|rentang tanggal|start_date|end_date/.test(joined) ? 'rentang tanggal' : '',
+      /pagination|per_page/.test(joined) ? 'pagination' : '',
+      /input validation|validasi input/.test(joined) ? 'validasi input' : '',
+    ].filter(Boolean);
+
+    return details.length > 0
+      ? `Session History management dengan ${details.join(', ')}`
+      : 'Session History management dengan daftar riwayat sesi';
+  }
+
+  return tasks[0];
+}
+
+function uniqueActionableTasks(tasks: string[]) {
+  const grouped = new Map<string, string[]>();
+
+  for (const task of tasks) {
+    if (!isActionableQaTask(task)) continue;
+    const key = taskGroupKey(task);
+    grouped.set(key, [...(grouped.get(key) || []), task]);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([key, groupTasks]) => representativeTaskForGroup(key, groupTasks))
+    .slice(0, MAX_DRAFT_TEST_CASES);
 }
 
 function normalizeCoverageTodoSection(answer: string) {
@@ -413,7 +497,7 @@ function normalizeCoverageTodoSection(answer: string) {
       index += 1;
     }
 
-    const uniqueActionable = Array.from(new Set(actionable));
+    const uniqueActionable = uniqueActionableTasks(actionable);
     const uniqueTechnical = Array.from(new Set(technical));
 
     if (uniqueActionable.length > 0) {
@@ -432,11 +516,18 @@ function normalizeCoverageTodoSection(answer: string) {
 }
 
 function extractActionableTasksFromHistory(history: ChatMessage[]) {
+  const todoTasks = history
+    .slice(-8)
+    .flatMap(message => extractTodoTestCaseTasks(message.content));
+  if (todoTasks.length > 0) {
+    return uniqueActionableTasks(todoTasks);
+  }
+
   const tasks = history
     .slice(-8)
     .flatMap(message => extractDeveloperTasksFromText(message.content));
 
-  return Array.from(new Set(tasks)).filter(isActionableQaTask).slice(0, MAX_DRAFT_TEST_CASES);
+  return uniqueActionableTasks(tasks);
 }
 
 function buildDraftQuestion(question: string, history: ChatMessage[]) {
@@ -460,6 +551,29 @@ function buildDraftQuestion(question: string, history: ChatMessage[]) {
     '',
     'Instruction: buatkan draft testcase hanya untuk task yang punya dampak terlihat di UI/UX atau hasil bisnis. Abaikan task backend-only seperti cache token, OpenAPI, N+1, refactor private method, atau penghapusan variable internal jika tidak ada output yang terlihat oleh QA.',
   ].join('\n').trim();
+}
+
+function buildAgenticSafetyContext(question: string, history: ChatMessage[]) {
+  const actionableTasks = uniqueActionableTasks([
+    ...extractDeveloperTasksFromText(question),
+    ...history.slice(-8).flatMap(message => extractDeveloperTasksFromText(message.content)),
+  ]);
+
+  const technicalOnlyTasks = Array.from(new Set([
+    ...extractDeveloperTasksFromText(question),
+    ...history.slice(-8).flatMap(message => extractDeveloperTasksFromText(message.content)),
+  ])).filter(task => isBackendOnlyTask(task) && !hasVisibleQaOutcome(task)).slice(0, 12);
+
+  return [
+    'AGENTIC SAFETY CONTEXT:',
+    `- Create intent: ${isShortCreateIntent(question) || isCreateTestCaseRequest(question) ? 'YES' : 'NO'}`,
+    actionableTasks.length
+      ? `- Actionable QA tasks eligible for testcase drafts:\n${actionableTasks.map(task => `  - ${task}`).join('\n')}`
+      : '- Actionable QA tasks eligible for testcase drafts: none detected',
+    technicalOnlyTasks.length
+      ? `- Backend/internal tasks that should NOT become UI testcase drafts:\n${technicalOnlyTasks.map(task => `  - ${task}`).join('\n')}`
+      : '- Backend/internal tasks that should NOT become UI testcase drafts: none detected',
+  ].join('\n');
 }
 
 function parseTestCaseId(value: string) {
@@ -599,6 +713,122 @@ function inferModuleId(draft: Partial<TestCaseDraft>, modules: ModuleOption[]) {
   return null;
 }
 
+function moduleIdByName(modules: ModuleOption[], pattern: RegExp) {
+  return modules.find(module => pattern.test(module.name.toLowerCase()))?.id || null;
+}
+
+function draftFromTask(task: string, testCaseId: string, modules: ModuleOption[]): TestCaseDraft {
+  const lower = task.toLowerCase();
+  const posModule = moduleIdByName(modules, /\bpos\b/);
+  const scanModule = moduleIdByName(modules, /scan-to-order/);
+
+  if (/avatar/.test(lower)) {
+    return {
+      testCaseId,
+      page: 'Profil Pengguna',
+      subMenu: 'Informasi Akun',
+      weight: '',
+      testType: 'Positive',
+      testAction: 'Verifikasi avatar pengguna tampil pada informasi akun',
+      steps: '- Login ke aplikasi\n- Buka halaman profil atau informasi akun\n- Periksa area avatar pengguna',
+      expectedResult: 'Avatar pengguna tampil dengan benar dan tidak kosong.',
+      priority: 'Medium',
+      moduleId: posModule,
+    };
+  }
+
+  if (/dining table|table name|mobile menu|nama meja|meja makan/.test(lower)) {
+    return {
+      testCaseId,
+      page: 'Scan-to-Order',
+      subMenu: 'Mobile Menu',
+      weight: '',
+      testType: 'Positive',
+      testAction: 'Verifikasi nama meja tampil pada halaman menu mobile',
+      steps: '- Buka link mobile menu dari meja yang dipilih\n- Periksa informasi meja pada halaman menu\n- Lanjutkan proses pemesanan sampai ringkasan order',
+      expectedResult: 'Nama atau nomor meja tampil konsisten pada halaman menu dan ringkasan order.',
+      priority: 'Medium',
+      moduleId: scanModule,
+    };
+  }
+
+  if (/session history|riwayat sesi|datatables|session list|status filter|date range|pagination|start_date|end_date|per_page/.test(lower)) {
+    return {
+      testCaseId,
+      page: 'POS',
+      subMenu: 'Session History',
+      weight: '',
+      testType: 'Positive',
+      testAction: 'Verifikasi riwayat sesi dapat difilter dan ditampilkan dengan benar',
+      steps: '- Buka halaman Session History\n- Gunakan filter status sesi\n- Gunakan filter rentang tanggal\n- Pindah halaman data jika tersedia',
+      expectedResult: 'Data riwayat sesi tampil sesuai filter status, rentang tanggal, dan pagination.',
+      priority: 'High',
+      moduleId: posModule,
+    };
+  }
+
+  if (/home statistic|statistic|statistik|summary/.test(lower)) {
+    return {
+      testCaseId,
+      page: 'POS',
+      subMenu: 'Home Statistic',
+      weight: '',
+      testType: 'Positive',
+      testAction: 'Verifikasi statistik home POS menampilkan ringkasan sesi dengan benar',
+      steps: '- Buka halaman home POS\n- Periksa ringkasan sesi open dan closed\n- Bandingkan total jumlah dan nominal dengan data sesi yang tersedia',
+      expectedResult: 'Statistik home POS menampilkan jumlah sesi dan nominal total dengan benar.',
+      priority: 'High',
+      moduleId: posModule,
+    };
+  }
+
+  if (/discount|diskon|tax|pajak|grand_total|grand total|subtotal|total_amount|calculatefinancials|processtransactionpayment/.test(lower)) {
+    return {
+      testCaseId,
+      page: 'POS',
+      subMenu: 'Payment Summary',
+      weight: '',
+      testType: 'Positive',
+      testAction: 'Verifikasi perhitungan subtotal, diskon, pajak, dan grand total',
+      steps: '- Buat order dengan item yang memiliki diskon\n- Lanjutkan sampai halaman ringkasan pembayaran\n- Periksa subtotal, diskon, pajak, dan grand total',
+      expectedResult: 'Subtotal, diskon, pajak, dan grand total dihitung satu kali dan sesuai dengan ringkasan pembayaran.',
+      priority: 'High',
+      moduleId: posModule,
+    };
+  }
+
+  return {
+    testCaseId,
+    page: 'POS',
+    subMenu: 'Regression',
+    weight: '',
+    testType: 'Positive',
+    testAction: toQaFriendlyText(task),
+    steps: '- Buka fitur terkait\n- Jalankan flow utama\n- Periksa hasil yang tampil di UI',
+    expectedResult: 'Flow berjalan sesuai ekspektasi dan tidak menampilkan error.',
+    priority: 'Medium',
+    moduleId: posModule,
+  };
+}
+
+async function createRuleBasedFollowUpDrafts(projectId: string, history: ChatMessage[]) {
+  const tasks = extractActionableTasksFromHistory(history);
+  if (tasks.length === 0) return null;
+
+  const modules = await db.module.findMany({
+    where: { projectId },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  });
+  const idSequence = await getNextIdSequence(projectId, null, tasks.length);
+  const drafts = tasks.map((task, index) => draftFromTask(task, idSequence.nextIds[index], modules));
+
+  return {
+    answer: `Saya buatkan ${drafts.length} draft testcase dari daftar yang memang perlu dibuat. Silakan review dan edit detailnya sebelum Add.`,
+    drafts,
+  };
+}
+
 async function createTestCaseDrafts(projectId: string, question: string, context: string) {
   const modules = await db.module.findMany({
     where: { projectId },
@@ -732,11 +962,11 @@ async function readRelevantKnowledge(projectId: string, question: string) {
     .map(item => ({ item, score: knowledgeScore(item, keywords) }))
     .filter(entry => entry.score > 0 || keywords.length === 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 8)
-    .map(({ item }) => `### ${item.type}: ${item.title}\n${limitText(item.content, 1200)}`);
+    .slice(0, 10)
+    .map(({ item }) => `### ${item.type}: ${item.title}\n${limitText(item.content, 1400)}`);
 
   return relevant.length > 0
-    ? limitText(relevant.join('\n\n'), 5000)
+    ? limitText(relevant.join('\n\n'), 6000)
     : '';
 }
 
@@ -818,6 +1048,7 @@ async function buildProjectContext(projectId: string, question: string, selected
         testCaseId: true,
         page: true,
         subMenu: true,
+        weight: true,
         testType: true,
         testAction: true,
         expectedResult: true,
@@ -830,7 +1061,7 @@ async function buildProjectContext(projectId: string, question: string, selected
         updatedAt: true,
       },
       orderBy: { updatedAt: 'desc' },
-      take: 12,
+      take: 15,
     }),
     db.testCase.findMany({
       where: { projectId },
@@ -959,7 +1190,7 @@ export async function POST(req: NextRequest) {
       ? (body.messages as ChatMessage[])
         .filter(message => ['user', 'assistant'].includes(message.role) && String(message.content || '').trim())
         .slice(-MAX_HISTORY_MESSAGES)
-        .map(message => ({ role: message.role, content: limitText(message.content, 900) }))
+        .map(message => ({ role: message.role, content: limitText(message.content, MAX_HISTORY_CHARS) }))
       : [];
 
     if (!projectId) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
@@ -971,28 +1202,56 @@ export async function POST(req: NextRequest) {
     const context = await buildProjectContext(projectId, question, selectedTestCaseId);
     if (!context) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
+    if (isCreateFollowUpRequest(question, history)) {
+      const ruleBasedDrafts = await createRuleBasedFollowUpDrafts(projectId, history);
+      if (ruleBasedDrafts) {
+        return NextResponse.json({
+          answer: ruleBasedDrafts.answer,
+          drafts: ruleBasedDrafts.drafts,
+        });
+      }
+    }
+
     const modules = await db.module.findMany({
       where: { projectId },
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });
 
+    const deterministicCoverage = isCoverageQuestion(question) && !isShortCreateIntent(question)
+      ? await buildDeterministicCoverageAnswer(projectId, question)
+      : null;
+    if (deterministicCoverage) {
+      return NextResponse.json({ answer: deterministicCoverage, drafts: [] });
+    }
+
     // Prepare ID sequence in case the AI wants to draft
     const idSequence = await getNextIdSequence(projectId, null, MAX_DRAFT_TEST_CASES);
+    const safetyContext = buildAgenticSafetyContext(question, history);
 
-    const systemPrompt = `You are "QA Copilot", a Senior QA Automation & Strategy Partner.
-Your goal is to be a thinking partner for the QA Engineer.
+    const systemPrompt = `You are "QA Copilot", a Senior QA Automation & Strategy Partner with deep expertise in software testing.
+You are a thinking partner — intelligent, opinionated, and helpful. You have common sense and can reason about software quality beyond just test cases.
 
-GUIDELINES:
-1. COMMON SENSE: Use the "PROJECT PULSE" to provide proactive advice. 
-2. AGENTIC DRAFTING: You decide when to provide test case drafts. If the user asks to create, generate, or if you suggest new tests, include them in the "test_cases" list.
-3. UI-CENTRIC: Translate dev jargon (API, DTO, N+1) into user-facing QA scenarios.
-4. INDONESIAN: Always answer in Indonesian.
-5. FORMAT: Return ONLY a valid JSON object.
+PERSONALITY & BEHAVIOR:
+- Be conversational, natural, and direct. Not robotic.
+- You can discuss anything related to QA, software development, testing strategy, bug analysis, release readiness, risk assessment, and general software engineering topics.
+- When asked general questions (greetings, opinions, advice), respond naturally like a knowledgeable colleague would.
+- When asked about the project, use the PROJECT CONTEXT data to give informed, specific answers.
+- Proactively point out risks, suggest improvements, and share QA best practices when relevant.
+- If something seems wrong or risky in the project data, mention it without being asked.
+- You can explain technical concepts, help debug issues, discuss testing methodologies, and provide strategic QA advice.
+
+CORE CAPABILITIES:
+1. COMMON SENSE: Analyze project health from data. Spot patterns (e.g., too many blocked tests, aging bugs, low coverage areas). Give actionable advice.
+2. AGENTIC DRAFTING: When the user asks to create/generate test cases, or when you suggest new tests, include them in "test_cases" array. You decide when drafts are appropriate.
+3. UI-CENTRIC: Translate developer jargon (API, DTO, N+1, cache) into user-facing QA scenarios that a manual tester can execute.
+4. LANGUAGE: Always answer in Indonesian (Bahasa Indonesia). Be natural, not overly formal.
+5. FORMAT: Return ONLY a valid JSON object with the schema below.
+6. SAFETY: Backend-only/internal tasks from AGENTIC SAFETY CONTEXT must not become UI testcase drafts.
 
 JSON SCHEMA:
 {
-  "answer": "string (conversational response in Indonesian, use markdown for tables/bullets)",
+  "answer": "string (your conversational response in Indonesian, use markdown for formatting — tables, bullets, bold, code blocks as needed)",
   "test_cases": [
     {
       "testCaseId": "string (use provided IDs: ${idSequence.nextIds.join(', ')})",
@@ -1000,7 +1259,7 @@ JSON SCHEMA:
       "subMenu": "string",
       "testType": "Positive or Negative",
       "testAction": "string",
-      "steps": "string (multiline with - )",
+      "steps": "string (numbered steps with newlines)",
       "expectedResult": "string",
       "priority": "Critical or High or Medium or Low",
       "moduleId": "string (UUID from Available Modules) or null"
@@ -1008,21 +1267,26 @@ JSON SCHEMA:
   ]
 }
 
+Note: "test_cases" array should be empty [] when you're just chatting/answering questions without creating test cases.
+
 AVAILABLE MODULES:
 ${modules.map(m => `- ${m.name}: ${m.id}`).join('\n')}
 
 STRICT DATA RULES:
-- Never hallucinate Testcase IDs. Use ONLY the ones provided above if creating new ones.
-- Refer to existing IDs (e.g., A-001) only if they are in the PROJECT CONTEXT.`;
+- Never hallucinate Testcase IDs. Use ONLY the provided IDs above when creating new drafts.
+- Refer to existing IDs (e.g., A-001) only if they appear in the PROJECT CONTEXT.
+- If asked to create after a coverage answer, create drafts only from "Actionable QA tasks eligible for testcase drafts".
+- When you don't know something, say so honestly. Don't make up data.`;
 
     const completion = await groq.chat.completions.create({
       model: AI_MODEL,
-      temperature: 0.3,
-      max_tokens: 2000,
+      temperature: 0.4,
+      max_tokens: 2400,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `PROJECT CONTEXT:\n${context}` },
+        { role: 'user', content: safetyContext },
         ...history,
         { role: 'user', content: question },
       ],
@@ -1032,9 +1296,9 @@ STRICT DATA RULES:
     const parsed = JSON.parse(raw);
     
     // Clean and normalize any generated drafts
-    const rawDrafts = Array.isArray(parsed.test_cases) ? parsed.test_cases : [];
-    const drafts: TestCaseDraft[] = rawDrafts.map((draft: any) => ({
-      testCaseId: String(draft.testCaseId || ''),
+    const rawDrafts: AgentDraft[] = Array.isArray(parsed.test_cases) ? parsed.test_cases.slice(0, MAX_DRAFT_TEST_CASES) : [];
+    let drafts: TestCaseDraft[] = rawDrafts.map((draft, index) => ({
+      testCaseId: idSequence.nextIds[index] || String(draft.testCaseId || ''),
       page: toQaFriendlyText(draft.page),
       subMenu: toQaFriendlyText(draft.subMenu),
       weight: '',
@@ -1044,7 +1308,13 @@ STRICT DATA RULES:
       expectedResult: toQaFriendlyText(draft.expectedResult),
       priority: ['Critical', 'High', 'Medium', 'Low'].includes(String(draft.priority)) ? String(draft.priority) : 'Medium',
       moduleId: inferModuleId(draft, modules),
-    })).filter(d => d.testCaseId && d.page && d.testAction);
+    })).filter(d => d.testCaseId && d.page && d.testAction && d.steps && d.expectedResult);
+
+    if (drafts.length === 0 && isCreateFollowUpRequest(question, history)) {
+      const fallback = await createTestCaseDrafts(projectId, buildDraftQuestion(question, history), context);
+      drafts = fallback.drafts;
+      if (!parsed.answer) parsed.answer = fallback.answer;
+    }
 
     let answer = String(parsed.answer || 'Maaf, AI tidak menghasilkan jawaban.');
     if (isCoverageQuestion(question)) {

@@ -41,82 +41,377 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --color-surface: var(--surface);
+  --color-surface-variant: var(--surface-variant);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
 }
 
+/* ===== LIGHT MODE - Material Design 3 Teal ===== */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.875rem;
+
+  /* Core surfaces */
+  --background: #f8fafb;
+  --foreground: #1a1c1e;
+  --card: #ffffff;
+  --card-foreground: #1a1c1e;
+  --popover: #ffffff;
+  --popover-foreground: #1a1c1e;
+
+  /* Primary - Teal */
+  --primary: #006b5e;
+  --primary-foreground: #ffffff;
+
+  /* Secondary */
+  --secondary: #f0f5f3;
+  --secondary-foreground: #1a1c1e;
+
+  /* Muted */
+  --muted: #f2f4f6;
+  --muted-foreground: #5f6368;
+
+  /* Accent */
+  --accent: #e8f5f2;
+  --accent-foreground: #004d43;
+
+  /* Destructive */
+  --destructive: #ba1a1a;
+
+  /* Borders & inputs */
+  --border: #dfe3e6;
+  --input: #dfe3e6;
+  --ring: #006b5e;
+
+  /* Charts */
+  --chart-1: #006b5e;
+  --chart-2: #5856d6;
+  --chart-3: #f5a623;
+  --chart-4: #e91e63;
+  --chart-5: #9c27b0;
+
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1c1e;
+  --sidebar-primary: #006b5e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f5f2;
+  --sidebar-accent-foreground: #004d43;
+  --sidebar-border: #e8eaed;
+  --sidebar-ring: #006b5e;
+
+  /* Material surfaces */
+  --surface: #ffffff;
+  --surface-variant: #f2f4f6;
+  --on-surface: #1a1c1e;
+  --on-surface-variant: #44474a;
+  --surface-container: #f2f4f6;
+  --surface-container-low: #f8fafb;
+  --surface-container-high: #eceef0;
+  --surface-container-highest: #e3e5e8;
+  --outline: #74777a;
+  --outline-variant: #c4c7ca;
 }
 
+/* ===== DARK MODE - Material Design 3 Teal ===== */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #111318;
+  --foreground: #e2e3e8;
+  --card: #1b1d23;
+  --card-foreground: #e2e3e8;
+  --popover: #1b1d23;
+  --popover-foreground: #e2e3e8;
+
+  /* Primary - Teal (lighter for dark) */
+  --primary: #5ddbbe;
+  --primary-foreground: #003730;
+
+  /* Secondary */
+  --secondary: #1e2a27;
+  --secondary-foreground: #e2e3e8;
+
+  /* Muted */
+  --muted: #1e2024;
+  --muted-foreground: #9ca0a5;
+
+  /* Accent */
+  --accent: #1a2e2a;
+  --accent-foreground: #5ddbbe;
+
+  /* Destructive */
+  --destructive: #ffb4ab;
+
+  /* Borders & inputs */
+  --border: #2c2e33;
+  --input: #2c2e33;
+  --ring: #5ddbbe;
+
+  /* Charts */
+  --chart-1: #5ddbbe;
+  --chart-2: #a5a4f4;
+  --chart-3: #ffd166;
+  --chart-4: #f48fb1;
+  --chart-5: #ce93d8;
+
+  /* Sidebar */
+  --sidebar: #111318;
+  --sidebar-foreground: #e2e3e8;
+  --sidebar-primary: #5ddbbe;
+  --sidebar-primary-foreground: #003730;
+  --sidebar-accent: #1a2e2a;
+  --sidebar-accent-foreground: #5ddbbe;
+  --sidebar-border: #2c2e33;
+  --sidebar-ring: #5ddbbe;
+
+  /* Material surfaces */
+  --surface: #1b1d23;
+  --surface-variant: #242629;
+  --on-surface: #e2e3e8;
+  --on-surface-variant: #c4c7ca;
+  --surface-container: #1e2024;
+  --surface-container-low: #191b1f;
+  --surface-container-high: #272a2e;
+  --surface-container-highest: #313438;
+  --outline: #8e9194;
+  --outline-variant: #44474a;
 }
 
 @layer base {
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
+
+  /* Theme transition - scoped to key surfaces only, not all elements */
+  html:not([data-no-transition]) body,
+  html:not([data-no-transition]) [data-slot="card"],
+  html:not([data-no-transition]) header,
+  html:not([data-no-transition]) main,
+  html:not([data-no-transition]) nav {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+  }
+
+  /* Scrollbar - Material style */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--outline-variant);
+    border-radius: 100px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--outline); background-clip: content-box; }
+}
+
+/* ===== Material Design Utility Classes ===== */
+@layer utilities {
+  /* Elevation system */
+  .elevation-0 {
+    box-shadow: none;
+  }
+  .elevation-1 {
+    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  }
+  .elevation-2 {
+    box-shadow: 0 2px 6px 2px rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  }
+  .elevation-3 {
+    box-shadow: 0 4px 8px 3px rgba(0, 0, 0, 0.05), 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+  .elevation-4 {
+    box-shadow: 0 6px 10px 4px rgba(0, 0, 0, 0.05), 0 2px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .elevation-1 {
+    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.25), 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  }
+  .dark .elevation-2 {
+    box-shadow: 0 2px 6px 2px rgba(0, 0, 0, 0.25), 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  }
+  .dark .elevation-3 {
+    box-shadow: 0 4px 8px 3px rgba(0, 0, 0, 0.25), 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  }
+  .dark .elevation-4 {
+    box-shadow: 0 6px 10px 4px rgba(0, 0, 0, 0.25), 0 2px 3px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  /* Surface tint overlay for Material elevation */
+  .surface-tint {
+    position: relative;
+  }
+  .surface-tint::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--primary);
+    opacity: 0.04;
+    pointer-events: none;
+  }
+}
+
+/* ===== Light-mode compatibility for legacy dark utility classes ===== */
+/* These ensure components using hardcoded dark colors still look correct in light mode */
+
+:root:not(.dark) .text-white {
+  color: var(--foreground);
+}
+
+:root:not(.dark) .text-slate-100,
+:root:not(.dark) .text-slate-200,
+:root:not(.dark) .text-slate-300 {
+  color: var(--foreground);
+}
+
+:root:not(.dark) .text-slate-400,
+:root:not(.dark) .text-slate-500 {
+  color: var(--muted-foreground);
+}
+
+:root:not(.dark) .text-slate-600,
+:root:not(.dark) .text-slate-700,
+:root:not(.dark) .text-slate-800,
+:root:not(.dark) .text-slate-900 {
+  color: var(--foreground);
+}
+
+:root:not(.dark) .text-teal-300,
+:root:not(.dark) .text-teal-400 {
+  color: var(--primary);
+}
+
+:root:not(.dark) .text-sky-300,
+:root:not(.dark) .text-sky-400 {
+  color: #0277bd;
+}
+
+:root:not(.dark) .text-indigo-300,
+:root:not(.dark) .text-indigo-400 {
+  color: #3949ab;
+}
+
+:root:not(.dark) .text-violet-300,
+:root:not(.dark) .text-violet-400 {
+  color: #7b1fa2;
+}
+
+:root:not(.dark) .text-amber-300,
+:root:not(.dark) .text-amber-400 {
+  color: #f57c00;
+}
+
+:root:not(.dark) .text-orange-300,
+:root:not(.dark) .text-orange-400 {
+  color: #e65100;
+}
+
+:root:not(.dark) .text-rose-300,
+:root:not(.dark) .text-rose-400,
+:root:not(.dark) .text-red-300,
+:root:not(.dark) .text-red-400 {
+  color: #c62828;
+}
+
+:root:not(.dark) .text-emerald-300,
+:root:not(.dark) .text-emerald-400 {
+  color: #2e7d32;
+}
+
+:root:not(.dark) .text-cyan-300,
+:root:not(.dark) .text-cyan-400 {
+  color: #00838f;
+}
+
+/* Background overrides for light mode */
+:root:not(.dark) .bg-white\/5,
+:root:not(.dark) .bg-white\/10,
+:root:not(.dark) .bg-white\/\[0\.02\],
+:root:not(.dark) .bg-white\/\[0\.025\],
+:root:not(.dark) .bg-white\/\[0\.03\],
+:root:not(.dark) .bg-white\/\[0\.04\],
+:root:not(.dark) .bg-white\/\[0\.045\] {
+  background-color: var(--surface-container);
+}
+
+:root:not(.dark) .hover\:bg-white\/5:hover,
+:root:not(.dark) .hover\:bg-white\/10:hover,
+:root:not(.dark) .hover\:bg-white\/\[0\.02\]:hover,
+:root:not(.dark) .hover\:bg-white\/\[0\.035\]:hover,
+:root:not(.dark) .hover\:bg-white\/\[0\.04\]:hover,
+:root:not(.dark) .hover\:bg-white\/\[0\.045\]:hover {
+  background-color: var(--surface-container-high);
+}
+
+:root:not(.dark) .bg-\[\#020617\]\/40,
+:root:not(.dark) .bg-\[\#020617\]\/50,
+:root:not(.dark) .bg-\[\#030a21\]\/95,
+:root:not(.dark) .bg-\[\#020617\],
+:root:not(.dark) .bg-slate-900,
+:root:not(.dark) .bg-slate-950,
+:root:not(.dark) .bg-slate-900\/50,
+:root:not(.dark) .bg-slate-950\/70,
+:root:not(.dark) .bg-indigo-950,
+:root:not(.dark) .bg-indigo-950\/30,
+:root:not(.dark) .bg-indigo-950\/60,
+:root:not(.dark) .bg-cyan-950\/40,
+:root:not(.dark) .bg-rose-950\/20,
+:root:not(.dark) .bg-amber-950\/20,
+:root:not(.dark) .bg-emerald-950,
+:root:not(.dark) .bg-rose-950,
+:root:not(.dark) .bg-slate-900\/60,
+:root:not(.dark) .bg-slate-900\/80 {
+  background-color: var(--card);
+}
+
+:root:not(.dark) .hover\:bg-slate-900:hover,
+:root:not(.dark) .hover\:bg-slate-800:hover,
+:root:not(.dark) .hover\:bg-indigo-900\/60:hover {
+  background-color: var(--surface-container-high);
+}
+
+:root:not(.dark) .bg-black\/10,
+:root:not(.dark) .bg-black\/60 {
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+/* Border overrides for light mode */
+:root:not(.dark) .border-white\/5,
+:root:not(.dark) .border-white\/10,
+:root:not(.dark) .border-white\/20,
+:root:not(.dark) .border-slate-800,
+:root:not(.dark) .border-slate-800\/50,
+:root:not(.dark) .divide-slate-800\/50 > :not([hidden]) ~ :not([hidden]),
+:root:not(.dark) .divide-slate-800\/70 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border);
+}
+
+:root:not(.dark) .shadow-2xl {
+  box-shadow: 0 4px 8px 3px rgba(0, 0, 0, 0.05), 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+:root:not(.dark) .placeholder\:text-slate-500::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* ===== Focus ring - Material style ===== */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
   }
 }

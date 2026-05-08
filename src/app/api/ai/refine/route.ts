@@ -1,5 +1,12 @@
+import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import {
+  buildProjectSummary,
+  readRelevantKnowledge,
+  getSiblingTestCases,
+  limitText,
+} from '@/lib/ai-context';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -8,7 +15,7 @@ const groq = new Groq({
 export const maxDuration = 60;
 
 const AI_MODEL = process.env.GROQ_REFINE_MODEL || process.env.GROQ_GENERATE_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
-const MAX_OUTPUT_TOKENS = 1200;
+const MAX_OUTPUT_TOKENS = 1400;
 
 const REFINE_MODES = {
   format: 'Rewrite generic or rough content into a clearer QA format. Replace vague phrases such as "Functional Test", "Open Page", "Interact with feature", and "Feature works as expected" with feature-specific Indonesian wording.',
@@ -125,6 +132,50 @@ export async function POST(req: NextRequest) {
       priority: sanitizeText(testCase.priority, 40),
     };
 
+    // ===== NEW: Fetch project context + sibling test cases + knowledge =====
+    // Look up the test case in DB to get projectId
+    const dbTestCase = await db.testCase.findFirst({
+      where: { OR: [{ id: testCase.id }, { testCaseId: testCase.testCaseId }] },
+      select: { id: true, projectId: true, page: true, subMenu: true, moduleId: true, module: { select: { name: true } } },
+    });
+
+    let projectContext = '';
+    let siblingContext = '';
+    let knowledgeContext = '';
+
+    if (dbTestCase) {
+      // Get project summary (lightweight)
+      const summary = await buildProjectSummary(dbTestCase.projectId);
+      if (summary) {
+        projectContext = `APP: ${summary.name}${summary.description ? ` - ${limitText(summary.description, 200)}` : ''}`;
+        if (dbTestCase.module) {
+          projectContext += `\nModule: ${dbTestCase.module.name}`;
+        }
+      }
+
+      // Get sibling test cases (same page/subMenu) for consistency
+      const siblings = await getSiblingTestCases(
+        dbTestCase.projectId,
+        dbTestCase.page,
+        dbTestCase.subMenu,
+        dbTestCase.id,
+        5
+      );
+      if (siblings.length > 0) {
+        siblingContext = siblings.map(s =>
+          `[${s.testCaseId}] ${s.testType} | ${s.priority} | ${limitText(s.testAction, 60)}`
+        ).join('\n');
+      }
+
+      // Get relevant knowledge (QA rules, domain dictionary)
+      const contextHint = `${compactCase.page} ${compactCase.subMenu} ${compactCase.testAction}`;
+      knowledgeContext = await readRelevantKnowledge(dbTestCase.projectId, contextHint, {
+        maxItems: 4,
+        maxCharsPerItem: 600,
+        maxTotalChars: 2000,
+      });
+    }
+
     const systemPrompt = `You are a senior QA engineer. Refine an existing test case.
 Return ONLY valid JSON object with key "refined".
 Do not invent unrelated features. Preserve the original intent and ID.
@@ -135,6 +186,8 @@ IMPORTANT:
 - Do NOT copy the original text unchanged.
 - Replace generic phrases with concrete wording based on page, submenu, and feature.
 - For negative mode, testType MUST be "Negative" and the scenario MUST cover invalid/error/edge behavior.
+- Be consistent with sibling test cases in style and terminology.
+${knowledgeContext ? '- Follow any QA rules or domain conventions from the project knowledge below.' : ''}
 
 The refined object must contain:
 - testAction: string
@@ -144,7 +197,8 @@ The refined object must contain:
 - priority: "Critical" | "High" | "Medium" | "Low"
 - testType: "Positive" | "Negative"`;
 
-    const userMessage = `Mode: ${mode}
+    const userMessage = `${projectContext ? `=== APP CONTEXT ===\n${projectContext}\n\n` : ''}${siblingContext ? `=== SIBLING TEST CASES (same page, maintain consistency) ===\n${siblingContext}\n\n` : ''}${knowledgeContext ? `=== PROJECT KNOWLEDGE (QA rules, domain info) ===\n${knowledgeContext}\n\n` : ''}=== REFINEMENT REQUEST ===
+Mode: ${mode}
 Instruction: ${refineInstruction}
 
 Existing test case JSON:

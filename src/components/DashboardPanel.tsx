@@ -150,23 +150,27 @@ interface DashboardPanelProps {
   setExpandedModules: React.Dispatch<React.SetStateAction<Set<string>>>;
   selectedModuleFilter: string;
   setSelectedModuleFilter: (value: string) => void;
+  isLoading?: boolean;
+  lastRefreshed?: Date | null;
+  onRefresh?: () => void;
 }
 
 const getPriorityBadgeClass = (priority: string) => {
   switch (priority) {
-    case 'Critical': return 'bg-red-100 text-red-800 border-red-200';
-    case 'High': return 'bg-orange-100 text-orange-800 border-orange-200';
-    case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'Low': return 'bg-green-100 text-green-800 border-green-200';
-    default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    case 'Critical': return 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300';
+    case 'High': return 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300';
+    case 'Medium': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300';
+    case 'Low': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300';
+    default: return 'border-border bg-muted text-muted-foreground';
   }
 };
 
 const getAgeClass = (days: number) => {
-  if (days >= 7) return 'text-red-700 bg-red-50 border-red-100';
-  if (days >= 3) return 'text-amber-700 bg-amber-50 border-amber-100';
-  return 'text-slate-700 bg-slate-50 border-slate-100';
+  if (days >= 7) return 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300';
+  if (days >= 3) return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300';
+  return 'border-border bg-muted text-muted-foreground';
 };
+
 export function DashboardPanel({
   stats,
   modules,
@@ -174,205 +178,234 @@ export function DashboardPanel({
   setExpandedModules,
   selectedModuleFilter,
   setSelectedModuleFilter,
+  isLoading,
+  lastRefreshed,
+  onRefresh,
 }: DashboardPanelProps) {
     if (!stats) return (
-      <div className="flex h-64 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/70">
+      <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border bg-card elevation-1">
         <div className="text-center">
-          <BarChart3 className="mx-auto mb-2 h-9 w-9 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">Pilih project untuk melihat dashboard</p>
+          <BarChart3 className="mx-auto mb-3 h-10 w-10 text-primary/50" />
+          <p className="text-sm font-medium text-muted-foreground">Pilih project untuk melihat dashboard</p>
         </div>
       </div>
     );
 
     return (
       <div className="space-y-6">
-        {/* Overall Progress */}
-        <Card className="relative overflow-hidden rounded-md border-slate-800 bg-slate-950 text-white shadow-md">
-          <div className="absolute top-0 right-0 p-8 opacity-10">
-            <BarChart3 className="w-32 h-32" />
+        {/* Refresh indicator */}
+        {(onRefresh || lastRefreshed) && (
+          <div className="flex items-center justify-end gap-3">
+            {lastRefreshed && (
+              <span className="text-[11px] text-muted-foreground">
+                Updated {lastRefreshed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            {onRefresh && (
+              <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading} className="h-7 gap-1.5 rounded-lg text-[11px] text-muted-foreground hover:text-foreground">
+                <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
+              </Button>
+            )}
           </div>
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-teal-400 via-sky-400 to-amber-300" />
+        )}
+
+        {/* Overall Progress - Hero Card */}
+        <Card variant="glass" className="relative overflow-hidden border-primary/20">
+          <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
+            <BarChart3 className="w-48 h-48" />
+          </div>
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-chart-2 to-chart-5 rounded-t-2xl" />
           <CardContent className="p-8 relative z-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <h3 className="text-slate-300 font-medium tracking-wide uppercase text-xs">Total Progress Project</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-extrabold tracking-tight">{stats.overallProgress}%</span>
-                  <span className="text-slate-300 text-sm font-medium">Selesai</span>
+              <div className="space-y-3">
+                <h3 className="text-primary font-semibold tracking-wide uppercase text-[11px]">Project Progress</h3>
+                <div className="flex items-baseline gap-3">
+                  <span className="text-5xl font-extrabold tracking-tight text-foreground">{stats.overallProgress}%</span>
+                  <span className="text-muted-foreground text-sm font-medium">Completed</span>
                 </div>
-                <p className="text-slate-300 text-sm">
-                  <span className="font-bold text-white">{stats.doneCount}</span> dari <span className="font-bold text-white">{stats.totalTestCases}</span> test case telah diverifikasi
+                <p className="text-muted-foreground text-sm max-w-sm leading-relaxed">
+                  Verified <span className="text-primary font-semibold">{stats.doneCount}</span> of <span className="text-foreground font-semibold">{stats.totalTestCases}</span> test scenarios.
                 </p>
               </div>
               <div className="flex-1 max-w-md w-full space-y-3">
-                <Progress value={stats.overallProgress} className="h-3 bg-white/20" />
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  <span>0%</span>
-                  <span>50%</span>
-                  <span>100%</span>
+                <Progress value={stats.overallProgress} className="h-3 bg-secondary rounded-full" />
+                <div className="flex justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span>Start</span>
+                  <span>Midway</span>
+                  <span>Complete</span>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+        {/* Stats Cards - Material Design filled cards */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+          {/* Done */}
+          <Card variant="filled" padding="none" className="group hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-emerald-50 p-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <div className="rounded-xl bg-emerald-100 p-2.5 dark:bg-emerald-500/15 group-hover:scale-105 transition-transform">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-emerald-700">{stats.doneCount}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/70">Done</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.doneCount}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Done</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          {/* In Progress */}
+          <Card variant="filled" padding="none" className="group hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-amber-50 p-2">
-                  <Clock className="w-5 h-5 text-amber-600" />
+                <div className="rounded-xl bg-amber-100 p-2.5 dark:bg-amber-500/15 group-hover:scale-105 transition-transform">
+                  <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-amber-700">{stats.inProgressCount}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600/70">Progress</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.inProgressCount}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Active</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          {/* Blocked */}
+          <Card variant="filled" padding="none" className="group hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-rose-50 p-2">
-                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+                <div className="rounded-xl bg-rose-100 p-2.5 dark:bg-rose-500/15 group-hover:scale-105 transition-transform">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-rose-700">{stats.blockedCount}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600/70">Blocked</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.blockedCount}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Blocked</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          {/* Backlog */}
+          <Card variant="filled" padding="none" className="group hover:bg-muted transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-slate-100 p-2">
-                  <XCircle className="w-5 h-5 text-slate-600" />
+                <div className="rounded-xl bg-muted p-2.5 group-hover:scale-105 transition-transform">
+                  <XCircle className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-700">{stats.notDoneCount}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600/70">Not Done</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.notDoneCount}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Backlog</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          {/* Failed */}
+          <Card variant="filled" padding="none" className="group hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-red-50 p-2">
-                  <XCircle className="w-5 h-5 text-red-600" />
+                <div className="rounded-xl bg-red-100 p-2.5 dark:bg-red-500/15 group-hover:scale-105 transition-transform">
+                  <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-red-700">{stats.failedCount}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-red-600/70">Failed</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.failedCount}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">Failed</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          {/* Retest */}
+          <Card variant="filled" padding="none" className="group hover:bg-cyan-50 dark:hover:bg-cyan-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-cyan-50 p-2">
-                  <RefreshCw className="w-5 h-5 text-cyan-600" />
+                <div className="rounded-xl bg-cyan-100 p-2.5 dark:bg-cyan-500/15 group-hover:scale-105 transition-transform">
+                  <RefreshCw className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-cyan-700">{stats.readyToRetestCount}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-600/70">Retest</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.readyToRetestCount}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Retest</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          {/* TBA */}
+          <Card variant="filled" padding="none" className="group hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-sky-50 p-2">
-                  <HelpCircle className="w-5 h-5 text-sky-600" />
+                <div className="rounded-xl bg-sky-100 p-2.5 dark:bg-sky-500/15 group-hover:scale-105 transition-transform">
+                  <HelpCircle className="w-5 h-5 text-sky-600 dark:text-sky-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-sky-700">{stats.tbaCount || 0}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-sky-600/70">TBA</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.tbaCount || 0}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">TBA</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Bug Fix Summary */}
         {stats.bugFixTotal > 0 && (
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
-            <CardHeader className="pb-3">
+          <Card variant="majestic">
+            <CardHeader className="pb-3 border-b border-border/50 mb-4">
               <div className="flex items-center gap-2">
-                <Bug className="w-4 h-4 text-muted-foreground" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Bug Fix Summary</CardTitle>
+                <Bug className="w-4 h-4 text-orange-500 dark:text-orange-400" />
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bug Fix Overview</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-4 gap-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">{stats.bugFixReported}</p>
-                  <p className="text-xs text-muted-foreground">Dilaporkan</p>
+                <div className="text-center group cursor-help">
+                  <p className="text-3xl font-bold text-orange-600 dark:text-orange-400 group-hover:scale-105 transition-transform">{stats.bugFixReported}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground mt-1">Open</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-amber-600">{stats.bugFixFixing}</p>
-                  <p className="text-xs text-muted-foreground">Sedang Di Fix</p>
+                <div className="text-center group cursor-help">
+                  <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">{stats.bugFixFixing}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground mt-1">Fixing</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-cyan-600">{stats.bugFixReadyRetest}</p>
-                  <p className="text-xs text-muted-foreground">Ready to Retest</p>
+                <div className="text-center group cursor-help">
+                  <p className="text-3xl font-bold text-cyan-600 dark:text-cyan-400 group-hover:scale-105 transition-transform">{stats.bugFixReadyRetest}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground mt-1">Ready</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-emerald-600">{stats.bugFixFixed}</p>
-                  <p className="text-xs text-muted-foreground">Verified & Fixed</p>
+                <div className="text-center group cursor-help">
+                  <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">{stats.bugFixFixed}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground mt-1">Resolved</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* QA Readiness */}
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
-            <CardHeader className="pb-3">
+        {/* QA Readiness - 3 column grid */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          {/* Verification Pipeline */}
+          <Card variant="majestic">
+            <CardHeader className="pb-3 border-b border-border/50 mb-4">
               <div className="flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 text-cyan-600" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Retest Queue</CardTitle>
+                <RefreshCw className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verification Pipeline</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {(stats.retestQueue || []).length === 0 ? (
-                <div className="rounded-md border border-dashed border-slate-200 py-8 text-center text-sm text-muted-foreground">
-                  Tidak ada testcase yang menunggu retest.
+                <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground font-medium">
+                  Pipeline clear. No pending verifications.
                 </div>
               ) : (
                 (stats.retestQueue || []).map((item) => (
-                  <div key={item.id} className="rounded-md border border-slate-100 bg-slate-50/60 p-3">
+                  <div key={item.id} className="rounded-xl border border-border/60 bg-secondary/40 p-4 hover:bg-secondary/70 transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-mono text-sm font-bold text-slate-800">{item.testCaseId}</p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="font-mono text-sm font-bold text-foreground">{item.testCaseId}</p>
+                        <p className="truncate text-[11px] font-medium text-muted-foreground mt-0.5">
                           {item.moduleName || item.page} {item.subMenu ? `› ${item.subMenu}` : ''}
                         </p>
                       </div>
-                      <Badge variant="outline" className={`shrink-0 text-[10px] ${getPriorityBadgeClass(item.priority)}`}>
+                      <Badge variant={item.priority === 'Critical' ? 'failed' : 'warning'} className="shadow-sm">
                         {item.priority}
                       </Badge>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Menunggu retest</span>
-                      <Badge variant="outline" className={getAgeClass(item.waitingDays)}>
-                        {item.waitingDays} hari
+                    <div className="mt-3 flex items-center justify-between text-[10px]">
+                      <span className="text-muted-foreground font-semibold uppercase tracking-wider">Queue Age</span>
+                      <Badge variant="outline" className="text-foreground/70 border-border font-semibold">
+                        {item.waitingDays} DAYS
                       </Badge>
                     </div>
                   </div>
@@ -381,36 +414,37 @@ export function DashboardPanel({
             </CardContent>
           </Card>
 
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
-            <CardHeader className="pb-3">
+          {/* Bug Aging */}
+          <Card variant="majestic">
+            <CardHeader className="pb-3 border-b border-border/50 mb-4">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-600" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Bug Aging</CardTitle>
+                <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Defect Longevity</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {(stats.bugAging || []).length === 0 ? (
-                <div className="rounded-md border border-dashed border-slate-200 py-8 text-center text-sm text-muted-foreground">
-                  Tidak ada bug aktif yang aging.
+                <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground font-medium">
+                  No aging defects detected.
                 </div>
               ) : (
                 (stats.bugAging || []).map((item) => (
-                  <div key={item.id} className="rounded-md border border-slate-100 bg-slate-50/60 p-3">
+                  <div key={item.id} className="rounded-xl border border-border/60 bg-secondary/40 p-4 hover:bg-secondary/70 transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-mono text-sm font-bold text-slate-800">{item.testCaseId}</p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="font-mono text-sm font-bold text-foreground">{item.testCaseId}</p>
+                        <p className="truncate text-[11px] font-medium text-muted-foreground mt-0.5">
                           {item.moduleName || item.page} {item.subMenu ? `› ${item.subMenu}` : ''}
                         </p>
                       </div>
-                      <Badge variant="outline" className={item.status === 'SEDANG DI FIX' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-orange-200 bg-orange-50 text-orange-700'}>
+                      <Badge variant="outline" className={item.status === 'SEDANG DI FIX' ? 'border-amber-300 text-amber-700 bg-amber-50 dark:border-amber-500/30 dark:text-amber-400 dark:bg-amber-500/10' : 'border-orange-300 text-orange-700 bg-orange-50 dark:border-orange-500/30 dark:text-orange-400 dark:bg-orange-500/10'}>
                         {item.status === 'SEDANG DI FIX' ? 'Fixing' : 'Reported'}
                       </Badge>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="truncate pr-3 text-muted-foreground">{item.testAction}</span>
+                    <div className="mt-3 flex items-center justify-between text-[10px]">
+                      <span className="truncate pr-3 text-muted-foreground font-medium">{item.testAction}</span>
                       <Badge variant="outline" className={getAgeClass(item.ageDays)}>
-                        {item.ageDays} hari
+                        {item.ageDays} DAYS
                       </Badge>
                     </div>
                   </div>
@@ -419,33 +453,37 @@ export function DashboardPanel({
             </CardContent>
           </Card>
 
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
-            <CardHeader className="pb-3">
+          {/* Module Risk */}
+          <Card variant="majestic">
+            <CardHeader className="pb-3 border-b border-border/50 mb-4">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-600" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Module Risk</CardTitle>
+                <AlertTriangle className="w-4 h-4 text-rose-500 dark:text-rose-400" />
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Module Risk</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {(stats.moduleRisks || []).length === 0 ? (
-                <div className="rounded-md border border-dashed border-slate-200 py-8 text-center text-sm text-muted-foreground">
-                  Belum ada risiko module terdeteksi.
+                <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground font-medium">
+                  No risk data available.
                 </div>
               ) : (
                 (stats.moduleRisks || []).map((item) => (
-                  <div key={item.moduleId || 'none'} className="rounded-md border border-slate-100 bg-slate-50/60 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <p className="truncate text-sm font-bold text-slate-800">{item.moduleName}</p>
-                      <Badge variant="outline" className={item.riskScore >= 10 ? 'border-red-200 bg-red-50 text-red-700' : item.riskScore >= 5 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-50 text-slate-700'}>
-                        Risk {item.riskScore}
+                  <div key={item.moduleId || 'ungrouped'} className="rounded-xl border border-border/60 bg-secondary/40 p-4 hover:bg-secondary/70 transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-foreground">{item.moduleName}</p>
+                        <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
+                          {item.total} cases
+                        </p>
+                      </div>
+                      <Badge variant="outline" className={getPriorityBadgeClass(item.riskScore >= 70 ? 'Critical' : item.riskScore >= 40 ? 'High' : item.riskScore >= 20 ? 'Medium' : 'Low')}>
+                        Risk: {item.riskScore}
                       </Badge>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {item.failed > 0 && <Badge className="bg-red-50 text-red-700 hover:bg-red-50">Failed {item.failed}</Badge>}
-                      {item.blocked > 0 && <Badge className="bg-rose-50 text-rose-700 hover:bg-rose-50">Blocked {item.blocked}</Badge>}
-                      {item.readyToRetest > 0 && <Badge className="bg-cyan-50 text-cyan-700 hover:bg-cyan-50">Retest {item.readyToRetest}</Badge>}
-                      {item.inProgress > 0 && <Badge className="bg-amber-50 text-amber-700 hover:bg-amber-50">Progress {item.inProgress}</Badge>}
-                      {item.notDone > 0 && <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">Not Done {item.notDone}</Badge>}
+                    <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+                      {item.failed > 0 && <span className="text-red-600 dark:text-red-400 font-semibold">{item.failed} failed</span>}
+                      {item.blocked > 0 && <span className="text-rose-600 dark:text-rose-400 font-semibold">{item.blocked} blocked</span>}
+                      {item.readyToRetest > 0 && <span className="text-cyan-600 dark:text-cyan-400 font-semibold">{item.readyToRetest} retest</span>}
                     </div>
                   </div>
                 ))
@@ -454,324 +492,133 @@ export function DashboardPanel({
           </Card>
         </div>
 
-        {/* Test Type & Priority Breakdown */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Tipe Test</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        {/* Module Progress */}
+        {stats.moduleProgress.length > 0 && (
+          <Card variant="majestic">
+            <CardHeader className="pb-3 border-b border-border/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500" />
-                  <span className="text-sm">Positive</span>
+                  <Layers className="w-4 h-4 text-primary" />
+                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Module Progress</CardTitle>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{stats.positiveCount}</span>
-                  {stats.totalTestCases > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      ({Math.round((stats.positiveCount / stats.totalTestCases) * 100)}%)
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full transition-all" style={{ width: `${stats.totalTestCases > 0 ? (stats.positiveCount / stats.totalTestCases) * 100 : 0}%` }} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-rose-500" />
-                  <span className="text-sm">Negative</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{stats.negativeCount}</span>
-                  {stats.totalTestCases > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      ({Math.round((stats.negativeCount / stats.totalTestCases) * 100)}%)
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-rose-500 h-2 rounded-full transition-all" style={{ width: `${stats.totalTestCases > 0 ? (stats.negativeCount / stats.totalTestCases) * 100 : 0}%` }} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Prioritas</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {[
-                { label: 'Critical', count: stats.criticalCount, color: 'bg-red-500' },
-                { label: 'High', count: stats.highCount, color: 'bg-orange-500' },
-                { label: 'Medium', count: stats.mediumCount, color: 'bg-yellow-500' },
-                { label: 'Low', count: stats.lowCount, color: 'bg-green-500' },
-              ].map((p) => (
-                <div key={p.label} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${p.color}`} />
-                    <span className="text-sm">{p.label}</span>
-                  </div>
-                  <span className="font-semibold">{p.count}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Persentase Module Progress */}
-        {(stats.moduleProgress.length > 0 || stats.ungroupedProgress) && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 px-1">
-              <div className="p-1 rounded bg-slate-100">
-                <BarChart3 className="w-4 h-4 text-slate-600" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-tight">Progress Per Module</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-4">
-              {/* Grouped Modules */}
-              {stats.moduleProgress.map((mod) => {
-                const isExpanded = expandedModules.has(mod.id);
-                return (
-                  <Card key={mod.id} className="overflow-hidden rounded-md border-slate-200 bg-white/85 shadow-sm transition-all hover:shadow-md">
-                    <div
-                      className="flex items-center gap-4 p-4 cursor-pointer"
-                      onClick={() => {
-                        const next = new Set(expandedModules);
-                        if (next.has(mod.id)) next.delete(mod.id);
-                        else next.add(mod.id);
-                        setExpandedModules(next);
-                      }}
-                    >
-                      <div className={`rounded-md p-2 ${mod.avgProgress >= 80 ? 'bg-emerald-50 text-emerald-600' : mod.avgProgress >= 50 ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}`}>
-                        <Layers className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-slate-700">{mod.name}</span>
-                          <span className={`text-lg font-black ${mod.avgProgress >= 80 ? 'text-emerald-600' : mod.avgProgress >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
-                            {mod.avgProgress.toFixed(1)}%
-                          </span>
-                        </div>
-                        <Progress value={mod.avgProgress} className={`h-1.5 ${mod.avgProgress >= 80 ? 'bg-emerald-100' : mod.avgProgress >= 50 ? 'bg-amber-100' : 'bg-rose-100'}`} />
-                        <div className="flex items-center gap-3 mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          <span>{mod.totalDone}/{mod.totalCases} Selesai</span>
-                          <span>•</span>
-                          <span>{mod.totalMenus} Menu</span>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </Button>
-                    </div>
-                    {isExpanded && mod.menus.length > 0 && (
-                      <div className="border-t border-slate-100 bg-slate-50/30 p-2 space-y-1">
-                        {mod.menus.map((menu, idx) => (
-                          <div key={idx} className="flex items-center justify-between rounded-md border border-slate-100 bg-white/80 p-3 transition-colors hover:border-teal-200">
-                            <div className="flex-1 min-w-0 pr-4">
-                              <p className="text-sm font-semibold text-slate-700 truncate">
-                                {menu.page} {menu.subMenu ? `› ${menu.subMenu}` : ''}
-                              </p>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                                {menu.doneCount}/{menu.totalCases} TC • Bobot {menu.weightPerCase.toFixed(2)}%
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="w-24 hidden sm:block">
-                                <Progress value={menu.progressPercent} className="h-1" />
-                              </div>
-                              <span className={`text-xs font-black min-w-[45px] text-right ${menu.progressPercent >= 80 ? 'text-emerald-600' : menu.progressPercent >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
-                                {menu.progressPercent.toFixed(1)}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-              {/* Ungrouped */}
-              {stats.ungroupedProgress && stats.ungroupedProgress.totalMenus > 0 && (() => {
-                const ug = stats.ungroupedProgress;
-                const ugKey = '__ungrouped__';
-                const isExpanded = expandedModules.has(ugKey);
-                return (
-                  <Card className="overflow-hidden rounded-md border-slate-200 bg-white/85 shadow-sm transition-all hover:shadow-md">
-                    <div
-                      className="flex items-center gap-4 p-4 cursor-pointer"
-                      onClick={() => {
-                        const next = new Set(expandedModules);
-                        if (next.has(ugKey)) next.delete(ugKey);
-                        else next.add(ugKey);
-                        setExpandedModules(next);
-                      }}
-                    >
-                      <div className="rounded-md bg-slate-100 p-2 text-slate-600">
-                        <Layers className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-slate-700">{ug.name}</span>
-                          <span className={`text-lg font-black ${ug.avgProgress >= 80 ? 'text-emerald-600' : ug.avgProgress >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
-                            {ug.avgProgress.toFixed(1)}%
-                          </span>
-                        </div>
-                        <Progress value={ug.avgProgress} className={`h-1.5 ${ug.avgProgress >= 80 ? 'bg-emerald-100' : ug.avgProgress >= 50 ? 'bg-amber-100' : 'bg-rose-100'}`} />
-                        <div className="flex items-center gap-3 mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          <span>{ug.totalDone}/{ug.totalCases} Selesai</span>
-                          <span>•</span>
-                          <span>{ug.totalMenus} Menu</span>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </Button>
-                    </div>
-                    {isExpanded && ug.menus.length > 0 && (
-                      <div className="border-t border-slate-100 bg-slate-50/30 p-2 space-y-1">
-                        {ug.menus.map((menu, idx) => (
-                          <div key={idx} className="flex items-center justify-between rounded-md border border-slate-100 bg-white/80 p-3 transition-colors hover:border-teal-200">
-                            <div className="flex-1 min-w-0 pr-4">
-                              <p className="text-sm font-semibold text-slate-700 truncate">
-                                {menu.page} {menu.subMenu ? `› ${menu.subMenu}` : ''}
-                              </p>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                                {menu.doneCount}/{menu.totalCases} TC • Bobot {menu.weightPerCase.toFixed(2)}%
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="w-24 hidden sm:block">
-                                <Progress value={menu.progressPercent} className="h-1" />
-                              </div>
-                              <span className={`text-xs font-black min-w-[45px] text-right ${menu.progressPercent >= 80 ? 'text-emerald-600' : menu.progressPercent >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
-                                {menu.progressPercent.toFixed(1)}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </Card>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-
-        {/* Progress per Menu */}
-        {stats.menuProgress && stats.menuProgress.length > 0 && (
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm backdrop-blur-sm">
-            <CardHeader className="pb-3 border-b border-slate-100/50">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-teal-50">
-                    <Percent className="w-4 h-4 text-teal-700" />
-                  </div>
-                  <CardTitle className="text-sm font-semibold text-slate-700">Progress per Menu</CardTitle>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">Filter Module:</span>
-                  <Select value={selectedModuleFilter} onValueChange={setSelectedModuleFilter}>
-                    <SelectTrigger className="w-full sm:w-[240px] h-9 rounded-md border-slate-200 bg-white/80 shadow-sm">
-                      <SelectValue placeholder="Semua Module" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Module</SelectItem>
-                      <SelectItem value="none">Tanpa Module</SelectItem>
-                      {modules.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-[500px] overflow-y-auto">
-                <Table>
-                  <TableHeader className="sticky top-0 z-10">
-                    <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                      <TableHead className="min-w-[160px] pl-6 py-4 text-[11px] font-bold uppercase tracking-wide text-slate-500">Page</TableHead>
-                      <TableHead className="min-w-[130px] py-4 text-[11px] font-bold uppercase tracking-wide text-slate-500">Sub Menu</TableHead>
-                      <TableHead className="w-[80px] text-center py-4 text-[11px] font-bold uppercase tracking-wide text-slate-500">Total TC</TableHead>
-                      <TableHead className="w-[100px] text-center py-4 text-[11px] font-bold uppercase tracking-wide text-slate-500">Bobot/TC</TableHead>
-                      <TableHead className="w-[150px] py-4 text-[11px] font-bold uppercase tracking-wide text-slate-500">Progress</TableHead>
-                      <TableHead className="w-[200px] pr-6 py-4 text-[11px] font-bold uppercase tracking-wide text-slate-500">Status Distribution</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {stats.menuProgress
-                      .filter(mp => {
-                        if (selectedModuleFilter === 'all') return true;
-                        if (selectedModuleFilter === 'none') return mp.moduleId === null;
-                        return mp.moduleId === selectedModuleFilter;
-                      })
-                      .map((mp) => (
-                      <TableRow key={mp.menuKey} className="border-slate-100 transition-colors hover:bg-teal-50/30">
-                        <TableCell className="font-semibold text-sm pl-6 py-4">{mp.page}</TableCell>
-                        <TableCell className="text-sm text-slate-500 py-4">{mp.subMenu || '-'}</TableCell>
-                        <TableCell className="text-center text-sm py-4">
-                          <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 font-medium">
-                            {mp.totalCases}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center py-4">
-                          <Badge variant="outline" className="text-xs font-mono bg-white border-slate-200">
-                            {mp.weightPerCase.toFixed(2)}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-[10px] font-bold">
-                              <span className={mp.progressPercent >= 80 ? 'text-emerald-600' : mp.progressPercent >= 50 ? 'text-amber-600' : 'text-rose-600'}>
-                                {mp.progressPercent.toFixed(1)}%
-                              </span>
-                            </div>
-                            <Progress 
-                              value={mp.progressPercent} 
-                              className={`h-1.5 ${mp.progressPercent >= 80 ? 'bg-emerald-100' : mp.progressPercent >= 50 ? 'bg-amber-100' : 'bg-rose-100'}`}
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell className="pr-6 py-4">
-                          <div className="flex flex-wrap gap-1.5">
-                            {mp.doneCount > 0 && (
-                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100 text-[10px] px-2 py-0.5 gap-1 shadow-none transition-none">
-                                <CheckCircle2 className="w-3 h-3" /> {mp.doneCount}
-                              </Badge>
-                            )}
-                            {mp.inProgressCount > 0 && (
-                              <Badge className="bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100 text-[10px] px-2 py-0.5 gap-1 shadow-none transition-none">
-                                <Clock className="w-3 h-3" /> {mp.inProgressCount}
-                              </Badge>
-                            )}
-                            {mp.notDoneCount > 0 && (
-                              <Badge className="bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100 text-[10px] px-2 py-0.5 gap-1 shadow-none transition-none">
-                                <XCircle className="w-3 h-3" /> {mp.notDoneCount}
-                              </Badge>
-                            )}
-                            {mp.blockedCount > 0 && (
-                              <Badge className="bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100 text-[10px] px-2 py-0.5 gap-1 shadow-none transition-none">
-                                <AlertTriangle className="w-3 h-3" /> {mp.blockedCount}
-                              </Badge>
-                            )}
-                            {mp.failedCount > 0 && (
-                              <Badge className="bg-red-50 text-red-700 border-red-100 hover:bg-red-100 text-[10px] px-2 py-0.5 gap-1 shadow-none transition-none">
-                                <XCircle className="w-3 h-3" /> {mp.failedCount}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                <Select value={selectedModuleFilter} onValueChange={setSelectedModuleFilter}>
+                  <SelectTrigger className="h-8 w-[160px] rounded-xl border-border/60 bg-secondary/50 text-xs">
+                    <SelectValue placeholder="All modules" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all" className="rounded-lg text-xs">All Modules</SelectItem>
+                    {modules.map((m) => (
+                      <SelectItem key={m.id} value={m.id} className="rounded-lg text-xs">{m.name}</SelectItem>
                     ))}
-                  </TableBody>
-                </Table>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-3">
+                {(selectedModuleFilter === 'all'
+                  ? [...stats.moduleProgress, ...(stats.ungroupedProgress ? [stats.ungroupedProgress] : [])]
+                  : stats.moduleProgress.filter(m => m.id === selectedModuleFilter)
+                ).map((mod) => {
+                  const isExpanded = expandedModules.has(mod.id || 'ungrouped');
+                  const toggleExpand = () => {
+                    setExpandedModules(prev => {
+                      const next = new Set(prev);
+                      const key = mod.id || 'ungrouped';
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    });
+                  };
+
+                  return (
+                    <div key={mod.id || 'ungrouped'} className="rounded-xl border border-border/60 overflow-hidden">
+                      <button
+                        onClick={toggleExpand}
+                        className="flex w-full items-center justify-between gap-4 p-4 text-left hover:bg-secondary/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                            <Layers className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground truncate">{mod.name}</p>
+                            <p className="text-[11px] text-muted-foreground">{mod.totalCases} cases · {mod.totalMenus} menus</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-foreground">{mod.avgProgress}%</p>
+                          </div>
+                          <div className="w-24 hidden sm:block">
+                            <Progress value={mod.avgProgress} className="h-2 bg-secondary" />
+                          </div>
+                          {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="border-t border-border/50 bg-secondary/20">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="hover:bg-transparent border-border/50">
+                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Page</TableHead>
+                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Sub Menu</TableHead>
+                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Cases</TableHead>
+                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Progress</TableHead>
+                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {mod.menus.map((mp, idx) => (
+                                <TableRow key={idx} className="hover:bg-secondary/50 border-border/30">
+                                  <TableCell className="text-xs font-medium text-foreground py-3">{mp.page}</TableCell>
+                                  <TableCell className="text-xs text-muted-foreground py-3">{mp.subMenu || '—'}</TableCell>
+                                  <TableCell className="text-xs text-center font-medium text-foreground py-3">{mp.totalCases}</TableCell>
+                                  <TableCell className="py-3">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Progress value={mp.progressPercent} className="h-1.5 w-16 bg-secondary" />
+                                      <span className="text-[10px] font-semibold text-muted-foreground w-8">{mp.progressPercent}%</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="py-3">
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {mp.doneCount > 0 && (
+                                        <Badge className="gap-1 border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 shadow-none dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                                          <CheckCircle2 className="w-3 h-3" /> {mp.doneCount}
+                                        </Badge>
+                                      )}
+                                      {mp.inProgressCount > 0 && (
+                                        <Badge className="gap-1 border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700 shadow-none dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                                          <Clock className="w-3 h-3" /> {mp.inProgressCount}
+                                        </Badge>
+                                      )}
+                                      {mp.notDoneCount > 0 && (
+                                        <Badge className="gap-1 border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground shadow-none">
+                                          <XCircle className="w-3 h-3" /> {mp.notDoneCount}
+                                        </Badge>
+                                      )}
+                                      {mp.blockedCount > 0 && (
+                                        <Badge className="gap-1 border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 shadow-none dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                                          <AlertTriangle className="w-3 h-3" /> {mp.blockedCount}
+                                        </Badge>
+                                      )}
+                                      {mp.failedCount > 0 && (
+                                        <Badge className="gap-1 border-red-200 bg-red-50 px-2 py-0.5 text-[10px] text-red-700 shadow-none dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                                          <XCircle className="w-3 h-3" /> {mp.failedCount}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -779,14 +626,14 @@ export function DashboardPanel({
 
         {/* Page Groups */}
         {stats.pageGroups.length > 0 && (
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          <Card variant="majestic">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Test Case per Page</CardTitle>
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Test Cases per Page</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {stats.pageGroups.map((pg) => (
-                  <Badge key={pg.page} variant="secondary" className="text-xs py-1.5 px-3">
+                  <Badge key={pg.page} variant="outline" className="text-[11px] font-medium py-1.5 px-3 bg-secondary/50 border-border/60 text-foreground rounded-xl">
                     {pg.page}: {pg._count.id}
                   </Badge>
                 ))}

@@ -119,150 +119,148 @@ export function AutomatedPanel({
 
   if (!selectedProject) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/70">
+      <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-border/60 bg-secondary/30 backdrop-blur-sm">
         <div className="text-center">
-          <Bot className="mx-auto mb-2 h-9 w-9 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">Pilih project untuk melihat test records</p>
+          <Bot className="mx-auto mb-2 h-9 w-9 text-muted-foreground opacity-20" />
+          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Project Selection Required</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4 overflow-x-hidden">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+        <Card variant="majestic" padding="none" className="border-teal-500/10">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-teal-50 p-2 text-teal-700">
+            <div className="rounded-lg bg-teal-500/10 p-2.5 text-teal-400">
               <MonitorDot className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{items.length}</p>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Recorded TC</p>
+              <p className="text-2xl font-black text-foreground">{items.length}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500/70">Vault Scenarios</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+        <Card variant="majestic" padding="none" className="border-sky-500/10">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-sky-50 p-2 text-sky-700">
+            <div className="rounded-lg bg-sky-500/10 p-2.5 text-sky-400">
               <FileClock className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">
+              <p className="text-2xl font-black text-foreground">
                 {items.filter((item) => item.automation.hasManualCapture).length}
               </p>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Manual Records</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-sky-500/70">Manual Artifacts</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+        <Card variant="majestic" padding="none" className="border-amber-500/10">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-amber-50 p-2 text-amber-700">
+            <div className="rounded-lg bg-amber-500/10 p-2.5 text-amber-400">
               <CalendarClock className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">
-                {formatDate(items[0]?.automation.lastRunAt || null)}
+              <p className="text-sm font-black text-foreground uppercase">
+                {items[0]?.automation.lastRunAt ? new Date(items[0].automation.lastRunAt).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'No Activity'}
               </p>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Run Terbaru</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500/70">Latest Run</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-md border border-slate-200/80 bg-white/80 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-secondary/30 p-3 shadow-xl backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Cari test record..."
+            placeholder="Search test intelligence..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="h-9 rounded-md border-slate-200 bg-white pl-9 shadow-sm"
+            className="h-9 rounded-md border-border/60 bg-secondary/30 pl-9 shadow-inner text-foreground placeholder:text-muted-foreground focus-visible:ring-teal-500/50"
           />
         </div>
-        <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9 rounded-md gap-1.5 font-semibold">
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+        <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9 rounded-md gap-2 font-bold border-border/60 bg-secondary/30 text-foreground">
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Synchronize
         </Button>
       </div>
 
       {filteredItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center space-y-2 rounded-md border border-dashed border-slate-200 bg-white/70 py-16">
-          <TerminalSquare className="h-10 w-10 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">
-            {items.length === 0 ? 'Belum ada test record' : 'Tidak ada hasil yang cocok'}
+        <div className="flex flex-col items-center justify-center space-y-2 rounded-xl border border-dashed border-border/60 bg-secondary/30 py-20 backdrop-blur-sm">
+          <TerminalSquare className="h-12 w-12 text-muted-foreground opacity-20" />
+          <p className="text-sm font-bold uppercase tracking-tight text-muted-foreground">
+            {items.length === 0 ? 'No Intelligence Records' : 'No Matching Results'}
           </p>
-          <p className="max-w-md text-center text-xs text-muted-foreground">
-            Testcase akan muncul setelah automation atau manual capture mengirim log ke DevLog.
+          <p className="max-w-md text-center text-[11px] font-medium text-muted-foreground">
+            Automated scenarios will populate here once execution logs are captured by the DevLog Engine.
           </p>
         </div>
       ) : (
-        <Card className="overflow-hidden rounded-md border-slate-200 bg-white shadow-sm">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
+        <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40 elevation-2 backdrop-blur-md">
+            <div className="overflow-hidden">
               <Table>
                 <TableHeader className="sticky top-0 z-10">
-                  <TableRow className="border-slate-200 bg-slate-50/95 hover:bg-slate-50/95">
-                    <TableHead className="min-w-[110px] text-[11px] font-bold uppercase tracking-wide text-slate-500">TC ID</TableHead>
-                    <TableHead className="min-w-[140px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Page</TableHead>
-                    <TableHead className="min-w-[130px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Module</TableHead>
-                    <TableHead className="min-w-[220px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Test Action</TableHead>
-                    <TableHead className="min-w-[90px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Tipe</TableHead>
-                    <TableHead className="min-w-[90px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Priority</TableHead>
-                    <TableHead className="min-w-[120px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</TableHead>
-                    <TableHead className="min-w-[170px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Last Run</TableHead>
-                    <TableHead className="min-w-[140px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Source</TableHead>
-                    <TableHead className="min-w-[150px] text-[11px] font-bold uppercase tracking-wide text-slate-500">History</TableHead>
-                    <TableHead className="w-[80px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Aksi</TableHead>
+                   <TableRow className="border-border/60 bg-secondary/30 hover:bg-secondary/30">
+                    <TableHead className="w-[90px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">TC ID</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Page</TableHead>
+                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Module</TableHead>
+                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground md:table-cell">Test Action</TableHead>
+                    <TableHead className="hidden w-[86px] text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Tipe</TableHead>
+                    <TableHead className="hidden w-[94px] text-[10px] font-black uppercase tracking-widest text-muted-foreground sm:table-cell">Priority</TableHead>
+                    <TableHead className="w-[112px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Last Run</TableHead>
+                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Source</TableHead>
+                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">History</TableHead>
+                    <TableHead className="w-[80px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredItems.map((item) => (
-                    <TableRow key={item.id} className="border-slate-100 hover:bg-teal-50/30">
-                      <TableCell className="font-mono text-sm font-semibold text-slate-800">{item.testCaseId}</TableCell>
+                    <TableRow key={item.id} className="border-border/60 hover:bg-secondary/30 transition-colors group">
+                      <TableCell className="font-mono text-sm font-black text-foreground">{item.testCaseId}</TableCell>
                       <TableCell>
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-slate-700">{item.page}</p>
+                            <p className="text-sm font-bold text-foreground">{item.page}</p>
                             {item.automationSource === 'bugfix' && (
-                              <Badge variant="outline" className="rounded-md bg-orange-50 text-[10px] font-bold text-orange-700">
-                                BugFix
+                              <Badge variant="warning" className="text-[9px] font-black border-orange-500/20 bg-orange-500/10">
+                                BUGFIX
                               </Badge>
                             )}
                           </div>
-                          {item.subMenu && <p className="text-xs text-muted-foreground">{item.subMenu}</p>}
+                          {item.subMenu && <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-tight">{item.subMenu}</p>}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{item.module?.name || '-'}</TableCell>
-                      <TableCell className="max-w-[260px] truncate text-sm">{item.testAction}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={`rounded-md text-xs font-semibold ${getTestTypeColor(item.testType)}`}>
+                      <TableCell className="hidden text-[13px] font-medium text-muted-foreground lg:table-cell">{item.module?.name || '-'}</TableCell>
+                      <TableCell className="hidden max-w-[260px] truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors md:table-cell">{item.testAction}</TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        <Badge variant="outline" className={`rounded-md text-[10px] font-bold border-border/60 bg-secondary/30 ${item.testType === 'Negative' ? 'text-rose-400' : 'text-sky-400'}`}>
                           {item.testType}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge className={`rounded-md text-xs font-semibold shadow-none ${getPriorityColor(item.priority)}`}>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant={item.priority === 'Critical' ? 'failed' : item.priority === 'High' ? 'warning' : 'outline'} className="text-[10px] font-bold">
                           {item.priority}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`rounded-md gap-1 text-xs font-semibold ${getStatusColor(item.status)}`}>
+                        <Badge variant={item.status === 'DONE' ? 'success' : item.status === 'FAILED' ? 'failed' : 'outline'} className="gap-1 text-[10px] font-black">
                           {getStatusIcon(item.status)} {item.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{formatDate(item.automation.lastRunAt)}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden text-[11px] font-bold text-muted-foreground uppercase tracking-tighter xl:table-cell">{formatDate(item.automation.lastRunAt)}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="flex flex-wrap gap-1">
-                          {item.automation.hasAutomationRun && <Badge className="rounded-md bg-indigo-50 text-indigo-700 shadow-none">Automation</Badge>}
-                          {item.automation.hasManualCapture && <Badge className="rounded-md bg-teal-50 text-teal-700 shadow-none">Manual</Badge>}
-                          {!item.automation.hasAutomationRun && !item.automation.hasManualCapture && <Badge variant="outline" className="rounded-md bg-white">Log</Badge>}
+                          {item.automation.hasAutomationRun && <Badge className="rounded-md bg-indigo-500/10 text-indigo-400 border-indigo-500/20 text-[9px] font-black uppercase">Auto</Badge>}
+                          {item.automation.hasManualCapture && <Badge className="rounded-md bg-teal-500/10 text-teal-400 border-teal-500/20 text-[9px] font-black uppercase">Manual</Badge>}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="flex flex-wrap gap-1">
-                          {item.automation.hasCurrent && <Badge className="rounded-md bg-teal-50 text-teal-700 shadow-none">Latest</Badge>}
-                          {(item.automation.hasPrevious || item.automation.hasLegacy) && <Badge className="rounded-md bg-sky-50 text-sky-700 shadow-none">History</Badge>}
-                          <Badge variant="outline" className="rounded-md bg-white text-xs">
+                          {item.automation.hasCurrent && <Badge variant="success" className="text-[9px] font-black uppercase tracking-tighter">Latest</Badge>}
+                          {(item.automation.hasPrevious || item.automation.hasLegacy) && <Badge variant="info" className="text-[9px] font-black uppercase tracking-tighter">History</Badge>}
+                          <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/30 text-[9px] font-mono text-muted-foreground">
                             {formatSize(item.automation.totalBytes)}
                           </Badge>
                         </div>
@@ -271,7 +269,7 @@ export function AutomatedPanel({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 rounded-md p-0 hover:bg-white"
+                          className="h-8 w-8 rounded-md p-0 text-muted-foreground hover:text-foreground hover:bg-secondary"
                           onClick={() => onOpenDetail(item)}
                         >
                           <Eye className="h-4 w-4" />
@@ -282,8 +280,7 @@ export function AutomatedPanel({
                 </TableBody>
               </Table>
             </div>
-          </CardContent>
-        </Card>
+        </div>
       )}
     </div>
   );

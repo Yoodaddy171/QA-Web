@@ -179,7 +179,7 @@ const getNetworkCategoryClass = (category: NetworkCategory) => {
   switch (category) {
     case 'business': return 'border-cyan-500/30 bg-cyan-950/60 text-cyan-300';
     case 'preflight': return 'border-amber-500/30 bg-amber-950/60 text-amber-300';
-    case 'static': return 'border-slate-600 bg-slate-900 text-slate-400';
+    case 'static': return 'border-slate-600 bg-muted text-slate-400';
     case 'telemetry': return 'border-violet-500/30 bg-violet-950/60 text-violet-300';
     case 'data': return 'border-fuchsia-500/30 bg-fuchsia-950/60 text-fuchsia-300';
     default: return 'border-slate-500/30 bg-slate-800 text-slate-300';
@@ -199,6 +199,56 @@ const formatDateTime = (dateStr?: string | null) => {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
 };
+
+const splitBulletText = (value?: string | null) => {
+  const text = String(value || '').trim();
+  if (!text) return [];
+
+  const lineItems = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lineItems.length > 1 && lineItems.every((line) => /^[-•]\s+/.test(line))) {
+    return lineItems.map((line) => line.replace(/^[-•]\s+/, '').trim()).filter(Boolean);
+  }
+
+  if (/^[-•]\s+/.test(text) || /\s[-•]\s+/.test(text)) {
+    return text
+      .replace(/^[-•]\s+/, '')
+      .split(/\s[-•]\s+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [text];
+};
+
+function BulletTextView({
+  value,
+  className,
+}: {
+  value?: string | null;
+  className: string;
+}) {
+  const items = splitBulletText(value);
+
+  return (
+    <div className={className}>
+      {items.length === 0 ? (
+        <span>-</span>
+      ) : items.length === 1 ? (
+        <p>{items[0]}</p>
+      ) : (
+        <ul className="list-disc space-y-2 pl-5">
+          {items.map((item, index) => (
+            <li key={`${item}-${index}`}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 const getBugLifecycleItems = (testCase: TestCase) => [
   {
@@ -278,6 +328,8 @@ interface TestCaseDetailDialogProps {
   onEdit: (testCase: TestCase) => void;
   onRefine?: (testCase: TestCase) => void;
   onCopyId: (id: string) => void;
+  testCaseList?: TestCase[];
+  onNavigate?: (testCase: TestCase) => void;
 }
 
 export function TestCaseDetailDialog({
@@ -317,6 +369,8 @@ export function TestCaseDetailDialog({
   onEdit,
   onRefine,
   onCopyId,
+  testCaseList,
+  onNavigate,
 }: TestCaseDetailDialogProps) {
   const [recordingSeekMs, setRecordingSeekMs] = useState(0);
   const [recordingZoom, setRecordingZoom] = useState(1);
@@ -516,19 +570,54 @@ export function TestCaseDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background text-foreground">
         <DialogHeader className="p-6 pb-2 shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <ClipboardList className="w-5 h-5 text-indigo-600" />
-            Detail Test Case
-            {viewTestCase && (
-              <Badge variant="outline" className={`gap-1 ml-2 ${getStatusColor(viewTestCase.status)}`}>
-                {getStatusIcon(viewTestCase.status)} {viewTestCase.status}
-              </Badge>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <ClipboardList className="w-5 h-5 text-indigo-600" />
+              Detail Test Case
+              {viewTestCase && (
+                <Badge variant="outline" className={`gap-1 ml-2 ${getStatusColor(viewTestCase.status)}`}>
+                  {getStatusIcon(viewTestCase.status)} {viewTestCase.status}
+                </Badge>
+              )}
+            </DialogTitle>
+            {testCaseList && testCaseList.length > 1 && onNavigate && viewTestCase && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+                  disabled={testCaseList.findIndex(tc => tc.id === viewTestCase.id) <= 0}
+                  onClick={() => {
+                    const idx = testCaseList.findIndex(tc => tc.id === viewTestCase.id);
+                    if (idx > 0) onNavigate(testCaseList[idx - 1]);
+                  }}
+                  aria-label="Previous test case"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-[11px] text-muted-foreground font-medium min-w-[40px] text-center">
+                  {testCaseList.findIndex(tc => tc.id === viewTestCase.id) + 1}/{testCaseList.length}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+                  disabled={testCaseList.findIndex(tc => tc.id === viewTestCase.id) >= testCaseList.length - 1}
+                  onClick={() => {
+                    const idx = testCaseList.findIndex(tc => tc.id === viewTestCase.id);
+                    if (idx < testCaseList.length - 1) onNavigate(testCaseList[idx + 1]);
+                  }}
+                  aria-label="Next test case"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             )}
-          </DialogTitle>
+          </div>
           <DialogDescription className="sr-only">
-            Detail test case dan automation devlogs untuk hasil eksekusi Katalon.
+            Detail test case dan DevLog untuk hasil eksekusi automation maupun manual capture.
           </DialogDescription>
         </DialogHeader>
 
@@ -536,7 +625,7 @@ export function TestCaseDetailDialog({
           <div className="flex-1 overflow-y-auto outline-none">
             <div className="p-6 pt-2">
               <Tabs defaultValue="details" className="w-full">
-                <TabsList className={`grid w-full ${isBugFixDetail ? 'grid-cols-3' : 'grid-cols-2'} mb-6 bg-slate-100 p-1`}>
+                <TabsList className={`grid w-full ${isBugFixDetail ? 'grid-cols-3' : 'grid-cols-2'} mb-6 border border-border/60 bg-secondary/50 p-1 rounded-xl`}>
                   <TabsTrigger value="details" className="gap-2">
                     <ClipboardList className="w-4 h-4" /> Informasi Utama
                   </TabsTrigger>
@@ -555,33 +644,33 @@ export function TestCaseDetailDialog({
                         </span>
                       )}
                     </div>
-                    Automation DevLogs
+                    DevLog
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="details" className="space-y-6 mt-0 outline-none">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Identification</p>
                         <div className="space-y-3">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Test Case ID (Display)</p>
-                            <p className="font-mono font-bold text-base text-slate-800">{viewTestCase.testCaseId}</p>
+                            <p className="font-mono text-base font-bold text-slate-100">{viewTestCase.testCaseId}</p>
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <p className="text-xs text-muted-foreground">Internal Database ID (UUID)</p>
-                              <Badge variant="secondary" className="text-[9px] h-3.5 px-1 bg-indigo-50 text-indigo-600 border-0">Required for Logs</Badge>
+                              <Badge variant="secondary" className="h-3.5 border-0 bg-indigo-500/10 px-1 text-[9px] text-indigo-300">Required for Logs</Badge>
                             </div>
                             <div className="flex items-center gap-2">
-                              <p className="font-mono text-[11px] text-slate-500 bg-white px-2 py-1 rounded border border-slate-200 truncate flex-1 shadow-sm">
+                              <p className="flex-1 truncate rounded border border-border/60 bg-muted/30 px-2 py-1 font-mono text-[11px] text-slate-400 shadow-inner">
                                 {viewTestCase.id}
                               </p>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 w-7 p-0 hover:bg-indigo-50 hover:text-indigo-600 border-slate-200"
+                                className="h-7 w-7 border-border/60 bg-secondary/50 p-0 text-slate-300 hover:bg-indigo-500/10 hover:text-indigo-300"
                                 onClick={() => onCopyId(viewTestCase.id)}
                               >
                                 <Copy className="w-3 h-3" />
@@ -591,12 +680,12 @@ export function TestCaseDetailDialog({
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Classification</p>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Page / Menu</p>
-                            <p className="font-bold text-slate-700">{viewTestCase.page}</p>
+                            <p className="font-bold text-slate-100">{viewTestCase.page}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Sub Menu</p>
@@ -615,20 +704,20 @@ export function TestCaseDetailDialog({
                     </div>
 
                     <div className="space-y-4">
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Project Tracking</p>
                         <div className="space-y-4">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Module</p>
                             <div className="flex items-center gap-2">
                               <Layers className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="font-semibold text-slate-700">{viewTestCase.module?.name || 'Tanpa Module'}</span>
+                              <span className="font-semibold text-slate-200">{viewTestCase.module?.name || 'Tanpa Module'}</span>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Bobot Transaksi</p>
-                              <Badge variant="secondary" className="font-mono text-indigo-600 bg-indigo-50 border-indigo-100">
+                              <Badge variant="secondary" className="border-indigo-500/20 bg-indigo-500/10 font-mono text-indigo-300">
                                 {viewTestCase.calculatedWeight != null ? `${viewTestCase.calculatedWeight.toFixed(2)}%` : (viewTestCase.weight || '-')}
                               </Badge>
                             </div>
@@ -636,19 +725,19 @@ export function TestCaseDetailDialog({
                               <p className="text-xs text-muted-foreground mb-1">Progress</p>
                               <div className="flex items-center gap-2 mt-1">
                                 <Progress value={viewTestCase.progress} className="h-2 flex-1" />
-                                <span className="text-xs font-bold text-slate-600">{viewTestCase.progress}%</span>
+                                <span className="text-xs font-bold text-slate-300">{viewTestCase.progress}%</span>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Test Status</p>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Actual Result</p>
-                            <Badge className={viewTestCase.actualResult === 'As Expected' ? 'bg-emerald-100 text-emerald-800' : viewTestCase.actualResult === 'Not As Expected' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}>
+                            <Badge className={viewTestCase.actualResult === 'As Expected' ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : viewTestCase.actualResult === 'Not As Expected' ? 'border-red-500/25 bg-red-500/10 text-red-300' : 'border-slate-500/20 bg-slate-500/10 text-slate-300'}>
                               {viewTestCase.actualResult || 'BELUM DI-TEST'}
                             </Badge>
                           </div>
@@ -668,27 +757,29 @@ export function TestCaseDetailDialog({
                   <div className="grid grid-cols-1 gap-6">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Test Action</Label>
-                      <div className="text-sm bg-white border border-slate-200 p-4 rounded-xl shadow-sm text-slate-700 leading-relaxed italic">
+                      <div className="rounded-xl border border-border/60 bg-secondary/30 p-4 text-sm italic leading-relaxed text-muted-foreground">
                         "{viewTestCase.testAction}"
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Test Steps</Label>
-                        <div className="text-sm bg-slate-50 border border-slate-200 p-4 rounded-xl whitespace-pre-wrap text-slate-600 font-medium leading-relaxed min-h-[120px]">
-                          {viewTestCase.steps}
-                        </div>
+                        <BulletTextView
+                          value={viewTestCase.steps}
+                          className="min-h-[120px] whitespace-pre-wrap rounded-xl border border-border/60 bg-secondary/30 p-4 text-sm font-medium leading-relaxed text-slate-300 shadow-inner"
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expected Result</Label>
-                        <div className="text-sm bg-emerald-50/50 border border-emerald-100 p-4 rounded-xl text-emerald-900 font-semibold leading-relaxed min-h-[120px]">
-                          {viewTestCase.expectedResult}
-                        </div>
+                        <BulletTextView
+                          value={viewTestCase.expectedResult}
+                          className="min-h-[120px] rounded-xl border border-emerald-500/15 bg-emerald-500/10 p-4 text-sm font-semibold leading-relaxed text-emerald-200 shadow-inner"
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Remarks / Catatan</Label>
-                      <div className="min-h-[72px] whitespace-pre-wrap rounded-xl border border-amber-100 bg-amber-50/50 p-4 text-sm italic text-amber-800">
+                      <div className="min-h-[72px] whitespace-pre-wrap rounded-xl border border-amber-500/15 bg-amber-500/10 p-4 text-sm italic text-amber-200 shadow-inner">
                         {viewTestCase.remarks?.trim() || '-'}
                       </div>
                     </div>
@@ -697,11 +788,11 @@ export function TestCaseDetailDialog({
 
                 {isBugFixDetail && (
                   <TabsContent value="lifecycle" className="space-y-6 mt-0 outline-none">
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="rounded-xl border border-border/60 bg-secondary/30 p-5">
                       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Bug Lifecycle</p>
-                          <h3 className="mt-1 text-lg font-bold text-slate-800">{viewTestCase.testCaseId}</h3>
+                          <h3 className="mt-1 text-lg font-bold text-slate-100">{viewTestCase.testCaseId}</h3>
                           <p className="mt-1 max-w-2xl text-sm text-slate-500">
                             Perjalanan bug dari laporan awal sampai verified fixed. Status maksimal dari halaman BugFix adalah Ready to Retest; Verified & Fixed terjadi setelah retest berhasil dari halaman Test Case.
                           </p>
@@ -721,10 +812,10 @@ export function TestCaseDetailDialog({
                               key={item.key}
                               className={`rounded-md border p-3 ${
                                 isDone
-                                  ? 'border-emerald-200 bg-emerald-50/70'
+                                  ? 'border-emerald-500/20 bg-emerald-500/10'
                                   : isCurrent
-                                    ? 'border-cyan-200 bg-cyan-50/70'
-                                    : 'border-slate-200 bg-slate-50/70'
+                                    ? 'border-cyan-500/20 bg-cyan-500/10'
+                                    : 'border-border/50 bg-secondary/20'
                               }`}
                             >
                               <div className="mb-2 flex items-center gap-2">
@@ -733,14 +824,14 @@ export function TestCaseDetailDialog({
                                     ? 'bg-emerald-600 text-white'
                                     : isCurrent
                                       ? 'bg-cyan-600 text-white'
-                                      : 'bg-slate-200 text-slate-500'
+                                      : 'bg-slate-700 text-slate-400'
                                 }`}>
                                   {isDone ? <CheckCircle2 className="h-4 w-4" /> : isCurrent ? <Clock className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                                 </div>
-                                <p className="text-sm font-bold text-slate-800">{item.label}</p>
+                                <p className="text-sm font-bold text-slate-100">{item.label}</p>
                               </div>
                               <p className="min-h-[36px] text-xs leading-relaxed text-slate-500">{item.description}</p>
-                              <p className="mt-3 text-xs font-semibold text-slate-700">{formatDateTime(item.date)}</p>
+                              <p className="mt-3 text-xs font-semibold text-slate-300">{formatDateTime(item.date)}</p>
                             </div>
                           );
                         })}
@@ -748,38 +839,38 @@ export function TestCaseDetailDialog({
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Bug Source</p>
                         <div className="mt-3 space-y-3 text-sm">
                           <div>
                             <p className="text-xs text-muted-foreground">Original Test Case ID</p>
-                            <p className="font-mono font-bold text-slate-800">{viewTestCase.sourceTestCaseId || viewTestCase.id}</p>
+                            <p className="font-mono font-bold text-slate-100">{viewTestCase.sourceTestCaseId || viewTestCase.id}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Actual Result</p>
-                            <p className="font-semibold text-red-700">{viewTestCase.actualResult || 'Not As Expected'}</p>
+                            <p className="font-semibold text-red-300">{viewTestCase.actualResult || 'Not As Expected'}</p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status Timing</p>
                         <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                           <div>
                             <p className="text-xs text-muted-foreground">Reported</p>
-                            <p className="font-medium text-slate-700">{formatDateTime(viewTestCase.reportedAt || viewTestCase.createdAt)}</p>
+                            <p className="font-medium text-slate-300">{formatDateTime(viewTestCase.reportedAt || viewTestCase.createdAt)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Updated</p>
-                            <p className="font-medium text-slate-700">{formatDateTime(viewTestCase.updatedAt)}</p>
+                            <p className="font-medium text-slate-300">{formatDateTime(viewTestCase.updatedAt)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Ready Retest</p>
-                            <p className="font-medium text-slate-700">{formatDateTime(viewTestCase.readyAt)}</p>
+                            <p className="font-medium text-slate-300">{formatDateTime(viewTestCase.readyAt)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Fixed</p>
-                            <p className="font-medium text-slate-700">{formatDateTime(viewTestCase.fixedAt)}</p>
+                            <p className="font-medium text-slate-300">{formatDateTime(viewTestCase.fixedAt)}</p>
                           </div>
                         </div>
                       </div>
@@ -788,59 +879,112 @@ export function TestCaseDetailDialog({
                 )}
 
                 <TabsContent value="logs" className="space-y-4 mt-0 outline-none h-full flex flex-col">
-                  <div className="flex flex-col flex-1 min-h-0">
-                    <div className="mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                    <div className="flex flex-col flex-1 min-h-0">
+                    <div className="mb-4 space-y-3 rounded-2xl border border-teal-500/20 bg-teal-500/5 p-4 shadow-sm">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-teal-500/10">
+                          <Wrench className="h-4 w-4 text-teal-400" />
+                        </div>
+                        <p className="text-xs font-black uppercase tracking-widest text-teal-700 dark:text-teal-200">Intelligence Guide</p>
+                        <Badge variant="outline" className="rounded-md border-teal-500/20 bg-teal-500/10 text-[10px] font-bold text-teal-700 uppercase tracking-tighter dark:bg-black/40 dark:text-teal-400">
+                          Automation & Manual Capture
+                        </Badge>
+                      </div>
+
+                      <details className="group rounded-xl border border-border bg-card dark:border-border dark:bg-card">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[11px] font-bold text-foreground uppercase tracking-widest dark:text-slate-300">
+                          <span>Automation Capture</span>
+                          <ChevronDown className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180" />
+                        </summary>
+                         <div className="border-t border-border px-4 pb-4 pt-3 text-[11px] leading-relaxed text-muted-foreground font-medium dark:border-border/50 dark:text-muted-foreground">
+                          <ol className="ml-4 list-decimal space-y-2">
+                            <li>Jalankan relay dengan <span className="font-mono text-[11px] text-teal-400 bg-white/5 px-1 rounded">node mini-services/ws-server.js</span>.</li>
+                            <li>Salin UUID test case dari tab Informasi Utama, bukan display ID seperti E-124.</li>
+                            <li>Pastikan Katalon script mengirim log ke <span className="font-mono text-[11px] text-teal-400 bg-white/5 px-1 rounded">http://127.0.0.1:3001/log</span>.</li>
+                            <li>Review hasil dari tab Execution, Console, Network, atau AI Summary.</li>
+                          </ol>
+                          <a
+                            href="/docs/devlog-automation-capture-guide.pdf"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 text-[10px] font-black uppercase tracking-widest text-slate-300 shadow-lg transition hover:bg-white/10 hover:text-white"
+                          >
+                            <FileDown className="h-4 w-4" />
+                            Panduan PDF
+                          </a>
+                        </div>
+                      </details>
+
+                      <details className="group rounded-xl border border-border bg-card dark:border-border dark:bg-card">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[11px] font-bold text-foreground uppercase tracking-widest dark:text-slate-300">
+                          <span>Manual Capture</span>
+                          <ChevronDown className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180" />
+                        </summary>
+                         <div className="border-t border-border px-4 pb-4 pt-3 text-[11px] leading-relaxed text-muted-foreground font-medium dark:border-border/50 dark:text-muted-foreground">
+                          <ol className="ml-4 list-decimal space-y-2">
+                            <li>Masukkan URL website yang ingin dites pada input Manual Capture.</li>
+                            <li>Klik Start. QA Desk akan membuka browser capture dan mulai merekam telemetry.</li>
+                            <li>Lakukan testing manual di browser yang terbuka.</li>
+                            <li>Klik Stop dari QA Desk setelah selesai untuk menyimpan hasil run.</li>
+                          </ol>
+                        </div>
+                      </details>
+                    </div>
+
+                    <div className="mb-4 rounded-2xl border border-border/60 bg-secondary/20 p-4 shadow-sm">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <Play className="h-4 w-4 text-teal-700" />
-                            <p className="text-xs font-black uppercase tracking-widest text-slate-600">Manual Capture</p>
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-teal-500/10">
+                              <Play className="h-4 w-4 text-teal-400" />
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Manual Capture Command</p>
                             <Badge
                               variant="outline"
-                              className={`rounded-md text-[10px] font-bold shadow-none ${
+                              className={`rounded-md text-[10px] font-bold uppercase tracking-widest shadow-none ${
                                 socketReady
-                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                  : 'border-amber-200 bg-amber-50 text-amber-700'
+                                  ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
+                                  : 'border-amber-500/20 bg-amber-500/10 text-amber-400'
                               }`}
                             >
-                              {socketReady ? 'Relay Live' : 'Relay belum live'}
+                              {socketReady ? 'Relay Live' : 'Relay Offline'}
                             </Badge>
                             {isManualCaptureActive && (
-                              <Badge className="rounded-md bg-teal-100 text-[10px] font-bold text-teal-800 shadow-none">
+                              <Badge className="rounded-md bg-teal-500/20 text-[10px] font-black uppercase tracking-tighter text-teal-400 shadow-none border border-teal-500/30">
                                 {manualCaptureSessionId?.slice(0, 18)}
                               </Badge>
                             )}
                           </div>
-                          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                             <Input
                               value={manualCaptureTargetUrl}
                               onChange={(event) => setManualCaptureTargetUrl(event.target.value)}
                               placeholder="https://target-app.example/path"
                               disabled={isManualCaptureActive}
-                              className="h-9 rounded-md border-slate-200 text-xs"
+                              className="h-10 rounded-xl border-border/60 bg-muted/50 text-[11px] text-slate-200 placeholder:text-slate-600 focus:ring-teal-500/40"
                             />
                             {isManualCaptureActive ? (
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="h-9 shrink-0 gap-1.5 rounded-md border-rose-200 text-rose-700 hover:bg-rose-50"
+                                className="h-10 shrink-0 gap-2 rounded-xl border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 font-black uppercase tracking-widest text-[10px]"
                                 onClick={stopManualCapture}
                                 disabled={isStoppingManualCapture}
                               >
-                                {isStoppingManualCapture ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Square className="h-3.5 w-3.5" />}
-                                Stop
+                                {isStoppingManualCapture ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
+                                Stop Capture
                               </Button>
                             ) : (
                               <Button
                                 type="button"
                                 size="sm"
-                                className="h-9 shrink-0 gap-1.5 rounded-md bg-teal-700 hover:bg-teal-800"
+                                className="h-10 shrink-0 gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] shadow-lg shadow-teal-900/40"
                                 onClick={startManualCapture}
                                 disabled={!manualCaptureTargetUrl.trim() || isStartingManualCapture}
                               >
-                                {isStartingManualCapture ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                                Start
+                                {isStartingManualCapture ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                                Start Capture
                               </Button>
                             )}
                           </div>
@@ -849,63 +993,65 @@ export function TestCaseDetailDialog({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-9 shrink-0 gap-1.5 rounded-md border-slate-200 text-xs"
+                          className="h-10 shrink-0 gap-2 rounded-xl border-border/60 bg-secondary/50 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors"
                           onClick={() => navigator.clipboard.writeText(captureScriptTag)}
                         >
-                          <Code2 className="h-3.5 w-3.5" />
+                          <Code2 className="h-4 w-4" />
                           Copy Script
                         </Button>
                       </div>
                     </div>
 
                     {manualRecording?.frames?.length ? (
-                      <div className="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[280px_1fr]">
+                      <div className="mb-4 grid gap-4 rounded-2xl border border-border/60 bg-secondary/20 p-4 shadow-xl lg:grid-cols-[320px_1fr]">
                         <button
                           type="button"
-                          className="group relative overflow-hidden rounded-lg border border-slate-200 bg-slate-950 text-left"
+                          className="group relative overflow-hidden rounded-xl border border-border/60 bg-background text-left shadow-2xl"
                           onClick={openRecordingFullscreen}
                         >
                           {selectedRecordingFrame && (
                             <img
                               src={`http://127.0.0.1:3001${selectedRecordingFrame.url}`}
                               alt="Manual capture recording frame"
-                              className="aspect-video w-full bg-slate-950 object-contain"
+                              className="aspect-video w-full bg-black object-contain opacity-80 group-hover:opacity-100 transition-opacity"
                             />
                           )}
-                          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/0 opacity-0 transition group-hover:bg-slate-950/45 group-hover:opacity-100">
-                            <span className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-[11px] font-bold text-slate-900 shadow-lg">
-                              <Maximize2 className="h-3.5 w-3.5" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-300 group-hover:bg-black/40 group-hover:opacity-100">
+                            <span className="inline-flex items-center gap-2 rounded-lg border border-teal-500/20 bg-teal-500/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-teal-200 shadow-2xl">
+                              <Maximize2 className="h-4 w-4" />
                               Fullscreen
                             </span>
                           </div>
                         </button>
-                        <div className="flex min-w-0 flex-col justify-between gap-3">
+                        <div className="flex min-w-0 flex-col justify-between gap-4">
                           <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Film className="h-4 w-4 text-indigo-600" />
-                              <p className="text-xs font-black uppercase tracking-widest text-slate-600">Screen Recording</p>
-                              <Badge variant="outline" className="rounded-md border-indigo-200 bg-indigo-50 text-[10px] font-bold text-indigo-700">
+                            <div className="flex flex-wrap items-center gap-2.5">
+                              <div className="p-1.5 rounded-lg bg-indigo-500/10">
+                                <Film className="h-4 w-4 text-indigo-400" />
+                              </div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Screen Analytics</p>
+                              <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-black text-indigo-400 uppercase tracking-tighter">
                                 {manualRecording.frames.length} frames
                               </Badge>
-                              <Badge variant="outline" className="rounded-md border-slate-200 bg-slate-50 text-[10px] font-bold text-slate-600">
+                              <Badge variant="outline" className="rounded-md border-border/60 bg-muted/50 text-[9px] font-black text-slate-300 uppercase tracking-tighter">
                                 {formatRelativeTime(recordingSeekMs)}
                               </Badge>
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="ml-auto h-7 gap-1.5 rounded-md border-slate-200 px-2 text-[10px] font-bold"
+                                className="ml-auto h-8 gap-2 rounded-lg border-border/60 bg-secondary/50 px-3 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white"
                                 onClick={openRecordingFullscreen}
                               >
                                 <Maximize2 className="h-3.5 w-3.5" />
-                                Fullscreen
+                                Review
                               </Button>
                             </div>
-                            <p className="mt-2 truncate text-xs text-slate-500">
+                            <p className="mt-3 truncate text-[11px] font-medium text-slate-500">
                               {manualRecording.targetUrl || 'Manual capture target'}
                             </p>
                           </div>
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-2">
                             {manualRecording.frames
                               .filter((_, index) => index % Math.max(1, Math.floor(manualRecording.frames.length / 12)) === 0)
                               .slice(0, 12)
@@ -915,89 +1061,93 @@ export function TestCaseDetailDialog({
                                   type="button"
                                   variant={selectedRecordingFrame?.file === frame.file ? 'default' : 'outline'}
                                   size="sm"
-                                  className="h-7 rounded-md px-2 text-[10px]"
+                                  className={`h-8 rounded-lg px-2.5 text-[10px] font-bold ${
+                                    selectedRecordingFrame?.file === frame.file 
+                                      ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/40' 
+                                      : 'border-border/50 bg-secondary/30 text-slate-500 hover:text-slate-200'
+                                  }`}
                                   onClick={() => setRecordingSeekMs(frame.relativeMs)}
                                 >
                                   {formatRelativeTime(frame.relativeMs)}
                                 </Button>
                               ))}
                           </div>
-                          <p className="text-[11px] leading-relaxed text-slate-500">
+                          <p className="text-[10px] font-medium leading-relaxed text-slate-500 border-l-2 border-teal-500/30 pl-3">
                             Klik baris Console atau Network yang punya timestamp untuk membuka frame terdekat dari momen tersebut.
                           </p>
                         </div>
                       </div>
                     ) : null}
 
-                    <div className="flex items-center justify-between mb-4 shrink-0">
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-4 shrink-0">
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900 shadow-lg border border-slate-800">
-                          <Wrench className="w-5 h-5 text-emerald-400" />
+                         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white shadow-xl border border-border dark:bg-muted dark:border-white/5 dark:shadow-2xl">
+                          <Wrench className="w-5 h-5 text-teal-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-black text-slate-800 leading-tight">Automation DevTools</h4>
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Katalon Browser Sniffer</p>
+                          <h4 className="text-sm font-black text-foreground leading-tight uppercase tracking-tight dark:text-foreground">System DevLog</h4>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Execution Telemetry</p>
                         </div>
                         {socketReady && (
-                          <div className="flex items-center gap-2 ml-4 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 shadow-sm">
+                          <div className="flex items-center gap-2 ml-4 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 shadow-sm">
                             <span className="relative flex h-2 w-2">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                             </span>
-                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">Live</span>
+                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-tighter">Live Relay</span>
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+                      <div className="flex flex-wrap items-center gap-1.5 bg-muted/70 p-1 rounded-xl border border-border dark:bg-secondary/50 dark:border-border/60">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={`h-7 px-3 text-[10px] font-bold gap-1.5 ${isSummarizing ? 'animate-pulse' : ''} bg-gradient-to-r from-violet-50 to-indigo-50 text-violet-700 hover:from-violet-100 hover:to-indigo-100 border border-violet-200/50`}
+                          className={`h-8 px-2.5 text-[10px] font-black uppercase tracking-widest gap-2 ${isSummarizing ? 'animate-pulse' : ''} bg-gradient-to-r from-violet-600/20 to-indigo-600/20 text-violet-300 hover:from-violet-600/30 hover:to-indigo-600/30 border border-violet-500/30 rounded-lg`}
                           onClick={generateAISummary}
                           disabled={isSummarizing}
                         >
                           <Sparkles className={`w-3.5 h-3.5 ${isSummarizing ? 'animate-spin' : ''}`} />
-                          AI SUMMARY
+                          AI Summary
                         </Button>
-                        <Separator orientation="vertical" className="h-4 mx-1" />
+                        <Separator orientation="vertical" className="h-5 mx-0.5 bg-white/10" />
                         <Button
                           variant={activeDevLogTab === 'execution' ? 'default' : 'ghost'}
                           size="sm"
-                          className={`h-7 px-3 text-[10px] font-bold ${activeDevLogTab === 'execution' ? 'bg-white text-slate-800 shadow-sm hover:bg-white' : 'text-slate-500'}`}
+                          className={`h-8 rounded-lg px-2.5 text-[10px] font-black uppercase tracking-widest ${activeDevLogTab === 'execution' ? 'bg-teal-500/15 text-teal-200 shadow-xl hover:bg-teal-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                           onClick={() => setActiveDevLogTab('execution')}
                         >
-                          EXECUTION
+                          Execution
                         </Button>
                         <Button
                           variant={activeDevLogTab === 'console' ? 'default' : 'ghost'}
                           size="sm"
-                          className={`h-7 px-3 text-[10px] font-bold ${activeDevLogTab === 'console' ? 'bg-white text-slate-800 shadow-sm hover:bg-white' : 'text-slate-500'}`}
+                          className={`h-8 rounded-lg px-2.5 text-[10px] font-black uppercase tracking-widest ${activeDevLogTab === 'console' ? 'bg-teal-500/15 text-teal-200 shadow-xl hover:bg-teal-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                           onClick={() => setActiveDevLogTab('console')}
                         >
-                          CONSOLE ({consoleLogs.length})
+                          Console ({consoleLogs.length})
                         </Button>
                         <Button
                           variant={activeDevLogTab === 'network' ? 'default' : 'ghost'}
                           size="sm"
-                          className={`h-7 px-3 text-[10px] font-bold ${activeDevLogTab === 'network' ? 'bg-white text-slate-800 shadow-sm hover:bg-white' : 'text-slate-500'}`}
+                          className={`h-8 rounded-lg px-2.5 text-[10px] font-black uppercase tracking-widest ${activeDevLogTab === 'network' ? 'bg-teal-500/15 text-teal-200 shadow-xl hover:bg-teal-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                           onClick={() => setActiveDevLogTab('network')}
                         >
-                          NETWORK ({networkLogs.length})
+                          Network ({networkLogs.length})
                         </Button>
-                        <Separator orientation="vertical" className="h-4 mx-1" />
+                        <Separator orientation="vertical" className="h-5 mx-0.5 bg-white/10" />
                         <Button
                           variant={loadedRunLabel === 'current' || loadedRunLabel === 'live' ? 'default' : 'ghost'}
                           size="sm"
-                          className={`h-7 px-2 text-[9px] font-bold ${loadedRunLabel === 'current' || loadedRunLabel === 'live' ? 'bg-white text-slate-800 shadow-sm hover:bg-white' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                          className={`h-8 px-2.5 text-[9px] font-black uppercase tracking-widest rounded-lg ${loadedRunLabel === 'current' || loadedRunLabel === 'live' ? 'bg-teal-600 text-white shadow-lg hover:bg-teal-500' : 'text-slate-500 hover:text-teal-400 hover:bg-teal-500/10'}`}
                           onClick={loadCurrentLogRun}
                           disabled={isLoadingHistory}
                         >
-                          CURRENT
+                          Current
                         </Button>
                         <Button
                           variant={loadedRunLabel === 'previous' ? 'default' : 'ghost'}
                           size="sm"
-                          className={`h-7 px-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 gap-1 ${loadedRunLabel === 'previous' ? 'bg-white text-slate-800 shadow-sm hover:bg-white' : ''}`}
+                          className={`h-8 px-2.5 text-[9px] font-black uppercase tracking-widest rounded-lg gap-1.5 ${loadedRunLabel === 'previous' ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-500' : 'text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10'}`}
                           onClick={loadLogHistory}
                           disabled={isLoadingHistory}
                         >
@@ -1006,20 +1156,20 @@ export function TestCaseDetailDialog({
                           ) : (
                             <History className="w-3.5 h-3.5" />
                           )}
-                          <span className="text-[9px] font-bold">PREVIOUS</span>
+                          Previous
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                          className="h-8 w-8 p-0 rounded-lg text-slate-600 hover:text-rose-400 hover:bg-rose-500/10"
                           onClick={clearLogs}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="flex-1 min-h-0 bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col font-mono text-[11.5px]">
+                    <div className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-300 shadow-xl overflow-hidden flex flex-col font-mono text-[11.5px] dark:bg-background dark:border-border dark:shadow-2xl">
                       {aiSummary && (
                         <div className="bg-indigo-950/30 border-b border-indigo-900/50 p-4 animate-in fade-in slide-in-from-top-2 duration-500">
                           <div className="flex items-center justify-between mb-2">
@@ -1048,7 +1198,7 @@ export function TestCaseDetailDialog({
 
                                 return (
                                   <div key={`${index}-${line}`} className="flex gap-4 hover:bg-white/5 transition-colors px-2 py-0.5 rounded group">
-                                    <span className="text-slate-700 select-none min-w-[24px] text-right font-bold opacity-50 group-hover:opacity-100">{index + 1}</span>
+                                    <span className="min-w-[24px] select-none text-right font-bold text-slate-500 opacity-50 group-hover:opacity-100">{index + 1}</span>
                                     <span className={isError ? 'text-rose-400 font-bold' : isWarning ? 'text-amber-400' : isInfo ? 'text-cyan-400' : 'text-emerald-400/90'}>
                                       {line}
                                     </span>
@@ -1104,7 +1254,7 @@ export function TestCaseDetailDialog({
                                     </div>
                                     {expandedLogId === logId && typeof log.log === 'object' && (
                                       <div className="px-10 pb-3">
-                                        <div className="bg-slate-900 rounded-lg p-3 border border-slate-800 shadow-inner">
+                                        <div className="bg-muted rounded-lg p-3 border border-border shadow-inner">
                                           <pre className="text-emerald-500/80 whitespace-pre-wrap overflow-x-auto">
                                             {JSON.stringify(log.log, null, 2)}
                                           </pre>
@@ -1119,7 +1269,7 @@ export function TestCaseDetailDialog({
                           </div>
                         ) : (
                           <div className="h-full flex flex-col">
-                            <div className="space-y-2 border-b border-slate-800 bg-slate-950 p-3">
+                            <div className="space-y-2 border-b border-border bg-muted/60 p-3 dark:border-border dark:bg-card">
                               <div className="flex flex-wrap items-center gap-2">
                                 <div className="relative min-w-[220px] flex-1">
                                   <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
@@ -1127,13 +1277,13 @@ export function TestCaseDetailDialog({
                                     value={networkFilters.search}
                                     onChange={(event) => updateNetworkFilters({ search: event.target.value })}
                                     placeholder="Search URL, host, method, status..."
-                                    className="h-8 border-slate-800 bg-slate-900 pl-8 text-[11px] text-slate-200 placeholder:text-slate-600"
+                                    className="h-8 border-border bg-background pl-8 text-[11px] text-foreground placeholder:text-muted-foreground dark:border-border dark:bg-muted dark:text-slate-200 dark:placeholder:text-slate-600"
                                   />
                                 </div>
                                 <select
                                   value={networkFilters.host}
                                   onChange={(event) => updateNetworkFilters({ host: event.target.value })}
-                                  className="h-8 min-w-[150px] rounded-md border border-slate-800 bg-slate-900 px-2 text-[11px] font-semibold text-slate-300 outline-none focus:border-indigo-500"
+                                  className="h-8 min-w-[150px] rounded-md border border-border bg-background px-2 text-[11px] font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-slate-300"
                                 >
                                   <option value="all">All hosts ({networkLogItems.length})</option>
                                   {networkHosts.map((host) => (
@@ -1143,7 +1293,7 @@ export function TestCaseDetailDialog({
                                 <select
                                   value={networkFilters.method}
                                   onChange={(event) => updateNetworkFilters({ method: event.target.value })}
-                                  className="h-8 rounded-md border border-slate-800 bg-slate-900 px-2 text-[11px] font-semibold text-slate-300 outline-none focus:border-indigo-500"
+                                  className="h-8 rounded-md border border-border bg-background px-2 text-[11px] font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-slate-300"
                                 >
                                   <option value="all">All methods</option>
                                   {networkMethods.map((method) => (
@@ -1153,7 +1303,7 @@ export function TestCaseDetailDialog({
                                 <select
                                   value={networkFilters.status}
                                   onChange={(event) => updateNetworkFilters({ status: event.target.value })}
-                                  className="h-8 rounded-md border border-slate-800 bg-slate-900 px-2 text-[11px] font-semibold text-slate-300 outline-none focus:border-indigo-500"
+                                  className="h-8 rounded-md border border-border bg-background px-2 text-[11px] font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-slate-300"
                                 >
                                   <option value="all">All status</option>
                                   <option value="2xx">2xx</option>
@@ -1166,7 +1316,7 @@ export function TestCaseDetailDialog({
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 gap-1.5 px-2 text-[10px] font-bold text-slate-400 hover:bg-slate-900 hover:text-white"
+                                  className="h-8 gap-1.5 px-2 text-[10px] font-bold text-slate-400 hover:bg-muted hover:text-white"
                                   onClick={() => setNetworkFilters(DEFAULT_NETWORK_FILTERS)}
                                 >
                                   <Filter className="h-3.5 w-3.5" />
@@ -1189,7 +1339,7 @@ export function TestCaseDetailDialog({
                                     className={`h-7 rounded-full border px-3 text-[10px] font-bold ${
                                       networkFilters[filter.key]
                                         ? 'border-indigo-500/40 bg-indigo-950/60 text-indigo-200 hover:bg-indigo-900/60'
-                                        : 'border-slate-800 bg-slate-900 text-slate-500 hover:bg-slate-800 hover:text-slate-200'
+                                        : 'border-border bg-muted text-slate-500 hover:bg-secondary hover:text-foreground'
                                     }`}
                                     onClick={() => toggleNetworkFilter(filter.key)}
                                   >
@@ -1200,13 +1350,13 @@ export function TestCaseDetailDialog({
                                   API {networkCategoryCounts.business}
                                 </span>
                                 {hiddenNetworkCount > 0 && (
-                                  <span className="rounded-full border border-slate-800 bg-slate-900 px-2 py-1 font-bold text-slate-500">
+                                  <span className="rounded-full border border-border bg-muted px-2 py-1 font-bold text-slate-500">
                                     {hiddenNetworkCount} hidden
                                   </span>
                                 )}
                               </div>
                             </div>
-                            <div className="grid grid-cols-12 gap-2 p-2 bg-slate-900 border-b border-slate-800 text-[10px] font-bold text-slate-500 uppercase tracking-tighter shrink-0">
+                            <div className="grid grid-cols-12 gap-2 p-2 bg-muted/70 border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0 dark:bg-muted dark:border-border dark:text-slate-500">
                               <div className="col-span-1">Method</div>
                               <div className="col-span-1">Type</div>
                               <div className="col-span-5">Name / URL</div>
@@ -1240,7 +1390,7 @@ export function TestCaseDetailDialog({
                                           </span>
                                         </div>
                                         <div className="col-span-5 min-w-0">
-                                          <div className="truncate text-slate-300">{meta.pathname.split('/').pop() || meta.pathname || net.network.url}</div>
+                                          <div className="truncate text-foreground dark:text-slate-300">{meta.pathname.split('/').pop() || meta.pathname || net.network.url}</div>
                                           <div className="truncate text-[9px] text-slate-600">{meta.host}</div>
                                         </div>
                                         <div className="col-span-2 text-center">
@@ -1259,29 +1409,29 @@ export function TestCaseDetailDialog({
                                         </div>
                                       </div>
                                       {expandedLogId === logId && (
-                                        <div className="p-4 bg-slate-900/50 border-t border-slate-800">
-                                          <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950/70 p-3">
+                                        <div className="p-4 bg-muted/50 border-t border-border dark:bg-muted/50 dark:border-border">
+                                          <div className="mb-3 rounded-lg border border-border bg-background p-3 dark:border-border dark:bg-card/70">
                                             <p className="mb-1 text-[10px] font-bold uppercase text-slate-500">Full URL</p>
-                                            <pre className="whitespace-pre-wrap break-all text-[10px] leading-relaxed text-slate-300">
+                                            <pre className="whitespace-pre-wrap break-all text-[10px] leading-relaxed text-foreground dark:text-slate-300">
                                               {net.network.url}
                                             </pre>
                                           </div>
                                           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                                             <div className="space-y-3">
                                               <p className="text-[10px] font-bold text-slate-500 uppercase">Headers</p>
-                                              <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap break-words rounded border border-slate-800 bg-slate-900 p-3 text-[10px] leading-relaxed text-slate-400">
+                                              <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted p-3 text-[10px] leading-relaxed text-slate-400">
                                                 {formatPrettyValue(net.network.headers)}
                                               </pre>
                                             </div>
                                             <div className="space-y-3">
                                               <p className="text-[10px] font-bold text-slate-500 uppercase">Request Payload</p>
-                                              <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded border border-slate-800 bg-slate-900 p-3 text-[10px] leading-relaxed text-cyan-300/90">
+                                              <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted p-3 text-[10px] leading-relaxed text-cyan-300/90">
                                                 {formatPrettyValue(getRequestPayload(net.network.data))}
                                               </pre>
                                             </div>
                                             <div className="space-y-3">
                                               <p className="text-[10px] font-bold text-slate-500 uppercase">Response</p>
-                                              <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded border border-slate-800 bg-slate-900 p-3 text-[10px] leading-relaxed text-emerald-500/80">
+                                              <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted p-3 text-[10px] leading-relaxed text-emerald-500/80">
                                                 {formatPrettyValue(getResponsePayload(net.network.data))}
                                               </pre>
                                             </div>
@@ -1297,7 +1447,7 @@ export function TestCaseDetailDialog({
                           </div>
                         )}
                       </div>
-                      <div className="bg-slate-900/80 p-2 border-t border-slate-800 flex items-center justify-between shrink-0">
+                      <div className="bg-muted/80 p-2 border-t border-border flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
                           <div className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
@@ -1308,17 +1458,17 @@ export function TestCaseDetailDialog({
                             {errorLogCount} ERRORS
                           </div>
                         </div>
-                        <p className="text-[10px] text-slate-600 italic">Auto-scrolling enabled</p>
+                        <p className="text-[10px] text-slate-500 italic">Auto-scrolling enabled</p>
                       </div>
                     </div>
 
-                    <div className="shrink-0 mt-4 flex items-start gap-3 bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl">
-                      <div className="mt-0.5 p-1 rounded-full bg-white text-indigo-500 shadow-sm">
+                    <div className="shrink-0 mt-4 flex items-start gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-4 shadow-inner">
+                      <div className="mt-0.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 p-1 text-indigo-300 shadow-sm">
                         <HelpCircle className="w-3.5 h-3.5" />
                       </div>
                       <div>
-                        <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
-                          <span className="font-bold text-indigo-600">DevTools Mode:</span> Tab **Console** menampilkan log browser (JS errors/logs). Tab **Network** menampilkan *XHR/Fetch* traffic. Klik pada baris log untuk melihat detail payload dan headers.
+                        <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                          <span className="font-bold text-indigo-300">DevTools Mode:</span> Tab **Console** menampilkan log browser (JS errors/logs). Tab **Network** menampilkan *XHR/Fetch* traffic. Klik pada baris log untuk melihat detail payload dan headers.
                         </p>
                       </div>
                     </div>
@@ -1331,7 +1481,7 @@ export function TestCaseDetailDialog({
 
         {isRecordingFullscreen && manualRecording?.frames?.length && (
           <div
-            className={`fixed inset-0 z-[80] flex bg-slate-950 text-slate-100 transition-opacity duration-200 ${
+            className={`fixed inset-0 z-[80] flex bg-background text-slate-100 transition-opacity duration-200 ${
               isClosingRecordingFullscreen ? 'opacity-0' : 'opacity-100'
             }`}
           >
@@ -1339,13 +1489,13 @@ export function TestCaseDetailDialog({
               type="button"
               variant="ghost"
               size="sm"
-              className="fixed right-6 top-2 z-[90] h-10 w-10 rounded-full border border-white/10 bg-slate-950/80 p-0 text-slate-300 shadow-2xl backdrop-blur transition hover:scale-105 hover:bg-white hover:text-slate-950"
+              className="fixed right-6 top-2 z-[90] h-10 w-10 rounded-full border border-border/60 bg-background/80 p-0 text-slate-300 shadow-2xl backdrop-blur transition hover:scale-105 hover:bg-teal-500/15 hover:text-teal-100"
               onClick={closeRecordingFullscreen}
             >
               <X className="h-4 w-4" />
             </Button>
             <div className={`flex min-w-0 flex-1 flex-col transition duration-200 ${isClosingRecordingFullscreen ? 'scale-[0.985]' : 'scale-100'}`}>
-              <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-800 bg-slate-950 px-5">
+              <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-5">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <Film className="h-4 w-4 text-indigo-300" />
@@ -1356,12 +1506,12 @@ export function TestCaseDetailDialog({
                   </div>
                   <p className="mt-1 truncate text-[11px] text-slate-500">{manualRecording.targetUrl || 'Manual capture target'}</p>
                 </div>
-                <div className="mr-12 flex items-center gap-1 rounded-md bg-slate-900 p-1">
+                <div className="mr-12 flex items-center gap-1 rounded-md bg-muted p-1">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7 p-0 text-slate-400 hover:bg-slate-800 hover:text-white"
+                    className="h-7 w-7 p-0 text-slate-400 hover:bg-secondary hover:text-foreground"
                     onClick={() => updateRecordingZoom(-0.1)}
                   >
                     <Minus className="h-3.5 w-3.5" />
@@ -1373,7 +1523,7 @@ export function TestCaseDetailDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7 p-0 text-slate-400 hover:bg-slate-800 hover:text-white"
+                    className="h-7 w-7 p-0 text-slate-400 hover:bg-secondary hover:text-foreground"
                     onClick={() => updateRecordingZoom(0.1)}
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -1416,7 +1566,7 @@ export function TestCaseDetailDialog({
                 )}
               </div>
 
-              <div className="shrink-0 border-t border-slate-800 bg-slate-950 p-3">
+              <div className="shrink-0 border-t border-border bg-background p-3">
                 <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                   <span>Timeline</span>
                   <div className="flex items-center gap-2">
@@ -1425,7 +1575,7 @@ export function TestCaseDetailDialog({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 rounded-md border border-slate-800 bg-slate-900 p-0 text-slate-400 hover:bg-slate-800 hover:text-white"
+                      className="h-7 w-7 rounded-md border border-border bg-muted p-0 text-slate-400 hover:bg-secondary hover:text-foreground"
                       onClick={() => scrollFullscreenTimeline('left')}
                     >
                       <ChevronLeft className="h-3.5 w-3.5" />
@@ -1434,7 +1584,7 @@ export function TestCaseDetailDialog({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 rounded-md border border-slate-800 bg-slate-900 p-0 text-slate-400 hover:bg-slate-800 hover:text-white"
+                      className="h-7 w-7 rounded-md border border-border bg-muted p-0 text-slate-400 hover:bg-secondary hover:text-foreground"
                       onClick={() => scrollFullscreenTimeline('right')}
                     >
                       <ChevronRight className="h-3.5 w-3.5" />
@@ -1458,7 +1608,7 @@ export function TestCaseDetailDialog({
                         className={`h-8 shrink-0 rounded-md px-2 text-[10px] font-bold ${
                           selectedRecordingFrame?.file === frame.file
                             ? 'bg-indigo-500 text-white hover:bg-indigo-500'
-                            : 'border border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white'
+                            : 'border border-border bg-muted text-slate-400 hover:bg-secondary hover:text-foreground'
                         }`}
                         onClick={() => setRecordingSeekMs(frame.relativeMs)}
                       >
@@ -1469,18 +1619,18 @@ export function TestCaseDetailDialog({
               </div>
             </div>
 
-            <div className={`flex w-[420px] shrink-0 flex-col border-l border-slate-800 bg-slate-950 transition duration-200 xl:w-[520px] ${isClosingRecordingFullscreen ? 'translate-x-4' : 'translate-x-0'}`}>
-              <div className="flex h-24 shrink-0 items-end justify-between gap-4 border-b border-slate-800 px-3 pb-3 pt-12 pr-16">
+            <div className={`flex w-[420px] shrink-0 flex-col border-l border-border bg-background transition duration-200 xl:w-[520px] ${isClosingRecordingFullscreen ? 'translate-x-4' : 'translate-x-0'}`}>
+              <div className="flex h-24 shrink-0 items-end justify-between gap-4 border-b border-border px-3 pb-3 pt-12 pr-16">
                 <div>
                   <p className="text-xs font-black uppercase tracking-widest text-slate-200">DevTools</p>
                   <p className="text-[10px] text-slate-500">Klik log untuk loncat ke timestamp record.</p>
                 </div>
-                <div className="flex rounded-md bg-slate-900 p-1">
+                <div className="flex rounded-md bg-muted p-1">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className={`h-7 px-2 text-[10px] font-bold ${activeDevLogTab === 'console' ? 'bg-white text-slate-900 hover:bg-white' : 'text-slate-400 hover:text-white'}`}
+                    className={`h-7 px-2 text-[10px] font-bold ${activeDevLogTab === 'console' ? 'bg-teal-500/15 text-teal-100 hover:bg-teal-500/20' : 'text-slate-400 hover:text-white'}`}
                     onClick={() => setActiveDevLogTab('console')}
                   >
                     CONSOLE
@@ -1489,7 +1639,7 @@ export function TestCaseDetailDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className={`h-7 px-2 text-[10px] font-bold ${activeDevLogTab === 'network' ? 'bg-white text-slate-900 hover:bg-white' : 'text-slate-400 hover:text-white'}`}
+                    className={`h-7 px-2 text-[10px] font-bold ${activeDevLogTab === 'network' ? 'bg-teal-500/15 text-teal-100 hover:bg-teal-500/20' : 'text-slate-400 hover:text-white'}`}
                     onClick={() => setActiveDevLogTab('network')}
                   >
                     NETWORK
@@ -1539,9 +1689,9 @@ export function TestCaseDetailDialog({
                               </span>
                             </button>
                             {expandedLogId === logId && (
-                              <div className="space-y-2 border-t border-slate-800 bg-slate-900/60 p-3">
-                                <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-all rounded border border-slate-800 bg-slate-950 p-2 text-[10px] text-slate-300">{net.network.url}</pre>
-                                <pre className="max-h-44 overflow-auto whitespace-pre-wrap break-words rounded border border-slate-800 bg-slate-950 p-2 text-[10px] text-emerald-300/80">{formatPrettyValue(getResponsePayload(net.network.data))}</pre>
+                              <div className="space-y-2 border-t border-border bg-muted/60 p-3">
+                                <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-all rounded border border-border bg-background p-2 text-[10px] text-slate-300">{net.network.url}</pre>
+                                <pre className="max-h-44 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-background p-2 text-[10px] text-emerald-300/80">{formatPrettyValue(getResponsePayload(net.network.data))}</pre>
                               </div>
                             )}
                           </div>
@@ -1585,7 +1735,7 @@ export function TestCaseDetailDialog({
         )}
 
         <DialogFooter className="p-6 pt-4 border-t shrink-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-10 px-6 font-bold border-slate-200">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-10 border-border/60 px-6 font-bold">
             Tutup
           </Button>
           {viewTestCase && !isBugFixDetail && onRefine && (

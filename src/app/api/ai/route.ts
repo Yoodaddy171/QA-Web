@@ -1,6 +1,13 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import {
+  buildProjectSummary,
+  formatProjectContext,
+  readRelevantKnowledge,
+  getRecentBugFixes,
+  limitText,
+} from '@/lib/ai-context';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -24,8 +31,7 @@ export const maxDuration = 60;
 
 const AI_MODEL = process.env.GROQ_GENERATE_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 const MAX_CONTEXT_CASES = 12;
-const MAX_CONTEXT_LINES = 4;
-const MAX_OUTPUT_TOKENS = 1800;
+const MAX_OUTPUT_TOKENS = 2200;
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,13 +46,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'GROQ_API_KEY belum dikonfigurasi.' }, { status: 503 });
     }
 
-    const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true } });
-    if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    // Build comprehensive project context
+    const projectSummary = await buildProjectSummary(projectId);
+    if (!projectSummary) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
+    const selectedModuleId = moduleFilter && moduleFilter !== 'all' ? String(moduleFilter) : null;
+    if (selectedModuleId && !projectSummary.modules.some(m => m.id === selectedModuleId)) {
+      return NextResponse.json({ error: 'Module tidak ditemukan pada project ini.' }, { status: 404 });
+    }
+
+    // Fetch existing test cases for context (show all to LLM)
     const existingTestCases = await db.testCase.findMany({
       where: {
         projectId,
-        ...(moduleFilter && moduleFilter !== 'all' ? { moduleId: moduleFilter } : {}),
+        ...(selectedModuleId ? { moduleId: selectedModuleId } : {}),
       },
       select: {
         testCaseId: true,
@@ -55,25 +68,31 @@ export async function POST(req: NextRequest) {
         testType: true,
         testAction: true,
         priority: true,
+        status: true,
       },
       orderBy: { testCaseId: 'asc' },
       take: MAX_CONTEXT_CASES,
     });
 
-    // Fetch modules for the project
-    const projectModules = await db.module.findMany({
-      where: { projectId },
+    // Fetch project knowledge (QA rules, domain dictionary, feature maps)
+    const knowledge = await readRelevantKnowledge(projectId, prompt, {
+      maxItems: 6,
+      maxCharsPerItem: 800,
+      maxTotalChars: 3500,
     });
-    const selectedModuleId = moduleFilter && moduleFilter !== 'all' ? String(moduleFilter) : null;
-    if (selectedModuleId && !projectModules.some(module => module.id === selectedModuleId)) {
-      return NextResponse.json({ error: 'Module tidak ditemukan pada project ini.' }, { status: 404 });
-    }
+
+    // Fetch active bug fixes for problem-area awareness
+    const activeBugs = await getRecentBugFixes(projectId, 5);
+
+    // Get next ID sequence
     const idSequence = await getNextIdSequence(projectId, selectedModuleId, requestedCount);
 
-    // Build context
-    const contextSummary = buildContext(existingTestCases, idSequence);
+    // Build rich context
+    const projectContext = formatProjectContext(projectSummary);
+    const existingContext = buildExistingTestCaseContext(existingTestCases);
+    const bugContext = buildBugContext(activeBugs);
 
-    const systemPrompt = `You are a QA Tester assistant. Generate test cases for web/mobile apps.
+    const systemPrompt = `You are a senior QA Tester. Generate high-quality test cases for a web/mobile application.
 Respond with ONLY a valid JSON object containing a "test_cases" array.
 
 Each test case object must have:
@@ -82,23 +101,37 @@ Each test case object must have:
 - subMenu: string (sub-section or "")
 - weight: string (e.g. "5%", "10%", or "")
 - testType: "Positive" or "Negative"
-- testAction: string (in Indonesian/Bahasa Indonesia)
-- steps: string (detailed steps using \\n for line breaks, prefixed with "- ", in Indonesian)
-- expectedResult: string (in Indonesian)
+- testAction: string (concise description in Indonesian/Bahasa Indonesia)
+- steps: string (detailed steps using \\n for line breaks, prefixed with "1. ", "2. ", etc., in Indonesian)
+- expectedResult: string (measurable expected outcome in Indonesian)
 - priority: "Critical" | "High" | "Medium" | "Low"
 - moduleId: string or null (match ID from provided modules)
 
-Generate exactly ${requestedCount} high-value test cases. Write testAction, steps, expectedResult in Indonesian.`;
+RULES:
+- Generate exactly ${requestedCount} high-value, non-redundant test cases.
+- Write testAction, steps, expectedResult in Indonesian.
+- Do NOT duplicate scenarios already covered by existing test cases.
+- Prioritize areas with known bugs or low coverage.
+- Include both positive and negative scenarios when appropriate.
+- Steps must be specific and actionable, not generic.
+- Expected results must be measurable and verifiable.`;
 
-    const userMessage = `Context:
-${contextSummary}
+    const userMessage = `=== PROJECT CONTEXT ===
+${projectContext}
 
+=== EXISTING TEST CASES (avoid duplicating these) ===
+${existingContext || 'No existing test cases yet.'}
+
+${knowledge ? `=== PROJECT KNOWLEDGE (domain rules, API docs, features) ===\n${knowledge}\n` : ''}${bugContext ? `=== ACTIVE BUGS (consider testing around these areas) ===\n${bugContext}\n` : ''}
+=== GENERATION CONFIG ===
 Next testCaseId values to use exactly in order: ${idSequence.nextIds.join(', ')}
-Available Modules (Use IDs only): ${projectModules.map(m => `${m.name}(id:${m.id})`).join(', ')}
+Available Modules: ${projectSummary.modules.map(m => `${m.name}(id:${m.id})`).join(', ') || 'None'}
+${selectedModuleId ? `Target Module: ${projectSummary.modules.find(m => m.id === selectedModuleId)?.name || selectedModuleId}` : ''}
 
-User Request: ${prompt}
+=== USER REQUEST ===
+${prompt}
 
-Return JSON with "test_cases" key:`;
+Return JSON with "test_cases" key containing exactly ${requestedCount} test cases:`;
 
     let completion;
     try {
@@ -135,6 +168,7 @@ Return JSON with "test_cases" key:`;
     }
 
     // Validate and clean
+    const projectModules = projectSummary.modules;
     const cleanedCases = generatedCases.slice(0, requestedCount).map((tc, index) => ({
       testCaseId: idSequence.nextIds[index] || String(tc.testCaseId || ''),
       page: String(tc.page || ''),
@@ -154,6 +188,8 @@ Return JSON with "test_cases" key:`;
     return NextResponse.json({ error: 'Gagal generate test case' }, { status: 500 });
   }
 }
+
+// ============== HELPER FUNCTIONS ==============
 
 interface IdSequence {
   prefix: string;
@@ -203,22 +239,38 @@ function parseTestCaseId(value: string) {
   };
 }
 
-function buildContext(existingTestCases: Array<{
+function buildExistingTestCaseContext(testCases: Array<{
   testCaseId: string;
   page: string;
   subMenu: string | null;
   testType: string;
   testAction: string;
   priority: string;
-}>, idSequence: IdSequence): string {
-  if (existingTestCases.length === 0) return 'Empty project.';
-  
-  const lines: string[] = [];
-  existingTestCases.slice(0, MAX_CONTEXT_LINES).forEach(tc => {
-    lines.push(`[${tc.testCaseId}] ${tc.page}${tc.subMenu ? ` > ${tc.subMenu}` : ''} | ${tc.testType} | ${tc.priority} | ${tc.testAction}`);
-  });
-  
-  lines.push(`Last numeric testCaseId in selected scope: ${idSequence.prefix}${String(idSequence.lastNumber).padStart(idSequence.width, '0')}`);
-  
+  status: string;
+}>): string {
+  if (testCases.length === 0) return '';
+
+  const lines = testCases.map(tc =>
+    `[${tc.testCaseId}] ${tc.page}${tc.subMenu ? ` > ${tc.subMenu}` : ''} | ${tc.testType} | ${tc.priority} | ${tc.status} | ${limitText(tc.testAction, 80)}`
+  );
+
+  return lines.join('\n');
+}
+
+function buildBugContext(bugs: Array<{
+  testCaseId: string;
+  page: string;
+  subMenu: string | null;
+  testAction: string;
+  priority: string;
+  status: string;
+  module: { name: string } | null;
+}>): string {
+  if (bugs.length === 0) return '';
+
+  const lines = bugs.map(bug =>
+    `[${bug.testCaseId}] ${bug.module?.name || ''} > ${bug.page}${bug.subMenu ? ` > ${bug.subMenu}` : ''} | ${bug.priority} | ${bug.status} | ${limitText(bug.testAction, 60)}`
+  );
+
   return lines.join('\n');
 }

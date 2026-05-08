@@ -28,31 +28,31 @@ export function BulkStatusDialog({
 }: BulkStatusDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="border-border bg-card text-foreground elevation-3 rounded-2xl sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Update Status Massal</DialogTitle>
-          <DialogDescription>Ubah status {selectedCount} test case yang dipilih.</DialogDescription>
+          <DialogTitle className="text-foreground">Update Status Massal</DialogTitle>
+          <DialogDescription className="text-muted-foreground">Ubah status {selectedCount} test case yang dipilih.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Status Baru</Label>
+            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status Baru</Label>
             <Select value={bulkStatus} onValueChange={setBulkStatus}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DONE">Done</SelectItem>
-                <SelectItem value="NOT DONE">Not Done</SelectItem>
-                <SelectItem value="IN PROGRESS">In Progress</SelectItem>
-                <SelectItem value="BLOCKED">Blocked</SelectItem>
-                <SelectItem value="FAILED">Failed</SelectItem>
-                <SelectItem value="READY TO RETEST">Ready to Retest</SelectItem>
-                <SelectItem value="TBA">TBA (To Be Announced)</SelectItem>
+              <SelectTrigger className="border-border/60 bg-secondary/50 text-foreground focus:ring-primary/30 rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
+                <SelectItem value="DONE" className="rounded-lg">Done</SelectItem>
+                <SelectItem value="NOT DONE" className="rounded-lg">Not Done</SelectItem>
+                <SelectItem value="IN PROGRESS" className="rounded-lg">In Progress</SelectItem>
+                <SelectItem value="BLOCKED" className="rounded-lg">Blocked</SelectItem>
+                <SelectItem value="FAILED" className="rounded-lg">Failed</SelectItem>
+                <SelectItem value="READY TO RETEST" className="rounded-lg">Ready to Retest</SelectItem>
+                <SelectItem value="TBA" className="rounded-lg">TBA (To Be Announced)</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
-          <Button onClick={onSubmit}>Update Status</Button>
+        <DialogFooter className="border-t border-border/50 pt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Batal</Button>
+          <Button onClick={onSubmit} variant="majestic" className="rounded-xl">Update Status</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

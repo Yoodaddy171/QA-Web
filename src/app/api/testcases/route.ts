@@ -399,22 +399,17 @@ async function recalculateWeights(projectId: string, page: string, subMenu: stri
 
   const weightPerCase = (100 / casesInMenu.length).toFixed(2) + '%';
 
-  for (const tc of casesInMenu) {
-    await db.testCase.update({
-      where: { id: tc.id },
-      data: { weight: weightPerCase },
-    });
-  }
+  const caseIds = casesInMenu.map(tc => tc.id);
+
+  // Batch update all cases in menu with calculated weight
+  await db.testCase.updateMany({
+    where: { id: { in: caseIds } },
+    data: { weight: weightPerCase },
+  });
 
   // Set weight to null for TBA test cases in this menu (they don't contribute)
-  const tbaCases = await db.testCase.findMany({
+  await db.testCase.updateMany({
     where: { projectId, page, subMenu: subMenu || null, status: 'TBA' },
-    select: { id: true },
+    data: { weight: null },
   });
-  for (const tc of tbaCases) {
-    await db.testCase.update({
-      where: { id: tc.id },
-      data: { weight: null },
-    });
-  }
 }

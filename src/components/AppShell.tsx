@@ -1,12 +1,14 @@
 'use client';
 
-import { Bug, ClipboardList, FolderOpen, LayoutDashboard, MonitorDot, Settings2, Sparkles } from 'lucide-react';
+import { Bug, ClipboardList, FolderOpen, LayoutDashboard, MonitorDot, Settings2 } from 'lucide-react';
 import { ReactNode } from 'react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { BrandMark } from '@/components/BrandMark';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { cn } from '@/lib/utils';
 
 interface Project {
   id: string;
@@ -33,6 +35,14 @@ interface AppShellProps {
   };
 }
 
+const NAV_ITEMS = [
+  { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { value: 'testcases', label: 'Cases', icon: ClipboardList },
+  { value: 'bugfix', label: 'Bugs', icon: Bug },
+  { value: 'automated', label: 'Runs', icon: MonitorDot },
+  { value: 'settings', label: 'Settings', icon: Settings2 },
+] as const;
+
 export function AppShell({
   projects,
   selectedProject,
@@ -43,72 +53,75 @@ export function AppShell({
   children,
 }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f0fdfa_0,#f8fafc_34%,#f8fafc_100%)]" suppressHydrationWarning>
-      <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/82 backdrop-blur-xl">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
-          <div className="flex min-h-16 items-center justify-between gap-3 py-2">
-            <BrandMark />
-            <div className="flex items-center gap-4">
-              {projects.length > 0 && (
-                <div className="flex items-center gap-2 rounded-md border border-slate-200/80 bg-white/80 p-1 shadow-sm">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2 hidden md:inline">Project:</span>
-                  <Select value={selectedProject} onValueChange={setSelectedProject}>
-                    <SelectTrigger className="h-8 w-[170px] border-0 bg-transparent text-sm shadow-none focus:ring-0 sm:w-[220px]">
-                      <FolderOpen className="w-3.5 h-3.5 mr-2 text-teal-600" />
-                      <SelectValue placeholder="Pilih Project" />
-                    </SelectTrigger>
-                    <SelectContent className="border-slate-200">
-                      {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id} className="text-sm">{project.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
+    <div className="min-h-screen overflow-x-hidden bg-background" suppressHydrationWarning>
+      {/* ===== HEADER - Material Design Surface with elevation ===== */}
+      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-lg elevation-2 border-b border-border/30">
+        <div className="mx-auto flex min-w-0 max-w-[1440px] flex-wrap items-center justify-between gap-3 px-5 py-3 sm:flex-nowrap sm:px-8">
+          {/* Left: Brand + Project Selector */}
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+            <BrandMark compact />
+
+            {projects.length > 0 && (
+              <>
+                <div className="h-5 w-px bg-border/60" />
+                <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <SelectTrigger className="h-9 min-w-0 max-w-[45vw] rounded-xl border-0 bg-secondary/60 px-3 text-sm font-medium text-foreground shadow-none hover:bg-secondary focus:ring-1 focus:ring-primary/30 sm:w-[200px] sm:max-w-none">
+                    <FolderOpen className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-border/60 bg-card elevation-3">
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id} className="cursor-pointer rounded-xl text-sm">
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+          </div>
+
+          {/* Center: Navigation Pills - Material Design 3 style */}
+          <nav className="order-3 flex w-full min-w-0 items-center justify-center gap-0.5 rounded-2xl bg-secondary/50 p-1 sm:order-none sm:w-auto">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.value;
+              return (
+                <button
+                  key={item.value}
+                  onClick={() => setActiveTab(item.value)}
+                  className={cn(
+                    'relative flex min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-200 sm:text-sm md:px-4',
+                    isActive
+                      ? 'bg-primary text-primary-foreground elevation-1'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline">{item.label}</span>
+                  {isActive && (
+                    <span className="absolute -bottom-0.5 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full bg-primary-foreground/50 md:hidden" />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Right: Theme Toggle */}
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
           </div>
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <TabsList className="h-auto flex-wrap justify-start rounded-md border border-slate-200/80 bg-white/75 p-1 shadow-sm">
-              <TabsTrigger value="dashboard" className="gap-2 rounded-md data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-sm px-4 py-2 text-sm font-semibold">
-                <LayoutDashboard className="w-4 h-4" /> Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="testcases" className="gap-2 rounded-md data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-sm px-4 py-2 text-sm font-semibold">
-                <ClipboardList className="w-4 h-4" /> Test Cases
-              </TabsTrigger>
-              <TabsTrigger value="bugfix" className="gap-2 rounded-md data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-sm px-4 py-2 text-sm font-semibold">
-                <Bug className="w-4 h-4" /> BugFix
-              </TabsTrigger>
-              <TabsTrigger value="automated" className="gap-2 rounded-md data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-sm px-4 py-2 text-sm font-semibold">
-                <MonitorDot className="w-4 h-4" /> Test Records
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="gap-2 rounded-md data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-sm px-4 py-2 text-sm font-semibold">
-                <Settings2 className="w-4 h-4" /> Pengaturan
-              </TabsTrigger>
-            </TabsList>
-
-            {activeTab === 'dashboard' && projectHealth != null && (
-              <div className="hidden items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 shadow-sm md:flex">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-tight">
-                  Project Health:{' '}
-                  <span className={projectHealth >= 80 ? 'text-emerald-600' : 'text-amber-600'}>
-                    {projectHealth >= 80 ? 'EXCELLENT' : 'IN PROGRESS'}
-                  </span>
-                </span>
-              </div>
-            )}
-          </div>
-
-          <TabsContent value="dashboard">{activeTab === 'dashboard' ? children.dashboard : null}</TabsContent>
-          <TabsContent value="testcases">{activeTab === 'testcases' ? children.testcases : null}</TabsContent>
-          <TabsContent value="bugfix">{activeTab === 'bugfix' ? children.bugfix : null}</TabsContent>
-          <TabsContent value="automated">{activeTab === 'automated' ? children.automated : null}</TabsContent>
-          <TabsContent value="settings">{activeTab === 'settings' ? children.settings : null}</TabsContent>
+      {/* ===== MAIN CONTENT ===== */}
+      <main className="mx-auto min-w-0 max-w-[1440px] overflow-x-hidden px-5 py-6 sm:px-8 sm:py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsContent value="dashboard" className="m-0">{activeTab === 'dashboard' ? children.dashboard : null}</TabsContent>
+          <TabsContent value="testcases" className="m-0">{activeTab === 'testcases' ? children.testcases : null}</TabsContent>
+          <TabsContent value="bugfix" className="m-0">{activeTab === 'bugfix' ? children.bugfix : null}</TabsContent>
+          <TabsContent value="automated" className="m-0">{activeTab === 'automated' ? children.automated : null}</TabsContent>
+          <TabsContent value="settings" className="m-0">{activeTab === 'settings' ? children.settings : null}</TabsContent>
         </Tabs>
       </main>
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   AlertTriangle, Bug, CheckCircle2, Clock, HelpCircle, RefreshCw, XCircle
 } from 'lucide-react';
@@ -24,6 +24,8 @@ import { AIRefineDialog, type RefinedTestCasePreview } from '@/components/AIRefi
 import { BulkStatusDialog } from '@/components/BulkStatusDialog';
 import { ProjectModuleDialogs } from '@/components/ProjectModuleDialogs';
 import { SettingsPanel } from '@/components/SettingsPanel';
+import { FloatingAIChat, type TestCaseDraft } from '@/components/FloatingAIChat';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAutomationLogs } from '@/hooks/useAutomationLogs';
 
 // ============== TYPES ==============
@@ -208,6 +210,53 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   return debouncedValue;
 }
 
+const LAST_PROJECT_STORAGE_KEY = 'web-qa:last-project-id';
+
+// ============== PURE UTILITY FUNCTIONS (outside component to avoid re-creation) ==============
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'DONE': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    case 'NOT DONE': return 'bg-gray-100 text-gray-800 border-gray-200';
+    case 'IN PROGRESS': return 'bg-amber-100 text-amber-800 border-amber-200';
+    case 'BLOCKED': return 'bg-red-100 text-red-800 border-red-200';
+    case 'FAILED': return 'bg-red-100 text-red-800 border-red-200';
+    case 'READY TO RETEST': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
+    case 'VERIFIED & FIXED': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    case 'TBA': return 'bg-purple-100 text-purple-800 border-purple-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'DONE': return <CheckCircle2 className="w-3.5 h-3.5" />;
+    case 'NOT DONE': return <XCircle className="w-3.5 h-3.5" />;
+    case 'IN PROGRESS': return <Clock className="w-3.5 h-3.5" />;
+    case 'BLOCKED': return <AlertTriangle className="w-3.5 h-3.5" />;
+    case 'FAILED': return <XCircle className="w-3.5 h-3.5" />;
+    case 'READY TO RETEST': return <RefreshCw className="w-3.5 h-3.5" />;
+    case 'VERIFIED & FIXED': return <CheckCircle2 className="w-3.5 h-3.5" />;
+    case 'TBA': return <HelpCircle className="w-3.5 h-3.5" />;
+    default: return <XCircle className="w-3.5 h-3.5" />;
+  }
+};
+
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'Critical': return 'bg-red-100 text-red-800';
+    case 'High': return 'bg-orange-100 text-orange-800';
+    case 'Medium': return 'bg-yellow-100 text-yellow-800';
+    case 'Low': return 'bg-green-100 text-green-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const getTestTypeColor = (type: string) => {
+  return type === 'Positive'
+    ? 'bg-blue-50 text-blue-700 border-blue-200'
+    : 'bg-rose-50 text-rose-700 border-rose-200';
+};
+
 // ============== MAIN APP ==============
 export default function TestCaseManager() {
   const { toast } = useToast();
@@ -236,8 +285,18 @@ export default function TestCaseManager() {
   const [total, setTotal] = useState(0);
   const limit = 50;
 
+  // Loading states
+  const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // AbortController for race condition prevention
+  const testCaseAbortRef = useRef<AbortController | null>(null);
+
+  // Dashboard refresh
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   // Dialogs
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -250,6 +309,7 @@ export default function TestCaseManager() {
   // Form state
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
   const [viewTestCase, setViewTestCase] = useState<TestCase | null>(null);
+  const [draftTestCase, setDraftTestCase] = useState<Partial<typeof EMPTY_TEST_CASE> | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
   const [newModuleName, setNewModuleName] = useState('');
@@ -345,6 +405,10 @@ export default function TestCaseManager() {
       return acc;
     }, {});
   }, [automatedItems]);
+  const selectedProjectName = useMemo(
+    () => projects.find(project => project.id === selectedProject)?.name,
+    [projects, selectedProject]
+  );
 
   const handleBugFixStatusChange = async (bfId: string, newStatus: string) => {
     const response = await fetch('/api/bugfix', {
@@ -387,8 +451,19 @@ export default function TestCaseManager() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setProjects(data);
-        if (data.length > 0 && !selectedProject) {
-          setSelectedProject(data[0].id);
+        if (data.length > 0) {
+          const lastProjectId = window.localStorage.getItem(LAST_PROJECT_STORAGE_KEY);
+          const restoredProject = lastProjectId
+            ? data.find((project: Project) => project.id === lastProjectId)
+            : null;
+          const selectedStillExists = selectedProject
+            ? data.some((project: Project) => project.id === selectedProject)
+            : false;
+          if (!selectedStillExists) {
+            setSelectedProject(restoredProject?.id || data[0].id);
+          }
+        } else if (selectedProject) {
+          setSelectedProject('');
         }
       } else {
         console.error('Projects API returned non-array data:', data);
@@ -417,6 +492,13 @@ export default function TestCaseManager() {
 
   const loadTestCases = async (projId: string, opts?: { searchVal?: string; statusVal?: string; typeVal?: string; prioVal?: string; modVal?: string; pageVal?: number; sortVal?: string; orderVal?: string }) => {
     if (!projId) return;
+
+    // Abort previous request to prevent race conditions
+    testCaseAbortRef.current?.abort();
+    const controller = new AbortController();
+    testCaseAbortRef.current = controller;
+
+    setIsLoadingTestCases(true);
     try {
       const params = new URLSearchParams({
         projectId: projId,
@@ -436,24 +518,31 @@ export default function TestCaseManager() {
       if (fp !== 'all') params.set('priority', fp);
       if (fm !== 'all') params.set('moduleId', fm);
 
-      const res = await fetch(`/api/testcases?${params}`);
+      const res = await fetch(`/api/testcases?${params}`, { signal: controller.signal });
       const data = await res.json();
       setTestCases(data.testCases || []);
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return; // Expected, ignore
       toast({ title: 'Error', description: 'Failed to load test cases', variant: 'destructive' });
+    } finally {
+      setIsLoadingTestCases(false);
     }
   };
 
   const loadStats = async (projId: string) => {
     if (!projId) return;
+    setIsLoadingStats(true);
     try {
       const res = await fetch(`/api/stats?projectId=${projId}`);
       const data = await res.json();
       setStats(data);
+      setLastRefreshed(new Date());
     } catch {
       // silently fail
+    } finally {
+      setIsLoadingStats(false);
     }
   };
 
@@ -502,6 +591,11 @@ export default function TestCaseManager() {
     const timer = window.setTimeout(() => loadProjects(), 0);
     return () => window.clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    if (selectedProject) {
+      window.localStorage.setItem(LAST_PROJECT_STORAGE_KEY, selectedProject);
+    }
+  }, [selectedProject]);
   // Reload when project changes
   useEffect(() => {
     if (!selectedProject) return;
@@ -511,6 +605,8 @@ export default function TestCaseManager() {
   // Reload test cases when filters/pagination change
   useEffect(() => {
     if (selectedProject) loadTestCases(selectedProject);
+    // Clear selection when filters/page change to prevent invisible selections
+    setSelectedIds(new Set());
   }, [page, sortBy, sortOrder, debouncedSearch, filterStatus, filterTestType, filterPriority, filterModule]);
   // Reload bugfix when filters or tab change
   useEffect(() => {
@@ -518,6 +614,54 @@ export default function TestCaseManager() {
     const timer = window.setTimeout(() => loadBugFix(selectedProject), 0);
     return () => window.clearTimeout(timer);
   }, [debouncedBugFixSearch, bugFixFilterStatus, bugFixTab]);
+
+  // Auto-refresh dashboard every 60s when on dashboard tab
+  useEffect(() => {
+    if (activeTab !== 'dashboard' || !selectedProject) return;
+    const interval = window.setInterval(() => {
+      loadStats(selectedProject);
+    }, 60000);
+    return () => window.clearInterval(interval);
+  }, [activeTab, selectedProject]);
+
+  // ============== KEYBOARD SHORTCUTS ==============
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger when typing in inputs/textareas
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      // Don't trigger when any dialog is open
+      if (showTestCaseDialog || showDetailDialog || showAIDialog || showAIRefineDialog || showImportDialog) return;
+
+      switch (e.key) {
+        case 'n':
+        case 'N':
+          if (!e.ctrlKey && !e.metaKey && selectedProject && activeTab === 'testcases') {
+            e.preventDefault();
+            openCreateDialog();
+          }
+          break;
+        case '/':
+          if (!e.ctrlKey && !e.metaKey && activeTab === 'testcases') {
+            e.preventDefault();
+            // Focus search input
+            const searchInput = document.querySelector<HTMLInputElement>('[data-search-input]');
+            searchInput?.focus();
+          }
+          break;
+        case 'r':
+        case 'R':
+          if (!e.ctrlKey && !e.metaKey && selectedProject) {
+            e.preventDefault();
+            loadAll(selectedProject);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedProject, activeTab, showTestCaseDialog, showDetailDialog, showAIDialog, showAIRefineDialog, showImportDialog]);
 
   // ============== HANDLERS ==============
   const handleCreateProject = async () => {
@@ -547,7 +691,10 @@ export default function TestCaseManager() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Project gagal dihapus');
       toast({ title: 'Berhasil', description: 'Project berhasil dihapus' });
-      if (selectedProject === id) setSelectedProject('');
+      if (selectedProject === id) {
+        window.localStorage.removeItem(LAST_PROJECT_STORAGE_KEY);
+        setSelectedProject('');
+      }
       loadProjects();
     } catch (error: any) {
       toast({ title: 'Gagal menghapus project', description: error.message, variant: 'destructive' });
@@ -583,6 +730,23 @@ export default function TestCaseManager() {
       loadModules(selectedProject);
     } catch (error: any) {
       toast({ title: 'Gagal menghapus module', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleQuickStatusChange = async (testCaseId: string, newStatus: string) => {
+    try {
+      const res = await fetch('/api/testcases', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: testCaseId, status: newStatus }),
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+      // Optimistic update in local state
+      setTestCases(prev => prev.map(tc => tc.id === testCaseId ? { ...tc, status: newStatus } : tc));
+      loadStats(selectedProject);
+      toast({ title: 'Status updated', description: `Status diubah ke ${newStatus}` });
+    } catch {
+      toast({ title: 'Gagal', description: 'Status gagal diubah', variant: 'destructive' });
     }
   };
 
@@ -1003,59 +1167,82 @@ export default function TestCaseManager() {
   };
 
   const openEditDialog = (tc: TestCase) => {
+    setDraftTestCase(null);
     setEditingTestCase(tc);
     setShowTestCaseDialog(true);
   };
 
   const openCreateDialog = () => {
+    setDraftTestCase(null);
     setEditingTestCase(null);
     setShowTestCaseDialog(true);
   };
 
-  // ============== STATUS COLORS ==============
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'DONE': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'NOT DONE': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'IN PROGRESS': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'BLOCKED': return 'bg-red-100 text-red-800 border-red-200';
-      case 'FAILED': return 'bg-red-100 text-red-800 border-red-200';
-      case 'READY TO RETEST': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
-      case 'VERIFIED & FIXED': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'TBA': return 'bg-purple-100 text-purple-800 border-purple-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  const openDraftCreateDialog = (draft: TestCaseDraft) => {
+    setEditingTestCase(null);
+    setDraftTestCase({
+      testCaseId: draft.testCaseId,
+      page: draft.page,
+      subMenu: draft.subMenu,
+      weight: draft.weight,
+      testType: draft.testType,
+      testAction: draft.testAction,
+      steps: draft.steps,
+      expectedResult: draft.expectedResult,
+      priority: draft.priority,
+      moduleId: draft.moduleId || '',
+      status: 'NOT DONE',
+      progress: 0,
+      actualResult: '',
+      remarks: '',
+    });
+    setShowTestCaseDialog(true);
+  };
+
+  const openTestCaseFromChat = async (visualId: string) => {
+    if (!selectedProject) {
+      toast({ title: 'Project belum dipilih', description: 'Pilih project terlebih dahulu.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams({
+        projectId: selectedProject,
+        search: visualId,
+        limit: '10',
+        sortBy: 'testCaseId',
+        sortOrder: 'asc',
+      });
+      const response = await fetch(`/api/testcases?${params}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal mencari testcase.');
+      }
+
+      const candidates = Array.isArray(data.testCases) ? data.testCases as TestCase[] : [];
+      const exact = candidates.find(tc => tc.testCaseId.toLowerCase() === visualId.toLowerCase());
+      const target = exact || candidates[0];
+      if (!target) {
+        toast({
+          title: 'Testcase tidak ditemukan',
+          description: `Tidak ada testcase dengan ID ${visualId} pada project ini.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setViewTestCase(target);
+      setShowDetailDialog(true);
+    } catch (error: any) {
+      toast({
+        title: 'Gagal membuka testcase',
+        description: error.message || `Tidak bisa membuka ${visualId}.`,
+        variant: 'destructive',
+      });
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'DONE': return <CheckCircle2 className="w-3.5 h-3.5" />;
-      case 'NOT DONE': return <XCircle className="w-3.5 h-3.5" />;
-      case 'IN PROGRESS': return <Clock className="w-3.5 h-3.5" />;
-      case 'BLOCKED': return <AlertTriangle className="w-3.5 h-3.5" />;
-      case 'FAILED': return <XCircle className="w-3.5 h-3.5" />;
-      case 'READY TO RETEST': return <RefreshCw className="w-3.5 h-3.5" />;
-      case 'VERIFIED & FIXED': return <CheckCircle2 className="w-3.5 h-3.5" />;
-      case 'TBA': return <HelpCircle className="w-3.5 h-3.5" />;
-      default: return <XCircle className="w-3.5 h-3.5" />;
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'Critical': return 'bg-red-100 text-red-800';
-      case 'High': return 'bg-orange-100 text-orange-800';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800';
-      case 'Low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTestTypeColor = (type: string) => {
-    return type === 'Positive'
-      ? 'bg-blue-50 text-blue-700 border-blue-200'
-      : 'bg-rose-50 text-rose-700 border-rose-200';
-  };
+  // Status/priority/type color functions moved outside component for stable references
 
   // ============== RENDER: DASHBOARD ==============
   const renderDashboard = () => (
@@ -1066,6 +1253,9 @@ export default function TestCaseManager() {
       setExpandedModules={setExpandedModules}
       selectedModuleFilter={selectedModuleFilter}
       setSelectedModuleFilter={setSelectedModuleFilter}
+      isLoading={isLoadingStats}
+      lastRefreshed={lastRefreshed}
+      onRefresh={() => { loadStats(selectedProject); loadTestCases(selectedProject); }}
     />
   );
   // ============== RENDER: TEST CASE TABLE ==============
@@ -1099,6 +1289,8 @@ export default function TestCaseManager() {
       openImportDialog={() => setShowImportDialog(true)}
       handleImportExcel={handleImportExcel}
       handleExportExcel={handleExportExcel}
+      isLoading={isLoadingTestCases}
+      onQuickStatusChange={handleQuickStatusChange}
       refreshList={() => { if (selectedProject) { loadTestCases(selectedProject); loadStats(selectedProject); } }}
       toggleSelectAll={toggleSelectAll}
       toggleSelect={toggleSelect}
@@ -1165,6 +1357,7 @@ export default function TestCaseManager() {
 
   // ============== MAIN RENDER ==============
   return (
+    <ErrorBoundary>
     <div>
       <AppShell
         projects={projects}
@@ -1202,8 +1395,12 @@ export default function TestCaseManager() {
       {/* Create/Edit Test Case Dialog */}
       <TestCaseDialog
         open={showTestCaseDialog}
-        onOpenChange={setShowTestCaseDialog}
+        onOpenChange={(open) => {
+          setShowTestCaseDialog(open);
+          if (!open) setDraftTestCase(null);
+        }}
         editingTestCase={editingTestCase}
+        initialTestCase={draftTestCase}
         selectedProject={selectedProject}
         modules={modules}
         onSaveSuccess={() => loadAll(selectedProject)}
@@ -1250,6 +1447,8 @@ export default function TestCaseManager() {
           navigator.clipboard.writeText(id);
           toast({ title: 'ID Disalin', description: 'Internal ID berhasil disalin untuk Katalon.' });
         }}
+        testCaseList={testCases}
+        onNavigate={(tc) => setViewTestCase(tc)}
       />
 
       <AIRefineDialog
@@ -1351,6 +1550,15 @@ export default function TestCaseManager() {
         getTestTypeColor={getTestTypeColor}
         getPriorityColor={getPriorityColor}
       />
+
+      <FloatingAIChat
+        projectId={selectedProject}
+        projectName={selectedProjectName}
+        selectedTestCase={viewTestCase?.projectId === selectedProject ? viewTestCase : null}
+        onOpenTestCaseId={openTestCaseFromChat}
+        onCreateTestCaseDraft={openDraftCreateDialog}
+      />
     </div>
+    </ErrorBoundary>
   );
 }

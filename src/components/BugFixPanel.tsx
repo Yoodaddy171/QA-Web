@@ -64,11 +64,11 @@ const formatDate = (dateStr: string | null) => {
 
 const getBugFixStatusColor = (status: string) => {
   switch (status) {
-    case 'SUDAH DILAPORKAN': return 'bg-orange-100 text-orange-800 border-orange-200';
-    case 'SEDANG DI FIX': return 'bg-amber-100 text-amber-800 border-amber-200';
-    case 'READY TO RETEST': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
-    case 'VERIFIED & FIXED': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    case 'SUDAH DILAPORKAN': return 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300';
+    case 'SEDANG DI FIX': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300';
+    case 'READY TO RETEST': return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/25 dark:bg-cyan-500/10 dark:text-cyan-300';
+    case 'VERIFIED & FIXED': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300';
+    default: return 'border-border bg-muted text-muted-foreground';
   }
 };
 
@@ -88,67 +88,68 @@ export function BugFixPanel({
 }: BugFixPanelProps) {
   if (!selectedProject) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-md border border-dashed border-slate-200 bg-white/70">
+      <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border bg-card elevation-1">
         <div className="text-center">
-          <Bug className="mx-auto mb-2 h-9 w-9 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">Pilih project untuk melihat bug fix</p>
+          <Bug className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm font-medium text-muted-foreground">Select a project to view bugs</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
+      {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Card variant="filled" padding="none" className="group hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-orange-50 p-2">
-                  <AlertTriangle className="w-5 h-5 text-orange-600" />
+                <div className="rounded-xl bg-orange-100 p-2.5 dark:bg-orange-500/15 group-hover:scale-105 transition-transform">
+                  <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.bugFixReported}</p>
-                  <p className="text-xs text-muted-foreground">Dilaporkan</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.bugFixReported}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">Reported</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          <Card variant="filled" padding="none" className="group hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-amber-50 p-2">
-                  <Clock className="w-5 h-5 text-amber-600" />
+                <div className="rounded-xl bg-amber-100 p-2.5 dark:bg-amber-500/15 group-hover:scale-105 transition-transform">
+                  <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.bugFixFixing}</p>
-                  <p className="text-xs text-muted-foreground">Sedang Di Fix</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.bugFixFixing}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Fixing</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          <Card variant="filled" padding="none" className="group hover:bg-cyan-50 dark:hover:bg-cyan-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-cyan-50 p-2">
-                  <RefreshCw className="w-5 h-5 text-cyan-600" />
+                <div className="rounded-xl bg-cyan-100 p-2.5 dark:bg-cyan-500/15 group-hover:scale-105 transition-transform">
+                  <RefreshCw className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.bugFixReadyRetest}</p>
-                  <p className="text-xs text-muted-foreground">Ready to Retest</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.bugFixReadyRetest}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Ready</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-md border-slate-200 bg-white/85 shadow-sm">
+          <Card variant="filled" padding="none" className="group hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-md bg-emerald-50 p-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <div className="rounded-xl bg-emerald-100 p-2.5 dark:bg-emerald-500/15 group-hover:scale-105 transition-transform">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.bugFixFixed}</p>
-                  <p className="text-xs text-muted-foreground">Verified & Fixed</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.bugFixFixed}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Fixed</p>
                 </div>
               </div>
             </CardContent>
@@ -156,102 +157,103 @@ export function BugFixPanel({
         </div>
       )}
 
-      <div className="flex flex-col items-start justify-between gap-4 rounded-md border border-slate-200/80 bg-white/80 p-3 shadow-sm sm:flex-row sm:items-center">
+      {/* Toolbar */}
+      <div className="flex min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border border-border/60 bg-card p-3 elevation-1 lg:flex-row lg:items-center">
         <Tabs
           value={bugFixTab}
           onValueChange={(v) => setBugFixTab(v as 'active' | 'resolved')}
           className="w-full sm:w-auto"
         >
-          <TabsList className="h-10 rounded-md border border-slate-200 bg-slate-50 p-1">
-            <TabsTrigger value="active" className="gap-2 rounded-md px-4 text-xs font-bold data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+          <TabsList className="h-10 rounded-xl border border-border/60 bg-secondary/50 p-1">
+            <TabsTrigger value="active" className="gap-2 rounded-lg px-4 text-[11px] font-semibold uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:elevation-1">
               <Bug className="w-3.5 h-3.5" /> Active Bugs
             </TabsTrigger>
-            <TabsTrigger value="resolved" className="gap-2 rounded-md px-4 text-xs font-bold data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <TabsTrigger value="resolved" className="gap-2 rounded-lg px-4 text-[11px] font-semibold uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:elevation-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> Fixed History
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="flex w-full items-center gap-3 sm:w-auto">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto">
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Cari bug fix..."
               value={bugFixSearch}
               onChange={(e) => setBugFixSearch(e.target.value)}
-              className="h-9 rounded-md border-slate-200 bg-white pl-9 shadow-sm"
+              className="h-9 rounded-xl border-border/60 bg-secondary/50 pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/30"
             />
           </div>
           {bugFixTab === 'active' && (
             <Select value={bugFixFilterStatus} onValueChange={setBugFixFilterStatus}>
-              <SelectTrigger className="h-9 w-[180px] rounded-md border-slate-200 bg-white shadow-sm"><SelectValue placeholder="Filter status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="SUDAH DILAPORKAN">Dilaporkan</SelectItem>
-                <SelectItem value="SEDANG DI FIX">Sedang Di Fix</SelectItem>
-                <SelectItem value="READY TO RETEST">Ready to Retest</SelectItem>
+              <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-secondary/50 text-foreground sm:w-[180px]"><SelectValue placeholder="Filter status" /></SelectTrigger>
+              <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
+                <SelectItem value="all" className="rounded-lg">Semua Status</SelectItem>
+                <SelectItem value="SUDAH DILAPORKAN" className="rounded-lg">Dilaporkan</SelectItem>
+                <SelectItem value="SEDANG DI FIX" className="rounded-lg">Sedang Di Fix</SelectItem>
+                <SelectItem value="READY TO RETEST" className="rounded-lg">Ready to Retest</SelectItem>
               </SelectContent>
             </Select>
           )}
         </div>
       </div>
 
+      {/* Table or Empty State */}
       {visibleBugFixItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center space-y-2 rounded-md border border-dashed border-slate-200 bg-white/70 py-16">
-          <Bug className="w-10 h-10 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">Tidak ada {bugFixTab === 'resolved' ? 'bug yang sudah di-fix' : 'bug aktif'}</p>
-          <p className="text-xs text-muted-foreground">Data akan muncul setelah test case gagal dan dibuat sebagai bug fix.</p>
+        <div className="flex flex-col items-center justify-center space-y-2 rounded-2xl border border-dashed border-border bg-card py-20 elevation-1">
+          <Bug className="w-12 h-12 text-muted-foreground/20" />
+          <p className="text-sm font-semibold text-foreground">No Defects Found</p>
+          <p className="text-xs text-muted-foreground">No {bugFixTab === 'resolved' ? 'resolved defects' : 'active defects'} in this project.</p>
         </div>
       ) : (
-        <Card className="overflow-hidden rounded-md border-slate-200 bg-white shadow-sm">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card elevation-1">
+          <div className="overflow-hidden">
             <Table>
               <TableHeader className="sticky top-0 z-10">
-                <TableRow className="border-slate-200 bg-slate-50/95 hover:bg-slate-50/95">
-                  <TableHead className="w-[100px] text-[11px] font-bold uppercase tracking-wide text-slate-500">TC ID</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Page</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Sub Menu</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Test Action</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Priority</TableHead>
-                  <TableHead className="w-[180px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</TableHead>
-                  <TableHead className="w-[150px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Dilaporkan</TableHead>
+                <TableRow className="border-border/50 bg-secondary/30 hover:bg-secondary/30">
+                  <TableHead className="w-[90px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
+                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
+                  <TableHead className="hidden text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Sub Menu</TableHead>
+                  <TableHead className="hidden text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Test Action</TableHead>
+                  <TableHead className="hidden w-[94px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">Priority</TableHead>
+                  <TableHead className="w-[150px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                  <TableHead className="hidden w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:table-cell">Dilaporkan</TableHead>
                   {bugFixTab === 'resolved' ? (
-                    <TableHead className="w-[150px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Fixed At</TableHead>
+                    <TableHead className="hidden w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Fixed At</TableHead>
                   ) : (
-                    <TableHead className="w-[150px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Di Fix / Retest</TableHead>
+                    <TableHead className="hidden w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Di Fix / Retest</TableHead>
                   )}
-                  <TableHead className="w-[80px] text-[11px] font-bold uppercase tracking-wide text-slate-500">Aksi</TableHead>
+                  <TableHead className="w-[80px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleBugFixItems.map((bf) => (
-                  <TableRow key={bf.id} className="border-slate-100 hover:bg-teal-50/30">
-                    <TableCell className="font-mono text-sm font-semibold text-slate-800">{bf.testCaseId}</TableCell>
-                    <TableCell className="text-sm font-medium text-slate-700">{bf.page}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{bf.subMenu || '-'}</TableCell>
-                    <TableCell className="text-sm max-w-[200px] truncate">{bf.testAction}</TableCell>
-                    <TableCell><Badge className={`rounded-md text-xs font-semibold shadow-none ${getPriorityColor(bf.priority)}`}>{bf.priority}</Badge></TableCell>
+                  <TableRow key={bf.id} className="border-border/30 hover:bg-secondary/30 transition-colors group">
+                    <TableCell className="font-mono text-sm font-bold text-foreground">{bf.testCaseId}</TableCell>
+                    <TableCell className="text-sm font-medium text-foreground">{bf.page}</TableCell>
+                    <TableCell className="hidden text-muted-foreground text-[13px] lg:table-cell">{bf.subMenu || '-'}</TableCell>
+                    <TableCell className="hidden text-muted-foreground text-sm max-w-[200px] truncate group-hover:text-foreground transition-colors md:table-cell">{bf.testAction}</TableCell>
+                    <TableCell className="hidden sm:table-cell"><Badge variant={bf.priority === 'Critical' ? 'failed' : bf.priority === 'High' ? 'warning' : 'outline'} className="text-[10px] font-semibold">{bf.priority}</Badge></TableCell>
                     <TableCell>
                       {bugFixTab === 'resolved' ? (
-                        <Badge className={`rounded-md text-[10px] font-bold shadow-none ${getBugFixStatusColor(bf.status)}`}>
+                        <Badge variant="success" className="text-[9px] font-semibold uppercase">
                           {bf.status}
                         </Badge>
                       ) : (
                         <Select value={bf.status} onValueChange={(val) => onStatusChange(bf.id, val)}>
-                          <SelectTrigger className={`h-8 rounded-md text-[10px] font-bold shadow-none ${getBugFixStatusColor(bf.status)}`}>
+                          <SelectTrigger className="h-8 rounded-lg text-[9px] font-semibold uppercase border-border/60 bg-secondary/50 text-foreground shadow-none">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="SUDAH DILAPORKAN">SUDAH DILAPORKAN</SelectItem>
-                            <SelectItem value="SEDANG DI FIX">SEDANG DI FIX</SelectItem>
-                            <SelectItem value="READY TO RETEST">READY TO RETEST</SelectItem>
+                          <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
+                            <SelectItem value="SUDAH DILAPORKAN" className="text-[9px] font-semibold rounded-lg">DILAPORKAN</SelectItem>
+                            <SelectItem value="SEDANG DI FIX" className="text-[9px] font-semibold rounded-lg">SEDANG DI FIX</SelectItem>
+                            <SelectItem value="READY TO RETEST" className="text-[9px] font-semibold rounded-lg">READY TO RETEST</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{formatDate(bf.reportedAt)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="hidden text-[11px] font-medium text-muted-foreground xl:table-cell">{formatDate(bf.reportedAt)}</TableCell>
+                    <TableCell className="hidden text-[11px] font-medium text-muted-foreground lg:table-cell">
                       {bugFixTab === 'resolved'
                         ? formatDate(bf.fixedAt)
                         : bf.status === 'READY TO RETEST'
@@ -262,7 +264,7 @@ export function BugFixPanel({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary"
                         onClick={() => onOpenDetail(bf)}
                       >
                         <Eye className="w-4 h-4" />
@@ -272,9 +274,8 @@ export function BugFixPanel({
                 ))}
               </TableBody>
             </Table>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

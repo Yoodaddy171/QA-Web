@@ -61,6 +61,7 @@ interface TestCaseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingTestCase: TestCase | null;
+  initialTestCase?: Partial<typeof EMPTY_TEST_CASE> | null;
   selectedProject: string;
   modules: Module[];
   onSaveSuccess: () => void;
@@ -70,6 +71,7 @@ export function TestCaseDialog({
   open,
   onOpenChange,
   editingTestCase,
+  initialTestCase,
   selectedProject,
   modules,
   onSaveSuccess
@@ -96,7 +98,11 @@ export function TestCaseDialog({
       remarks: editingTestCase.remarks || '',
       priority: editingTestCase.priority || 'Medium',
       moduleId: editingTestCase.moduleId || '',
-    } : EMPTY_TEST_CASE;
+    } : {
+      ...EMPTY_TEST_CASE,
+      ...(initialTestCase || {}),
+      moduleId: initialTestCase?.moduleId || '',
+    };
 
     const timer = window.setTimeout(() => {
       setFormData(nextFormData);
@@ -105,7 +111,7 @@ export function TestCaseDialog({
     return () => {
       window.clearTimeout(timer);
     }
-  }, [open, editingTestCase]);
+  }, [open, editingTestCase, initialTestCase]);
 
   const handleSaveTestCase = async () => {
     if (

@@ -73,111 +73,119 @@ export function ImportExcelDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl">
+      <DialogContent className="max-h-[90vh] overflow-hidden border-border bg-card text-foreground elevation-3 rounded-2xl sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" /> Import Excel
+          <DialogTitle className="flex items-center gap-2 text-foreground">
+            <span className="rounded-xl bg-primary/15 p-1.5 text-primary">
+              <Upload className="w-5 h-5" />
+            </span>
+            Import Excel
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-muted-foreground">
             Preview file terlebih dahulu sebelum data masuk database.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+        <div className="min-h-0 space-y-4 overflow-y-auto py-2 pr-1">
+          <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-secondary/30 p-3">
             <Checkbox
               id="createModules"
               checked={createModules}
               disabled={busy || hasPreview}
               onCheckedChange={(checked) => onCreateModulesChange(checked === true)}
+              className="border-border data-[state=checked]:border-primary data-[state=checked]:bg-primary"
             />
             <div className="flex-1">
-              <Label htmlFor="createModules" className="cursor-pointer font-medium text-sm">
+              <Label htmlFor="createModules" className="cursor-pointer text-sm font-medium text-foreground">
                 Buat Module dari nama Sheet
               </Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 Setiap sheet di Excel akan menjadi Module tersendiri (misal: Kiosk, KDS, POS)
               </p>
             </div>
           </div>
 
           {!hasPreview && (
-            <div className="rounded-lg border p-4 space-y-2">
-            <p className="text-sm font-medium">Format Kolom yang Didukung:</p>
-            <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-              <span>ID / Test Case ID</span>
-              <span>Test Case ID (wajib)</span>
-              <span>Page</span>
-              <span>Halaman/Modul</span>
-              <span>Sub Menu</span>
-              <span>Sub-menu/Bagian</span>
-              <span>Feature</span>
-              <span>Fitur yang ditest</span>
-              <span>Test</span>
-              <span>Deskripsi test</span>
-              <span>Action</span>
-              <span>Prasyarat/Aksi</span>
-              <span>Step / Steps</span>
-              <span>Langkah test</span>
-              <span>Expected Result</span>
-              <span>Hasil yang diharapkan</span>
-              <span>Actual Result</span>
-              <span>As Expected / Not As Expected</span>
-              <span>Status</span>
-              <span>Done / Not Done / Failed</span>
-              <span>Priority</span>
-              <span>Critical / High / Medium / Low</span>
-              <span>Remarks of Test</span>
-              <span>Catatan tambahan</span>
-              <span>Bobot / Weight</span>
-              <span>Bobot test case</span>
-            </div>
+            <div className="space-y-3 rounded-xl border border-border/60 bg-secondary/20 p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Format Kolom yang Didukung</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                <span>ID / Test Case ID</span>
+                <span className="text-foreground">Test Case ID (wajib)</span>
+                <span>Page</span>
+                <span className="text-foreground">Halaman/Modul</span>
+                <span>Sub Menu</span>
+                <span className="text-foreground">Sub-menu/Bagian</span>
+                <span>Feature</span>
+                <span className="text-foreground">Fitur yang ditest</span>
+                <span>Test</span>
+                <span className="text-foreground">Deskripsi test</span>
+                <span>Action</span>
+                <span className="text-foreground">Prasyarat/Aksi</span>
+                <span>Step / Steps</span>
+                <span className="text-foreground">Langkah test</span>
+                <span>Expected Result</span>
+                <span className="text-foreground">Hasil yang diharapkan</span>
+                <span>Actual Result</span>
+                <span className="text-foreground">As Expected / Not As Expected</span>
+                <span>Status</span>
+                <span className="text-foreground">Done / Not Done / Failed</span>
+                <span>Priority</span>
+                <span className="text-foreground">Critical / High / Medium / Low</span>
+                <span>Remarks of Test</span>
+                <span className="text-foreground">Catatan tambahan</span>
+                <span>Bobot / Weight</span>
+                <span className="text-foreground">Bobot test case</span>
+              </div>
             </div>
           )}
 
           {selectedFileName && (
-            <div className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+            <div className="flex items-center justify-between rounded-xl border border-border/60 bg-secondary/30 px-4 py-3 text-sm">
               <div className="flex min-w-0 items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600" />
-                <span className="truncate font-medium">{selectedFileName}</span>
+                <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span className="truncate font-semibold text-foreground">{selectedFileName}</span>
               </div>
-              {previewing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              {previewing && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             </div>
           )}
 
           {importPreview && (
-            <div className="space-y-3">
-              <div className="grid gap-2 sm:grid-cols-4">
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Sheet</p>
-                  <p className="text-xl font-semibold">{importPreview.totalSheets}</p>
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-4">
+                <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Sheet</p>
+                  <p className="text-2xl font-bold text-foreground">{importPreview.totalSheets}</p>
                 </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Total Row</p>
-                  <p className="text-xl font-semibold">{importPreview.totalRows}</p>
+                <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Total Row</p>
+                  <p className="text-2xl font-bold text-foreground">{importPreview.totalRows}</p>
                 </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Siap Import</p>
-                  <p className="text-xl font-semibold">{importPreview.importableRows}</p>
+                <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Siap Import</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{importPreview.importableRows}</p>
                 </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Issue</p>
-                  <p className="text-xl font-semibold">{importPreview.errorCount + importPreview.warningCount}</p>
+                <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Issue</p>
+                  <p className={`text-2xl font-bold ${importPreview.errorCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {importPreview.errorCount + importPreview.warningCount}
+                  </p>
                 </div>
               </div>
 
-              <div className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${
-                importPreview.canImport ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'
+              <div className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${
+                importPreview.canImport 
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/5 dark:text-emerald-300' 
+                  : 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-500/5 dark:text-red-300'
               }`}>
-                {importPreview.canImport ? <CheckCircle2 className="mt-0.5 h-4 w-4" /> : <XCircle className="mt-0.5 h-4 w-4" />}
-                <p>
+                {importPreview.canImport ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /> : <XCircle className="mt-0.5 h-5 w-5 shrink-0" />}
+                <p className="font-medium leading-relaxed">
                   {importPreview.canImport
                     ? 'File aman untuk diimport. Warning masih bisa kamu revisi setelah data masuk.'
                     : 'Ada error yang perlu dibereskan sebelum import, seperti duplicate ID, ID kosong, atau TC ID sudah ada di project.'}
                 </p>
               </div>
 
-              <ScrollArea className="h-[420px] rounded-lg border">
-                <div className="space-y-4 p-3">
+              <ScrollArea className="h-[420px] rounded-xl border border-border/60 bg-secondary/10">
+                <div className="space-y-6 p-4">
                   {importPreview.sheets.map((sheet) => {
                     const warningItems = Object.entries(sheet.missingRequiredCounts)
                       .filter(([field, count]) => field !== 'ID' && count > 0)
@@ -191,37 +199,37 @@ export function ImportExcelDialog({
                     ];
 
                     return (
-                      <div key={sheet.sheet} className="rounded-lg border bg-background">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
+                      <div key={sheet.sheet} className="rounded-xl border border-border/60 overflow-hidden">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 bg-secondary/30 p-4">
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-medium">{sheet.sheet}</p>
-                              {sheet.moduleName && <Badge variant="secondary">Module: {sheet.moduleName}</Badge>}
+                              <p className="font-semibold text-foreground">{sheet.sheet}</p>
+                              {sheet.moduleName && <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary text-[10px]">Module: {sheet.moduleName}</Badge>}
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              Header row {sheet.headerRow ?? '-'} · {sheet.importableRows}/{sheet.totalRows} row siap import
+                            <p className="text-[10px] font-medium text-muted-foreground mt-1">
+                              Header row {sheet.headerRow ?? '-'} · <span className="text-emerald-600 dark:text-emerald-400">{sheet.importableRows}/{sheet.totalRows}</span> row siap import
                             </p>
                           </div>
                           {errorItems.length > 0 ? (
-                            <Badge variant="destructive">{errorItems.length} error</Badge>
+                            <Badge variant="failed">{errorItems.length} error</Badge>
                           ) : warningItems.length > 0 ? (
-                            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">{warningItems.length} warning</Badge>
+                            <Badge variant="warning">{warningItems.length} warning</Badge>
                           ) : (
-                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">OK</Badge>
+                            <Badge variant="success">OK</Badge>
                           )}
                         </div>
 
                         {(errorItems.length > 0 || warningItems.length > 0) && (
-                          <div className="space-y-1 border-b p-3 text-xs">
+                          <div className="space-y-1.5 border-b border-border/50 bg-muted/30 p-4 text-[11px]">
                             {errorItems.map((item) => (
-                              <div key={item} className="flex items-start gap-2 text-red-700">
-                                <XCircle className="mt-0.5 h-3.5 w-3.5" />
+                              <div key={item} className="flex items-start gap-2 text-red-600 dark:text-red-400 font-medium">
+                                <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                                 <span>{item}</span>
                               </div>
                             ))}
                             {warningItems.map((item) => (
-                              <div key={item} className="flex items-start gap-2 text-amber-700">
-                                <AlertTriangle className="mt-0.5 h-3.5 w-3.5" />
+                              <div key={item} className="flex items-start gap-2 text-amber-600 dark:text-amber-400 font-medium">
+                                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                                 <span>{item}</span>
                               </div>
                             ))}
@@ -229,19 +237,19 @@ export function ImportExcelDialog({
                         )}
 
                         <Table>
-                          <TableHeader>
-                            <TableRow>
+                          <TableHeader className="bg-secondary/30">
+                            <TableRow className="border-border/50 hover:bg-transparent">
                               {['ID', 'Page', 'Sub Menu', 'Feature', 'Status'].map((header) => (
-                                <TableHead key={header}>{header}</TableHead>
+                                <TableHead key={header} className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-10">{header}</TableHead>
                               ))}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {sheet.previewRows.map((row, index) => (
-                              <TableRow key={`${sheet.sheet}-${index}`}>
+                              <TableRow key={`${sheet.sheet}-${index}`} className="border-border/30 hover:bg-secondary/20">
                                 {['ID', 'Page', 'Sub Menu', 'Feature', 'Status'].map((header) => (
-                                  <TableCell key={header} className="max-w-[220px] truncate">
-                                    {row[header] || <span className="text-muted-foreground">-</span>}
+                                  <TableCell key={header} className="max-w-[220px] truncate text-muted-foreground text-xs py-3">
+                                    {row[header] || <span className="text-muted-foreground/50">-</span>}
                                   </TableCell>
                                 ))}
                               </TableRow>
@@ -257,19 +265,19 @@ export function ImportExcelDialog({
           )}
 
           {!hasPreview && (
-            <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
-              <strong>Auto-detect:</strong> Header baris otomatis terdeteksi. Sheet dengan header di baris ke-2 atau ke-4 juga didukung.
+            <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 rounded-xl">
+              <span className="font-semibold">Auto-detect:</span> Header baris otomatis terdeteksi. Sheet dengan header di baris ke-2 atau ke-4 juga didukung.
             </p>
           )}
         </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => hasPreview ? onClearPreview() : onOpenChange(false)} disabled={busy}>
+        <DialogFooter className="gap-2 border-t border-border/50 pt-4">
+          <Button variant="outline" onClick={() => hasPreview ? onClearPreview() : onOpenChange(false)} disabled={busy} className="rounded-xl">
             {hasPreview ? 'Ganti File' : 'Batal'}
           </Button>
           <Button
             onClick={hasPreview ? onConfirmImport : onChooseFile}
             disabled={busy || (hasPreview && !importPreview?.canImport)}
-            className="gap-1.5"
+            className="gap-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 elevation-1"
           >
             {importing ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Mengimport...</>

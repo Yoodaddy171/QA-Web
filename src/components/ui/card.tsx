@@ -1,15 +1,39 @@
 import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+const cardVariants = cva(
+  "flex flex-col gap-6 rounded-2xl border transition-all duration-200",
+  {
+    variants: {
+      variant: {
+        default: "bg-card text-card-foreground elevation-1 border-border/60",
+        majestic: "bg-card text-card-foreground elevation-1 border-border/40 hover:elevation-2 hover:border-border/80",
+        glass: "bg-card/80 text-card-foreground elevation-2 border-border/50 backdrop-blur-xl",
+        filled: "bg-secondary text-secondary-foreground border-transparent elevation-0",
+        outlined: "bg-transparent text-card-foreground border-outline-variant elevation-0",
+      },
+      padding: {
+        default: "py-6",
+        none: "p-0",
+        sm: "py-4",
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      padding: "default",
+    },
+  }
+)
+
+interface CardProps extends React.ComponentProps<"div">, VariantProps<typeof cardVariants> {}
+
+function Card({ className, variant, padding, ...props }: CardProps) {
   return (
     <div
       data-slot="card"
-      className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
-        className
-      )}
+      className={cn(cardVariants({ variant, padding }), className)}
       {...props}
     />
   )
@@ -32,7 +56,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-      className={cn("leading-none font-semibold", className)}
+        className={cn("leading-none font-semibold text-foreground", className)}
       {...props}
     />
   )

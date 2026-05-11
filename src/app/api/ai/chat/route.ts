@@ -10,9 +10,9 @@ export const maxDuration = 60;
 
 const AI_MODEL = process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 const MAX_OUTPUT_TOKENS = 1100;
-const MAX_HISTORY_MESSAGES = 6;
-const MAX_HISTORY_CHARS = 3000;
-const MAX_CONTEXT_CHARS = 12000;
+const MAX_HISTORY_MESSAGES = 4;
+const MAX_HISTORY_CHARS = 2000;
+const MAX_CONTEXT_CHARS = 4000;
 const MAX_DRAFT_TEST_CASES = 5;
 const TESTCASE_ID_PATTERN = /\b[A-Z]{1,4}-\d{2,4}\b/g;
 const GENERIC_KEYWORDS = new Set([
@@ -617,6 +617,48 @@ async function getNextIdSequence(projectId: string, moduleId: string | null, cou
   return { prefix, width, lastNumber, nextIds };
 }
 
+function modulePrefix(moduleName: string): string {
+  const lower = moduleName.toLowerCase();
+  if (/pos|session|order|payment|discount|tax|home|statistic|table|scan/.test(lower)) return 'A-';
+  if (/kds|kitchen|chef|dapur/.test(lower)) return 'B-';
+  if (/kiosk/.test(lower)) return 'C-';
+  if (/queue|antrian|display/.test(lower)) return 'D-';
+  if (/customer|menu|order.*mobile|mobile.*order|dining/.test(lower)) return 'E-';
+  return 'A-';
+}
+
+function nextIdsForModule(prefix: string, startFrom: number, count: number): IdSequence {
+  const nextIds = Array.from({ length: count }, (_, index) => {
+    const nextNumber = startFrom + index + 1;
+    return `${prefix}${String(nextNumber).padStart(3, '0')}`;
+  });
+  return { prefix, width: 3, lastNumber: startFrom, nextIds };
+}
+
+async function nextIdSequenceForDraft(projectId: string, draft: Partial<TestCaseDraft>, modules: ModuleOption[]): Promise<IdSequence> {
+  const moduleName = draft.moduleId
+    ? modules.find(m => m.id === draft.moduleId)?.name || ''
+    : modules.find(m => /pos|session|order|payment/.test(m.name.toLowerCase()))?.name || '';
+
+  const prefix = moduleName ? modulePrefix(moduleName) : 'A-';
+
+  const testCases = await db.testCase.findMany({
+    where: {
+      projectId,
+      testCaseId: { startsWith: prefix.replace('-', '') },
+    },
+    select: { testCaseId: true },
+    orderBy: { testCaseId: 'desc' },
+    take: 1,
+  });
+
+  const lastNumber = testCases.length > 0
+    ? (parseTestCaseId(testCases[0].testCaseId)?.number || 0)
+    : 0;
+
+  return nextIdsForModule(prefix, lastNumber, MAX_DRAFT_TEST_CASES);
+}
+
 function requestedDraftCount(question: string) {
   const numberMatch = question.match(/\b(\d{1,2})\s*(testcase|test case|skenario|case)\b/i);
   if (numberMatch) return Math.min(Math.max(Number(numberMatch[1]), 1), MAX_DRAFT_TEST_CASES);
@@ -820,8 +862,31 @@ async function createRuleBasedFollowUpDrafts(projectId: string, history: ChatMes
     select: { id: true, name: true },
     orderBy: { name: 'asc' },
   });
-  const idSequence = await getNextIdSequence(projectId, null, tasks.length);
-  const drafts = tasks.map((task, index) => draftFromTask(task, idSequence.nextIds[index], modules));
+
+  const allPrefixes = ['A-', 'B-', 'C-', 'D-', 'E-'];
+  const nextIdByPrefix: Record<string, IdSequence> = {};
+  for (const prefix of allPrefixes) {
+    const tc = await db.testCase.findMany({
+      where: { projectId, testCaseId: { startsWith: prefix.replace('-', '') } },
+      select: { testCaseId: true },
+      orderBy: { testCaseId: 'desc' },
+      take: 1,
+    });
+    const last = tc.length > 0 ? (parseTestCaseId(tc[0].testCaseId)?.number || 0) : 0;
+    nextIdByPrefix[prefix] = nextIdsForModule(prefix, last, tasks.length);
+  }
+
+  const usedPrefixes = new Set<string>();
+  const drafts = tasks.map((task) => {
+    const draft = draftFromTask(task, 'TMP-001', modules);
+    const moduleId = draft.moduleId;
+    const moduleName = moduleId ? modules.find(m => m.id === moduleId)?.name || '' : '';
+    const prefix = modulePrefix(moduleName);
+    const seq = nextIdByPrefix[prefix];
+    if (!usedPrefixes.has(prefix)) usedPrefixes.add(prefix);
+    const idx = Array.from(usedPrefixes).indexOf(prefix);
+    return { ...draft, testCaseId: seq.nextIds[idx] || `${prefix}001` };
+  });
 
   return {
     answer: `Saya buatkan ${drafts.length} draft testcase dari daftar yang memang perlu dibuat. Silakan review dan edit detailnya sebelum Add.`,
@@ -835,22 +900,42 @@ async function createTestCaseDrafts(projectId: string, question: string, context
     select: { id: true, name: true },
     orderBy: { name: 'asc' },
   });
-  const count = requestedDraftCount(question);
-  const idSequence = await getNextIdSequence(projectId, null, count);
+
+  const allPrefixes = ['A-', 'B-', 'C-', 'D-', 'E-'];
+  const nextIdByPrefix: Record<string, IdSequence> = {};
+  for (const prefix of allPrefixes) {
+    const tc = await db.testCase.findMany({
+      where: { projectId, testCaseId: { startsWith: prefix.replace('-', '') } },
+      select: { testCaseId: true },
+      orderBy: { testCaseId: 'desc' },
+      take: 1,
+    });
+    const last = tc.length > 0 ? (parseTestCaseId(tc[0].testCaseId)?.number || 0) : 0;
+    nextIdByPrefix[prefix] = nextIdsForModule(prefix, last, MAX_DRAFT_TEST_CASES);
+  }
 
   const systemPrompt = `You are a QA testcase drafting assistant.
 Return ONLY valid JSON with keys "answer" and "test_cases".
 Each test case must be ready to review in a form, not saved automatically.
 Use Indonesian for testAction, steps, and expectedResult.
-Use the provided next testCaseId values exactly in order.
 Do not use data from another project.
 When the source is developer task text, convert it into user-facing QA/UI-UX regression scenarios.
 Do not repeat coverage analysis tables.
 Do not mention API endpoint, controller, service, function, DTO, OpenAPI, cache token, N+1, or internal variable names in testAction/steps/expectedResult.
-Write what the QA will see or do in the product, for example "membuka halaman statistik POS" instead of "mengakses API endpoint statistik".
-If several developer tasks are tightly related, group them into one practical testcase instead of creating duplicate low-value cases.
-For backend-only work that cannot be seen from UI, create a regression testcase only when there is a visible user outcome such as displayed data, totals, filters, history, login/profile data, or payment/order amount.
-If the user request includes an "ACTIONABLE QA TASKS ONLY" section, create drafts only for those bullet items and ignore the rest of the conversation.`;
+Write what the QA will see or do in the product.
+For backend-only work that cannot be seen from UI, create a regression testcase only when there is a visible user outcome.
+If the user request includes an "ACTIONABLE QA TASKS ONLY" section, create drafts only for those bullet items.
+ID PREFIX RULES:
+- POS/Session/Order/Payment/Table/Scan modules → A- prefix
+- KDS/Kitchen/Chef/Dapur modules → B- prefix
+- Kiosk module → C- prefix
+- Queue/Antrian/Display modules → D- prefix
+- Customer/Mobile/Menu/Dining modules → E- prefix
+Set moduleId correctly so each draft gets the right ID prefix!`;
+
+  const idInfo = Object.entries(nextIdByPrefix)
+    .map(([prefix, seq]) => `${prefix}: ${seq.nextIds.join(', ')}`)
+    .join('\n');
 
   const userMessage = `PROJECT CONTEXT:
 ${context}
@@ -858,15 +943,8 @@ ${context}
 Available modules:
 ${modules.map(module => `- ${module.name}: ${module.id}`).join('\n') || '- No modules'}
 
-Module selection guidance:
-- POS: POS dashboard, session history, table session, transaction total, discount, tax, grand total, payment, order summary.
-- Scan-to-Order: mobile menu URL, dining table name in customer mobile ordering flow.
-- Kiosk: kiosk ordering flow.
-- Customer Queue Display: queue display.
-- Kitchen Display System (KDS): kitchen/order preparation display.
-Choose the matching moduleId when the area is clear. Use null only when no module matches.
-
-Next testCaseId values to use exactly: ${idSequence.nextIds.join(', ')}
+Next testCaseId pool per prefix:
+${idInfo}
 
 User request:
 ${question}
@@ -876,16 +954,15 @@ JSON schema:
   "answer": "short Indonesian explanation",
   "test_cases": [
     {
-      "testCaseId": "string",
+      "testCaseId": "string (pick from the pool above — match prefix to module)",
       "page": "string",
       "subMenu": "string",
-      "weight": "",
       "testType": "Positive or Negative",
       "testAction": "string",
       "steps": "- step 1\\n- step 2",
       "expectedResult": "string",
       "priority": "Critical or High or Medium or Low",
-      "moduleId": "module id or null"
+      "moduleId": "string (module UUID)"
     }
   ]
 }`;
@@ -904,21 +981,33 @@ JSON schema:
   const raw = completion.choices[0]?.message?.content || '{}';
   const parsed = JSON.parse(raw);
   const generated = Array.isArray(parsed.test_cases) ? parsed.test_cases : [];
-  const drafts: TestCaseDraft[] = generated.slice(0, count).map((draft: Partial<TestCaseDraft>, index: number) => ({
-    testCaseId: idSequence.nextIds[index] || String(draft.testCaseId || ''),
-    page: toQaFriendlyText(draft.page),
-    subMenu: toQaFriendlyText(draft.subMenu),
-    weight: '',
-    testType: draft.testType === 'Negative' ? 'Negative' : 'Positive',
-    testAction: toQaFriendlyText(draft.testAction),
-    steps: String(draft.steps || '')
-      .split('\n')
-      .map(line => toQaFriendlyText(line))
-      .join('\n'),
-    expectedResult: toQaFriendlyText(draft.expectedResult),
-    priority: ['Critical', 'High', 'Medium', 'Low'].includes(String(draft.priority)) ? String(draft.priority) : 'Medium',
-    moduleId: inferModuleId(draft, modules),
-  })).filter(draft => draft.testCaseId && draft.page && draft.testAction && draft.steps && draft.expectedResult);
+
+  const usedPrefixes = new Set<string>();
+  const drafts: TestCaseDraft[] = generated.slice(0, MAX_DRAFT_TEST_CASES).map((draft: Partial<TestCaseDraft>) => {
+    const moduleId = inferModuleId(draft, modules);
+    const moduleName = moduleId ? modules.find(m => m.id === moduleId)?.name || '' : '';
+    const prefix = modulePrefix(moduleName);
+    const seq = nextIdByPrefix[prefix];
+    if (!usedPrefixes.has(prefix)) usedPrefixes.add(prefix);
+    const idx = Array.from(usedPrefixes).indexOf(prefix);
+    const testCaseId = seq.nextIds[idx] || `${prefix}001`;
+
+    return {
+      testCaseId,
+      page: toQaFriendlyText(draft.page),
+      subMenu: toQaFriendlyText(draft.subMenu),
+      weight: '',
+      testType: draft.testType === 'Negative' ? 'Negative' : 'Positive',
+      testAction: toQaFriendlyText(draft.testAction),
+      steps: String(draft.steps || '')
+        .split('\n')
+        .map(line => toQaFriendlyText(line))
+        .join('\n'),
+      expectedResult: toQaFriendlyText(draft.expectedResult),
+      priority: ['Critical', 'High', 'Medium', 'Low'].includes(String(draft.priority)) ? String(draft.priority) : 'Medium',
+      moduleId,
+    };
+  }).filter(draft => draft.testCaseId && draft.page && draft.testAction && draft.steps && draft.expectedResult);
 
   return {
     answer: String(parsed.answer || `Saya buatkan ${drafts.length} draft testcase. Review dulu sebelum disimpan.`),
@@ -962,11 +1051,11 @@ async function readRelevantKnowledge(projectId: string, question: string) {
     .map(item => ({ item, score: knowledgeScore(item, keywords) }))
     .filter(entry => entry.score > 0 || keywords.length === 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
-    .map(({ item }) => `### ${item.type}: ${item.title}\n${limitText(item.content, 1400)}`);
+    .slice(0, 4)
+    .map(({ item }) => `### ${item.type}: ${item.title}\n${limitText(item.content, 500)}`);
 
   return relevant.length > 0
-    ? limitText(relevant.join('\n\n'), 6000)
+    ? limitText(relevant.join('\n\n'), 1500)
     : '';
 }
 
@@ -1061,7 +1150,7 @@ async function buildProjectContext(projectId: string, question: string, selected
         updatedAt: true,
       },
       orderBy: { updatedAt: 'desc' },
-      take: 15,
+      take: 6,
     }),
     db.testCase.findMany({
       where: { projectId },
@@ -1076,7 +1165,7 @@ async function buildProjectContext(projectId: string, question: string, selected
         updatedAt: true,
       },
       orderBy: { updatedAt: 'desc' },
-      take: 8,
+      take: 4,
     }),
     db.bugFix.findMany({
       where: {
@@ -1097,49 +1186,32 @@ async function buildProjectContext(projectId: string, question: string, selected
         updatedAt: true,
       },
       orderBy: { updatedAt: 'desc' },
-      take: 8,
+      take: 4,
     }),
   ]);
 
   const lines = [
-    `PROJECT: ${project.name} (${project.id})`,
-    `Description: ${limitText(project.description, 500) || '-'}`,
-    `Automation context: ${limitText(project.automationContext, 900) || '-'}`,
-    `Totals: ${project._count.testCases} test cases, ${project._count.modules} modules, ${project._count.bugFixItems} bug fixes`,
-    `TestCase status: ${statusGroups.map(item => `${item.status}=${item._count.id}`).join(', ') || '-'}`,
-    `BugFix status: ${bugStatusGroups.map(item => `${item.status}=${item._count.id}`).join(', ') || '-'}`,
-    `Priority: ${priorityGroups.map(item => `${item.priority}=${item._count.id}`).join(', ') || '-'}`,
+    `PROJECT: ${project.name}`,
+    `Totals: ${project._count.testCases} TC, ${project._count.modules} mods, ${project._count.bugFixItems} bugs`,
+    `TC status: ${statusGroups.map(item => `${item.status}=${item._count.id}`).join(', ') || '-'}`,
+    `Bug status: ${bugStatusGroups.map(item => `${item.status}=${item._count.id}`).join(', ') || '-'}`,
     '',
     'MODULES:',
-    ...modules.map(module => `- ${module.name}: ${module._count.testCases} testcases, ${module._count.bugFixItems} bugfix`),
-    '',
-    `SEARCH KEYWORDS USED: ${keywords.length ? keywords.join(', ') : '-'}`,
-    '',
-    'PROJECT PULSE (Health Check):',
-    `- Critical/High Issues: ${priorityGroups.filter(p => ['Critical', 'High'].includes(p.priority)).reduce((acc, p) => acc + p._count.id, 0)} items pending.`,
-    `- Failed Tests: ${statusGroups.find(s => s.status === 'FAILED')?._count.id || 0} cases need attention.`,
-    `- Ready to Retest: ${statusGroups.find(s => s.status === 'READY TO RETEST')?._count.id || 0} fixes waiting for verification.`,
+    ...modules.map(module => `- ${module.name}: ${module._count.testCases} TC${module._count.bugFixItems > 0 ? `, ${module._count.bugFixItems} bugs` : ''}`),
   ];
 
   if (projectKnowledge) {
-    lines.push(
-      '',
-      'PROJECT KNOWLEDGE:',
-      projectKnowledge,
-    );
+    lines.push('', 'PROJECT KNOWLEDGE:', projectKnowledge);
   }
 
   if (selectedRecord) {
     lines.push(
       '',
-      'CURRENTLY OPEN TEST CASE:',
-      `- [${selectedRecord.testCaseId}] ${selectedRecord.module?.name || 'No module'} > ${selectedRecord.page}${selectedRecord.subMenu ? ` > ${selectedRecord.subMenu}` : ''}`,
-      `  Status=${selectedRecord.status}, Progress=${selectedRecord.progress}, Priority=${selectedRecord.priority}, Type=${selectedRecord.testType}`,
-      `  Action=${limitText(selectedRecord.testAction, 500)}`,
-      `  Steps=${limitText(selectedRecord.steps, 900)}`,
-      `  Expected=${limitText(selectedRecord.expectedResult, 600)}`,
-      `  Actual=${limitText(selectedRecord.actualResult, 400) || '-'}`,
-      `  Remarks=${limitText(selectedRecord.remarks, 400) || '-'}`,
+      `OPEN TC [${selectedRecord.testCaseId}]: ${selectedRecord.module?.name || '-'} > ${selectedRecord.page}${selectedRecord.subMenu ? ` > ${selectedRecord.subMenu}` : ''}`,
+      `Status=${selectedRecord.status}, Priority=${selectedRecord.priority}`,
+      `Action: ${limitText(selectedRecord.testAction, 200)}`,
+      `Steps: ${limitText(selectedRecord.steps, 400)}`,
+      `Expected: ${limitText(selectedRecord.expectedResult, 300)}`,
     );
   }
 
@@ -1148,23 +1220,17 @@ async function buildProjectContext(projectId: string, question: string, selected
       '',
       'MATCHING TEST CASES:',
       ...matchingTestCases.map(testCase => {
-        const prefix = `[${testCase.testCaseId}] ${testCase.module?.name || 'No module'} > ${testCase.page}${testCase.subMenu ? ` > ${testCase.subMenu}` : ''}`;
-        return `- ${prefix} | ${testCase.status} | ${testCase.priority} | action=${limitText(testCase.testAction, 260)} | expected=${limitText(testCase.expectedResult, 220)}`;
+        return `- [${testCase.testCaseId}] ${testCase.module?.name || '-'} | ${testCase.status} | ${testCase.priority} | ${limitText(testCase.testAction, 150)}`;
       }),
     );
   } else if (coverageQuestion) {
-    lines.push(
-      '',
-      'MATCHING TEST CASES:',
-      '- No direct matching testcase found from searchable fields. Do not use recent testcase fallback for this coverage question.',
-    );
+    lines.push('', 'MATCHING TEST CASES: none found for coverage question');
   } else {
     lines.push(
       '',
       'RECENT TEST CASES:',
       ...recentTestCases.map(testCase => {
-        const prefix = `[${testCase.testCaseId}] ${testCase.module?.name || 'No module'} > ${testCase.page}${testCase.subMenu ? ` > ${testCase.subMenu}` : ''}`;
-        return `- ${prefix} | ${testCase.status} | ${testCase.priority} | ${limitText(testCase.testAction, 260)}`;
+        return `- [${testCase.testCaseId}] ${testCase.module?.name || '-'} | ${testCase.status} | ${testCase.priority} | ${limitText(testCase.testAction, 150)}`;
       }),
     );
   }
@@ -1172,8 +1238,8 @@ async function buildProjectContext(projectId: string, question: string, selected
   if (matchingBugFixes.length > 0) {
     lines.push(
       '',
-      'MATCHING BUG FIX ITEMS:',
-      ...matchingBugFixes.map(bug => `- [${bug.testCaseId}] ${bug.module?.name || 'No module'} > ${bug.page}${bug.subMenu ? ` > ${bug.subMenu}` : ''} | ${bug.status} | ${bug.priority} | actual=${limitText(bug.actualResult, 220)}`),
+      'MATCHING BUG FIXES:',
+      ...matchingBugFixes.map(bug => `- [${bug.testCaseId}] ${bug.module?.name || '-'} | ${bug.status} | ${limitText(bug.actualResult, 120)}`),
     );
   }
 
@@ -1226,7 +1292,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Prepare ID sequence in case the AI wants to draft
-    const idSequence = await getNextIdSequence(projectId, null, MAX_DRAFT_TEST_CASES);
     const safetyContext = buildAgenticSafetyContext(question, history);
 
     const systemPrompt = `You are "QA Copilot", a Senior QA Automation & Strategy Partner with deep expertise in software testing.
@@ -1254,7 +1319,7 @@ JSON SCHEMA:
   "answer": "string (your conversational response in Indonesian, use markdown for formatting — tables, bullets, bold, code blocks as needed)",
   "test_cases": [
     {
-      "testCaseId": "string (use provided IDs: ${idSequence.nextIds.join(', ')})",
+      "testCaseId": "string (MUST be one of the provided IDs, e.g. A-001, B-003 — assign each draft the correct ID in sequence)",
       "page": "string",
       "subMenu": "string",
       "testType": "Positive or Negative",
@@ -1262,12 +1327,21 @@ JSON SCHEMA:
       "steps": "string (numbered steps with newlines)",
       "expectedResult": "string",
       "priority": "Critical or High or Medium or Low",
-      "moduleId": "string (UUID from Available Modules) or null"
+      "moduleId": "string (UUID — use the moduleId that matches the test case area. Set moduleId correctly so each draft gets the right ID prefix. Check AVAILABLE MODULES table above.)"
     }
   ]
 }
 
 Note: "test_cases" array should be empty [] when you're just chatting/answering questions without creating test cases.
+
+ID PREFIX RULES:
+- POS/Session/Order/Payment/Table/Scan modules → A- prefix (e.g. A-001)
+- KDS/Kitchen/Chef/Dapur modules → B- prefix (e.g. B-001)
+- Kiosk module → C- prefix (e.g. C-001)
+- Queue/Antrian/Display modules → D- prefix (e.g. D-001)
+- Customer/Mobile/Menu/Dining modules → E- prefix (e.g. E-001)
+- Assign IDs in the order drafts appear. If creating 3 drafts and IDs are [A-001, A-002, A-003], use them in order.
+- CRITICAL: Set moduleId correctly — the testCaseId prefix is determined by which module you select!
 
 AVAILABLE MODULES:
 ${modules.map(m => `- ${m.name}: ${m.id}`).join('\n')}
@@ -1281,7 +1355,7 @@ STRICT DATA RULES:
     const completion = await groq.chat.completions.create({
       model: AI_MODEL,
       temperature: 0.4,
-      max_tokens: 2400,
+      max_tokens: 1000,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
@@ -1294,21 +1368,46 @@ STRICT DATA RULES:
 
     const raw = completion.choices[0]?.message?.content || '{}';
     const parsed = JSON.parse(raw);
-    
-    // Clean and normalize any generated drafts
+
     const rawDrafts: AgentDraft[] = Array.isArray(parsed.test_cases) ? parsed.test_cases.slice(0, MAX_DRAFT_TEST_CASES) : [];
-    let drafts: TestCaseDraft[] = rawDrafts.map((draft, index) => ({
-      testCaseId: idSequence.nextIds[index] || String(draft.testCaseId || ''),
-      page: toQaFriendlyText(draft.page),
-      subMenu: toQaFriendlyText(draft.subMenu),
-      weight: '',
-      testType: draft.testType === 'Negative' ? 'Negative' : 'Positive',
-      testAction: toQaFriendlyText(draft.testAction),
-      steps: String(draft.steps || '').split('\n').map(line => toQaFriendlyText(line)).join('\n'),
-      expectedResult: toQaFriendlyText(draft.expectedResult),
-      priority: ['Critical', 'High', 'Medium', 'Low'].includes(String(draft.priority)) ? String(draft.priority) : 'Medium',
-      moduleId: inferModuleId(draft, modules),
-    })).filter(d => d.testCaseId && d.page && d.testAction && d.steps && d.expectedResult);
+    const allPrefixes = ['A-', 'B-', 'C-', 'D-', 'E-'];
+    const nextIdByPrefix: Record<string, IdSequence> = {};
+    for (const prefix of allPrefixes) {
+      const tc = await db.testCase.findMany({
+        where: { projectId, testCaseId: { startsWith: prefix.replace('-', '') } },
+        select: { testCaseId: true },
+        orderBy: { testCaseId: 'desc' },
+        take: 1,
+      });
+      const last = tc.length > 0 ? (parseTestCaseId(tc[0].testCaseId)?.number || 0) : 0;
+      nextIdByPrefix[prefix] = nextIdsForModule(prefix, last, MAX_DRAFT_TEST_CASES);
+    }
+
+    const usedPrefixes = new Set<string>();
+    let drafts: TestCaseDraft[] = rawDrafts.map((draft) => {
+      const moduleId = inferModuleId(draft, modules);
+      const moduleName = moduleId
+        ? modules.find(m => m.id === moduleId)?.name || ''
+        : '';
+      const prefix = modulePrefix(moduleName);
+      const seq = nextIdByPrefix[prefix];
+      if (!usedPrefixes.has(prefix)) usedPrefixes.add(prefix);
+      const idx = Array.from(usedPrefixes).indexOf(prefix);
+      const testCaseId = seq.nextIds[idx] || `${prefix}001`;
+
+      return {
+        testCaseId,
+        page: toQaFriendlyText(draft.page),
+        subMenu: toQaFriendlyText(draft.subMenu),
+        weight: '',
+        testType: draft.testType === 'Negative' ? 'Negative' : 'Positive',
+        testAction: toQaFriendlyText(draft.testAction),
+        steps: String(draft.steps || '').split('\n').map(line => toQaFriendlyText(line)).join('\n'),
+        expectedResult: toQaFriendlyText(draft.expectedResult),
+        priority: ['Critical', 'High', 'Medium', 'Low'].includes(String(draft.priority)) ? String(draft.priority) : 'Medium',
+        moduleId,
+      };
+    }).filter(d => d.testCaseId && d.page && d.testAction && d.steps && d.expectedResult);
 
     if (drafts.length === 0 && isCreateFollowUpRequest(question, history)) {
       const fallback = await createTestCaseDrafts(projectId, buildDraftQuestion(question, history), context);

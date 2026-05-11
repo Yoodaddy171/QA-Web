@@ -47,9 +47,9 @@ export async function GET(req: NextRequest) {
     const search = url.searchParams.get('search');
     const page = parsePositiveInt(url.searchParams.get('page'), 1, 100000);
     const limit = parsePositiveInt(url.searchParams.get('limit'), 50, 200);
-    const requestedSortBy = url.searchParams.get('sortBy') || 'createdAt';
-    const sortBy = TESTCASE_SORT_FIELDS.has(requestedSortBy) ? requestedSortBy : 'createdAt';
-    const sortOrder = url.searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
+    const requestedSortBy = url.searchParams.get('sortBy') || 'testCaseId';
+    const sortBy = TESTCASE_SORT_FIELDS.has(requestedSortBy) ? requestedSortBy : 'testCaseId';
+    const sortOrder = url.searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
 
     const where: Record<string, unknown> = {};
     if (projectId) {
@@ -57,7 +57,9 @@ export async function GET(req: NextRequest) {
       if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
       where.projectId = projectId;
     }
-    if (moduleId) {
+    if (moduleId === 'unassigned') {
+      where.moduleId = null;
+    } else if (moduleId) {
       const moduleRecord = await db.module.findFirst({
         where: { id: moduleId, ...(projectId ? { projectId } : {}) },
         select: { id: true },

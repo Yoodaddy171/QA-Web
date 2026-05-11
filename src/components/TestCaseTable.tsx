@@ -4,8 +4,9 @@ import React from 'react';
 import {
   ArrowUpDown, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
   FileSpreadsheet, MoreHorizontal, Plus, RefreshCw, Search, Settings2,
-  Sparkles, Trash2, Upload
+  Sparkles, Trash2, Upload, X
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,6 +19,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+
+const MotionTableRow = motion(TableRow);
 
 interface Module {
   id: string;
@@ -111,6 +115,7 @@ interface TestCaseTableProps {
   requestDelete: (testCase: TestCase) => void;
   getStatusColor: (status: string) => string;
   getStatusIcon: (status: string) => React.ReactNode;
+  getStatusBadgeVariant: (status: string) => 'success' | 'failed' | 'warning' | 'info' | 'notdone' | 'inprogress' | 'blocked' | 'readyretest' | 'verifiedfixed' | 'tba' | 'outline';
   getPriorityColor: (priority: string) => string;
   getTestTypeColor: (type: string) => string;
   isLoading?: boolean;
@@ -156,12 +161,26 @@ export function TestCaseTable({
   requestDelete,
   getStatusColor,
   getStatusIcon,
+  getStatusBadgeVariant,
   getPriorityColor,
   getTestTypeColor,
   isLoading,
   onQuickStatusChange,
 }: TestCaseTableProps) {
   const resetPage = () => setPage(1);
+  const hasActiveFilters = Boolean(search)
+    || filterStatus !== 'all'
+    || filterTestType !== 'all'
+    || filterPriority !== 'all'
+    || filterModule !== 'all';
+  const resetFilters = () => {
+    setSearch('');
+    setFilterStatus('all');
+    setFilterTestType('all');
+    setFilterPriority('all');
+    setFilterModule('all');
+    setPage(1);
+  };
   const selectTriggerClass = 'h-9 rounded-md border-border/60 bg-secondary/50 text-foreground text-sm shadow-sm';
   const toolbarButtonClass = 'h-9 rounded-md gap-1.5 font-semibold';
   const formatLastRun = (dateStr: string | null) => {
@@ -170,7 +189,12 @@ export function TestCaseTable({
   };
 
   return (
-    <div className="min-w-0 space-y-4 overflow-x-hidden">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="min-w-0 space-y-4 overflow-x-hidden"
+    >
       <div className="rounded-lg border border-white/5 bg-secondary/50 p-3 shadow-xl backdrop-blur-sm">
         <div className="flex min-w-0 flex-col gap-3 lg:flex-row">
         <div className="relative min-w-0 flex-1">
@@ -215,7 +239,7 @@ export function TestCaseTable({
               <SelectItem value="Low">Low</SelectItem>
             </SelectContent>
           </Select>
-          {modules.length > 0 && (
+          {(modules.length > 0 || filterModule === 'unassigned') && (
             <Select value={filterModule} onValueChange={(v) => { setFilterModule(v); resetPage(); }}>
               <SelectTrigger className={`h-9 w-full border-border/60 bg-secondary/50 text-foreground rounded-md text-sm shadow-sm sm:w-[165px]`}><SelectValue placeholder="Module" /></SelectTrigger>
               <SelectContent className="bg-card elevation-3 border-border/60 text-foreground">
@@ -223,9 +247,21 @@ export function TestCaseTable({
                 {modules.map((m) => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
+                <SelectItem value="unassigned">Tanpa Module</SelectItem>
               </SelectContent>
             </Select>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={resetFilters}
+            disabled={!hasActiveFilters}
+            className="h-9 rounded-md gap-1.5 border-border/60 bg-secondary/50 text-sm font-semibold text-foreground shadow-sm disabled:opacity-40"
+          >
+            <X className="h-4 w-4" />
+            Reset
+          </Button>
         </div>
         </div>
       </div>
@@ -301,6 +337,7 @@ export function TestCaseTable({
                     className="border-white/20 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
                   />
                 </TableHead>
+                <TableHead className="w-[52px] text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">No</TableHead>
                 <TableHead className="w-[86px] cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
                   <div className="flex items-center gap-1">ID <ArrowUpDown className="w-3 h-3" /></div>
                 </TableHead>
@@ -312,9 +349,9 @@ export function TestCaseTable({
                 <TableHead className="hidden w-[88px] text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Tipe</TableHead>
                 <TableHead className="hidden w-[94px] text-[10px] font-black uppercase tracking-widest text-muted-foreground md:table-cell">Prioritas</TableHead>
                 <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground md:table-cell">Test Action</TableHead>
-                <TableHead className="w-[120px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
-                <TableHead className="hidden w-[100px] text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Hasil</TableHead>
-                <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Test Record</TableHead>
+                <TableHead className="w-[150px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                <TableHead className="hidden w-[140px] text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Hasil</TableHead>
+                <TableHead className="hidden w-[160px] text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Test Record</TableHead>
                 <TableHead className="hidden w-[92px] text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Progress</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
@@ -322,7 +359,7 @@ export function TestCaseTable({
             <TableBody>
               {testCases.length === 0 ? (
                 <TableRow className="border-white/5">
-                  <TableCell colSpan={13} className="h-44 text-center">
+                  <TableCell colSpan={14} className="h-44 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <FileSpreadsheet className="h-9 w-9 opacity-20" />
                       <p className="text-sm font-bold uppercase tracking-tight">
@@ -335,17 +372,26 @@ export function TestCaseTable({
                   </TableCell>
                 </TableRow>
               ) : (
-                testCases.map((tc) => {
+                testCases.map((tc, index) => {
                   const record = testRecordById[tc.id];
 
                   return (
-                  <TableRow key={tc.id} className="group border-white/5 hover:bg-white/[0.02] transition-colors">
+                  <MotionTableRow 
+                    key={tc.id} 
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: Math.min(index * 0.015, 0.4), duration: 0.2 }}
+                    className="group border-white/5 hover:bg-white/[0.02] transition-colors"
+                  >
                     <TableCell className="pl-4">
                       <Checkbox
                         checked={selectedIds.has(tc.id)}
                         onCheckedChange={() => toggleSelect(tc.id)}
                         className="border-white/20 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
                       />
+                    </TableCell>
+                    <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">
+                      {(page - 1) * limit + index + 1}
                     </TableCell>
                     <TableCell className="font-mono text-sm font-black text-foreground whitespace-nowrap">{tc.testCaseId}</TableCell>
                     <TableCell className="font-bold text-foreground text-sm max-w-[140px] truncate" title={tc.page}>{tc.page}</TableCell>
@@ -375,7 +421,7 @@ export function TestCaseTable({
                     <TableCell className="hidden xl:table-cell">
                       {onQuickStatusChange ? (
                         <Select value={tc.status} onValueChange={(val) => onQuickStatusChange(tc.id, val)}>
-                          <SelectTrigger className="h-7 w-[130px] rounded-lg border-border/60 bg-secondary/30 text-[10px] font-bold shadow-none gap-1 px-2">
+                          <SelectTrigger className={cn("h-7 w-[130px] rounded-lg text-[10px] font-bold shadow-none gap-1 px-2", getStatusColor(tc.status))}>
                             {getStatusIcon(tc.status)} <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
@@ -389,12 +435,12 @@ export function TestCaseTable({
                           </SelectContent>
                         </Select>
                       ) : (
-                        <Badge variant={tc.status === 'DONE' ? 'success' : tc.status === 'FAILED' ? 'failed' : tc.status === 'IN PROGRESS' ? 'warning' : 'outline'} className="gap-1 text-[10px] font-black">
+                        <Badge variant={getStatusBadgeVariant(tc.status)} className="gap-1 text-[10px] font-black">
                           {getStatusIcon(tc.status)} {tc.status}
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="hidden xl:table-cell">
+                    <TableCell className="hidden xl:table-cell px-3">
                       {tc.actualResult ? (
                         <Badge variant={tc.actualResult === 'As Expected' ? 'success' : tc.actualResult === 'Not As Expected' ? 'failed' : 'outline'} className="text-[10px] font-black">
                           {tc.actualResult}
@@ -403,7 +449,7 @@ export function TestCaseTable({
                         <span className="text-xs text-slate-600">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell className="hidden lg:table-cell px-3">
                       {record ? (
                         <div className="space-y-1">
                           <div className="flex flex-wrap gap-1">
@@ -458,7 +504,7 @@ export function TestCaseTable({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                  </TableRow>
+                  </MotionTableRow>
                   );
                 })
               )}
@@ -501,6 +547,6 @@ export function TestCaseTable({
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

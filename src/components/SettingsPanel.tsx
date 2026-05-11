@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BookOpen, Edit3, FolderOpen, FolderPlus, Layers, Save, Trash, Upload, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -175,7 +176,12 @@ export function SettingsPanel({
   };
 
   return (
-    <div className="space-y-6 pb-8">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-6 pb-8"
+    >
       {/* Projects Card */}
       <Card variant="majestic">
         <CardHeader className="pb-3 border-b border-border/50 mb-4">
@@ -191,9 +197,12 @@ export function SettingsPanel({
             <p className="text-sm text-muted-foreground text-center py-6 font-medium">Belum ada project. Buat project baru untuk memulai.</p>
           ) : (
             <div className="space-y-2">
-              {projects.map((project) => (
-                <div
+              {projects.map((project, index) => (
+                <motion.div
                   key={project.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05, duration: 0.2 }}
                   className={`flex items-center justify-between rounded-xl border p-4 transition-all duration-200 ${
                     selectedProject === project.id 
                       ? 'border-primary/40 bg-primary/5' 
@@ -248,7 +257,7 @@ export function SettingsPanel({
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
@@ -368,8 +377,14 @@ export function SettingsPanel({
                   <p className="py-4 text-center text-[11px] font-medium text-muted-foreground">Belum ada project knowledge.</p>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2">
-                    {knowledgeItems.map(item => (
-                      <div key={item.id} className="rounded-xl border border-border/60 bg-secondary/30 p-4 hover:border-border hover:bg-secondary/60 transition-all group">
+                    {knowledgeItems.map((item, index) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.05, duration: 0.2 }}
+                        className="rounded-xl border border-border/60 bg-secondary/30 p-4 hover:border-border hover:bg-secondary/60 transition-all group"
+                      >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
@@ -404,7 +419,7 @@ export function SettingsPanel({
                             </Button>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}
@@ -450,6 +465,6 @@ export function SettingsPanel({
           )}
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }

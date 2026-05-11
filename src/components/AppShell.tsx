@@ -43,6 +43,8 @@ const NAV_ITEMS = [
   { value: 'settings', label: 'Settings', icon: Settings2 },
 ] as const;
 
+import { motion, AnimatePresence } from 'framer-motion';
+
 export function AppShell({
   projects,
   selectedProject,
@@ -97,10 +99,17 @@ export function AppShell({
                       : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline">{item.label}</span>
                   {isActive && (
-                    <span className="absolute -bottom-0.5 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full bg-primary-foreground/50 md:hidden" />
+                    <motion.div
+                      layoutId="nav-pill"
+                      className="absolute inset-0 rounded-xl bg-primary shadow-sm"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <Icon className={cn("h-4 w-4 shrink-0 relative z-10", isActive && "text-primary-foreground")} />
+                  <span className={cn("hidden md:inline relative z-10", isActive && "text-primary-foreground")}>{item.label}</span>
+                  {isActive && (
+                    <span className="absolute -bottom-0.5 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full bg-primary-foreground/50 md:hidden z-10" />
                   )}
                 </button>
               );
@@ -117,11 +126,21 @@ export function AppShell({
       {/* ===== MAIN CONTENT ===== */}
       <main className="mx-auto min-w-0 max-w-[1440px] overflow-x-hidden px-5 py-6 sm:px-8 sm:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsContent value="dashboard" className="m-0">{activeTab === 'dashboard' ? children.dashboard : null}</TabsContent>
-          <TabsContent value="testcases" className="m-0">{activeTab === 'testcases' ? children.testcases : null}</TabsContent>
-          <TabsContent value="bugfix" className="m-0">{activeTab === 'bugfix' ? children.bugfix : null}</TabsContent>
-          <TabsContent value="automated" className="m-0">{activeTab === 'automated' ? children.automated : null}</TabsContent>
-          <TabsContent value="settings" className="m-0">{activeTab === 'settings' ? children.settings : null}</TabsContent>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              <TabsContent value="dashboard" className="m-0">{activeTab === 'dashboard' ? children.dashboard : null}</TabsContent>
+              <TabsContent value="testcases" className="m-0">{activeTab === 'testcases' ? children.testcases : null}</TabsContent>
+              <TabsContent value="bugfix" className="m-0">{activeTab === 'bugfix' ? children.bugfix : null}</TabsContent>
+              <TabsContent value="automated" className="m-0">{activeTab === 'automated' ? children.automated : null}</TabsContent>
+              <TabsContent value="settings" className="m-0">{activeTab === 'settings' ? children.settings : null}</TabsContent>
+            </motion.div>
+          </AnimatePresence>
         </Tabs>
       </main>
     </div>

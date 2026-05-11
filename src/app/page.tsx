@@ -186,6 +186,8 @@ interface Stats {
   }[];
 }
 
+type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
+
 interface GeneratedTestCasePreview {
   testCaseId: string;
   page: string;
@@ -211,19 +213,42 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
 }
 
 const LAST_PROJECT_STORAGE_KEY = 'web-qa:last-project-id';
+const LAST_ACTIVE_TAB_STORAGE_KEY = 'web-qa:last-active-tab';
+const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'settings'] as const;
+type AppTab = typeof APP_TABS[number];
+
+const getInitialActiveTab = (): AppTab => {
+  if (typeof window === 'undefined') return 'dashboard';
+  const savedTab = window.localStorage.getItem(LAST_ACTIVE_TAB_STORAGE_KEY);
+  return APP_TABS.includes(savedTab as AppTab) ? savedTab as AppTab : 'dashboard';
+};
 
 // ============== PURE UTILITY FUNCTIONS (outside component to avoid re-creation) ==============
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'DONE': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-    case 'NOT DONE': return 'bg-gray-100 text-gray-800 border-gray-200';
-    case 'IN PROGRESS': return 'bg-amber-100 text-amber-800 border-amber-200';
-    case 'BLOCKED': return 'bg-red-100 text-red-800 border-red-200';
-    case 'FAILED': return 'bg-red-100 text-red-800 border-red-200';
-    case 'READY TO RETEST': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
-    case 'VERIFIED & FIXED': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-    case 'TBA': return 'bg-purple-100 text-purple-800 border-purple-200';
-    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    case 'DONE': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-100 dark:text-emerald-800 dark:border-emerald-200';
+    case 'NOT DONE': return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-100 dark:text-gray-800 dark:border-gray-200';
+    case 'IN PROGRESS': return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-100 dark:text-amber-800 dark:border-amber-200';
+    case 'BLOCKED': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-100 dark:text-red-800 dark:border-red-200';
+    case 'FAILED': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-100 dark:text-red-800 dark:border-red-200';
+    case 'READY TO RETEST': return 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-100 dark:text-cyan-800 dark:border-cyan-200';
+    case 'VERIFIED & FIXED': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-100 dark:text-emerald-800 dark:border-emerald-200';
+    case 'TBA': return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-100 dark:text-purple-800 dark:border-purple-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-100 dark:text-gray-800 dark:border-gray-200';
+  }
+};
+
+const getStatusBadgeVariant = (status: string) => {
+  switch (status) {
+    case 'DONE': return 'success';
+    case 'NOT DONE': return 'notdone';
+    case 'IN PROGRESS': return 'inprogress';
+    case 'BLOCKED': return 'blocked';
+    case 'FAILED': return 'failed';
+    case 'READY TO RETEST': return 'readyretest';
+    case 'VERIFIED & FIXED': return 'verifiedfixed';
+    case 'TBA': return 'tba';
+    default: return 'outline';
   }
 };
 
@@ -267,7 +292,7 @@ export default function TestCaseManager() {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [selectedProject, setSelectedProject] = useState<string>('');
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState<AppTab>(getInitialActiveTab);
 
   // Filter & search
   const [search, setSearch] = useState('');
@@ -275,8 +300,8 @@ export default function TestCaseManager() {
   const [filterTestType, setFilterTestType] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterModule, setFilterModule] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('createdAt');
-  const [sortOrder, setSortOrder] = useState<string>('desc');
+  const [sortBy, setSortBy] = useState<string>('testCaseId');
+  const [sortOrder, setSortOrder] = useState<string>('asc');
   const debouncedSearch = useDebouncedValue(search, 300);
 
   // Pagination
@@ -309,6 +334,7 @@ export default function TestCaseManager() {
   // Form state
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
   const [viewTestCase, setViewTestCase] = useState<TestCase | null>(null);
+  const [navigationContextList, setNavigationContextList] = useState<TestCase[] | null>(null);
   const [draftTestCase, setDraftTestCase] = useState<Partial<typeof EMPTY_TEST_CASE> | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
@@ -333,12 +359,14 @@ export default function TestCaseManager() {
   const [bugFixItems, setBugFixItems] = useState<BugFixItem[]>([]);
   const [bugFixSearch, setBugFixSearch] = useState('');
   const [bugFixFilterStatus, setBugFixFilterStatus] = useState<string>('all');
+  const [bugFixFilterModule, setBugFixFilterModule] = useState<string>('all');
   const [bugFixTab, setBugFixTab] = useState<'active' | 'resolved'>('active');
   const debouncedBugFixSearch = useDebouncedValue(bugFixSearch, 300);
 
   // Test record state
   const [automatedItems, setAutomatedItems] = useState<AutomatedTestCase[]>([]);
   const [automatedSearch, setAutomatedSearch] = useState('');
+  const [automatedFilterModule, setAutomatedFilterModule] = useState<string>('all');
   const [automatedLoading, setAutomatedLoading] = useState(false);
 
   // Import state
@@ -387,8 +415,35 @@ export default function TestCaseManager() {
   } = useAutomationLogs({ viewTestCase, setViewTestCase });
 
   const visibleBugFixItems = useMemo(
-    () => bugFixItems.filter(bf => bugFixTab === 'resolved' ? bf.status === 'VERIFIED & FIXED' : bf.status !== 'VERIFIED & FIXED'),
-    [bugFixItems, bugFixTab]
+    () => bugFixItems.filter((bf) => {
+      const tabMatches = bugFixTab === 'resolved'
+        ? bf.status === 'VERIFIED & FIXED'
+        : bf.status !== 'VERIFIED & FIXED';
+      if (!tabMatches) return false;
+      if (bugFixFilterModule === 'all') return true;
+      return (bf.moduleId || 'unassigned') === bugFixFilterModule;
+    }),
+    [bugFixItems, bugFixTab, bugFixFilterModule]
+  );
+  const visibleAutomatedItems = useMemo(
+    () => automatedItems.filter((item) => {
+      if (automatedFilterModule !== 'all') {
+        const moduleKey = item.moduleId || 'unassigned';
+        if (moduleKey !== automatedFilterModule) return false;
+      }
+
+      const keyword = automatedSearch.trim().toLowerCase();
+      if (!keyword) return true;
+      return [
+        item.testCaseId,
+        item.page,
+        item.subMenu || '',
+        item.testAction,
+        item.module?.name || '',
+        item.status,
+      ].some((value) => value.toLowerCase().includes(keyword));
+    }),
+    [automatedItems, automatedFilterModule, automatedSearch]
   );
   const testRecordById = useMemo(() => {
     return automatedItems.reduce<Record<string, {
@@ -431,16 +486,19 @@ export default function TestCaseManager() {
     }
   };
 
-  const openBugFixDetail = (bugFix: BugFixItem) => {
-    const transformed = {
+  const transformBugFixToDetail = (bugFix: BugFixItem) => ({
       ...bugFix,
       status: bugFix.status,
       progress: bugFix.status === 'VERIFIED & FIXED' ? 100 : bugFix.status === 'READY TO RETEST' ? 50 : 0,
       module: bugFix.module ? { name: bugFix.module.name } : null,
       detailSource: 'bugfix',
-    } as unknown as TestCase;
+  }) as unknown as TestCase;
 
+  const openBugFixDetail = (bugFix: BugFixItem) => {
+    const transformed = transformBugFixToDetail(bugFix);
+    const contextList = visibleBugFixItems.map(transformBugFixToDetail);
     setViewTestCase(transformed);
+    setNavigationContextList(contextList);
     setShowDetailDialog(true);
   };
 
@@ -596,6 +654,9 @@ export default function TestCaseManager() {
       window.localStorage.setItem(LAST_PROJECT_STORAGE_KEY, selectedProject);
     }
   }, [selectedProject]);
+  useEffect(() => {
+    window.localStorage.setItem(LAST_ACTIVE_TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
   // Reload when project changes
   useEffect(() => {
     if (!selectedProject) return;
@@ -1232,6 +1293,7 @@ export default function TestCaseManager() {
       }
 
       setViewTestCase(target);
+      setNavigationContextList([target]);
       setShowDetailDialog(true);
     } catch (error: any) {
       toast({
@@ -1244,6 +1306,95 @@ export default function TestCaseManager() {
 
   // Status/priority/type color functions moved outside component for stable references
 
+  const handleOpenDetail = async (tc: any, contextList: any[] | null = null) => {
+    // If we only have partial data (e.g. from dashboard), try to get full data
+    if (!tc.steps || !tc.expectedResult) {
+      try {
+        const params = new URLSearchParams({
+          projectId: selectedProject,
+          search: tc.testCaseId,
+          limit: '1',
+          sortBy: 'testCaseId',
+          sortOrder: 'asc',
+        });
+        const res = await fetch(`/api/testcases?${params}`);
+        const data = await res.json();
+        if (res.ok && data.testCases?.[0]) {
+          const fullTc = data.testCases[0];
+          // Merge to keep dashboard-specific fields if any (like waitingDays)
+          setViewTestCase({ ...tc, ...fullTc });
+        } else {
+          setViewTestCase(tc);
+        }
+      } catch {
+        setViewTestCase(tc);
+      }
+    } else {
+      setViewTestCase(tc);
+    }
+    
+    setNavigationContextList(contextList);
+    setShowDetailDialog(true);
+  };
+
+  const handleNavigate = async (tc: any) => {
+    // Re-use logic from handleOpenDetail but without resetting contextList
+    if (!tc.steps || !tc.expectedResult) {
+      try {
+        const params = new URLSearchParams({
+          projectId: selectedProject,
+          search: tc.testCaseId,
+          limit: '1',
+          sortBy: 'testCaseId',
+          sortOrder: 'asc',
+        });
+        const res = await fetch(`/api/testcases?${params}`);
+        const data = await res.json();
+        if (res.ok && data.testCases?.[0]) {
+          setViewTestCase({ ...tc, ...data.testCases[0] });
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to navigate to full test case:', err);
+      }
+    }
+    setViewTestCase(tc);
+  };
+
+  const getModuleRiskTargetStatus = (moduleRisk: ModuleRiskItem) => {
+    if (moduleRisk.failed > 0) return 'FAILED';
+    if (moduleRisk.blocked > 0) return 'BLOCKED';
+    if (moduleRisk.readyToRetest > 0) return 'READY TO RETEST';
+    if (moduleRisk.inProgress > 0) return 'IN PROGRESS';
+    if (moduleRisk.notDone > 0) return 'NOT DONE';
+    return 'all';
+  };
+
+  const handleModuleRiskClick = (moduleRisk: ModuleRiskItem) => {
+    const nextModuleFilter = moduleRisk.moduleId || 'unassigned';
+    const nextStatusFilter = getModuleRiskTargetStatus(moduleRisk);
+
+    setActiveTab('testcases');
+    setSearch('');
+    setFilterTestType('all');
+    setFilterPriority('all');
+    setFilterModule(nextModuleFilter);
+    setFilterStatus(nextStatusFilter);
+    setPage(1);
+    setSelectedIds(new Set());
+
+    if (selectedProject) {
+      loadTestCases(selectedProject, {
+        searchVal: '',
+        statusVal: nextStatusFilter,
+        typeVal: 'all',
+        prioVal: 'all',
+        modVal: nextModuleFilter,
+        pageVal: 1,
+      });
+    }
+  };
+
   // ============== RENDER: DASHBOARD ==============
   const renderDashboard = () => (
     <DashboardPanel
@@ -1253,6 +1404,8 @@ export default function TestCaseManager() {
       setExpandedModules={setExpandedModules}
       selectedModuleFilter={selectedModuleFilter}
       setSelectedModuleFilter={setSelectedModuleFilter}
+      onOpenDetail={handleOpenDetail}
+      onModuleRiskClick={handleModuleRiskClick}
       isLoading={isLoadingStats}
       lastRefreshed={lastRefreshed}
       onRefresh={() => { loadStats(selectedProject); loadTestCases(selectedProject); }}
@@ -1295,12 +1448,13 @@ export default function TestCaseManager() {
       toggleSelectAll={toggleSelectAll}
       toggleSelect={toggleSelect}
       toggleSort={toggleSort}
-      openViewDialog={(tc) => { setViewTestCase(tc); setShowDetailDialog(true); }}
+      openViewDialog={(tc) => handleOpenDetail(tc, testCases)}
       openEditDialog={openEditDialog}
       handleDuplicate={handleDuplicate}
       requestDelete={(tc) => { setEditingTestCase(tc); setShowDeleteConfirm(true); }}
       getStatusColor={getStatusColor}
       getStatusIcon={getStatusIcon}
+      getStatusBadgeVariant={getStatusBadgeVariant}
       getPriorityColor={getPriorityColor}
       getTestTypeColor={getTestTypeColor}
     />
@@ -1310,13 +1464,17 @@ export default function TestCaseManager() {
   const renderBugFix = () => (
     <BugFixPanel
       selectedProject={selectedProject}
+      modules={modules}
+      hasUnassignedModule={bugFixItems.some((item) => !item.moduleId)}
       stats={stats}
       visibleBugFixItems={visibleBugFixItems}
       bugFixSearch={bugFixSearch}
       bugFixFilterStatus={bugFixFilterStatus}
+      bugFixFilterModule={bugFixFilterModule}
       bugFixTab={bugFixTab}
       setBugFixSearch={setBugFixSearch}
       setBugFixFilterStatus={setBugFixFilterStatus}
+      setBugFixFilterModule={setBugFixFilterModule}
       setBugFixTab={setBugFixTab}
       getPriorityColor={getPriorityColor}
       onStatusChange={handleBugFixStatusChange}
@@ -1328,14 +1486,18 @@ export default function TestCaseManager() {
   const renderAutomated = () => (
     <AutomatedPanel
       selectedProject={selectedProject}
+      modules={modules}
       items={automatedItems}
       search={automatedSearch}
+      filterModule={automatedFilterModule}
       loading={automatedLoading}
       setSearch={setAutomatedSearch}
+      setFilterModule={setAutomatedFilterModule}
       onRefresh={() => loadAutomated(selectedProject)}
-      onOpenDetail={(tc) => { setViewTestCase(tc); setShowDetailDialog(true); }}
+      onOpenDetail={(tc) => handleOpenDetail(tc, visibleAutomatedItems)}
       getStatusColor={getStatusColor}
       getStatusIcon={getStatusIcon}
+      getStatusBadgeVariant={getStatusBadgeVariant}
       getPriorityColor={getPriorityColor}
       getTestTypeColor={getTestTypeColor}
     />
@@ -1355,6 +1517,12 @@ export default function TestCaseManager() {
     />
   );
 
+  const handleActiveTabChange = (value: string) => {
+    if (APP_TABS.includes(value as AppTab)) {
+      setActiveTab(value as AppTab);
+    }
+  };
+
   // ============== MAIN RENDER ==============
   return (
     <ErrorBoundary>
@@ -1365,7 +1533,7 @@ export default function TestCaseManager() {
         activeTab={activeTab}
         projectHealth={stats?.overallProgress ?? null}
         setSelectedProject={setSelectedProject}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleActiveTabChange}
       >
         {{
           dashboard: renderDashboard(),
@@ -1439,6 +1607,7 @@ export default function TestCaseManager() {
         filterConsoleLogs={filterConsoleLogs}
         getStatusColor={getStatusColor}
         getStatusIcon={getStatusIcon}
+        getStatusBadgeVariant={getStatusBadgeVariant}
         getTestTypeColor={getTestTypeColor}
         getPriorityColor={getPriorityColor}
         onEdit={openEditDialog}
@@ -1447,8 +1616,8 @@ export default function TestCaseManager() {
           navigator.clipboard.writeText(id);
           toast({ title: 'ID Disalin', description: 'Internal ID berhasil disalin untuk Katalon.' });
         }}
-        testCaseList={testCases}
-        onNavigate={(tc) => setViewTestCase(tc)}
+        testCaseList={navigationContextList ?? []}
+        onNavigate={handleNavigate}
       />
 
       <AIRefineDialog

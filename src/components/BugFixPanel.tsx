@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, Bug, CheckCircle2, Clock, Eye, RefreshCw, Search } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,6 +36,13 @@ export interface BugFixItem {
   module?: { id: string; name: string } | null;
 }
 
+interface Module {
+  id: string;
+  name: string;
+  projectId: string;
+  _count?: { testCases: number };
+}
+
 interface BugFixStats {
   bugFixReported: number;
   bugFixFixing: number;
@@ -44,13 +52,17 @@ interface BugFixStats {
 
 interface BugFixPanelProps {
   selectedProject: string;
+  modules: Module[];
+  hasUnassignedModule: boolean;
   stats: BugFixStats | null;
   visibleBugFixItems: BugFixItem[];
   bugFixSearch: string;
   bugFixFilterStatus: string;
+  bugFixFilterModule: string;
   bugFixTab: 'active' | 'resolved';
   setBugFixSearch: (value: string) => void;
   setBugFixFilterStatus: (value: string) => void;
+  setBugFixFilterModule: (value: string) => void;
   setBugFixTab: (value: 'active' | 'resolved') => void;
   getPriorityColor: (priority: string) => string;
   onStatusChange: (bugFixId: string, status: string) => void;
@@ -74,13 +86,17 @@ const getBugFixStatusColor = (status: string) => {
 
 export function BugFixPanel({
   selectedProject,
+  modules,
+  hasUnassignedModule,
   stats,
   visibleBugFixItems,
   bugFixSearch,
   bugFixFilterStatus,
+  bugFixFilterModule,
   bugFixTab,
   setBugFixSearch,
   setBugFixFilterStatus,
+  setBugFixFilterModule,
   setBugFixTab,
   getPriorityColor,
   onStatusChange,
@@ -98,7 +114,12 @@ export function BugFixPanel({
   }
 
   return (
-    <div className="min-w-0 space-y-6 overflow-x-hidden">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="min-w-0 space-y-6 overflow-x-hidden"
+    >
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -174,7 +195,7 @@ export function BugFixPanel({
           </TabsList>
         </Tabs>
 
-        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto xl:grid-cols-3">
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -184,6 +205,20 @@ export function BugFixPanel({
               className="h-9 rounded-xl border-border/60 bg-secondary/50 pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/30"
             />
           </div>
+          <Select value={bugFixFilterModule} onValueChange={setBugFixFilterModule}>
+            <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-secondary/50 text-foreground sm:w-[180px]">
+              <SelectValue placeholder="Filter module" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
+              <SelectItem value="all" className="rounded-lg">Semua Module</SelectItem>
+              {modules.map((module) => (
+                <SelectItem key={module.id} value={module.id} className="rounded-lg">{module.name}</SelectItem>
+              ))}
+              {hasUnassignedModule && (
+                <SelectItem value="unassigned" className="rounded-lg">Tanpa Module</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
           {bugFixTab === 'active' && (
             <Select value={bugFixFilterStatus} onValueChange={setBugFixFilterStatus}>
               <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-secondary/50 text-foreground sm:w-[180px]"><SelectValue placeholder="Filter status" /></SelectTrigger>
@@ -211,6 +246,7 @@ export function BugFixPanel({
             <Table>
               <TableHeader className="sticky top-0 z-10">
                 <TableRow className="border-border/50 bg-secondary/30 hover:bg-secondary/30">
+                  <TableHead className="w-[52px] text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
                   <TableHead className="w-[90px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
                   <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
                   <TableHead className="hidden text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Sub Menu</TableHead>
@@ -227,8 +263,9 @@ export function BugFixPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleBugFixItems.map((bf) => (
+                {visibleBugFixItems.map((bf, index) => (
                   <TableRow key={bf.id} className="border-border/30 hover:bg-secondary/30 transition-colors group">
+                    <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="font-mono text-sm font-bold text-foreground">{bf.testCaseId}</TableCell>
                     <TableCell className="text-sm font-medium text-foreground">{bf.page}</TableCell>
                     <TableCell className="hidden text-muted-foreground text-[13px] lg:table-cell">{bf.subMenu || '-'}</TableCell>
@@ -277,6 +314,6 @@ export function BugFixPanel({
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

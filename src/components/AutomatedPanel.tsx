@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface Module {
@@ -68,14 +71,18 @@ export interface AutomatedTestCase {
 
 interface AutomatedPanelProps {
   selectedProject: string;
+  modules: Module[];
   items: AutomatedTestCase[];
   search: string;
+  filterModule: string;
   loading: boolean;
   setSearch: (value: string) => void;
+  setFilterModule: (value: string) => void;
   onRefresh: () => void;
   onOpenDetail: (testCase: AutomatedTestCase) => void;
   getStatusColor: (status: string) => string;
   getStatusIcon: (status: string) => React.ReactNode;
+  getStatusBadgeVariant: (status: string) => 'success' | 'failed' | 'warning' | 'info' | 'notdone' | 'inprogress' | 'blocked' | 'readyretest' | 'verifiedfixed' | 'tba' | 'outline';
   getPriorityColor: (priority: string) => string;
   getTestTypeColor: (type: string) => string;
 }
@@ -93,18 +100,27 @@ const formatSize = (bytes: number) => {
 
 export function AutomatedPanel({
   selectedProject,
+  modules,
   items,
   search,
+  filterModule,
   loading,
   setSearch,
+  setFilterModule,
   onRefresh,
   onOpenDetail,
   getStatusColor,
   getStatusIcon,
+  getStatusBadgeVariant,
   getPriorityColor,
   getTestTypeColor,
 }: AutomatedPanelProps) {
   const filteredItems = items.filter((item) => {
+    if (filterModule !== 'all') {
+      const moduleKey = item.moduleId || 'unassigned';
+      if (moduleKey !== filterModule) return false;
+    }
+
     const keyword = search.trim().toLowerCase();
     if (!keyword) return true;
     return [
@@ -137,7 +153,7 @@ export function AutomatedPanel({
               <MonitorDot className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-black text-foreground">{items.length}</p>
+              <p className="text-2xl font-black text-foreground">{filteredItems.length}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500/70">Vault Scenarios</p>
             </div>
           </CardContent>
@@ -149,7 +165,7 @@ export function AutomatedPanel({
             </div>
             <div>
               <p className="text-2xl font-black text-foreground">
-                {items.filter((item) => item.automation.hasManualCapture).length}
+                {filteredItems.filter((item) => item.automation.hasManualCapture).length}
               </p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-sky-500/70">Manual Artifacts</p>
             </div>
@@ -162,7 +178,7 @@ export function AutomatedPanel({
             </div>
             <div>
               <p className="text-sm font-black text-foreground uppercase">
-                {items[0]?.automation.lastRunAt ? new Date(items[0].automation.lastRunAt).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'No Activity'}
+                {filteredItems[0]?.automation.lastRunAt ? new Date(filteredItems[0].automation.lastRunAt).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'No Activity'}
               </p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500/70">Latest Run</p>
             </div>
@@ -171,14 +187,30 @@ export function AutomatedPanel({
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-secondary/30 p-3 shadow-xl backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search test intelligence..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="h-9 rounded-md border-border/60 bg-secondary/30 pl-9 shadow-inner text-foreground placeholder:text-muted-foreground focus-visible:ring-teal-500/50"
-          />
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search test intelligence..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="h-9 rounded-md border-border/60 bg-secondary/30 pl-9 shadow-inner text-foreground placeholder:text-muted-foreground focus-visible:ring-teal-500/50"
+            />
+          </div>
+          <Select value={filterModule} onValueChange={setFilterModule}>
+            <SelectTrigger className="h-9 w-full rounded-md border-border/60 bg-secondary/30 text-sm text-foreground shadow-sm sm:w-[190px]">
+              <SelectValue placeholder="Module" />
+            </SelectTrigger>
+            <SelectContent className="border-border/60 bg-card text-foreground elevation-3">
+              <SelectItem value="all">Semua Module</SelectItem>
+              {modules.map((module) => (
+                <SelectItem key={module.id} value={module.id}>{module.name}</SelectItem>
+              ))}
+              {items.some((item) => !item.moduleId) && (
+                <SelectItem value="unassigned">Tanpa Module</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
         <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9 rounded-md gap-2 font-bold border-border/60 bg-secondary/30 text-foreground">
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -202,6 +234,7 @@ export function AutomatedPanel({
               <Table>
                 <TableHeader className="sticky top-0 z-10">
                    <TableRow className="border-border/60 bg-secondary/30 hover:bg-secondary/30">
+                    <TableHead className="w-[52px] text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">No</TableHead>
                     <TableHead className="w-[90px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">TC ID</TableHead>
                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Page</TableHead>
                     <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Module</TableHead>
@@ -216,8 +249,9 @@ export function AutomatedPanel({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredItems.map((item) => (
+                  {filteredItems.map((item, index) => (
                     <TableRow key={item.id} className="border-border/60 hover:bg-secondary/30 transition-colors group">
+                      <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
                       <TableCell className="font-mono text-sm font-black text-foreground">{item.testCaseId}</TableCell>
                       <TableCell>
                         <div>
@@ -245,7 +279,7 @@ export function AutomatedPanel({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={item.status === 'DONE' ? 'success' : item.status === 'FAILED' ? 'failed' : 'outline'} className="gap-1 text-[10px] font-black">
+                        <Badge variant={getStatusBadgeVariant(item.status)} className="gap-1 text-[10px] font-black">
                           {getStatusIcon(item.status)} {item.status}
                         </Badge>
                       </TableCell>

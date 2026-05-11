@@ -5,6 +5,7 @@ import {
   AlertTriangle, BarChart3, Bug, CheckCircle2, ChevronDown, ChevronUp,
   Clock, HelpCircle, Layers, Percent, RefreshCw, XCircle
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 interface Module {
   id: string;
@@ -150,6 +152,8 @@ interface DashboardPanelProps {
   setExpandedModules: React.Dispatch<React.SetStateAction<Set<string>>>;
   selectedModuleFilter: string;
   setSelectedModuleFilter: (value: string) => void;
+  onOpenDetail: (testCase: any, contextList?: any[]) => void;
+  onModuleRiskClick?: (moduleRisk: ModuleRiskItem) => void;
   isLoading?: boolean;
   lastRefreshed?: Date | null;
   onRefresh?: () => void;
@@ -178,11 +182,23 @@ export function DashboardPanel({
   setExpandedModules,
   selectedModuleFilter,
   setSelectedModuleFilter,
+  onOpenDetail,
+  onModuleRiskClick,
   isLoading,
   lastRefreshed,
   onRefresh,
 }: DashboardPanelProps) {
-    if (!stats) return (
+    const [retestAtBottom, setRetestAtBottom] = React.useState(false);
+  const [bugAgingAtBottom, setBugAgingAtBottom] = React.useState(false);
+  const [moduleRiskAtBottom, setModuleRiskAtBottom] = React.useState(false);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>, setter: (val: boolean) => void) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5;
+    setter(isAtBottom);
+  };
+
+  if (!stats) return (
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border bg-card elevation-1">
         <div className="text-center">
           <BarChart3 className="mx-auto mb-3 h-10 w-10 text-primary/50" />
@@ -192,7 +208,12 @@ export function DashboardPanel({
     );
 
     return (
-      <div className="space-y-6">
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="space-y-6"
+      >
         {/* Refresh indicator */}
         {(onRefresh || lastRefreshed) && (
           <div className="flex items-center justify-end gap-3">
@@ -383,33 +404,55 @@ export function DashboardPanel({
                 <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verification Pipeline</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent 
+              className="space-y-3 h-[340px] overflow-y-auto pr-2 relative group/scroll [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border/40 [&::-webkit-scrollbar-thumb]:rounded-full" 
+              data-lenis-prevent
+              onScroll={(e) => handleScroll(e, setRetestAtBottom)}
+            >
               {(stats.retestQueue || []).length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground font-medium">
+                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground font-medium">
                   Pipeline clear. No pending verifications.
                 </div>
               ) : (
-                (stats.retestQueue || []).map((item) => (
-                  <div key={item.id} className="rounded-xl border border-border/60 bg-secondary/40 p-4 hover:bg-secondary/70 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-mono text-sm font-bold text-foreground">{item.testCaseId}</p>
-                        <p className="truncate text-[11px] font-medium text-muted-foreground mt-0.5">
-                          {item.moduleName || item.page} {item.subMenu ? `› ${item.subMenu}` : ''}
-                        </p>
+                <>
+                  <div className="space-y-3">
+                    {(stats.retestQueue || []).map((item) => (
+                      <div 
+                        key={item.id} 
+                        className="group/item rounded-xl border border-border/60 bg-secondary/40 p-4 hover:bg-secondary/70 hover:border-primary/30 transition-all cursor-pointer"
+                        onClick={() => onOpenDetail(item, stats.retestQueue)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-mono text-sm font-bold text-foreground group-hover/item:text-primary transition-colors">{item.testCaseId}</p>
+                            <p className="truncate text-[11px] font-medium text-muted-foreground mt-0.5">
+                              {item.moduleName || item.page} {item.subMenu ? `› ${item.subMenu}` : ''}
+                            </p>
+                          </div>
+                          <Badge variant={item.priority === 'Critical' ? 'failed' : 'warning'} className="shadow-sm">
+                            {item.priority}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-[10px]">
+                          <span className="text-muted-foreground font-semibold uppercase tracking-wider">Queue Age</span>
+                          <Badge variant="outline" className="text-foreground/70 border-border font-semibold group-hover/item:border-primary/50 transition-colors">
+                            {item.waitingDays} DAYS
+                          </Badge>
+                        </div>
                       </div>
-                      <Badge variant={item.priority === 'Critical' ? 'failed' : 'warning'} className="shadow-sm">
-                        {item.priority}
-                      </Badge>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px]">
-                      <span className="text-muted-foreground font-semibold uppercase tracking-wider">Queue Age</span>
-                      <Badge variant="outline" className="text-foreground/70 border-border font-semibold">
-                        {item.waitingDays} DAYS
-                      </Badge>
-                    </div>
+                    ))}
                   </div>
-                ))
+                  {(stats.retestQueue || []).length > 4 && (
+                    <div className={cn(
+                      "sticky bottom-0 inset-x-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none flex items-end justify-center pb-2 transition-opacity duration-300",
+                      retestAtBottom ? "opacity-0" : "opacity-0 group-hover/scroll:opacity-100"
+                    )}>
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest animate-pulse">
+                        Scroll for more
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -422,33 +465,55 @@ export function DashboardPanel({
                 <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Defect Longevity</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent 
+              className="space-y-3 h-[340px] overflow-y-auto pr-2 relative group/scroll [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border/40 [&::-webkit-scrollbar-thumb]:rounded-full" 
+              data-lenis-prevent
+              onScroll={(e) => handleScroll(e, setBugAgingAtBottom)}
+            >
               {(stats.bugAging || []).length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground font-medium">
+                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground font-medium">
                   No aging defects detected.
                 </div>
               ) : (
-                (stats.bugAging || []).map((item) => (
-                  <div key={item.id} className="rounded-xl border border-border/60 bg-secondary/40 p-4 hover:bg-secondary/70 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-mono text-sm font-bold text-foreground">{item.testCaseId}</p>
-                        <p className="truncate text-[11px] font-medium text-muted-foreground mt-0.5">
-                          {item.moduleName || item.page} {item.subMenu ? `› ${item.subMenu}` : ''}
-                        </p>
+                <>
+                  <div className="space-y-3">
+                    {(stats.bugAging || []).map((item) => (
+                      <div 
+                        key={item.id} 
+                        className="group/item rounded-xl border border-border/60 bg-secondary/40 p-4 hover:bg-secondary/70 hover:border-primary/30 transition-all cursor-pointer"
+                        onClick={() => onOpenDetail(item, stats.bugAging)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-mono text-sm font-bold text-foreground group-hover/item:text-primary transition-colors">{item.testCaseId}</p>
+                            <p className="truncate text-[11px] font-medium text-muted-foreground mt-0.5">
+                              {item.moduleName || item.page} {item.subMenu ? `› ${item.subMenu}` : ''}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className={item.status === 'SEDANG DI FIX' ? 'border-amber-300 text-amber-700 bg-amber-50 dark:border-amber-500/30 dark:text-amber-400 dark:bg-amber-500/10' : 'border-orange-300 text-orange-700 bg-orange-50 dark:border-orange-500/30 dark:text-orange-400 dark:bg-orange-500/10'}>
+                            {item.status === 'SEDANG DI FIX' ? 'Fixing' : 'Reported'}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-[10px]">
+                          <span className="truncate pr-3 text-muted-foreground font-medium group-hover/item:text-foreground transition-colors">{item.testAction}</span>
+                          <Badge variant="outline" className={cn("group-hover/item:border-primary/50 transition-colors", getAgeClass(item.ageDays))}>
+                            {item.ageDays} DAYS
+                          </Badge>
+                        </div>
                       </div>
-                      <Badge variant="outline" className={item.status === 'SEDANG DI FIX' ? 'border-amber-300 text-amber-700 bg-amber-50 dark:border-amber-500/30 dark:text-amber-400 dark:bg-amber-500/10' : 'border-orange-300 text-orange-700 bg-orange-50 dark:border-orange-500/30 dark:text-orange-400 dark:bg-orange-500/10'}>
-                        {item.status === 'SEDANG DI FIX' ? 'Fixing' : 'Reported'}
-                      </Badge>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px]">
-                      <span className="truncate pr-3 text-muted-foreground font-medium">{item.testAction}</span>
-                      <Badge variant="outline" className={getAgeClass(item.ageDays)}>
-                        {item.ageDays} DAYS
-                      </Badge>
-                    </div>
+                    ))}
                   </div>
-                ))
+                  {(stats.bugAging || []).length > 4 && (
+                    <div className={cn(
+                      "sticky bottom-0 inset-x-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none flex items-end justify-center pb-2 transition-opacity duration-300",
+                      bugAgingAtBottom ? "opacity-0" : "opacity-0 group-hover/scroll:opacity-100"
+                    )}>
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest animate-pulse">
+                        Scroll for more
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -461,32 +526,55 @@ export function DashboardPanel({
                 <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Module Risk</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent 
+              className="space-y-3 h-[340px] overflow-y-auto pr-2 relative group/scroll [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border/40 [&::-webkit-scrollbar-thumb]:rounded-full" 
+              data-lenis-prevent
+              onScroll={(e) => handleScroll(e, setModuleRiskAtBottom)}
+            >
               {(stats.moduleRisks || []).length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground font-medium">
+                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground font-medium">
                   No risk data available.
                 </div>
               ) : (
-                (stats.moduleRisks || []).map((item) => (
-                  <div key={item.moduleId || 'ungrouped'} className="rounded-xl border border-border/60 bg-secondary/40 p-4 hover:bg-secondary/70 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-foreground">{item.moduleName}</p>
-                        <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
-                          {item.total} cases
-                        </p>
-                      </div>
-                      <Badge variant="outline" className={getPriorityBadgeClass(item.riskScore >= 70 ? 'Critical' : item.riskScore >= 40 ? 'High' : item.riskScore >= 20 ? 'Medium' : 'Low')}>
-                        Risk: {item.riskScore}
-                      </Badge>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
-                      {item.failed > 0 && <span className="text-red-600 dark:text-red-400 font-semibold">{item.failed} failed</span>}
-                      {item.blocked > 0 && <span className="text-rose-600 dark:text-rose-400 font-semibold">{item.blocked} blocked</span>}
-                      {item.readyToRetest > 0 && <span className="text-cyan-600 dark:text-cyan-400 font-semibold">{item.readyToRetest} retest</span>}
-                    </div>
+                <>
+                  <div className="space-y-3">
+                    {(stats.moduleRisks || []).map((item) => (
+                      <button
+                        key={item.moduleId || 'ungrouped'}
+                        type="button"
+                        onClick={() => onModuleRiskClick?.(item)}
+                        className="w-full rounded-xl border border-border/60 bg-secondary/40 p-4 text-left transition-colors hover:bg-secondary/70 focus-visible:ring-2 focus-visible:ring-primary/40"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-foreground">{item.moduleName}</p>
+                            <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
+                              {item.total} cases
+                            </p>
+                          </div>
+                          <Badge variant="outline" className={getPriorityBadgeClass(item.riskScore >= 70 ? 'Critical' : item.riskScore >= 40 ? 'High' : item.riskScore >= 20 ? 'Medium' : 'Low')}>
+                            Risk: {item.riskScore}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+                          {item.failed > 0 && <span className="text-red-600 dark:text-red-400 font-semibold">{item.failed} failed</span>}
+                          {item.blocked > 0 && <span className="text-rose-600 dark:text-rose-400 font-semibold">{item.blocked} blocked</span>}
+                          {item.readyToRetest > 0 && <span className="text-cyan-600 dark:text-cyan-400 font-semibold">{item.readyToRetest} retest</span>}
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                ))
+                  {(stats.moduleRisks || []).length > 4 && (
+                    <div className={cn(
+                      "sticky bottom-0 inset-x-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none flex items-end justify-center pb-2 transition-opacity duration-300",
+                      moduleRiskAtBottom ? "opacity-0" : "opacity-0 group-hover/scroll:opacity-100"
+                    )}>
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest animate-pulse">
+                        Scroll for more
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -557,65 +645,73 @@ export function DashboardPanel({
                         </div>
                       </button>
 
-                      {isExpanded && (
-                        <div className="border-t border-border/50 bg-secondary/20">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="hover:bg-transparent border-border/50">
-                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Page</TableHead>
-                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Sub Menu</TableHead>
-                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Cases</TableHead>
-                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Progress</TableHead>
-                                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Status</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {mod.menus.map((mp, idx) => (
-                                <TableRow key={idx} className="hover:bg-secondary/50 border-border/30">
-                                  <TableCell className="text-xs font-medium text-foreground py-3">{mp.page}</TableCell>
-                                  <TableCell className="text-xs text-muted-foreground py-3">{mp.subMenu || '—'}</TableCell>
-                                  <TableCell className="text-xs text-center font-medium text-foreground py-3">{mp.totalCases}</TableCell>
-                                  <TableCell className="py-3">
-                                    <div className="flex items-center justify-center gap-2">
-                                      <Progress value={mp.progressPercent} className="h-1.5 w-16 bg-secondary" />
-                                      <span className="text-[10px] font-semibold text-muted-foreground w-8">{mp.progressPercent}%</span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="py-3">
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {mp.doneCount > 0 && (
-                                        <Badge className="gap-1 border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 shadow-none dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                                          <CheckCircle2 className="w-3 h-3" /> {mp.doneCount}
-                                        </Badge>
-                                      )}
-                                      {mp.inProgressCount > 0 && (
-                                        <Badge className="gap-1 border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700 shadow-none dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-                                          <Clock className="w-3 h-3" /> {mp.inProgressCount}
-                                        </Badge>
-                                      )}
-                                      {mp.notDoneCount > 0 && (
-                                        <Badge className="gap-1 border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground shadow-none">
-                                          <XCircle className="w-3 h-3" /> {mp.notDoneCount}
-                                        </Badge>
-                                      )}
-                                      {mp.blockedCount > 0 && (
-                                        <Badge className="gap-1 border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 shadow-none dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
-                                          <AlertTriangle className="w-3 h-3" /> {mp.blockedCount}
-                                        </Badge>
-                                      )}
-                                      {mp.failedCount > 0 && (
-                                        <Badge className="gap-1 border-red-200 bg-red-50 px-2 py-0.5 text-[10px] text-red-700 shadow-none dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-                                          <XCircle className="w-3 h-3" /> {mp.failedCount}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </TableCell>
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            className="border-t border-border/50 bg-secondary/20 overflow-hidden"
+                          >
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="hover:bg-transparent border-border/50">
+                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Page</TableHead>
+                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Sub Menu</TableHead>
+                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Cases</TableHead>
+                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Progress</TableHead>
+                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Status</TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      )}
+                              </TableHeader>
+                              <TableBody>
+                                {mod.menus.map((mp, idx) => (
+                                  <TableRow key={idx} className="hover:bg-secondary/50 border-border/30">
+                                    <TableCell className="text-xs font-medium text-foreground py-3">{mp.page}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground py-3">{mp.subMenu || '—'}</TableCell>
+                                    <TableCell className="text-xs text-center font-medium text-foreground py-3">{mp.totalCases}</TableCell>
+                                    <TableCell className="py-3">
+                                      <div className="flex items-center justify-center gap-2">
+                                        <Progress value={mp.progressPercent} className="h-1.5 w-16 bg-secondary" />
+                                        <span className="text-[10px] font-semibold text-muted-foreground w-8">{mp.progressPercent}%</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="py-3">
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {mp.doneCount > 0 && (
+                                          <Badge className="gap-1 border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 shadow-none dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                                            <CheckCircle2 className="w-3 h-3" /> {mp.doneCount}
+                                          </Badge>
+                                        )}
+                                        {mp.inProgressCount > 0 && (
+                                          <Badge className="gap-1 border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700 shadow-none dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                                            <Clock className="w-3 h-3" /> {mp.inProgressCount}
+                                          </Badge>
+                                        )}
+                                        {mp.notDoneCount > 0 && (
+                                          <Badge className="gap-1 border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground shadow-none">
+                                            <XCircle className="w-3 h-3" /> {mp.notDoneCount}
+                                          </Badge>
+                                        )}
+                                        {mp.blockedCount > 0 && (
+                                          <Badge className="gap-1 border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 shadow-none dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                                            <AlertTriangle className="w-3 h-3" /> {mp.blockedCount}
+                                          </Badge>
+                                        )}
+                                        {mp.failedCount > 0 && (
+                                          <Badge className="gap-1 border-red-200 bg-red-50 px-2 py-0.5 text-[10px] text-red-700 shadow-none dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                                            <XCircle className="w-3 h-3" /> {mp.failedCount}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })}
@@ -641,6 +737,6 @@ export function DashboardPanel({
             </CardContent>
           </Card>
         )}
-      </div>
+      </motion.div>
     );
 }

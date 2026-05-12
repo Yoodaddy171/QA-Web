@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export type DevLogTab = 'console' | 'network' | 'execution';
+export type ManualCaptureBrowserMode = 'clean' | 'profiled';
 
 export interface AutomationLogEntry {
   id?: string;
@@ -60,6 +61,10 @@ interface AutomationLogTestCase {
 interface UseAutomationLogsOptions<TTestCase extends AutomationLogTestCase> {
   viewTestCase: TTestCase | null;
   setViewTestCase: React.Dispatch<React.SetStateAction<TTestCase | null>>;
+}
+
+interface StartManualCaptureOptions {
+  browserMode?: ManualCaptureBrowserMode;
 }
 
 function createLogId() {
@@ -382,11 +387,12 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     return url.toString();
   };
 
-  const startManualCapture = async () => {
+  const startManualCapture = async (options: StartManualCaptureOptions = {}) => {
     if (!viewTestCase?.id) return;
 
     setIsStartingManualCapture(true);
     const sessionId = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const browserMode: ManualCaptureBrowserMode = options.browserMode === 'profiled' ? 'profiled' : 'clean';
 
     try {
       const targetUrl = manualCaptureTargetUrl.trim();
@@ -402,6 +408,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
           targetUrl,
           captureUrl,
           launchBrowser: true,
+          browserMode,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -415,7 +422,9 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       toast({
         title: 'Manual capture dimulai',
         description: data.mode === 'cdp'
-          ? 'Chrome terkontrol sudah dibuka. Lakukan test manual di window tersebut.'
+          ? browserMode === 'profiled'
+            ? 'Profiled browser sudah dibuka. Login dan cookies dari profile QA Desk akan dipakai ulang.'
+            : 'Browser kosong sudah dibuka. Lakukan test manual di window tersebut.'
           : 'Tab target sudah dibuka. Pastikan target app memuat qa-capture.js.',
       });
     } catch (error: any) {

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
-  FileDown, Filter, Layers, Loader2, Maximize2, Minus, Play, Plus, RefreshCw, Search, Sparkles, Square, Trash2, Wrench, X
+  FileDown, Filter, Globe2, Layers, Loader2, Maximize2, Minus, Play, Plus, RefreshCw, Search, Sparkles, Square, Trash2, UserRound, Wrench, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TestCase } from '@/components/TestCaseTable';
-import type { ManualRecordingMeta } from '@/hooks/useAutomationLogs';
+import type { ManualCaptureBrowserMode, ManualRecordingMeta } from '@/hooks/useAutomationLogs';
 import { cn } from '@/lib/utils';
 
 type DevLogTab = 'console' | 'network' | 'execution';
@@ -109,6 +109,37 @@ const formatPrettyValue = (value: unknown) => {
     return JSON.stringify(value, null, 2);
   } catch {
     return String(value);
+  }
+};
+
+const escapeHtml = (value: string) => (
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+);
+
+const getManualFrameUrl = (frameUrl?: string) => (
+  frameUrl ? `http://127.0.0.1:3001${frameUrl}` : ''
+);
+
+const blobToDataUrl = async (blob: Blob) => (
+  await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  })
+);
+
+const getImageDataUrl = async (url: string) => {
+  try {
+    const blob = await fetch(url).then((response) => response.blob());
+    return await blobToDataUrl(blob);
+  } catch {
+    return '';
   }
 };
 
@@ -326,7 +357,7 @@ interface TestCaseDetailDialogProps {
   setExpandedLogId: (id: string | null) => void;
   setAiSummary: (summary: string | null) => void;
   clearLogs: () => void;
-  startManualCapture: () => void;
+  startManualCapture: (options?: { browserMode?: ManualCaptureBrowserMode }) => void;
   stopManualCapture: () => void;
   loadCurrentLogRun: () => void;
   generateAISummary: () => void;
@@ -387,6 +418,7 @@ export function TestCaseDetailDialog({
 }: TestCaseDetailDialogProps) {
   const [activeMainTab, setActiveMainTab] = useState('details');
   const [expandedGuide, setExpandedGuide] = useState<'automation' | 'manual' | null>(null);
+  const [manualCaptureBrowserMode, setManualCaptureBrowserMode] = useState<ManualCaptureBrowserMode>('clean');
   const [recordingSeekMs, setRecordingSeekMs] = useState(0);
   const [recordingZoom, setRecordingZoom] = useState(1);
   const [isRecordingFullscreen, setIsRecordingFullscreen] = useState(false);
@@ -644,6 +676,8 @@ export function TestCaseDetailDialog({
   };
 
   const copyFullscreenEvidence = async () => {
+    const screenshotUrl = selectedRecordingFrame ? getManualFrameUrl(selectedRecordingFrame.url) : '';
+    const screenshotDataUrl = screenshotUrl ? await getImageDataUrl(screenshotUrl) : '';
     const evidenceText = [
       `Test Case: ${viewTestCase?.testCaseId || '-'}`,
       `Action: ${viewTestCase?.testAction || '-'}`,
@@ -651,11 +685,41 @@ export function TestCaseDetailDialog({
       `Frame: ${formatRelativeTime(recordingSeekMs)}`,
       `Target: ${manualRecording?.targetUrl || '-'}`,
       selectedRecordingFrame ? `Screenshot: ${selectedRecordingFrame.file}` : '',
+      screenshotUrl ? `Screenshot URL: ${screenshotUrl}` : '',
       selectedFullscreenLog ? `Selected ${selectedFullscreenLog.kind}: ${selectedFullscreenLog.text}` : 'Selected log: -',
       selectedFullscreenLog ? `Detail:\n${formatPrettyValue(selectedFullscreenLog.detail)}` : '',
     ].filter(Boolean).join('\n');
 
-    await navigator.clipboard.writeText(evidenceText);
+    const evidenceHtml = [
+      '<section style="font-family: Inter, Arial, sans-serif; line-height: 1.45;">',
+      `<p><strong>Test Case:</strong> ${escapeHtml(viewTestCase?.testCaseId || '-')}</p>`,
+      `<p><strong>Action:</strong> ${escapeHtml(viewTestCase?.testAction || '-')}</p>`,
+      `<p><strong>Status:</strong> ${escapeHtml(viewTestCase?.status || '-')}</p>`,
+      `<p><strong>Frame:</strong> ${escapeHtml(formatRelativeTime(recordingSeekMs))}</p>`,
+      `<p><strong>Target:</strong> ${escapeHtml(manualRecording?.targetUrl || '-')}</p>`,
+      screenshotUrl
+        ? `<p><strong>Screenshot:</strong> ${escapeHtml(selectedRecordingFrame?.file || '-')}</p><p><img src="${escapeHtml(screenshotDataUrl || screenshotUrl)}" alt="QA evidence screenshot" style="max-width: 100%; border: 1px solid #d1d5db; border-radius: 8px;" /></p>`
+        : '',
+      `<p><strong>Selected ${escapeHtml(selectedFullscreenLog?.kind || 'log')}:</strong> ${escapeHtml(selectedFullscreenLog?.text || '-')}</p>`,
+      selectedFullscreenLog ? `<pre style="white-space: pre-wrap; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">${escapeHtml(formatPrettyValue(selectedFullscreenLog.detail))}</pre>` : '',
+      '</section>',
+    ].filter(Boolean).join('');
+
+    try {
+      if (navigator.clipboard.write && typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/plain': new Blob([evidenceText], { type: 'text/plain' }),
+            'text/html': new Blob([evidenceHtml], { type: 'text/html' }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(evidenceText);
+      }
+    } catch {
+      await navigator.clipboard.writeText(evidenceText);
+    }
+
     setCopiedEvidence(true);
     window.setTimeout(() => setCopiedEvidence(false), 1600);
   };
@@ -1119,6 +1183,7 @@ export function TestCaseDetailDialog({
                                     <div className="border-t border-border px-4 pb-4 pt-3 text-[11px] leading-relaxed text-muted-foreground font-medium dark:border-border/50 dark:text-muted-foreground">
                                       <ol className="ml-4 list-decimal space-y-2">
                                         <li>Masukkan URL website yang ingin dites pada input Manual Capture.</li>
+                                        <li>Pilih Browser Kosong untuk sesi bersih, atau Profiled Browser untuk memakai ulang login/cookies profile QA Desk.</li>
                                         <li>Klik Start. QA Desk akan membuka browser capture dan mulai merekam telemetry.</li>
                                         <li>Lakukan testing manual di browser yang terbuka.</li>
                                         <li>Klik Stop dari QA Desk setelah selesai untuk menyimpan hasil run.</li>
@@ -1155,7 +1220,34 @@ export function TestCaseDetailDialog({
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                                <div className="mt-3 flex flex-col gap-3 xl:flex-row">
+                                  <div className="grid shrink-0 grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background p-1 shadow-inner dark:bg-muted/40">
+                                    {([
+                                      { value: 'clean', label: 'Kosong', icon: Globe2 },
+                                      { value: 'profiled', label: 'Profiled', icon: UserRound },
+                                    ] as const).map((option) => {
+                                      const Icon = option.icon;
+                                      const active = manualCaptureBrowserMode === option.value;
+                                      return (
+                                        <button
+                                          key={option.value}
+                                          type="button"
+                                          disabled={isManualCaptureActive || isStartingManualCapture}
+                                          onClick={() => setManualCaptureBrowserMode(option.value)}
+                                          className={cn(
+                                            "inline-flex h-8 min-w-[92px] items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-black uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                                            active
+                                              ? 'bg-teal-600 text-white shadow-sm dark:bg-teal-500 dark:text-slate-950'
+                                              : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                                          )}
+                                          title={option.value === 'profiled' ? 'Pakai profile QA Desk yang menyimpan login dan cookies' : 'Pakai browser sementara yang bersih'}
+                                        >
+                                          <Icon className="h-3.5 w-3.5" />
+                                          {option.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                   <Input
                                     value={manualCaptureTargetUrl}
                                     onChange={(event) => setManualCaptureTargetUrl(event.target.value)}
@@ -1180,7 +1272,7 @@ export function TestCaseDetailDialog({
                                       type="button"
                                       size="sm"
                                       className="h-10 shrink-0 gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] shadow-lg shadow-teal-900/40"
-                                      onClick={startManualCapture}
+                                      onClick={() => startManualCapture({ browserMode: manualCaptureBrowserMode })}
                                       disabled={!manualCaptureTargetUrl.trim() || isStartingManualCapture}
                                     >
                                       {isStartingManualCapture ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
@@ -1954,9 +2046,73 @@ export function TestCaseDetailDialog({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <AnimatePresence>
+                {selectedFullscreenLog && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.18 }}
+                    className="shrink-0 overflow-hidden border-b border-border bg-background"
+                  >
+                    <div className="m-3 space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3 shadow-sm dark:border-indigo-500/20 dark:bg-indigo-950/20">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className="rounded-md border-indigo-200 bg-indigo-50 text-[9px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+                              Selected Evidence
+                            </Badge>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                              {selectedFullscreenLog.kind} · {formatRelativeTime(selectedFullscreenLog.relativeMs)}
+                            </span>
+                          </div>
+                          <p className="mt-2 line-clamp-2 break-all text-[11px] font-semibold text-foreground">
+                            {selectedFullscreenLog.text || '-'}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 shrink-0 rounded-md p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          onClick={() => setSelectedFullscreenLog(null)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[10px]">
+                        <div className="rounded-md border border-border bg-background p-2">
+                          <p className="font-black uppercase tracking-widest text-muted-foreground">Frame</p>
+                          <p className="mt-1 truncate font-mono text-foreground">{selectedRecordingFrame?.file || '-'}</p>
+                        </div>
+                        <div className="rounded-md border border-border bg-background p-2">
+                          <p className="font-black uppercase tracking-widest text-muted-foreground">Target</p>
+                          <p className="mt-1 truncate text-foreground">{manualRecording?.targetUrl || '-'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 rounded-md border-border bg-background px-2 text-[10px] font-black uppercase tracking-widest text-foreground hover:bg-secondary"
+                          onClick={copyFullscreenEvidence}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          {copiedEvidence ? 'Copied' : 'Copy Selected'}
+                        </Button>
+                        <span className="text-[10px] font-medium text-muted-foreground">
+                          Klik log lain untuk mengganti evidence.
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="min-h-0 flex-1 overflow-y-auto bg-muted/25">
                 {activeDevLogTab === 'network' ? (
-                  <div className="divide-y divide-border">
+                  <div className="space-y-2 p-3">
                     {fullscreenNetworkLogs.length === 0 ? (
                       <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
                         <RefreshCw className="mb-3 h-8 w-8 opacity-20" />
@@ -1967,13 +2123,25 @@ export function TestCaseDetailDialog({
                         const logId = net.id ?? `fullscreen-network-${index}`;
 
                         return (
-                          <div key={logId} className={cn("hover:bg-secondary/60 dark:hover:bg-white/5", selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'network' && "bg-indigo-50 dark:bg-indigo-950/30")}>
-                            <button
-                              type="button"
-                              className="grid w-full grid-cols-12 items-center gap-2 p-2 text-left"
+                          <div
+                            key={logId}
+                            className={cn(
+                              "overflow-hidden rounded-lg border border-border bg-background shadow-sm transition hover:border-indigo-200 hover:bg-secondary/50 dark:hover:border-indigo-500/30 dark:hover:bg-white/5",
+                              selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'network' && "border-indigo-300 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-950/30"
+                            )}
+                          >
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              className="grid w-full cursor-pointer grid-cols-12 items-center gap-2 p-2 text-left"
                               onClick={() => {
-                                selectFullscreenNetworkLog(net, meta, logId);
                                 setExpandedLogId(expandedLogId === logId ? null : logId);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  setExpandedLogId(expandedLogId === logId ? null : logId);
+                                }
                               }}
                             >
                               <span className="col-span-2 truncate font-black text-indigo-700 dark:text-indigo-300">{getNetworkMethod(net.network)}</span>
@@ -1991,10 +2159,22 @@ export function TestCaseDetailDialog({
                                   {getNetworkStatus(net.network)}
                                 </span>
                               </span>
-                              <span className="col-span-2 text-right text-[10px] font-bold text-muted-foreground">
-                                {formatRelativeTime(net.relativeMs)}
+                              <span className="col-span-2 flex items-center justify-end gap-2 text-right text-[10px] font-bold text-muted-foreground">
+                                <span>{formatRelativeTime(net.relativeMs)}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 rounded-md border border-border bg-muted px-1.5 text-[9px] font-black uppercase tracking-widest text-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    selectFullscreenNetworkLog(net, meta, logId);
+                                  }}
+                                >
+                                  Use
+                                </Button>
                               </span>
-                            </button>
+                            </div>
                             <AnimatePresence>
                               {expandedLogId === logId && (
                                 <motion.div
@@ -2017,7 +2197,7 @@ export function TestCaseDetailDialog({
                     )}
                   </div>
                 ) : (
-                  <div className="divide-y divide-border">
+                  <div className="space-y-2 p-3">
                     {fullscreenConsoleLogs.length === 0 ? (
                       <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
                         <Clock className="mb-3 h-8 w-8 opacity-20" />
@@ -2030,21 +2210,29 @@ export function TestCaseDetailDialog({
                         const isWarning = log.level === 'WARNING' || log.log?.toString().toLowerCase().includes('warn');
 
                         return (
-                          <button
+                          <div
                             key={logId}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
                             className={cn(
-                              "grid w-full grid-cols-12 gap-2 p-2 text-left hover:bg-secondary/60 dark:hover:bg-white/5",
+                              "grid w-full cursor-pointer grid-cols-12 gap-2 rounded-lg border border-border bg-background p-2 text-left shadow-sm transition hover:border-indigo-200 hover:bg-secondary/50 dark:hover:border-indigo-500/30 dark:hover:bg-white/5",
                               isError ? 'bg-rose-50 dark:bg-rose-950/20' : isWarning ? 'bg-amber-50 dark:bg-amber-950/20' : '',
-                              selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'console' && 'bg-indigo-50 dark:bg-indigo-950/30'
+                              selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'console' && 'border-indigo-300 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-950/30'
                             )}
                             onClick={() => selectFullscreenConsoleLog(log, logId)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                selectFullscreenConsoleLog(log, logId);
+                              }
+                            }}
                           >
                             <span className="col-span-2 text-[10px] font-bold text-muted-foreground">{formatRelativeTime(log.relativeMs)}</span>
-                            <span className={cn("col-span-10 break-all text-[11px]", isError ? 'text-rose-700 dark:text-rose-300' : isWarning ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300/90')}>
+                            <span className={cn("col-span-8 break-all text-[11px]", isError ? 'text-rose-700 dark:text-rose-300' : isWarning ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300/90')}>
                               {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 240)}...` : String(log.log ?? '')}
                             </span>
-                          </button>
+                            <span className="col-span-2 text-right text-[9px] font-black uppercase tracking-widest text-muted-foreground">Use</span>
+                          </div>
                         );
                       })
                     )}

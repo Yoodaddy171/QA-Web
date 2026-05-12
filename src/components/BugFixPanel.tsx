@@ -1,16 +1,50 @@
 'use client';
 
-import { AlertTriangle, Bug, CheckCircle2, Clock, Eye, RefreshCw, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, Bug, CheckCircle2, Clock, Eye, RefreshCw, Search, Settings2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+
+type BugFixColumnKey = 'subMenu' | 'action' | 'priority' | 'status' | 'reportedAt' | 'timing';
+
+const BUGFIX_COLUMN_OPTIONS: Array<{ key: BugFixColumnKey; label: string; responsiveClass?: string }> = [
+  { key: 'subMenu', label: 'Sub Menu', responsiveClass: 'hidden lg:table-cell' },
+  { key: 'action', label: 'Test Action', responsiveClass: 'hidden md:table-cell' },
+  { key: 'priority', label: 'Priority', responsiveClass: 'hidden sm:table-cell' },
+  { key: 'status', label: 'Status' },
+  { key: 'reportedAt', label: 'Dilaporkan', responsiveClass: 'hidden xl:table-cell' },
+  { key: 'timing', label: 'Timing', responsiveClass: 'hidden lg:table-cell' },
+];
+
+const DEFAULT_BUGFIX_COLUMNS = BUGFIX_COLUMN_OPTIONS.reduce<Record<BugFixColumnKey, boolean>>((columns, option) => {
+  columns[option.key] = true;
+  return columns;
+}, {} as Record<BugFixColumnKey, boolean>);
+
+const BUGFIX_COLUMN_STORAGE_KEY = 'qaDesk.bugFixTable.columns.v1';
+
+const getInitialBugFixColumns = () => {
+  if (typeof window === 'undefined') return DEFAULT_BUGFIX_COLUMNS;
+  try {
+    const stored = window.localStorage.getItem(BUGFIX_COLUMN_STORAGE_KEY);
+    if (!stored) return DEFAULT_BUGFIX_COLUMNS;
+    return { ...DEFAULT_BUGFIX_COLUMNS, ...JSON.parse(stored) as Partial<Record<BugFixColumnKey, boolean>> };
+  } catch {
+    return DEFAULT_BUGFIX_COLUMNS;
+  }
+};
 
 export interface BugFixItem {
   id: string;
@@ -102,6 +136,17 @@ export function BugFixPanel({
   onStatusChange,
   onOpenDetail,
 }: BugFixPanelProps) {
+  const [visibleColumns, setVisibleColumns] = useState<Record<BugFixColumnKey, boolean>>(getInitialBugFixColumns);
+  const isColumnVisible = (key: BugFixColumnKey) => visibleColumns[key];
+  const getColumnClass = (key: BugFixColumnKey, baseClass = '') => {
+    const option = BUGFIX_COLUMN_OPTIONS.find((column) => column.key === key);
+    return cn(!isColumnVisible(key) && 'hidden', isColumnVisible(key) && option?.responsiveClass, baseClass);
+  };
+
+  useEffect(() => {
+    window.localStorage.setItem(BUGFIX_COLUMN_STORAGE_KEY, JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
+
   if (!selectedProject) {
     return (
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border bg-card elevation-1">
@@ -195,10 +240,36 @@ export function BugFixPanel({
           </TabsList>
         </Tabs>
 
-        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto xl:grid-cols-4">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto xl:grid-cols-5">
           <Badge variant="outline" className="h-9 justify-center rounded-xl border-border/60 bg-muted px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
             Showing {visibleBugFixItems.length} data
           </Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 justify-center rounded-xl border-border/60 bg-secondary/50 text-[10px] font-black uppercase tracking-widest text-foreground">
+                <Settings2 className="h-3.5 w-3.5" />
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 rounded-xl bg-card border-border/60 elevation-3">
+              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Table Columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {BUGFIX_COLUMN_OPTIONS.map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.key}
+                  checked={visibleColumns[column.key]}
+                  onCheckedChange={(checked) => setVisibleColumns((current) => ({ ...current, [column.key]: Boolean(checked) }))}
+                  className="text-xs font-semibold"
+                >
+                  {column.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setVisibleColumns(DEFAULT_BUGFIX_COLUMNS)} className="text-xs font-bold">
+                Reset columns
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -252,15 +323,15 @@ export function BugFixPanel({
                   <TableHead className="w-[52px] text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
                   <TableHead className="w-[90px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
                   <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
-                  <TableHead className="hidden text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Sub Menu</TableHead>
-                  <TableHead className="hidden text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Test Action</TableHead>
-                  <TableHead className="hidden w-[94px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">Priority</TableHead>
-                  <TableHead className="w-[150px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
-                  <TableHead className="hidden w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground xl:table-cell">Dilaporkan</TableHead>
+                  <TableHead className={getColumnClass('subMenu', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>
+                  <TableHead className={getColumnClass('action', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
+                  <TableHead className={getColumnClass('priority', 'w-[94px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>
+                  <TableHead className={getColumnClass('status', 'w-[150px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>
+                  <TableHead className={getColumnClass('reportedAt', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Dilaporkan</TableHead>
                   {bugFixTab === 'resolved' ? (
-                    <TableHead className="hidden w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Fixed At</TableHead>
+                    <TableHead className={getColumnClass('timing', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Fixed At</TableHead>
                   ) : (
-                    <TableHead className="hidden w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Di Fix / Retest</TableHead>
+                    <TableHead className={getColumnClass('timing', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Di Fix / Retest</TableHead>
                   )}
                   <TableHead className="w-[80px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Aksi</TableHead>
                 </TableRow>
@@ -271,10 +342,10 @@ export function BugFixPanel({
                     <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="font-mono text-sm font-bold text-foreground">{bf.testCaseId}</TableCell>
                     <TableCell className="text-sm font-medium text-foreground">{bf.page}</TableCell>
-                    <TableCell className="hidden text-muted-foreground text-[13px] lg:table-cell">{bf.subMenu || '-'}</TableCell>
-                    <TableCell className="hidden text-muted-foreground text-sm max-w-[200px] truncate group-hover:text-foreground transition-colors md:table-cell">{bf.testAction}</TableCell>
-                    <TableCell className="hidden sm:table-cell"><Badge variant={bf.priority === 'Critical' ? 'failed' : bf.priority === 'High' ? 'warning' : 'outline'} className="text-[10px] font-semibold">{bf.priority}</Badge></TableCell>
-                    <TableCell>
+                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px]')}>{bf.subMenu || '-'}</TableCell>
+                    <TableCell className={getColumnClass('action', 'text-muted-foreground text-sm max-w-[200px] truncate group-hover:text-foreground transition-colors')}>{bf.testAction}</TableCell>
+                    <TableCell className={getColumnClass('priority')}><Badge variant={bf.priority === 'Critical' ? 'failed' : bf.priority === 'High' ? 'warning' : 'outline'} className="text-[10px] font-semibold">{bf.priority}</Badge></TableCell>
+                    <TableCell className={getColumnClass('status')}>
                       {bugFixTab === 'resolved' ? (
                         <Badge variant="success" className="text-[9px] font-semibold uppercase">
                           {bf.status}
@@ -292,8 +363,8 @@ export function BugFixPanel({
                         </Select>
                       )}
                     </TableCell>
-                    <TableCell className="hidden text-[11px] font-medium text-muted-foreground xl:table-cell">{formatDate(bf.reportedAt)}</TableCell>
-                    <TableCell className="hidden text-[11px] font-medium text-muted-foreground lg:table-cell">
+                    <TableCell className={getColumnClass('reportedAt', 'text-[11px] font-medium text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
+                    <TableCell className={getColumnClass('timing', 'text-[11px] font-medium text-muted-foreground')}>
                       {bugFixTab === 'resolved'
                         ? formatDate(bf.fixedAt)
                         : bf.status === 'READY TO RETEST'

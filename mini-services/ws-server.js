@@ -269,6 +269,27 @@ function launchBrowser(browserPath, args) {
   return browser;
 }
 
+function getManualCaptureProfileDir() {
+  const baseDir = process.env.LOCALAPPDATA
+    || process.env.APPDATA
+    || path.join(os.homedir(), '.qadesk');
+  return path.join(baseDir, 'QADesk', 'ManualCaptureProfile');
+}
+
+function resolveManualUserDataDir(sessionId, browserMode) {
+  if (browserMode === 'profiled') {
+    return {
+      userDataDir: getManualCaptureProfileDir(),
+      cleanupUserDataDir: false,
+    };
+  }
+
+  return {
+    userDataDir: path.join(os.tmpdir(), `qadesk-manual-${sessionId}`),
+    cleanupUserDataDir: true,
+  };
+}
+
 async function waitForCdpPage(port, targetUrl) {
   const deadline = Date.now() + 10000;
   while (Date.now() < deadline) {
@@ -579,12 +600,14 @@ function getLatestRecordingMetadata(testCaseId) {
   return null;
 }
 
-async function startCdpCapture(session, targetUrl) {
+async function startCdpCapture(session, targetUrl, options = {}) {
   const browserPath = findBrowserPath();
   if (!browserPath) throw new Error('Chrome atau Edge tidak ditemukan untuk manual capture');
 
   const port = 9300 + Math.floor(Math.random() * 500);
-  const userDataDir = path.join(os.tmpdir(), `qadesk-manual-${session.sessionId}`);
+  const browserMode = options.browserMode === 'profiled' ? 'profiled' : 'clean';
+  const { userDataDir, cleanupUserDataDir } = resolveManualUserDataDir(session.sessionId, browserMode);
+  fs.mkdirSync(userDataDir, { recursive: true });
   const browserArgs = [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${userDataDir}`,
@@ -605,6 +628,8 @@ async function startCdpCapture(session, targetUrl) {
     cdp,
     requestMeta: new Map(),
     userDataDir,
+    cleanupUserDataDir,
+    browserMode,
     recording: null,
   };
   cdpSessions.set(session.sessionId, sessionInfo);
@@ -743,7 +768,12 @@ async function startCdpCapture(session, targetUrl) {
   await cdp.send('Page.enable');
   await focusCdpPage(cdp, target);
   sessionInfo.recording = startFrameRecorder(session, cdp, targetUrl);
-  return { port, mode: 'cdp' };
+  return {
+    port,
+    mode: 'cdp',
+    browserMode,
+    profileDir: browserMode === 'profiled' ? userDataDir : null,
+  };
 }
 
 async function stopCdpCapture(sessionId) {
@@ -773,7 +803,7 @@ async function stopCdpCapture(sessionId) {
     result.errors.push(`Browser kill failed: ${error.message}`);
   }
   cdpSessions.delete(sessionId);
-  if (session.userDataDir) {
+  if (session.userDataDir && session.cleanupUserDataDir !== false) {
     setTimeout(() => {
       fs.rm(session.userDataDir, { recursive: true, force: true }, () => {});
     }, 1500);
@@ -817,8 +847,12 @@ const server = http.createServer((req, res) => {
     readJsonBody(req, async (error, data) => {
       if (error) return sendJson(res, 400, { success: false, error: 'Invalid JSON' });
       const { testCaseId, sessionId, targetUrl, launchBrowser } = data;
+      const requestedBrowserMode = data.browserMode || 'clean';
       if (!testCaseId || !sessionId) {
         return sendJson(res, 400, { success: false, error: 'testCaseId and sessionId are required' });
+      }
+      if (!['clean', 'profiled'].includes(requestedBrowserMode)) {
+        return sendJson(res, 400, { success: false, error: 'browserMode must be clean or profiled' });
       }
       if (targetUrl && !isValidHttpUrl(targetUrl)) {
         return sendJson(res, 400, { success: false, error: 'targetUrl must be a valid http/https URL' });
@@ -831,12 +865,22 @@ const server = http.createServer((req, res) => {
         }
       }
 
+      if (requestedBrowserMode === 'profiled') {
+        for (const [id, session] of activeManualSessions.entries()) {
+          if (session.browserMode === 'profiled' && session.active) {
+            activeManualSessions.set(id, { ...session, active: false, stoppedAt: new Date().toISOString() });
+            await stopCdpCapture(id);
+          }
+        }
+      }
+
       const startedAtMs = Date.now();
       const startedAtHrNs = process.hrtime.bigint().toString();
       const session = {
         sessionId,
         testCaseId,
         targetUrl: targetUrl || null,
+        browserMode: requestedBrowserMode,
         active: true,
         startedAt: new Date(startedAtMs).toISOString(),
         startedAtMs,
@@ -845,10 +889,12 @@ const server = http.createServer((req, res) => {
       activeManualSessions.set(sessionId, session);
 
       let captureMode = 'url-params';
+      let profileDir = null;
       try {
         if (launchBrowser && targetUrl) {
-          const cdp = await startCdpCapture(session, targetUrl);
+          const cdp = await startCdpCapture(session, targetUrl, { browserMode: requestedBrowserMode });
           captureMode = cdp.mode;
+          profileDir = cdp.profileDir;
         }
       } catch (error) {
         activeManualSessions.set(sessionId, { ...session, active: false, stoppedAt: new Date().toISOString() });
@@ -861,12 +907,12 @@ const server = http.createServer((req, res) => {
         sessionId,
         testCaseId,
         level: 'INFO',
-        log: `Starting Manual Capture${targetUrl ? `: ${targetUrl}` : ''}`,
+        log: `Starting Manual Capture (${requestedBrowserMode === 'profiled' ? 'Profiled Browser' : 'Clean Browser'})${targetUrl ? `: ${targetUrl}` : ''}`,
         timestamp: session.startedAt,
         relativeMs: 0,
       });
 
-      sendJson(res, 200, { success: true, session, mode: captureMode });
+      sendJson(res, 200, { success: true, session, mode: captureMode, browserMode: requestedBrowserMode, profileDir });
     });
   } else if (req.method === 'POST' && requestUrl.pathname === '/manual/stop') {
     readJsonBody(req, async (error, data) => {

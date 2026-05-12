@@ -1,15 +1,51 @@
 'use client';
 
 import type React from 'react';
-import { Bot, CalendarClock, Eye, FileClock, MonitorDot, RefreshCw, Search, TerminalSquare } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bot, CalendarClock, Eye, FileClock, MonitorDot, RefreshCw, Search, Settings2, TerminalSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+
+type AutomatedColumnKey = 'module' | 'action' | 'type' | 'priority' | 'status' | 'lastRun' | 'source' | 'history';
+
+const AUTOMATED_COLUMN_OPTIONS: Array<{ key: AutomatedColumnKey; label: string; responsiveClass?: string }> = [
+  { key: 'module', label: 'Module', responsiveClass: 'hidden lg:table-cell' },
+  { key: 'action', label: 'Test Action', responsiveClass: 'hidden md:table-cell' },
+  { key: 'type', label: 'Tipe', responsiveClass: 'hidden xl:table-cell' },
+  { key: 'priority', label: 'Priority', responsiveClass: 'hidden sm:table-cell' },
+  { key: 'status', label: 'Status' },
+  { key: 'lastRun', label: 'Last Run', responsiveClass: 'hidden xl:table-cell' },
+  { key: 'source', label: 'Source', responsiveClass: 'hidden lg:table-cell' },
+  { key: 'history', label: 'History', responsiveClass: 'hidden lg:table-cell' },
+];
+
+const DEFAULT_AUTOMATED_COLUMNS = AUTOMATED_COLUMN_OPTIONS.reduce<Record<AutomatedColumnKey, boolean>>((columns, option) => {
+  columns[option.key] = true;
+  return columns;
+}, {} as Record<AutomatedColumnKey, boolean>);
+
+const AUTOMATED_COLUMN_STORAGE_KEY = 'qaDesk.automatedTable.columns.v1';
+
+const getInitialAutomatedColumns = () => {
+  if (typeof window === 'undefined') return DEFAULT_AUTOMATED_COLUMNS;
+  try {
+    const stored = window.localStorage.getItem(AUTOMATED_COLUMN_STORAGE_KEY);
+    if (!stored) return DEFAULT_AUTOMATED_COLUMNS;
+    return { ...DEFAULT_AUTOMATED_COLUMNS, ...JSON.parse(stored) as Partial<Record<AutomatedColumnKey, boolean>> };
+  } catch {
+    return DEFAULT_AUTOMATED_COLUMNS;
+  }
+};
 
 interface Module {
   id: string;
@@ -115,6 +151,7 @@ export function AutomatedPanel({
   getPriorityColor,
   getTestTypeColor,
 }: AutomatedPanelProps) {
+  const [visibleColumns, setVisibleColumns] = useState<Record<AutomatedColumnKey, boolean>>(getInitialAutomatedColumns);
   const moduleIdsWithRuns = new Set(items.map(item => item.moduleId).filter(Boolean));
   const availableModules = modules.filter(module => moduleIdsWithRuns.has(module.id) || module.id === filterModule);
   const hasUnassignedRuns = items.some((item) => !item.moduleId);
@@ -138,6 +175,15 @@ export function AutomatedPanel({
   const showingLabel = filteredItems.length !== items.length
     ? `Showing ${filteredItems.length} of ${items.length} data`
     : `Showing ${filteredItems.length} data`;
+  const isColumnVisible = (key: AutomatedColumnKey) => visibleColumns[key];
+  const getColumnClass = (key: AutomatedColumnKey, baseClass = '') => {
+    const option = AUTOMATED_COLUMN_OPTIONS.find((column) => column.key === key);
+    return cn(!isColumnVisible(key) && 'hidden', isColumnVisible(key) && option?.responsiveClass, baseClass);
+  };
+
+  useEffect(() => {
+    window.localStorage.setItem(AUTOMATED_COLUMN_STORAGE_KEY, JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
 
   if (!selectedProject) {
     return (
@@ -222,6 +268,32 @@ export function AutomatedPanel({
           <Badge variant="outline" className="h-9 justify-center rounded-md border-border/60 bg-muted px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
             {showingLabel}
           </Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 rounded-md gap-2 font-bold border-border/60 bg-secondary/30 text-foreground">
+                <Settings2 className="h-3.5 w-3.5" />
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 border-border/60 bg-card text-foreground elevation-3">
+              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Table Columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {AUTOMATED_COLUMN_OPTIONS.map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.key}
+                  checked={visibleColumns[column.key]}
+                  onCheckedChange={(checked) => setVisibleColumns((current) => ({ ...current, [column.key]: Boolean(checked) }))}
+                  className="text-xs font-semibold"
+                >
+                  {column.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setVisibleColumns(DEFAULT_AUTOMATED_COLUMNS)} className="text-xs font-bold">
+                Reset columns
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9 rounded-md gap-2 font-bold border-border/60 bg-secondary/30 text-foreground">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Synchronize
@@ -248,14 +320,14 @@ export function AutomatedPanel({
                     <TableHead className="w-[52px] text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">No</TableHead>
                     <TableHead className="w-[90px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">TC ID</TableHead>
                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Page</TableHead>
-                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Module</TableHead>
-                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground md:table-cell">Test Action</TableHead>
-                    <TableHead className="hidden w-[86px] text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Tipe</TableHead>
-                    <TableHead className="hidden w-[94px] text-[10px] font-black uppercase tracking-widest text-muted-foreground sm:table-cell">Priority</TableHead>
-                    <TableHead className="w-[112px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
-                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Last Run</TableHead>
-                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Source</TableHead>
-                    <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">History</TableHead>
+                    <TableHead className={getColumnClass('module', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Module</TableHead>
+                    <TableHead className={getColumnClass('action', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Test Action</TableHead>
+                    <TableHead className={getColumnClass('type', 'w-[86px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Tipe</TableHead>
+                    <TableHead className={getColumnClass('priority', 'w-[94px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Priority</TableHead>
+                    <TableHead className={getColumnClass('status', 'w-[112px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Status</TableHead>
+                    <TableHead className={getColumnClass('lastRun', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Last Run</TableHead>
+                    <TableHead className={getColumnClass('source', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Source</TableHead>
+                    <TableHead className={getColumnClass('history', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>History</TableHead>
                     <TableHead className="w-[80px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -277,31 +349,31 @@ export function AutomatedPanel({
                           {item.subMenu && <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-tight">{item.subMenu}</p>}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden text-[13px] font-medium text-muted-foreground lg:table-cell">{item.module?.name || '-'}</TableCell>
-                      <TableCell className="hidden max-w-[260px] truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors md:table-cell">{item.testAction}</TableCell>
-                      <TableCell className="hidden xl:table-cell">
+                      <TableCell className={getColumnClass('module', 'text-[13px] font-medium text-muted-foreground')}>{item.module?.name || '-'}</TableCell>
+                      <TableCell className={getColumnClass('action', 'max-w-[260px] truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors')}>{item.testAction}</TableCell>
+                      <TableCell className={getColumnClass('type')}>
                         <Badge variant="outline" className={`rounded-md text-[10px] font-bold border-border/60 bg-secondary/30 ${item.testType === 'Negative' ? 'text-rose-400' : 'text-sky-400'}`}>
                           {item.testType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className={getColumnClass('priority')}>
                         <Badge variant={item.priority === 'Critical' ? 'failed' : item.priority === 'High' ? 'warning' : 'outline'} className="text-[10px] font-bold">
                           {item.priority}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={getColumnClass('status')}>
                         <Badge variant={getStatusBadgeVariant(item.status)} className="gap-1 text-[10px] font-black">
                           {getStatusIcon(item.status)} {item.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden text-[11px] font-bold text-muted-foreground uppercase tracking-tighter xl:table-cell">{formatDate(item.automation.lastRunAt)}</TableCell>
-                      <TableCell className="hidden lg:table-cell">
+                      <TableCell className={getColumnClass('lastRun', 'text-[11px] font-bold text-muted-foreground uppercase tracking-tighter')}>{formatDate(item.automation.lastRunAt)}</TableCell>
+                      <TableCell className={getColumnClass('source')}>
                         <div className="flex flex-wrap gap-1">
                           {item.automation.hasAutomationRun && <Badge className="rounded-md bg-indigo-500/10 text-indigo-400 border-indigo-500/20 text-[9px] font-black uppercase">Auto</Badge>}
                           {item.automation.hasManualCapture && <Badge className="rounded-md bg-teal-500/10 text-teal-400 border-teal-500/20 text-[9px] font-black uppercase">Manual</Badge>}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">
+                      <TableCell className={getColumnClass('history')}>
                         <div className="flex flex-wrap gap-1">
                           {item.automation.hasCurrent && <Badge variant="success" className="text-[9px] font-black uppercase tracking-tighter">Latest</Badge>}
                           {(item.automation.hasPrevious || item.automation.hasLegacy) && <Badge variant="info" className="text-[9px] font-black uppercase tracking-tighter">History</Badge>}

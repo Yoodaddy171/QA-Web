@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpDown, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
   FileSpreadsheet, MoreHorizontal, Plus, RefreshCw, Search, Settings2,
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -22,6 +22,40 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 
 const MotionTableRow = motion(TableRow);
+
+type TestCaseColumnKey = 'subMenu' | 'weight' | 'type' | 'priority' | 'action' | 'status' | 'result' | 'record' | 'progress';
+
+const TESTCASE_COLUMN_OPTIONS: Array<{ key: TestCaseColumnKey; label: string; responsiveClass?: string }> = [
+  { key: 'subMenu', label: 'Sub Menu', responsiveClass: 'hidden lg:table-cell' },
+  { key: 'weight', label: 'Bobot', responsiveClass: 'hidden xl:table-cell' },
+  { key: 'type', label: 'Tipe', responsiveClass: 'hidden lg:table-cell' },
+  { key: 'priority', label: 'Prioritas', responsiveClass: 'hidden md:table-cell' },
+  { key: 'action', label: 'Test Action', responsiveClass: 'hidden md:table-cell' },
+  { key: 'status', label: 'Status' },
+  { key: 'result', label: 'Hasil', responsiveClass: 'hidden xl:table-cell' },
+  { key: 'record', label: 'Test Record', responsiveClass: 'hidden lg:table-cell' },
+  { key: 'progress', label: 'Progress', responsiveClass: 'hidden lg:table-cell' },
+];
+
+const DEFAULT_TESTCASE_COLUMNS = TESTCASE_COLUMN_OPTIONS.reduce<Record<TestCaseColumnKey, boolean>>((columns, option) => {
+  columns[option.key] = true;
+  return columns;
+}, {} as Record<TestCaseColumnKey, boolean>);
+
+const TESTCASE_COLUMN_STORAGE_KEY = 'qaDesk.testcaseTable.columns.v1';
+
+const getInitialTestCaseColumns = () => {
+  if (typeof window === 'undefined') return DEFAULT_TESTCASE_COLUMNS;
+
+  try {
+    const stored = window.localStorage.getItem(TESTCASE_COLUMN_STORAGE_KEY);
+    if (!stored) return DEFAULT_TESTCASE_COLUMNS;
+    const parsed = JSON.parse(stored) as Partial<Record<TestCaseColumnKey, boolean>>;
+    return { ...DEFAULT_TESTCASE_COLUMNS, ...parsed };
+  } catch {
+    return DEFAULT_TESTCASE_COLUMNS;
+  }
+};
 
 interface Module {
   id: string;
@@ -175,6 +209,7 @@ export function TestCaseTable({
   isLoading,
   onQuickStatusChange,
 }: TestCaseTableProps) {
+  const [visibleColumns, setVisibleColumns] = useState<Record<TestCaseColumnKey, boolean>>(getInitialTestCaseColumns);
   const resetPage = () => setPage(1);
   const hasActiveFilters = Boolean(search)
     || filterStatus !== 'all'
@@ -200,6 +235,24 @@ export function TestCaseTable({
   const showingLabel = total !== testCases.length
     ? `Showing ${testCases.length} of ${total} data`
     : `Showing ${testCases.length} data`;
+  const shownOptionalColumnCount = useMemo(
+    () => TESTCASE_COLUMN_OPTIONS.filter((column) => visibleColumns[column.key]).length,
+    [visibleColumns]
+  );
+  const tableColSpan = 4 + shownOptionalColumnCount + 1;
+  const isColumnVisible = (key: TestCaseColumnKey) => visibleColumns[key];
+  const getColumnClass = (key: TestCaseColumnKey, baseClass = '') => {
+    const option = TESTCASE_COLUMN_OPTIONS.find((column) => column.key === key);
+    return cn(!isColumnVisible(key) && 'hidden', isColumnVisible(key) && option?.responsiveClass, baseClass);
+  };
+  const setColumnVisible = (key: TestCaseColumnKey, checked: boolean) => {
+    setVisibleColumns((current) => ({ ...current, [key]: checked }));
+  };
+  const resetColumns = () => setVisibleColumns(DEFAULT_TESTCASE_COLUMNS);
+
+  useEffect(() => {
+    window.localStorage.setItem(TESTCASE_COLUMN_STORAGE_KEY, JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
 
   return (
     <motion.div 
@@ -317,6 +370,33 @@ export function TestCaseTable({
           <Badge variant="outline" className="col-span-2 h-9 justify-center rounded-md border-border/60 bg-muted px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground sm:col-span-1">
             {showingLabel}
           </Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 rounded-md gap-1.5 font-bold border-border/60 bg-secondary/50 text-foreground">
+                <Settings2 className="w-4 h-4" /> Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 bg-card elevation-3 border-border/60 text-foreground">
+              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                Table Columns
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {TESTCASE_COLUMN_OPTIONS.map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.key}
+                  checked={visibleColumns[column.key]}
+                  onCheckedChange={(checked) => setColumnVisible(column.key, Boolean(checked))}
+                  className="text-xs font-semibold"
+                >
+                  {column.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={resetColumns} className="text-xs font-bold">
+                Reset columns
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <input
             ref={fileInputRef}
             type="file"
@@ -357,8 +437,8 @@ export function TestCaseTable({
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         )}
-        <div className="overflow-hidden">
-          <Table>
+        <div className="overflow-x-auto">
+          <Table className="w-max table-auto">
             <TableHeader className="sticky top-0 z-10">
               <TableRow className="border-white/5 bg-white/[0.03] hover:bg-white/[0.03]">
                 <TableHead className="w-10 pl-4">
@@ -372,25 +452,25 @@ export function TestCaseTable({
                 <TableHead className="w-[86px] cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
                   <div className="flex items-center gap-1">ID <ArrowUpDown className="w-3 h-3" /></div>
                 </TableHead>
-                <TableHead className="cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('page')}>
+                <TableHead className="w-[140px] cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('page')}>
                   <div className="flex items-center gap-1">Page <ArrowUpDown className="w-3 h-3" /></div>
                 </TableHead>
-                <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Sub Menu</TableHead>
-                <TableHead className="hidden w-[78px] text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Bobot</TableHead>
-                <TableHead className="hidden w-[88px] text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Tipe</TableHead>
-                <TableHead className="hidden w-[94px] text-[10px] font-black uppercase tracking-widest text-muted-foreground md:table-cell">Prioritas</TableHead>
-                <TableHead className="hidden text-[10px] font-black uppercase tracking-widest text-muted-foreground md:table-cell">Test Action</TableHead>
-                <TableHead className="w-[150px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
-                <TableHead className="hidden w-[140px] text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Hasil</TableHead>
-                <TableHead className="hidden w-[160px] text-[10px] font-black uppercase tracking-widest text-muted-foreground xl:table-cell">Test Record</TableHead>
-                <TableHead className="hidden w-[92px] text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:table-cell">Progress</TableHead>
+                <TableHead className={getColumnClass('subMenu', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Sub Menu</TableHead>
+                <TableHead className={getColumnClass('weight', 'w-[78px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Bobot</TableHead>
+                <TableHead className={getColumnClass('type', 'w-[88px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Tipe</TableHead>
+                <TableHead className={getColumnClass('priority', 'w-[94px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Prioritas</TableHead>
+                <TableHead className={getColumnClass('action', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Test Action</TableHead>
+                <TableHead className={getColumnClass('status', 'w-[150px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Status</TableHead>
+                <TableHead className={getColumnClass('result', 'w-[140px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Hasil</TableHead>
+                <TableHead className={getColumnClass('record', 'w-[160px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Test Record</TableHead>
+                <TableHead className={getColumnClass('progress', 'w-[92px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Progress</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {testCases.length === 0 ? (
                 <TableRow className="border-white/5">
-                  <TableCell colSpan={14} className="h-44 text-center">
+                  <TableCell colSpan={tableColSpan} className="h-44 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <FileSpreadsheet className="h-9 w-9 opacity-20" />
                       <p className="text-sm font-bold uppercase tracking-tight">
@@ -425,9 +505,9 @@ export function TestCaseTable({
                       {(page - 1) * limit + index + 1}
                     </TableCell>
                     <TableCell className="font-mono text-sm font-black text-foreground whitespace-nowrap">{tc.testCaseId}</TableCell>
-                    <TableCell className="font-bold text-foreground text-sm max-w-[140px] truncate" title={tc.page}>{tc.page}</TableCell>
-                    <TableCell className="hidden text-muted-foreground text-[13px] font-medium lg:table-cell max-w-[130px] truncate" title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>
-                    <TableCell className="hidden xl:table-cell">
+                    <TableCell className="max-w-[140px] truncate text-sm font-bold text-foreground" title={tc.page}>{tc.page}</TableCell>
+                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[130px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>
+                    <TableCell className={getColumnClass('weight')}>
                       {tc.calculatedWeight != null ? (
                         <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-[10px] font-mono text-muted-foreground">
                           {tc.calculatedWeight.toFixed(2)}%
@@ -436,20 +516,20 @@ export function TestCaseTable({
                         <span className="text-xs font-semibold text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell className={getColumnClass('type')}>
                       <Badge variant="outline" className={`rounded-md text-[10px] font-bold border-white/5 bg-secondary/50 ${tc.testType === 'Negative' ? 'text-rose-400' : 'text-sky-400'}`}>
                         {tc.testType}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell className={getColumnClass('priority')}>
                       <Badge variant={tc.priority === 'Critical' ? 'failed' : tc.priority === 'High' ? 'warning' : 'outline'} className={`rounded-md text-[10px] font-bold ${tc.priority === 'Medium' ? 'text-amber-400/70 border-amber-400/20' : tc.priority === 'Low' ? 'text-emerald-400/70 border-emerald-400/20' : ''}`}>
                         {tc.priority}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden max-w-[250px] md:table-cell">
+                    <TableCell className={getColumnClass('action', 'max-w-[250px]')}>
                       <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{tc.testAction}</p>
                     </TableCell>
-                    <TableCell className="hidden xl:table-cell">
+                    <TableCell className={getColumnClass('status')}>
                       {onQuickStatusChange ? (
                         <Select value={tc.status} onValueChange={(val) => onQuickStatusChange(tc.id, val)}>
                           <SelectTrigger className={cn("h-7 w-[130px] rounded-lg text-[10px] font-bold shadow-none gap-1 px-2", getStatusColor(tc.status))}>
@@ -471,7 +551,7 @@ export function TestCaseTable({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="hidden xl:table-cell px-3">
+                    <TableCell className={getColumnClass('result', 'px-3')}>
                       {tc.actualResult ? (
                         <Badge variant={tc.actualResult === 'As Expected' ? 'success' : tc.actualResult === 'Not As Expected' ? 'failed' : 'outline'} className="text-[10px] font-black">
                           {tc.actualResult}
@@ -480,7 +560,7 @@ export function TestCaseTable({
                         <span className="text-xs font-semibold text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell px-3">
+                    <TableCell className={getColumnClass('record', 'px-3')}>
                       {record ? (
                         <div className="space-y-1">
                           <div className="flex flex-wrap gap-1">
@@ -506,7 +586,7 @@ export function TestCaseTable({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={getColumnClass('progress')}>
                       <div className="flex items-center gap-2">
                         <Progress value={tc.progress} className="h-1 w-12 bg-secondary/50" />
                         <span className="text-[10px] font-bold text-muted-foreground">{tc.progress}%</span>

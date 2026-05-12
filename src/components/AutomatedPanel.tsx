@@ -115,6 +115,9 @@ export function AutomatedPanel({
   getPriorityColor,
   getTestTypeColor,
 }: AutomatedPanelProps) {
+  const moduleIdsWithRuns = new Set(items.map(item => item.moduleId).filter(Boolean));
+  const availableModules = modules.filter(module => moduleIdsWithRuns.has(module.id) || module.id === filterModule);
+  const hasUnassignedRuns = items.some((item) => !item.moduleId);
   const filteredItems = items.filter((item) => {
     if (filterModule !== 'all') {
       const moduleKey = item.moduleId || 'unassigned';
@@ -203,10 +206,10 @@ export function AutomatedPanel({
             </SelectTrigger>
             <SelectContent className="border-border/60 bg-card text-foreground elevation-3">
               <SelectItem value="all">Semua Module</SelectItem>
-              {modules.map((module) => (
+              {availableModules.map((module) => (
                 <SelectItem key={module.id} value={module.id}>{module.name}</SelectItem>
               ))}
-              {items.some((item) => !item.moduleId) && (
+              {(hasUnassignedRuns || filterModule === 'unassigned') && (
                 <SelectItem value="unassigned">Tanpa Module</SelectItem>
               )}
             </SelectContent>

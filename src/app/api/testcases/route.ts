@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const projectId = url.searchParams.get('projectId');
     const moduleId = url.searchParams.get('moduleId');
+    const subMenu = url.searchParams.get('subMenu');
     const status = url.searchParams.get('status');
     const testType = url.searchParams.get('testType');
     const priority = url.searchParams.get('priority');
@@ -66,6 +67,9 @@ export async function GET(req: NextRequest) {
       });
       if (!moduleRecord) return NextResponse.json({ error: 'Module not found' }, { status: 404 });
       where.moduleId = moduleId;
+    }
+    if (subMenu) {
+      where.subMenu = subMenu === '__empty__' ? null : subMenu;
     }
     if (status) {
       if (!TESTCASE_STATUSES.has(status)) return validationError('Status testcase tidak valid.');

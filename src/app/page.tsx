@@ -300,6 +300,7 @@ export default function TestCaseManager() {
   const [filterTestType, setFilterTestType] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterModule, setFilterModule] = useState<string>('all');
+  const [filterSubMenu, setFilterSubMenu] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('testCaseId');
   const [sortOrder, setSortOrder] = useState<string>('asc');
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -464,6 +465,36 @@ export default function TestCaseManager() {
     () => projects.find(project => project.id === selectedProject)?.name,
     [projects, selectedProject]
   );
+  const subMenuOptions = useMemo(() => {
+    const items = stats?.menuProgress || [];
+    const filtered = filterModule === 'all'
+      ? items
+      : items.filter(item => (item.moduleId || 'unassigned') === filterModule);
+    return Array.from(new Set(filtered.map(item => item.subMenu || ''))).sort((a, b) => a.localeCompare(b));
+  }, [stats?.menuProgress, filterModule]);
+  const testCaseFilterModules = useMemo(() => {
+    const moduleIdsWithCases = new Set((stats?.menuProgress || [])
+      .map(item => item.moduleId)
+      .filter((id): id is string => Boolean(id)));
+    return modules.filter(module => moduleIdsWithCases.has(module.id) || module.id === filterModule);
+  }, [filterModule, modules, stats?.menuProgress]);
+  const hasUnassignedTestCases = useMemo(
+    () => (stats?.menuProgress || []).some(item => !item.moduleId),
+    [stats?.menuProgress]
+  );
+  const bugFixFilterModules = useMemo(() => {
+    const visibleModuleIds = new Set(bugFixItems
+      .filter((item) => bugFixTab === 'resolved' ? item.status === 'VERIFIED & FIXED' : item.status !== 'VERIFIED & FIXED')
+      .map(item => item.moduleId)
+      .filter((id): id is string => Boolean(id)));
+    return modules.filter(module => visibleModuleIds.has(module.id) || module.id === bugFixFilterModule);
+  }, [bugFixFilterModule, bugFixItems, bugFixTab, modules]);
+  const hasUnassignedBugFixItems = useMemo(
+    () => bugFixItems
+      .filter((item) => bugFixTab === 'resolved' ? item.status === 'VERIFIED & FIXED' : item.status !== 'VERIFIED & FIXED')
+      .some(item => !item.moduleId),
+    [bugFixItems, bugFixTab]
+  );
 
   const handleBugFixStatusChange = async (bfId: string, newStatus: string) => {
     const response = await fetch('/api/bugfix', {
@@ -548,7 +579,7 @@ export default function TestCaseManager() {
     }
   };
 
-  const loadTestCases = async (projId: string, opts?: { searchVal?: string; statusVal?: string; typeVal?: string; prioVal?: string; modVal?: string; pageVal?: number; sortVal?: string; orderVal?: string }) => {
+  const loadTestCases = async (projId: string, opts?: { searchVal?: string; statusVal?: string; typeVal?: string; prioVal?: string; modVal?: string; subMenuVal?: string; pageVal?: number; sortVal?: string; orderVal?: string }) => {
     if (!projId) return;
 
     // Abort previous request to prevent race conditions
@@ -570,11 +601,13 @@ export default function TestCaseManager() {
       const ft = opts?.typeVal ?? filterTestType;
       const fp = opts?.prioVal ?? filterPriority;
       const fm = opts?.modVal ?? filterModule;
+      const fsm = opts?.subMenuVal ?? filterSubMenu;
       if (s) params.set('search', s);
       if (fs !== 'all') params.set('status', fs);
       if (ft !== 'all') params.set('testType', ft);
       if (fp !== 'all') params.set('priority', fp);
       if (fm !== 'all') params.set('moduleId', fm);
+      if (fsm !== 'all') params.set('subMenu', fsm);
 
       const res = await fetch(`/api/testcases?${params}`, { signal: controller.signal });
       const data = await res.json();
@@ -668,7 +701,7 @@ export default function TestCaseManager() {
     if (selectedProject) loadTestCases(selectedProject);
     // Clear selection when filters/page change to prevent invisible selections
     setSelectedIds(new Set());
-  }, [page, sortBy, sortOrder, debouncedSearch, filterStatus, filterTestType, filterPriority, filterModule]);
+  }, [page, sortBy, sortOrder, debouncedSearch, filterStatus, filterTestType, filterPriority, filterModule, filterSubMenu]);
   // Reload bugfix when filters or tab change
   useEffect(() => {
     if (!selectedProject) return;
@@ -1233,10 +1266,35 @@ export default function TestCaseManager() {
     setShowTestCaseDialog(true);
   };
 
-  const openCreateDialog = () => {
-    setDraftTestCase(null);
+  const openCreateDialog = async () => {
     setEditingTestCase(null);
+
+    if (!selectedProject || filterModule === 'all' || filterModule === 'unassigned') {
+      setDraftTestCase(null);
+      setShowTestCaseDialog(true);
+      return;
+    }
+
+    setDraftTestCase({ moduleId: filterModule });
     setShowTestCaseDialog(true);
+
+    try {
+      const params = new URLSearchParams({
+        projectId: selectedProject,
+        moduleId: filterModule,
+      });
+      const response = await fetch(`/api/testcases/next-id?${params}`);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+
+      setDraftTestCase(prev => ({
+        ...(prev || {}),
+        moduleId: filterModule,
+        testCaseId: data.suggestedTestCaseId || '',
+      }));
+    } catch {
+      // Keep the dialog usable; users can still fill the ID manually.
+    }
   };
 
   const openDraftCreateDialog = (draft: TestCaseDraft) => {
@@ -1379,6 +1437,7 @@ export default function TestCaseManager() {
     setFilterTestType('all');
     setFilterPriority('all');
     setFilterModule(nextModuleFilter);
+    setFilterSubMenu('all');
     setFilterStatus(nextStatusFilter);
     setPage(1);
     setSelectedIds(new Set());
@@ -1390,6 +1449,7 @@ export default function TestCaseManager() {
         typeVal: 'all',
         prioVal: 'all',
         modVal: nextModuleFilter,
+        subMenuVal: 'all',
         pageVal: 1,
       });
     }
@@ -1415,13 +1475,16 @@ export default function TestCaseManager() {
   const renderTestCases = () => (
     <TestCaseTable
       selectedProject={selectedProject}
-      modules={modules}
+      modules={testCaseFilterModules}
+      hasUnassignedModule={hasUnassignedTestCases}
       testCases={testCases}
       search={search}
       filterStatus={filterStatus}
       filterTestType={filterTestType}
       filterPriority={filterPriority}
       filterModule={filterModule}
+      filterSubMenu={filterSubMenu}
+      subMenuOptions={subMenuOptions}
       selectedIds={selectedIds}
       page={page}
       limit={limit}
@@ -1434,6 +1497,7 @@ export default function TestCaseManager() {
       setFilterTestType={setFilterTestType}
       setFilterPriority={setFilterPriority}
       setFilterModule={setFilterModule}
+      setFilterSubMenu={setFilterSubMenu}
       setPage={setPage}
       setShowBulkAction={setShowBulkAction}
       setShowDeleteConfirm={setShowDeleteConfirm}
@@ -1464,8 +1528,8 @@ export default function TestCaseManager() {
   const renderBugFix = () => (
     <BugFixPanel
       selectedProject={selectedProject}
-      modules={modules}
-      hasUnassignedModule={bugFixItems.some((item) => !item.moduleId)}
+      modules={bugFixFilterModules}
+      hasUnassignedModule={hasUnassignedBugFixItems}
       stats={stats}
       visibleBugFixItems={visibleBugFixItems}
       bugFixSearch={bugFixSearch}

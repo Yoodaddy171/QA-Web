@@ -79,12 +79,15 @@ export interface TestRecordSummary {
 interface TestCaseTableProps {
   selectedProject: string;
   modules: Module[];
+  hasUnassignedModule: boolean;
   testCases: TestCase[];
   search: string;
   filterStatus: string;
   filterTestType: string;
   filterPriority: string;
   filterModule: string;
+  filterSubMenu: string;
+  subMenuOptions: string[];
   selectedIds: Set<string>;
   page: number;
   limit: number;
@@ -97,6 +100,7 @@ interface TestCaseTableProps {
   setFilterTestType: (value: string) => void;
   setFilterPriority: (value: string) => void;
   setFilterModule: (value: string) => void;
+  setFilterSubMenu: (value: string) => void;
   setPage: (value: number) => void;
   setShowBulkAction: (value: boolean) => void;
   setShowDeleteConfirm: (value: boolean) => void;
@@ -125,12 +129,15 @@ interface TestCaseTableProps {
 export function TestCaseTable({
   selectedProject,
   modules,
+  hasUnassignedModule,
   testCases,
   search,
   filterStatus,
   filterTestType,
   filterPriority,
   filterModule,
+  filterSubMenu,
+  subMenuOptions,
   selectedIds,
   page,
   limit,
@@ -143,6 +150,7 @@ export function TestCaseTable({
   setFilterTestType,
   setFilterPriority,
   setFilterModule,
+  setFilterSubMenu,
   setPage,
   setShowBulkAction,
   setShowDeleteConfirm,
@@ -172,13 +180,15 @@ export function TestCaseTable({
     || filterStatus !== 'all'
     || filterTestType !== 'all'
     || filterPriority !== 'all'
-    || filterModule !== 'all';
+    || filterModule !== 'all'
+    || filterSubMenu !== 'all';
   const resetFilters = () => {
     setSearch('');
     setFilterStatus('all');
     setFilterTestType('all');
     setFilterPriority('all');
     setFilterModule('all');
+    setFilterSubMenu('all');
     setPage(1);
   };
   const selectTriggerClass = 'h-9 rounded-md border-border/60 bg-secondary/50 text-foreground text-sm shadow-sm';
@@ -239,7 +249,7 @@ export function TestCaseTable({
               <SelectItem value="Low">Low</SelectItem>
             </SelectContent>
           </Select>
-          {(modules.length > 0 || filterModule === 'unassigned') && (
+          {(modules.length > 0 || hasUnassignedModule || filterModule === 'unassigned') && (
             <Select value={filterModule} onValueChange={(v) => { setFilterModule(v); resetPage(); }}>
               <SelectTrigger className={`h-9 w-full border-border/60 bg-secondary/50 text-foreground rounded-md text-sm shadow-sm sm:w-[165px]`}><SelectValue placeholder="Module" /></SelectTrigger>
               <SelectContent className="bg-card elevation-3 border-border/60 text-foreground">
@@ -247,10 +257,25 @@ export function TestCaseTable({
                 {modules.map((m) => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
-                <SelectItem value="unassigned">Tanpa Module</SelectItem>
+                {(hasUnassignedModule || filterModule === 'unassigned') && (
+                  <SelectItem value="unassigned">Tanpa Module</SelectItem>
+                )}
               </SelectContent>
             </Select>
           )}
+          <Select value={filterSubMenu} onValueChange={(v) => { setFilterSubMenu(v); resetPage(); }}>
+            <SelectTrigger className="h-9 w-full rounded-md border-border/60 bg-secondary/50 text-sm text-foreground shadow-sm sm:w-[165px]">
+              <SelectValue placeholder="Sub Menu" />
+            </SelectTrigger>
+            <SelectContent className="bg-card elevation-3 border-border/60 text-foreground">
+              <SelectItem value="all">Semua Sub Menu</SelectItem>
+              {subMenuOptions.map((subMenu) => (
+                <SelectItem key={subMenu || '__empty__'} value={subMenu || '__empty__'}>
+                  {subMenu || 'Tanpa Sub Menu'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             type="button"
             variant="outline"

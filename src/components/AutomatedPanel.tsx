@@ -135,6 +135,9 @@ export function AutomatedPanel({
       item.status,
     ].some((value) => value.toLowerCase().includes(keyword));
   });
+  const showingLabel = filteredItems.length !== items.length
+    ? `Showing ${filteredItems.length} of ${items.length} data`
+    : `Showing ${filteredItems.length} data`;
 
   if (!selectedProject) {
     return (
@@ -215,10 +218,15 @@ export function AutomatedPanel({
             </SelectContent>
           </Select>
         </div>
-        <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9 rounded-md gap-2 font-bold border-border/60 bg-secondary/30 text-foreground">
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Synchronize
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="h-9 justify-center rounded-md border-border/60 bg-muted px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            {showingLabel}
+          </Badge>
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9 rounded-md gap-2 font-bold border-border/60 bg-secondary/30 text-foreground">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Synchronize
+          </Button>
+        </div>
       </div>
 
       {filteredItems.length === 0 ? (

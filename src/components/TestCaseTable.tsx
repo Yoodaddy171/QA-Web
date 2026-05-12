@@ -197,6 +197,9 @@ export function TestCaseTable({
     if (!dateStr) return 'Belum dites';
     return new Date(dateStr).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
   };
+  const showingLabel = total !== testCases.length
+    ? `Showing ${testCases.length} of ${total} data`
+    : `Showing ${testCases.length} data`;
 
   return (
     <motion.div 
@@ -311,6 +314,9 @@ export function TestCaseTable({
           )}
         </div>
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
+          <Badge variant="outline" className="col-span-2 h-9 justify-center rounded-md border-border/60 bg-muted px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground sm:col-span-1">
+            {showingLabel}
+          </Badge>
           <input
             ref={fileInputRef}
             type="file"
@@ -427,7 +433,7 @@ export function TestCaseTable({
                           {tc.calculatedWeight.toFixed(2)}%
                         </Badge>
                       ) : (
-                        <span className="text-xs text-slate-600">-</span>
+                        <span className="text-xs font-semibold text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
@@ -471,7 +477,7 @@ export function TestCaseTable({
                           {tc.actualResult}
                         </Badge>
                       ) : (
-                        <span className="text-xs text-slate-600">-</span>
+                        <span className="text-xs font-semibold text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell px-3">
@@ -495,7 +501,7 @@ export function TestCaseTable({
                           </div>
                         </div>
                       ) : (
-                        <Badge variant="outline" className="rounded-md border-white/5 bg-secondary/50 text-[9px] font-black text-slate-600 uppercase">
+                        <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-[9px] font-black text-muted-foreground uppercase">
                           No Records
                         </Badge>
                       )}

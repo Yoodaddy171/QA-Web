@@ -654,6 +654,11 @@ export function DashboardPanel({
                             transition={{ duration: 0.3, ease: 'easeInOut' }}
                             className="border-t border-border/50 bg-secondary/20 overflow-hidden"
                           >
+                            <div className="flex justify-end border-b border-border/50 px-3 py-2">
+                              <Badge variant="outline" className="h-7 rounded-md border-border/60 bg-muted px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                Showing {mod.menus.length} data
+                              </Badge>
+                            </div>
                             <Table>
                               <TableHeader>
                                 <TableRow className="hover:bg-transparent border-border/50">

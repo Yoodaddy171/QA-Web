@@ -195,7 +195,10 @@ export function BugFixPanel({
           </TabsList>
         </Tabs>
 
-        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto xl:grid-cols-3">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto xl:grid-cols-4">
+          <Badge variant="outline" className="h-9 justify-center rounded-xl border-border/60 bg-muted px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            Showing {visibleBugFixItems.length} data
+          </Badge>
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input

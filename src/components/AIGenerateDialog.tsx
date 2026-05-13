@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Loader2, RefreshCw, Save, Sparkles, Wand2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertTriangle, Loader2, RefreshCw, Save, Sparkles, Target, Wand2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -37,6 +37,7 @@ export interface GeneratedTestCasePreview {
 interface AIGenerateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   modules: Module[];
   aiGenerating: boolean;
   aiGeneratedCases: GeneratedTestCasePreview[];
@@ -59,9 +60,36 @@ const PROMPT_SUGGESTIONS = [
   'Test case untuk validasi input form',
 ];
 
+interface GenerateInsights {
+  summary: {
+    total: number;
+    positive: number;
+    negative: number;
+    negativeRatio: number;
+    notDone: number;
+    inProgress: number;
+    highPriorityOpen: number;
+    activeBugFixes: number;
+    weakSteps: number;
+    genericExpected: number;
+  };
+  recommendation: string;
+  suggestions: string[];
+  gapAreas: Array<{
+    label: string;
+    moduleName: string;
+    total: number;
+    negative: number;
+    positive: number;
+    negativeRatio: number;
+    samples: string[];
+  }>;
+}
+
 export function AIGenerateDialog({
   open,
   onOpenChange,
+  projectId,
   modules,
   aiGenerating,
   aiGeneratedCases,
@@ -78,7 +106,33 @@ export function AIGenerateDialog({
   const [prompt, setPrompt] = useState('');
   const [moduleFilter, setModuleFilter] = useState('all');
   const [generateCount, setGenerateCount] = useState(4);
+  const [insights, setInsights] = useState<GenerateInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
   const closeDialog = () => onOpenChange(false);
+
+  useEffect(() => {
+    if (!open || !projectId) return;
+    const controller = new AbortController();
+
+    queueMicrotask(() => {
+      setInsightsLoading(true);
+      fetch(`/api/ai/generate-insights?projectId=${encodeURIComponent(projectId)}&moduleFilter=${encodeURIComponent(moduleFilter)}`, {
+        signal: controller.signal,
+      })
+        .then(async response => {
+          if (!response.ok) throw new Error('Failed to load insights');
+          return response.json();
+        })
+        .then(data => setInsights(data))
+        .catch(error => {
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+          setInsights(null);
+        })
+        .finally(() => setInsightsLoading(false));
+    });
+
+    return () => controller.abort();
+  }, [open, projectId, moduleFilter]);
 
   if (!open) return null;
 
@@ -110,7 +164,7 @@ export function AIGenerateDialog({
                   className="resize-none rounded-xl border-border/60 bg-secondary/50 text-foreground placeholder:text-muted-foreground focus-visible:ring-violet-500/40"
                 />
                 <div className="flex flex-wrap gap-1.5">
-                  {PROMPT_SUGGESTIONS.map((suggestion) => (
+                  {(insights?.suggestions?.length ? insights.suggestions : PROMPT_SUGGESTIONS).map((suggestion) => (
                     <Button
                       key={suggestion}
                       variant="outline"
@@ -122,6 +176,64 @@ export function AIGenerateDialog({
                     </Button>
                   ))}
                 </div>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-secondary/25 p-4">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
+                      <Target className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Rekomendasi Dinamis</p>
+                      <p className="text-[10px] text-muted-foreground">{moduleFilter === 'all' ? 'Semua module' : modules.find(module => module.id === moduleFilter)?.name || 'Module terpilih'}</p>
+                    </div>
+                  </div>
+                  {insightsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                </div>
+
+                {insights ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold leading-relaxed text-foreground">{insights.recommendation}</p>
+                    <div className="grid gap-2 sm:grid-cols-4">
+                      <div className="rounded-lg border border-border/50 bg-card/60 p-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Coverage</p>
+                        <p className="text-sm font-bold text-foreground">{insights.summary.total} TC</p>
+                      </div>
+                      <div className="rounded-lg border border-border/50 bg-card/60 p-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Negative</p>
+                        <p className="text-sm font-bold text-foreground">{insights.summary.negative} ({Math.round(insights.summary.negativeRatio * 100)}%)</p>
+                      </div>
+                      <div className="rounded-lg border border-border/50 bg-card/60 p-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Open High</p>
+                        <p className="text-sm font-bold text-foreground">{insights.summary.highPriorityOpen}</p>
+                      </div>
+                      <div className="rounded-lg border border-border/50 bg-card/60 p-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Weak Steps</p>
+                        <p className="text-sm font-bold text-foreground">{insights.summary.weakSteps}</p>
+                      </div>
+                    </div>
+                    {insights.gapAreas.length > 0 && (
+                      <div className="space-y-1.5">
+                        {insights.gapAreas.slice(0, 3).map((area) => (
+                          <button
+                            key={`${area.moduleName}-${area.label}`}
+                            type="button"
+                            onClick={() => setPrompt(`Buat missing negative cases untuk ${area.moduleName} - ${area.label}`)}
+                            className="flex w-full items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left text-xs text-amber-900 transition hover:bg-amber-100 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/15"
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{area.moduleName} - {area.label}</span>
+                            </span>
+                            <span className="shrink-0 font-semibold">{area.negative}/{area.total} negative</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Rekomendasi akan muncul setelah data project terbaca.</p>
+                )}
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 {modules.length > 0 && (

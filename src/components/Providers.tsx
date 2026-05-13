@@ -6,10 +6,10 @@ import { type ReactNode } from 'react';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ReactLenis root>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
+      <ReactLenis root>
         {children}
-      </ThemeProvider>
-    </ReactLenis>
+      </ReactLenis>
+    </ThemeProvider>
   );
 }

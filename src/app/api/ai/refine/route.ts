@@ -1,20 +1,20 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
 import {
   buildProjectSummary,
   readRelevantKnowledge,
   getSiblingTestCases,
   limitText,
 } from '@/lib/ai-context';
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+import { generateCopilotJson } from '@/lib/ai-provider';
 
 export const maxDuration = 60;
 
-const AI_MODEL = process.env.GROQ_REFINE_MODEL || process.env.GROQ_GENERATE_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const AI_MODELS = {
+  groq: process.env.AI_REFINE_MODEL || process.env.GROQ_REFINE_MODEL || process.env.GROQ_GENERATE_MODEL || process.env.GROQ_MODEL,
+  gemini: process.env.AI_REFINE_MODEL || process.env.GEMINI_REFINE_MODEL || process.env.GEMINI_MODEL,
+  ollama: process.env.AI_REFINE_MODEL || process.env.OLLAMA_REFINE_MODEL || process.env.OLLAMA_MODEL,
+};
 const MAX_OUTPUT_TOKENS = 1400;
 
 const REFINE_MODES = {
@@ -115,10 +115,6 @@ export async function POST(req: NextRequest) {
     if (!testCase?.id) {
       return NextResponse.json({ error: 'Test case is required' }, { status: 400 });
     }
-    if (!process.env.GROQ_API_KEY) {
-      return NextResponse.json({ error: 'GROQ_API_KEY belum dikonfigurasi.' }, { status: 503 });
-    }
-
     const refineInstruction = REFINE_MODES[mode] || REFINE_MODES.format;
     const compactCase = {
       testCaseId: sanitizeText(testCase.testCaseId, 80),
@@ -206,31 +202,22 @@ ${JSON.stringify(compactCase, null, 2)}
 
 Return JSON now. Make every field useful for manual QA execution.`;
 
-    let completion;
+    let parsed: Record<string, unknown>;
     try {
-      completion = await groq.chat.completions.create({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-        model: AI_MODEL,
+      const result = await generateCopilotJson({
+        system: systemPrompt,
+        user: userMessage,
+        models: AI_MODELS,
         temperature: 0.25,
-        max_tokens: MAX_OUTPUT_TOKENS,
-        response_format: { type: 'json_object' },
+        maxTokens: MAX_OUTPUT_TOKENS,
+        repairSchemaHint: '{"refined":{"testAction":"string","steps":"string","expectedResult":"string","remarks":"string","priority":"Critical or High or Medium or Low","testType":"Positive or Negative"}}',
       });
+      parsed = result.parsed;
     } catch (aiError) {
-      console.error('Groq refine API call failed:', aiError);
-      return NextResponse.json({ error: 'Groq service error. Silakan coba lagi.' }, { status: 502 });
+      console.error('AI refine provider call failed:', aiError);
+      return NextResponse.json({ error: 'AI provider error. Silakan coba lagi.' }, { status: 502 });
     }
-
-    const content = completion.choices[0]?.message?.content || '{}';
-    let parsed;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      return NextResponse.json({ error: 'AI mengembalikan format yang tidak valid. Silakan coba lagi.' }, { status: 502 });
-    }
-    const refined = parsed.refined || {};
+    const refined = parsed.refined && typeof parsed.refined === 'object' ? parsed.refined as Record<string, any> : {};
 
     let cleaned = {
       testAction: sanitizeText(refined.testAction || compactCase.testAction, 3000),

@@ -1,6 +1,5 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
 import {
   buildProjectSummary,
   formatProjectContext,
@@ -8,10 +7,7 @@ import {
   getRecentBugFixes,
   limitText,
 } from '@/lib/ai-context';
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+import { generateCopilotJson } from '@/lib/ai-provider';
 
 interface GeneratedTestCase {
   testCaseId: string;
@@ -29,7 +25,11 @@ interface GeneratedTestCase {
 // Set max duration for this API route (Vercel/Next.js)
 export const maxDuration = 60;
 
-const AI_MODEL = process.env.GROQ_GENERATE_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const AI_MODELS = {
+  groq: process.env.AI_GENERATE_MODEL || process.env.GROQ_GENERATE_MODEL || process.env.GROQ_MODEL,
+  gemini: process.env.AI_GENERATE_MODEL || process.env.GEMINI_GENERATE_MODEL || process.env.GEMINI_MODEL,
+  ollama: process.env.AI_GENERATE_MODEL || process.env.OLLAMA_GENERATE_MODEL || process.env.OLLAMA_MODEL,
+};
 const MAX_CONTEXT_CASES = 12;
 const MAX_OUTPUT_TOKENS = 2200;
 
@@ -42,10 +42,6 @@ export async function POST(req: NextRequest) {
 
     if (!projectId) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     if (!prompt) return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
-    if (!process.env.GROQ_API_KEY) {
-      return NextResponse.json({ error: 'GROQ_API_KEY belum dikonfigurasi.' }, { status: 503 });
-    }
-
     // Build comprehensive project context
     const projectSummary = await buildProjectSummary(projectId);
     if (!projectSummary) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -133,33 +129,24 @@ ${prompt}
 
 Return JSON with "test_cases" key containing exactly ${requestedCount} test cases:`;
 
-    let completion;
+    let parsed: Record<string, unknown>;
     try {
-      completion = await groq.chat.completions.create({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-        model: AI_MODEL,
+      const result = await generateCopilotJson({
+        system: systemPrompt,
+        user: userMessage,
+        models: AI_MODELS,
         temperature: 0.4,
-        max_tokens: MAX_OUTPUT_TOKENS,
-        response_format: { type: "json_object" }
+        maxTokens: MAX_OUTPUT_TOKENS,
+        repairSchemaHint: '{"test_cases":[{"testCaseId":"string","page":"string","subMenu":"string","weight":"string","testType":"Positive or Negative","testAction":"string","steps":"string","expectedResult":"string","priority":"Critical or High or Medium or Low","moduleId":"string or null"}]}',
       });
+      parsed = result.parsed;
     } catch (aiError: unknown) {
-      console.error('Groq API call failed:', aiError);
+      console.error('AI generate provider call failed:', aiError);
       return NextResponse.json({
-        error: `Groq service error. Silakan coba lagi.`,
+        error: `AI provider error. Silakan coba lagi.`,
       }, { status: 502 });
     }
-
-    const aiResponse = completion.choices[0]?.message?.content || '{}';
-    let parsed;
-    try {
-      parsed = JSON.parse(aiResponse);
-    } catch {
-      return NextResponse.json({ error: 'AI mengembalikan format yang tidak valid. Silakan coba lagi.' }, { status: 502 });
-    }
-    const generatedCases: GeneratedTestCase[] = parsed.test_cases || [];
+    const generatedCases: GeneratedTestCase[] = Array.isArray(parsed.test_cases) ? parsed.test_cases as GeneratedTestCase[] : [];
 
     if (!Array.isArray(generatedCases) || generatedCases.length === 0) {
       return NextResponse.json({

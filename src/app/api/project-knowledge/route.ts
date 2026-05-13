@@ -10,6 +10,9 @@ const KNOWLEDGE_TYPES = new Set([
   'CHANGELOG',
   'KNOWN_ISSUE',
   'ENV_NOTE',
+  'AI_PROFILE',
+  'QA_PREFERENCE',
+  'PROJECT_RULE',
 ]);
 
 type KnowledgeRow = {

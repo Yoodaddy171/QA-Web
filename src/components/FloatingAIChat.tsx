@@ -17,6 +17,14 @@ interface ChatMessage {
   role: ChatRole;
   content: string;
   drafts?: TestCaseDraft[];
+  actionDrafts?: CopilotActionDraft[];
+  citations?: CopilotCitation[];
+  usedTools?: string[];
+  provider?: {
+    provider?: string;
+    model?: string;
+    error?: string;
+  };
 }
 
 interface FloatingAIChatProps {
@@ -46,6 +54,23 @@ export interface TestCaseDraft {
   moduleId: string | null;
 }
 
+interface CopilotCitation {
+  id: string;
+  type: 'project' | 'module' | 'testcase' | 'bugfix' | 'knowledge' | 'automation' | 'devlog';
+  label: string;
+  description?: string;
+  testCaseId?: string;
+}
+
+interface CopilotActionDraft {
+  id: string;
+  type: 'CREATE_TESTCASE_DRAFT' | 'REFINE_TESTCASE_DRAFT' | 'BULK_STATUS_DRAFT' | 'BUGFIX_RETEST_SUGGESTION';
+  title: string;
+  description: string;
+  testCaseDraft?: TestCaseDraft;
+  payload?: Record<string, unknown>;
+}
+
 type ChatFrame = {
   left: number;
   top: number;
@@ -61,10 +86,10 @@ type DragState = {
 };
 
 const SUGGESTIONS = [
-  'Apa testcase yang paling perlu saya prioritaskan?',
-  'Ringkas status project ini.',
-  'Bug apa yang masih perlu retest?',
-  'Cari celah negative case yang belum terlihat.',
+  'Analisis risiko module ini',
+  'Cari testcase duplikat',
+  'Buat missing negative cases',
+  'Ringkas bug yang perlu retest',
 ];
 
 const WELCOME_MESSAGE = 'Halo, saya bisa bantu baca konteks project, testcase, bugfix, dan status QA yang terlihat di database lokal ini.';
@@ -90,10 +115,23 @@ function createMessage(role: ChatRole, content: string): ChatMessage {
   };
 }
 
-function createAssistantMessage(content: string, drafts?: TestCaseDraft[]): ChatMessage {
+function createAssistantMessage(
+  content: string,
+  options?: {
+    drafts?: TestCaseDraft[];
+    actionDrafts?: CopilotActionDraft[];
+    citations?: CopilotCitation[];
+    usedTools?: string[];
+    provider?: ChatMessage['provider'];
+  }
+): ChatMessage {
   return {
     ...createMessage('assistant', content),
-    drafts,
+    drafts: options?.drafts,
+    actionDrafts: options?.actionDrafts,
+    citations: options?.citations,
+    usedTools: options?.usedTools,
+    provider: options?.provider,
   };
 }
 
@@ -265,6 +303,110 @@ function MessageContent({
   );
 }
 
+function CitationChips({
+  citations = [],
+  onOpenTestCaseId,
+}: {
+  citations?: CopilotCitation[];
+  onOpenTestCaseId?: (testCaseId: string) => void;
+}) {
+  if (!citations.length) return null;
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {citations.slice(0, 12).map((citation) => {
+        const clickableId = citation.testCaseId || (citation.type === 'testcase' || citation.type === 'bugfix' ? citation.label : '');
+        return (
+          <button
+            key={`${citation.type}-${citation.id}`}
+            type="button"
+            disabled={!clickableId}
+            onClick={() => clickableId && onOpenTestCaseId?.(clickableId)}
+            title={citation.description || citation.type}
+            className={cn(
+              "rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-widest transition",
+              clickableId
+                ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/15'
+                : 'border-border/60 bg-secondary/50 text-muted-foreground'
+            )}
+          >
+            {citation.type}: {citation.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ToolTrace({
+  usedTools = [],
+  provider,
+}: {
+  usedTools?: string[];
+  provider?: ChatMessage['provider'];
+}) {
+  if (!usedTools.length && !provider?.provider && !provider?.error) return null;
+
+  return (
+    <div className="mt-3 rounded-xl border border-border/50 bg-card/40 p-2 text-[10px] text-muted-foreground">
+      {usedTools.length > 0 && (
+        <p className="font-semibold">
+          AI membaca: {usedTools.join(', ')}
+        </p>
+      )}
+      {provider?.provider && (
+        <p className="mt-1">
+          Provider: {provider.provider}{provider.model ? ` · ${provider.model}` : ''}
+        </p>
+      )}
+      {provider?.error && (
+        <p className="mt-1 text-amber-600 dark:text-amber-300">
+          Provider fallback: {provider.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ActionDraftCards({
+  actionDrafts = [],
+  onCreateTestCaseDraft,
+}: {
+  actionDrafts?: CopilotActionDraft[];
+  onCreateTestCaseDraft?: (draft: TestCaseDraft) => void;
+}) {
+  if (!actionDrafts.length) return null;
+
+  return (
+    <div className="mt-4 space-y-2">
+      {actionDrafts.map((action) => (
+        <div key={action.id} className="rounded-xl border border-border/50 bg-card/50 p-3 transition-colors hover:bg-card">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <Badge variant="outline" className="mb-2 border-primary/30 bg-primary/10 text-[9px] font-black uppercase tracking-widest text-primary">
+                {action.type.replace(/_/g, ' ')}
+              </Badge>
+              <p className="text-sm font-semibold text-foreground">{action.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{action.description}</p>
+            </div>
+            {action.testCaseDraft && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onCreateTestCaseDraft?.(action.testCaseDraft!)}
+                className="h-8 shrink-0 gap-1 bg-primary text-[11px] font-semibold uppercase text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="h-3 w-3" />
+                Review
+              </Button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function FloatingAIChat({
   projectId,
   projectName,
@@ -420,7 +562,7 @@ export function FloatingAIChat({
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch('/api/ai/copilot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -445,7 +587,16 @@ export function FloatingAIChat({
       }
 
       const drafts = Array.isArray(data.drafts) ? data.drafts as TestCaseDraft[] : undefined;
-      setMessages(prev => [...prev, createAssistantMessage(data.answer || 'AI tidak menghasilkan jawaban.', drafts)]);
+      const actionDrafts = Array.isArray(data.actionDrafts) ? data.actionDrafts as CopilotActionDraft[] : undefined;
+      const citations = Array.isArray(data.citations) ? data.citations as CopilotCitation[] : undefined;
+      const usedTools = Array.isArray(data.usedTools) ? data.usedTools.map(String) : undefined;
+      setMessages(prev => [...prev, createAssistantMessage(data.answer || 'AI tidak menghasilkan jawaban.', {
+        drafts,
+        actionDrafts,
+        citations,
+        usedTools,
+        provider: data.provider,
+      })]);
     } catch (error) {
       const isAbort = error instanceof DOMException && error.name === 'AbortError';
       setMessages(prev => [
@@ -617,7 +768,14 @@ export function FloatingAIChat({
                                 compact={true}
                                 onOpenTestCaseId={onOpenTestCaseId}
                               />
-                              {message.role === 'assistant' && message.drafts && message.drafts.length > 0 && (
+                              {message.role === 'assistant' && (
+                                <>
+                                  <CitationChips citations={message.citations} onOpenTestCaseId={onOpenTestCaseId} />
+                                  <ToolTrace usedTools={message.usedTools} provider={message.provider} />
+                                  <ActionDraftCards actionDrafts={message.actionDrafts} onCreateTestCaseDraft={onCreateTestCaseDraft} />
+                                </>
+                              )}
+                              {message.role === 'assistant' && message.drafts && message.drafts.length > 0 && !message.actionDrafts?.some(action => action.testCaseDraft) && (
                                 <div className="mt-4 space-y-3">
                                   {message.drafts.map((draft, draftIndex) => (
                                     <div key={`${draft.testCaseId}-${draftIndex}`} className="rounded-xl border border-border/50 bg-card/50 p-3 hover:bg-card transition-colors group/draft">
@@ -638,7 +796,7 @@ export function FloatingAIChat({
                                           className="shrink-0 gap-1 bg-primary text-primary-foreground hover:bg-primary/90 elevation-1 h-8 font-semibold text-[11px] uppercase"
                                         >
                                           <Plus className="h-3 w-3" />
-                                          Add
+                                          Review
                                         </Button>
                                       </div>
                                     </div>

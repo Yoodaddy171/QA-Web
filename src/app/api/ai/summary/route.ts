@@ -1,13 +1,9 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+import { generateCopilotJson } from '@/lib/ai-provider';
 
 export const maxDuration = 60;
 
@@ -24,6 +20,11 @@ const STATIC_NOISE_PATTERN = /\/_next\/|\/assets\/|\/public\/|\/media\/|\/images
 const PASS_EVIDENCE_PATTERN = /passed|success|succeed|berhasil|as expected|status["': ]+20[01]|status=20[01]|"\s*success\s*"\s*:\s*true|success[:= ]+true/i;
 const FAIL_EVIDENCE_PATTERN = /assertion.*fail|verification.*fail|not as expected|expected.*but|actual.*failed|test failed|severe|exception|uncaught|timeout/i;
 const GEMINI_VISION_MODEL = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
+const AI_SUMMARY_MODELS = {
+  groq: process.env.AI_SUMMARY_MODEL || process.env.GROQ_SUMMARY_MODEL || 'llama-3.3-70b-versatile',
+  gemini: process.env.AI_SUMMARY_MODEL || process.env.GEMINI_SUMMARY_MODEL || process.env.GEMINI_MODEL,
+  ollama: process.env.AI_SUMMARY_MODEL || process.env.OLLAMA_SUMMARY_MODEL || process.env.OLLAMA_MODEL,
+};
 const RUNTIME_DIR = process.env.QA_RUNTIME_DIR
   || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
 const RECORDINGS_DIR = path.join(RUNTIME_DIR, 'recordings');
@@ -328,15 +329,18 @@ function compactLogs(rawLogs: string, maxChars: number) {
 
 async function createSummary(systemPrompt: string, userMessage: string) {
   try {
-    return await groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      model: "llama-3.3-70b-versatile",
+    const result = await generateCopilotJson({
+      system: `${systemPrompt}
+
+Return ONLY valid JSON object with this schema:
+{"summary":"markdown string in Indonesian"}`,
+      user: userMessage,
+      models: AI_SUMMARY_MODELS,
       temperature: 0.3,
-      max_completion_tokens: MAX_COMPLETION_TOKENS,
+      maxTokens: MAX_COMPLETION_TOKENS,
+      repairSchemaHint: '{"summary":"markdown string in Indonesian"}',
     });
+    return String(result.parsed.summary || '').trim() || 'Gagal menghasilkan ringkasan.';
   } catch (error: any) {
     const status = error?.status;
     const message = error?.message || '';
@@ -350,15 +354,18 @@ NOTE: Context was reduced automatically because provider token limits were reach
 
     console.warn(`[AI Summary] Provider rejected prompt size (${userMessage.length} chars). Retrying with ${retryMessage.length} chars.`);
 
-    return groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: retryMessage },
-      ],
-      model: "llama-3.3-70b-versatile",
+    const result = await generateCopilotJson({
+      system: `${systemPrompt}
+
+Return ONLY valid JSON object with this schema:
+{"summary":"markdown string in Indonesian"}`,
+      user: retryMessage,
+      models: AI_SUMMARY_MODELS,
       temperature: 0.3,
-      max_completion_tokens: MAX_COMPLETION_TOKENS,
+      maxTokens: MAX_COMPLETION_TOKENS,
+      repairSchemaHint: '{"summary":"markdown string in Indonesian"}',
     });
+    return String(result.parsed.summary || '').trim() || 'Gagal menghasilkan ringkasan.';
   }
 }
 
@@ -368,10 +375,6 @@ export async function POST(req: NextRequest) {
     const { testCaseId } = body;
 
     if (!String(testCaseId || '').trim()) return NextResponse.json({ error: 'Test Case ID is required' }, { status: 400 });
-    if (!process.env.GROQ_API_KEY) {
-      return NextResponse.json({ error: 'GROQ_API_KEY belum dikonfigurasi.' }, { status: 503 });
-    }
-
     const requestedId = String(testCaseId).trim();
 
     console.log(`[AI Summary] Mencari Test Case/BugFix untuk ID: ${requestedId}`);
@@ -506,9 +509,7 @@ ${visualEvidence || 'No visual evidence available.'}`;
     const compactUserMessage = limitText(userMessage, MAX_PROMPT_CHARS);
     console.log(`[AI Summary] Prompt size: system=${systemPrompt.length} chars, user=${compactUserMessage.length} chars`);
 
-    const completion = await createSummary(systemPrompt, compactUserMessage);
-
-    const summary = completion.choices[0]?.message?.content || 'Gagal menghasilkan ringkasan.';
+    const summary = await createSummary(systemPrompt, compactUserMessage);
 
     return NextResponse.json({ summary });
   } catch (error: any) {

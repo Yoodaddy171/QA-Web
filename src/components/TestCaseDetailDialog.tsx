@@ -62,6 +62,26 @@ interface NetworkMeta {
   isError: boolean;
 }
 
+interface ConsoleLogGroup {
+  id: string;
+  log: LogEntry;
+  entries: LogEntry[];
+  count: number;
+}
+
+interface NetworkLogItem {
+  log: LogEntry & { network: NonNullable<LogEntry['network']> };
+  meta: NetworkMeta;
+}
+
+interface NetworkLogGroup {
+  id: string;
+  log: LogEntry & { network: NonNullable<LogEntry['network']> };
+  meta: NetworkMeta;
+  entries: NetworkLogItem[];
+  count: number;
+}
+
 interface NetworkFilterState {
   search: string;
   host: string;
@@ -90,6 +110,9 @@ const STATIC_EXTENSIONS = [
   '.js', '.css', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.ico',
   '.woff', '.woff2', '.ttf', '.map', '.json',
 ];
+
+const networkCodePanelClass = "overflow-auto rounded border border-border bg-muted p-3 font-mono text-[10px] leading-relaxed [tab-size:2]";
+const networkFullscreenCodePanelClass = "min-h-[420px] min-w-[280px] max-h-[64vh] resize overflow-auto rounded-xl border border-border bg-background p-4 font-mono text-[11px] leading-relaxed shadow-sm [tab-size:2]";
 
 const formatPrettyValue = (value: unknown) => {
   if (value === undefined || value === null || value === '') return '-';
@@ -159,6 +182,10 @@ const getResponsePayload = (data: unknown) => {
   return record.responseBody ?? record.response ?? record.data ?? data;
 };
 
+const getConsoleLogText = (log: LogEntry) => (
+  typeof log.log === 'object' ? formatPrettyValue(log.log) : String(log.log ?? '')
+);
+
 const parseNetworkUrl = (url: string) => {
   if (url.startsWith('data:')) {
     return { host: 'data:', pathname: 'data:', protocol: 'data:' };
@@ -215,6 +242,65 @@ const getNetworkMeta = (network: NonNullable<LogEntry['network']>): NetworkMeta 
   }
 
   return { category: 'other', label: 'Other', host: parsed.host, method, pathname: parsed.pathname, isError };
+};
+
+const getConsoleLogSignature = (log: LogEntry) => [
+  log.level || 'INFO',
+  getConsoleLogText(log),
+].join('|');
+
+const getNetworkLogSignature = (item: NetworkLogItem) => [
+  item.meta.method,
+  item.log.network.url,
+  item.log.network.status ?? 'unknown',
+  item.meta.category,
+].join('|');
+
+const groupConsoleLogs = (logs: LogEntry[]): ConsoleLogGroup[] => {
+  const groups: ConsoleLogGroup[] = [];
+
+  logs.forEach((log, index) => {
+    const signature = getConsoleLogSignature(log);
+    const previous = groups[groups.length - 1];
+    if (previous && getConsoleLogSignature(previous.log) === signature) {
+      previous.entries.push(log);
+      previous.count += 1;
+      return;
+    }
+
+    groups.push({
+      id: log.id ?? `console-group-${index}`,
+      log,
+      entries: [log],
+      count: 1,
+    });
+  });
+
+  return groups;
+};
+
+const groupNetworkLogs = (items: NetworkLogItem[]): NetworkLogGroup[] => {
+  const groups: NetworkLogGroup[] = [];
+
+  items.forEach((item, index) => {
+    const signature = getNetworkLogSignature(item);
+    const previous = groups[groups.length - 1];
+    if (previous && getNetworkLogSignature(previous.entries[0]) === signature) {
+      previous.entries.push(item);
+      previous.count += 1;
+      return;
+    }
+
+    groups.push({
+      id: item.log.id ?? `network-group-${index}`,
+      log: item.log,
+      meta: item.meta,
+      entries: [item],
+      count: 1,
+    });
+  });
+
+  return groups;
 };
 
 const getNetworkCategoryClass = (category: NetworkCategory) => {
@@ -425,6 +511,9 @@ export function TestCaseDetailDialog({
   const [isRecordingFullscreenExpanded, setIsRecordingFullscreenExpanded] = useState(false);
   const [isRecordingFullscreenContentVisible, setIsRecordingFullscreenContentVisible] = useState(false);
   const [isClosingRecordingFullscreen, setIsClosingRecordingFullscreen] = useState(false);
+  const [isSystemDevLogFullscreen, setIsSystemDevLogFullscreen] = useState(false);
+  const [selectedSystemDevLogId, setSelectedSystemDevLogId] = useState<string | null>(null);
+  const [networkCodeWrap, setNetworkCodeWrap] = useState(true);
   const [networkFilters, setNetworkFilters] = useState<NetworkFilterState>(DEFAULT_NETWORK_FILTERS);
   const [fullscreenLogFilter, setFullscreenLogFilter] = useState<FullscreenLogFilter>('all');
   const [selectedFullscreenLog, setSelectedFullscreenLog] = useState<SelectedFullscreenLog>(null);
@@ -434,6 +523,7 @@ export function TestCaseDetailDialog({
   const recordingPanRef = useRef({ active: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
   const recordingFullscreenTimerRef = useRef<number | null>(null);
   const consoleLogs = useMemo(() => filterConsoleLogs(liveLogs), [filterConsoleLogs, liveLogs]);
+  const groupedConsoleLogs = useMemo(() => groupConsoleLogs(consoleLogs), [consoleLogs]);
   const navigationIndex = useMemo(() => {
     if (!testCaseList?.length || !viewTestCase) return -1;
     return testCaseList.findIndex(tc => tc.id === viewTestCase.id);
@@ -494,6 +584,8 @@ export function TestCaseDetailDialog({
       return true;
     })
   ), [fullscreenLogFilter, networkLogs]);
+  const groupedNetworkLogs = useMemo(() => groupNetworkLogs(networkLogs), [networkLogs]);
+  const fullscreenNetworkGroups = useMemo(() => groupNetworkLogs(fullscreenNetworkLogs), [fullscreenNetworkLogs]);
   const fullscreenConsoleLogs = useMemo(() => (
     consoleLogs.filter((log) => {
       if (fullscreenLogFilter === 'errors') {
@@ -503,6 +595,18 @@ export function TestCaseDetailDialog({
       return true;
     })
   ), [consoleLogs, fullscreenLogFilter]);
+  const fullscreenConsoleGroups = useMemo(() => groupConsoleLogs(fullscreenConsoleLogs), [fullscreenConsoleLogs]);
+  const selectedSystemNetworkGroup = useMemo(() => (
+    selectedSystemDevLogId
+      ? fullscreenNetworkGroups.find((group) => `system-network-${group.id}` === selectedSystemDevLogId) ?? null
+      : null
+  ), [fullscreenNetworkGroups, selectedSystemDevLogId]);
+  const selectedSystemConsoleGroup = useMemo(() => (
+    selectedSystemDevLogId
+      ? fullscreenConsoleGroups.find((group) => `system-console-${group.id}` === selectedSystemDevLogId) ?? null
+      : null
+  ), [fullscreenConsoleGroups, selectedSystemDevLogId]);
+  const networkCodeWhitespaceClass = networkCodeWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre';
   const hiddenNetworkCount = Math.max(0, networkLogItems.length - networkLogs.length);
   const isBugFixDetail = viewTestCase?.detailSource === 'bugfix' || Boolean(viewTestCase?.sourceTestCaseId && viewTestCase?.reportedAt);
   const lifecycleItems = useMemo(
@@ -675,6 +779,18 @@ export function TestCaseDetailDialog({
     });
   };
 
+  const openSystemDevLogFullscreen = () => {
+    setFullscreenLogFilter('all');
+    setSelectedSystemDevLogId(null);
+    if (activeDevLogTab === 'execution') setActiveDevLogTab('network');
+    setIsSystemDevLogFullscreen(true);
+  };
+
+  const closeSystemDevLogFullscreen = () => {
+    setIsSystemDevLogFullscreen(false);
+    setSelectedSystemDevLogId(null);
+  };
+
   const copyFullscreenEvidence = async () => {
     const screenshotUrl = selectedRecordingFrame ? getManualFrameUrl(selectedRecordingFrame.url) : '';
     const screenshotDataUrl = screenshotUrl ? await getImageDataUrl(screenshotUrl) : '';
@@ -771,7 +887,11 @@ export function TestCaseDetailDialog({
       <DialogContent
         className={cn(
           "max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background text-foreground",
-          isRecordingFullscreen ? "w-[96vw] sm:max-w-[96vw]" : "sm:max-w-4xl"
+          isSystemDevLogFullscreen
+            ? "h-screen max-h-screen w-screen max-w-none translate-x-[-50%] translate-y-[-50%] rounded-none border-0 sm:max-w-none"
+            : isRecordingFullscreen
+              ? "w-[96vw] sm:max-w-[96vw]"
+              : "sm:max-w-4xl"
         )}
       >
         <DialogHeader className="p-6 pb-2 shrink-0">
@@ -1395,6 +1515,16 @@ export function TestCaseDetailDialog({
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                className="h-8 rounded-lg px-2.5 text-[10px] font-black uppercase tracking-widest gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300"
+                                onClick={openSystemDevLogFullscreen}
+                              >
+                                <Maximize2 className="h-3.5 w-3.5" />
+                                Fullscreen
+                              </Button>
+                              <Separator orientation="vertical" className="h-5 mx-0.5 bg-border" />
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 className={cn(
                                   "h-8 px-2.5 text-[10px] font-black uppercase tracking-widest gap-2 rounded-lg",
                                   isSummarizing && "animate-pulse",
@@ -1427,7 +1557,7 @@ export function TestCaseDetailDialog({
                                 )}
                                 onClick={() => setActiveDevLogTab('console')}
                               >
-                                Console ({consoleLogs.length})
+                                Console ({groupedConsoleLogs.length})
                               </Button>
                               <Button
                                 variant={activeDevLogTab === 'network' ? 'default' : 'ghost'}
@@ -1438,7 +1568,7 @@ export function TestCaseDetailDialog({
                                 )}
                                 onClick={() => setActiveDevLogTab('network')}
                               >
-                                Network ({networkLogs.length})
+                                Network ({groupedNetworkLogs.length})
                               </Button>
                               <Separator orientation="vertical" className="h-5 mx-0.5 bg-border" />
                               <Button
@@ -1527,16 +1657,18 @@ export function TestCaseDetailDialog({
                                 </div>
                               ) : activeDevLogTab === 'console' ? (
                                 <div className="divide-y divide-border">
-                                  {consoleLogs.length === 0 ? (
+                                  {groupedConsoleLogs.length === 0 ? (
                                     <div className="h-full flex flex-col items-center justify-center py-20 text-muted-foreground">
                                       <Clock className="w-8 h-8 mb-3 opacity-20" />
                                       <p className="font-bold tracking-widest text-[10px] uppercase">Awaiting Console Output...</p>
                                     </div>
                                   ) : (
-                                    consoleLogs.map((log, index) => {
-                                      const logId = log.id ?? `console-${index}`;
-                                      const isError = log.level === 'SEVERE' || log.log?.toString().toLowerCase().includes('error');
-                                      const isWarning = log.level === 'WARNING' || log.log?.toString().toLowerCase().includes('warn');
+                                    groupedConsoleLogs.map((group) => {
+                                      const { log, entries, count } = group;
+                                      const logId = group.id;
+                                      const isError = entries.some((entry) => entry.level === 'SEVERE' || entry.log?.toString().toLowerCase().includes('error'));
+                                      const isWarning = entries.some((entry) => entry.level === 'WARNING' || entry.log?.toString().toLowerCase().includes('warn'));
+                                      const canExpand = count > 1 || typeof log.log === 'object';
 
                                       return (
                                         <div key={logId} className={cn("group", isError ? 'bg-rose-50 dark:bg-rose-950/20' : isWarning ? 'bg-amber-50 dark:bg-amber-950/20' : 'hover:bg-secondary/60 dark:hover:bg-white/5')}>
@@ -1560,12 +1692,17 @@ export function TestCaseDetailDialog({
                                                 {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 200)}...` : String(log.log ?? '')}
                                               </span>
                                             </div>
-                                            {typeof log.log === 'object' && (
+                                            {count > 1 && (
+                                              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                                x{count}
+                                              </span>
+                                            )}
+                                            {canExpand && (
                                               <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", expandedLogId === logId && "rotate-180")} />
                                             )}
                                           </div>
                                           <AnimatePresence>
-                                            {expandedLogId === logId && typeof log.log === 'object' && (
+                                            {expandedLogId === logId && canExpand && (
                                               <motion.div
                                                 initial={{ height: 0, opacity: 0 }}
                                                 animate={{ height: 'auto', opacity: 1 }}
@@ -1573,10 +1710,29 @@ export function TestCaseDetailDialog({
                                                 transition={{ duration: 0.2 }}
                                                 className="overflow-hidden"
                                               >
-                                                <div className="px-10 pb-3">
+                                                <div className="space-y-3 px-10 pb-3">
+                                                  {count > 1 && (
+                                                    <div className="rounded-lg border border-border bg-background p-2 dark:bg-card/70">
+                                                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated {count} times</p>
+                                                      <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+                                                        {entries.map((entry, entryIndex) => (
+                                                          <button
+                                                            key={entry.id ?? `${logId}-repeat-${entryIndex}`}
+                                                            type="button"
+                                                            className="grid w-full grid-cols-[54px_70px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-left text-[10px] hover:bg-secondary"
+                                                            onClick={() => seekRecordingFromLog(entry)}
+                                                          >
+                                                            <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                                            <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.relativeMs)}</span>
+                                                            <span className="truncate text-foreground">{getConsoleLogText(entry)}</span>
+                                                          </button>
+                                                        ))}
+                                                      </div>
+                                                    </div>
+                                                  )}
                                                   <div className="bg-muted rounded-lg p-3 border border-border shadow-inner">
                                                     <pre className="text-emerald-700 whitespace-pre-wrap overflow-x-auto dark:text-emerald-500/80">
-                                                      {JSON.stringify(log.log, null, 2)}
+                                                      {formatPrettyValue(log.log)}
                                                     </pre>
                                                   </div>
                                                 </div>
@@ -1688,14 +1844,15 @@ export function TestCaseDetailDialog({
                                     <div className="col-span-1"></div>
                                   </div>
                                   <div className="flex-1 overflow-y-auto divide-y divide-border">
-                                    {networkLogs.length === 0 ? (
+                                    {groupedNetworkLogs.length === 0 ? (
                                       <div className="h-full flex flex-col items-center justify-center py-20 text-muted-foreground">
                                         <RefreshCw className="w-8 h-8 mb-3 opacity-20 animate-spin-slow" />
                                         <p className="font-bold tracking-widest text-[10px] uppercase">Waiting for Network Traffic...</p>
                                       </div>
                                     ) : (
-                                      networkLogs.map(({ log: net, meta }, index) => {
-                                        const logId = net.id ?? `network-${index}`;
+                                      groupedNetworkLogs.map((group) => {
+                                        const { log: net, meta, entries, count } = group;
+                                        const logId = group.id;
 
                                         return (
                                           <div key={logId} className="group hover:bg-secondary/60 dark:hover:bg-white/5">
@@ -1727,7 +1884,12 @@ export function TestCaseDetailDialog({
                                                   <span className="ml-2 text-indigo-700 dark:text-indigo-300">{formatRelativeTime(net.relativeMs)}</span>
                                                 )}
                                               </div>
-                                              <div className="col-span-1 flex justify-end">
+                                              <div className="col-span-1 flex items-center justify-end gap-1.5">
+                                                {count > 1 && (
+                                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                                    x{count}
+                                                  </span>
+                                                )}
                                                 <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", expandedLogId === logId && "rotate-180")} />
                                               </div>
                                             </div>
@@ -1741,28 +1903,50 @@ export function TestCaseDetailDialog({
                                                   className="overflow-hidden"
                                                 >
                                                   <div className="p-4 bg-muted/50 border-t border-border dark:bg-muted/50 dark:border-border">
+                                                    {count > 1 && (
+                                                      <div className="mb-3 rounded-lg border border-border bg-background p-3 dark:border-border dark:bg-card/70">
+                                                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated {count} times</p>
+                                                        <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
+                                                          {entries.map((entry, entryIndex) => (
+                                                            <button
+                                                              key={entry.log.id ?? `${logId}-repeat-${entryIndex}`}
+                                                              type="button"
+                                                              className="grid w-full grid-cols-[54px_72px_72px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-left text-[10px] hover:bg-secondary"
+                                                              onClick={() => seekRecordingFromLog(entry.log)}
+                                                            >
+                                                              <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                                              <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
+                                                              <span className={cn("rounded px-1.5 py-0.5 text-center font-bold", getNetworkStatusClass(entry.log.network))}>
+                                                                {getNetworkStatus(entry.log.network)}
+                                                              </span>
+                                                              <span className="truncate text-foreground">{getNetworkDuration(entry.log.network)}</span>
+                                                            </button>
+                                                          ))}
+                                                        </div>
+                                                      </div>
+                                                    )}
                                                     <div className="mb-3 rounded-lg border border-border bg-background p-3 dark:border-border dark:bg-card/70">
                                                       <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Full URL</p>
-                                                      <pre className="whitespace-pre-wrap break-all text-[10px] leading-relaxed text-foreground dark:text-slate-300">
+                                                      <pre className={cn("overflow-auto rounded border border-border bg-muted/40 p-2 font-mono text-[10px] leading-relaxed text-foreground dark:text-slate-300", networkCodeWhitespaceClass)}>
                                                         {net.network.url}
                                                       </pre>
                                                     </div>
-                                                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                                                    <div className="grid grid-cols-1 items-start gap-4 overflow-x-auto xl:grid-cols-3">
                                                       <div className="space-y-3">
                                                         <p className="text-[10px] font-bold text-muted-foreground uppercase">Headers</p>
-                                                        <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted p-3 text-[10px] leading-relaxed text-foreground dark:text-slate-400">
+                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[320px] min-h-[180px] resize-y text-foreground dark:text-slate-400")}>
                                                           {formatPrettyValue(net.network.headers)}
                                                         </pre>
                                                       </div>
                                                       <div className="space-y-3">
                                                         <p className="text-[10px] font-bold text-muted-foreground uppercase">Request Payload</p>
-                                                        <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted p-3 text-[10px] leading-relaxed text-cyan-700 dark:text-cyan-300/90">
+                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[420px] min-h-[180px] resize-y text-cyan-700 dark:text-cyan-300/90")}>
                                                           {formatPrettyValue(getRequestPayload(net.network.data))}
                                                         </pre>
                                                       </div>
                                                       <div className="space-y-3">
                                                         <p className="text-[10px] font-bold text-muted-foreground uppercase">Response</p>
-                                                        <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted p-3 text-[10px] leading-relaxed text-emerald-700 dark:text-emerald-500/80">
+                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[420px] min-h-[180px] resize-y text-emerald-700 dark:text-emerald-500/80")}>
                                                           {formatPrettyValue(getResponsePayload(net.network.data))}
                                                         </pre>
                                                       </div>
@@ -1811,6 +1995,358 @@ export function TestCaseDetailDialog({
                   )}
                 </AnimatePresence>
               </Tabs>
+            </div>
+          </div>
+        )}
+
+        {isSystemDevLogFullscreen && (
+          <div className="fixed inset-0 z-[78] flex items-stretch justify-stretch bg-background text-foreground">
+            <div className="flex h-screen w-screen overflow-hidden bg-background">
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex min-h-20 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-5 py-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Wrench className="h-4 w-4 text-teal-500" />
+                      <p className="text-xs font-black uppercase tracking-widest text-foreground">System DevLog Fullscreen</p>
+                      <Badge variant="outline" className="rounded-md border-teal-200 bg-teal-50 text-[10px] font-black uppercase tracking-widest text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-200">
+                        {activeDevLogTab === 'network' ? `${fullscreenNetworkGroups.length} network` : `${fullscreenConsoleGroups.length} console`}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">
+                      {viewTestCase?.testCaseId || '-'} · {viewTestCase?.testAction || 'Execution telemetry'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pr-12">
+                    <div className="flex rounded-md bg-muted p-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 px-3 text-[10px] font-black uppercase tracking-widest",
+                          activeDevLogTab === 'console'
+                            ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-100'
+                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                        )}
+                        onClick={() => {
+                          setActiveDevLogTab('console');
+                          setSelectedSystemDevLogId(null);
+                        }}
+                      >
+                        Console
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 px-3 text-[10px] font-black uppercase tracking-widest",
+                          activeDevLogTab === 'network'
+                            ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-100'
+                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                        )}
+                        onClick={() => {
+                          setActiveDevLogTab('network');
+                          setSelectedSystemDevLogId(null);
+                        }}
+                      >
+                        Network
+                      </Button>
+                    </div>
+                    <div className="flex rounded-md bg-muted p-1">
+                      {[
+                        { value: 'all', label: 'All' },
+                        { value: 'errors', label: 'Errors' },
+                        { value: 'api', label: 'API' },
+                      ].map((item) => (
+                        <Button
+                          key={item.value}
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "h-8 px-3 text-[10px] font-black uppercase tracking-widest",
+                            fullscreenLogFilter === item.value
+                              ? 'bg-indigo-100 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-100'
+                              : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                          )}
+                          onClick={() => {
+                            setFullscreenLogFilter(item.value as FullscreenLogFilter);
+                            setSelectedSystemDevLogId(null);
+                          }}
+                        >
+                          {item.label}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-8 rounded-md border px-3 text-[10px] font-black uppercase tracking-widest",
+                        networkCodeWrap
+                          ? 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-200'
+                          : 'border-border bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      )}
+                      onClick={() => setNetworkCodeWrap((current) => !current)}
+                    >
+                      Wrap {networkCodeWrap ? 'On' : 'Off'}
+                    </Button>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-5 top-5 z-[90] h-10 w-10 rounded-full border border-border/70 bg-background/90 p-0 text-foreground shadow-xl backdrop-blur transition hover:scale-105 hover:bg-secondary"
+                    onClick={closeSystemDevLogFullscreen}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="grid min-h-0 flex-1 grid-cols-[minmax(380px,34%)_1fr] bg-muted/25">
+                  <div className="min-h-0 overflow-y-auto border-r border-border p-3">
+                    {activeDevLogTab === 'network' ? (
+                      <div className="space-y-2">
+                        {fullscreenNetworkGroups.length === 0 ? (
+                          <div className="flex h-full min-h-[420px] flex-col items-center justify-center text-muted-foreground">
+                            <RefreshCw className="mb-3 h-8 w-8 opacity-20" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest">No Network Rows</p>
+                          </div>
+                        ) : fullscreenNetworkGroups.map((group) => {
+                          const { log: net, meta, count } = group;
+                          const logId = `system-network-${group.id}`;
+                          const active = selectedSystemDevLogId === logId;
+
+                          return (
+                            <div
+                              key={logId}
+                              role="button"
+                              tabIndex={0}
+                              className={cn(
+                                "grid cursor-pointer grid-cols-12 items-center gap-2 rounded-lg border border-border bg-background p-3 text-left shadow-sm transition hover:border-indigo-200 hover:bg-secondary/50 dark:hover:border-indigo-500/30 dark:hover:bg-white/5",
+                                active && "border-indigo-300 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-950/30"
+                              )}
+                              onClick={() => {
+                                setSelectedSystemDevLogId(logId);
+                                seekRecordingFromLog(net);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  setSelectedSystemDevLogId(logId);
+                                  seekRecordingFromLog(net);
+                                }
+                              }}
+                            >
+                              <span className="col-span-2 truncate font-black text-indigo-700 dark:text-indigo-300">{getNetworkMethod(net.network)}</span>
+                              <span className="col-span-2 truncate">
+                                <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
+                                  {meta.label}
+                                </span>
+                              </span>
+                              <span className="col-span-5 min-w-0">
+                                <span className="block truncate text-[11px] font-bold text-foreground">{meta.pathname.split('/').pop() || meta.pathname || net.network.url}</span>
+                                <span className="block truncate text-[9px] text-muted-foreground">{meta.host}</span>
+                              </span>
+                              <span className="col-span-1 text-center">
+                                <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", getNetworkStatusClass(net.network))}>
+                                  {getNetworkStatus(net.network)}
+                                </span>
+                              </span>
+                              <span className="col-span-2 flex items-center justify-end gap-2 text-[10px] font-bold text-muted-foreground">
+                                <span>{formatRelativeTime(net.relativeMs)}</span>
+                                {count > 1 && (
+                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                    x{count}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {fullscreenConsoleGroups.length === 0 ? (
+                          <div className="flex h-full min-h-[420px] flex-col items-center justify-center text-muted-foreground">
+                            <Clock className="mb-3 h-8 w-8 opacity-20" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest">No Console Rows</p>
+                          </div>
+                        ) : fullscreenConsoleGroups.map((group) => {
+                          const { log, entries, count } = group;
+                          const logId = `system-console-${group.id}`;
+                          const active = selectedSystemDevLogId === logId;
+                          const isError = entries.some((entry) => entry.level === 'SEVERE' || entry.log?.toString().toLowerCase().includes('error'));
+                          const isWarning = entries.some((entry) => entry.level === 'WARNING' || entry.log?.toString().toLowerCase().includes('warn'));
+
+                          return (
+                            <div
+                              key={logId}
+                              role="button"
+                              tabIndex={0}
+                              className={cn(
+                                "grid cursor-pointer grid-cols-12 gap-2 rounded-lg border border-border bg-background p-3 text-left shadow-sm transition hover:border-indigo-200 hover:bg-secondary/50 dark:hover:border-indigo-500/30 dark:hover:bg-white/5",
+                                isError ? 'bg-rose-50 dark:bg-rose-950/20' : isWarning ? 'bg-amber-50 dark:bg-amber-950/20' : '',
+                                active && 'border-indigo-300 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-950/30'
+                              )}
+                              onClick={() => {
+                                setSelectedSystemDevLogId(logId);
+                                seekRecordingFromLog(log);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  setSelectedSystemDevLogId(logId);
+                                  seekRecordingFromLog(log);
+                                }
+                              }}
+                            >
+                              <span className="col-span-2 text-[10px] font-bold text-muted-foreground">{formatRelativeTime(log.relativeMs)}</span>
+                              <span className={cn("col-span-8 break-all text-[11px]", isError ? 'text-rose-700 dark:text-rose-300' : isWarning ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300/90')}>
+                                {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 220)}...` : String(log.log ?? '')}
+                              </span>
+                              <span className="col-span-2 flex items-start justify-end gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                {count > 1 && (
+                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                    x{count}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-h-0 overflow-y-auto p-4">
+                    {activeDevLogTab === 'network' ? (
+                      selectedSystemNetworkGroup ? (
+                        <div className="space-y-4">
+                          <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+                            <div className="mb-3 flex flex-wrap items-center gap-2">
+                              <Badge className="rounded-md border border-cyan-200 bg-cyan-50 text-[10px] font-black uppercase tracking-widest text-cyan-700 shadow-none dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-200">
+                                {selectedSystemNetworkGroup.meta.label}
+                              </Badge>
+                              <Badge variant="outline" className="rounded-md text-[10px] font-black uppercase tracking-widest">
+                                {getNetworkMethod(selectedSystemNetworkGroup.log.network)}
+                              </Badge>
+                              <span className={cn("rounded px-2 py-1 text-[10px] font-black", getNetworkStatusClass(selectedSystemNetworkGroup.log.network))}>
+                                {getNetworkStatus(selectedSystemNetworkGroup.log.network)}
+                              </span>
+                              {selectedSystemNetworkGroup.count > 1 && (
+                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                  Repeated x{selectedSystemNetworkGroup.count}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Full URL</p>
+                            <pre className={cn("mt-2 overflow-auto rounded-lg border border-border bg-muted p-3 font-mono text-[11px] leading-relaxed text-foreground", networkCodeWhitespaceClass)}>
+                              {selectedSystemNetworkGroup.log.network.url}
+                            </pre>
+                          </div>
+
+                          {selectedSystemNetworkGroup.count > 1 && (
+                            <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+                              <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated Calls</p>
+                              <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
+                                {selectedSystemNetworkGroup.entries.map((entry, entryIndex) => (
+                                  <button
+                                    key={entry.log.id ?? `system-repeat-${entryIndex}`}
+                                    type="button"
+                                    className="grid w-full grid-cols-[54px_80px_90px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-left text-[10px] hover:bg-secondary"
+                                    onClick={() => seekRecordingFromLog(entry.log)}
+                                  >
+                                    <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                    <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
+                                    <span className={cn("rounded px-1.5 py-0.5 text-center font-bold", getNetworkStatusClass(entry.log.network))}>
+                                      {getNetworkStatus(entry.log.network)}
+                                    </span>
+                                    <span className="truncate text-foreground">{getNetworkDuration(entry.log.network)}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 items-start gap-4 overflow-x-auto xl:grid-cols-3">
+                            <div className="space-y-2">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Headers</p>
+                              <pre className={cn(networkFullscreenCodePanelClass, networkCodeWhitespaceClass, "text-foreground")}>
+                                {formatPrettyValue(selectedSystemNetworkGroup.log.network.headers)}
+                              </pre>
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Payload</p>
+                              <pre className={cn(networkFullscreenCodePanelClass, networkCodeWhitespaceClass, "text-cyan-700 dark:text-cyan-200")}>
+                                {formatPrettyValue(getRequestPayload(selectedSystemNetworkGroup.log.network.data))}
+                              </pre>
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Response</p>
+                              <pre className={cn(networkFullscreenCodePanelClass, networkCodeWhitespaceClass, "text-emerald-700 dark:text-emerald-200")}>
+                                {formatPrettyValue(getResponsePayload(selectedSystemNetworkGroup.log.network.data))}
+                              </pre>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex h-full min-h-[520px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background text-muted-foreground">
+                          <Layers className="mb-3 h-8 w-8 opacity-30" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">Pilih network row untuk membuka drawer detail</p>
+                        </div>
+                      )
+                    ) : (
+                      selectedSystemConsoleGroup ? (
+                        <div className="space-y-4">
+                          <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+                            <div className="mb-3 flex flex-wrap items-center gap-2">
+                              <Badge variant="outline" className="rounded-md text-[10px] font-black uppercase tracking-widest">
+                                {selectedSystemConsoleGroup.log.level || 'INFO'}
+                              </Badge>
+                              {selectedSystemConsoleGroup.count > 1 && (
+                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                  Repeated x{selectedSystemConsoleGroup.count}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Message</p>
+                            <pre className="mt-2 min-h-[260px] max-h-[62vh] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-muted p-4 text-[11px] leading-relaxed text-foreground">
+                              {formatPrettyValue(selectedSystemConsoleGroup.log.log)}
+                            </pre>
+                          </div>
+                          {selectedSystemConsoleGroup.count > 1 && (
+                            <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+                              <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated Logs</p>
+                              <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
+                                {selectedSystemConsoleGroup.entries.map((entry, entryIndex) => (
+                                  <button
+                                    key={entry.id ?? `system-console-repeat-${entryIndex}`}
+                                    type="button"
+                                    className="grid w-full grid-cols-[54px_80px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-left text-[10px] hover:bg-secondary"
+                                    onClick={() => seekRecordingFromLog(entry)}
+                                  >
+                                    <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                    <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.relativeMs)}</span>
+                                    <span className="truncate text-foreground">{getConsoleLogText(entry)}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex h-full min-h-[520px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background text-muted-foreground">
+                          <Clock className="mb-3 h-8 w-8 opacity-30" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">Pilih console row untuk membuka drawer detail</p>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -2113,14 +2649,15 @@ export function TestCaseDetailDialog({
               <div className="min-h-0 flex-1 overflow-y-auto bg-muted/25">
                 {activeDevLogTab === 'network' ? (
                   <div className="space-y-2 p-3">
-                    {fullscreenNetworkLogs.length === 0 ? (
+                    {fullscreenNetworkGroups.length === 0 ? (
                       <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
                         <RefreshCw className="mb-3 h-8 w-8 opacity-20" />
                         <p className="text-[10px] font-bold uppercase tracking-widest">No Network Rows</p>
                       </div>
                     ) : (
-                      fullscreenNetworkLogs.map(({ log: net, meta }, index) => {
-                        const logId = net.id ?? `fullscreen-network-${index}`;
+                      fullscreenNetworkGroups.map((group) => {
+                        const { log: net, meta, entries, count } = group;
+                        const logId = `fullscreen-${group.id}`;
 
                         return (
                           <div
@@ -2161,6 +2698,11 @@ export function TestCaseDetailDialog({
                               </span>
                               <span className="col-span-2 flex items-center justify-end gap-2 text-right text-[10px] font-bold text-muted-foreground">
                                 <span>{formatRelativeTime(net.relativeMs)}</span>
+                                {count > 1 && (
+                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                    x{count}
+                                  </span>
+                                )}
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -2185,8 +2727,27 @@ export function TestCaseDetailDialog({
                                   className="overflow-hidden"
                                 >
                                   <div className="space-y-2 border-t border-border bg-muted/60 p-3">
-                                    <pre className="max-h-24 overflow-auto whitespace-pre-wrap break-all rounded border border-border bg-background p-2 text-[10px] text-foreground dark:text-slate-300">{net.network.url}</pre>
-                                    <pre className="max-h-44 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-background p-2 text-[10px] text-foreground">{formatPrettyValue(getResponsePayload(net.network.data))}</pre>
+                                    {count > 1 && (
+                                      <div className="rounded border border-border bg-background p-2">
+                                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated {count} times</p>
+                                        <div className="max-h-32 space-y-1 overflow-y-auto">
+                                          {entries.map((entry, entryIndex) => (
+                                            <button
+                                              key={entry.log.id ?? `${logId}-repeat-${entryIndex}`}
+                                              type="button"
+                                              className="grid w-full grid-cols-[42px_64px_1fr] gap-2 rounded border border-border bg-muted/40 px-2 py-1 text-left text-[10px] hover:bg-secondary"
+                                              onClick={() => seekRecordingFromLog(entry.log)}
+                                            >
+                                              <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                              <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
+                                              <span className="truncate text-foreground">{getNetworkDuration(entry.log.network)}</span>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    <pre className={cn("max-h-24 overflow-auto rounded border border-border bg-background p-2 font-mono text-[10px] text-foreground dark:text-slate-300", networkCodeWhitespaceClass)}>{net.network.url}</pre>
+                                    <pre className={cn("max-h-44 resize-y overflow-auto rounded border border-border bg-background p-2 font-mono text-[10px] text-foreground", networkCodeWhitespaceClass)}>{formatPrettyValue(getResponsePayload(net.network.data))}</pre>
                                   </div>
                                 </motion.div>
                               )}
@@ -2198,16 +2759,17 @@ export function TestCaseDetailDialog({
                   </div>
                 ) : (
                   <div className="space-y-2 p-3">
-                    {fullscreenConsoleLogs.length === 0 ? (
+                    {fullscreenConsoleGroups.length === 0 ? (
                       <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
                         <Clock className="mb-3 h-8 w-8 opacity-20" />
                         <p className="text-[10px] font-bold uppercase tracking-widest">No Console Rows</p>
                       </div>
                     ) : (
-                      fullscreenConsoleLogs.map((log, index) => {
-                        const logId = log.id ?? `fullscreen-console-${index}`;
-                        const isError = log.level === 'SEVERE' || log.log?.toString().toLowerCase().includes('error');
-                        const isWarning = log.level === 'WARNING' || log.log?.toString().toLowerCase().includes('warn');
+                      fullscreenConsoleGroups.map((group) => {
+                        const { log, entries, count } = group;
+                        const logId = `fullscreen-${group.id}`;
+                        const isError = entries.some((entry) => entry.level === 'SEVERE' || entry.log?.toString().toLowerCase().includes('error'));
+                        const isWarning = entries.some((entry) => entry.level === 'WARNING' || entry.log?.toString().toLowerCase().includes('warn'));
 
                         return (
                           <div
@@ -2231,7 +2793,14 @@ export function TestCaseDetailDialog({
                             <span className={cn("col-span-8 break-all text-[11px]", isError ? 'text-rose-700 dark:text-rose-300' : isWarning ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300/90')}>
                               {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 240)}...` : String(log.log ?? '')}
                             </span>
-                            <span className="col-span-2 text-right text-[9px] font-black uppercase tracking-widest text-muted-foreground">Use</span>
+                            <span className="col-span-2 flex items-center justify-end gap-2 text-right text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                              {count > 1 && (
+                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                  x{count}
+                                </span>
+                              )}
+                              Use
+                            </span>
                           </div>
                         );
                       })

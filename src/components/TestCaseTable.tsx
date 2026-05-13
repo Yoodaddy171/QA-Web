@@ -255,13 +255,12 @@ export function TestCaseTable({
   }, [visibleColumns]);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="min-w-0 space-y-4 overflow-x-hidden"
-    >
-      <div className="rounded-lg border border-white/5 bg-secondary/50 p-3 shadow-xl backdrop-blur-sm">
+      className="min-w-0 space-y-4"
+    >      <div className="rounded-lg border border-white/5 bg-secondary/50 p-3 shadow-xl backdrop-blur-sm">
         <div className="flex min-w-0 flex-col gap-3 lg:flex-row">
         <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -431,43 +430,42 @@ export function TestCaseTable({
         </div>
       </div>
 
-      <div className="relative min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card elevation-1">
-        {isLoading && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/50 backdrop-blur-[1px]">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-        )}
-        <div className="overflow-x-auto">
-          <Table className="w-max table-auto">
-            <TableHeader className="sticky top-0 z-10">
-              <TableRow className="border-white/5 bg-white/[0.03] hover:bg-white/[0.03]">
-                <TableHead className="w-10 pl-4">
-                  <Checkbox
-                    checked={testCases.length > 0 && selectedIds.size === testCases.length}
-                    onCheckedChange={toggleSelectAll}
-                    className="border-white/20 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
-                  />
-                </TableHead>
-                <TableHead className="w-[52px] text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">No</TableHead>
-                <TableHead className="w-[86px] cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
-                  <div className="flex items-center gap-1">ID <ArrowUpDown className="w-3 h-3" /></div>
-                </TableHead>
-                <TableHead className="w-[140px] cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('page')}>
-                  <div className="flex items-center gap-1">Page <ArrowUpDown className="w-3 h-3" /></div>
-                </TableHead>
-                <TableHead className={getColumnClass('subMenu', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Sub Menu</TableHead>
-                <TableHead className={getColumnClass('weight', 'w-[78px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Bobot</TableHead>
-                <TableHead className={getColumnClass('type', 'w-[88px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Tipe</TableHead>
-                <TableHead className={getColumnClass('priority', 'w-[94px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Prioritas</TableHead>
-                <TableHead className={getColumnClass('action', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Test Action</TableHead>
-                <TableHead className={getColumnClass('status', 'w-[150px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Status</TableHead>
-                <TableHead className={getColumnClass('result', 'w-[140px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Hasil</TableHead>
-                <TableHead className={getColumnClass('record', 'w-[160px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Test Record</TableHead>
-                <TableHead className={getColumnClass('progress', 'w-[92px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Progress</TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div className="relative rounded-xl border border-border/60 bg-card elevation-1">
+      {isLoading && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/50 backdrop-blur-[1px]">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />  
+        </div>
+      )}
+      <Table className="w-full table-auto">
+        <TableHeader className="sticky top-0 z-10">
+          <TableRow className="border-white/5 bg-white/[0.03] hover:bg-white/[0.03]">
+            <TableHead className="w-10 pl-4">
+              <Checkbox
+                checked={testCases.length > 0 && selectedIds.size === testCases.length}
+                onCheckedChange={toggleSelectAll}
+                className="border-white/20 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
+              />
+            </TableHead>
+            <TableHead className="w-10 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">No</TableHead>
+            <TableHead className="w-[80px] cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
+              <div className="flex items-center gap-1">ID <ArrowUpDown className="w-3 h-3" /></div>
+            </TableHead>
+            <TableHead className="w-[110px] cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('page')}>
+              <div className="flex items-center gap-1">Page <ArrowUpDown className="w-3 h-3" /></div>
+            </TableHead>
+            <TableHead className={getColumnClass('subMenu', 'w-[100px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Sub Menu</TableHead>
+            <TableHead className={getColumnClass('weight', 'w-[68px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Bobot</TableHead>
+            <TableHead className={getColumnClass('type', 'w-[80px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Tipe</TableHead>
+            <TableHead className={getColumnClass('priority', 'w-[84px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Prioritas</TableHead>
+            <TableHead className={getColumnClass('action', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Test Action</TableHead>
+            <TableHead className={getColumnClass('status', 'w-[140px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Status</TableHead>
+            <TableHead className={getColumnClass('result', 'w-[120px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Hasil</TableHead>
+            <TableHead className={getColumnClass('record', 'w-[140px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Test Record</TableHead>
+            <TableHead className={getColumnClass('progress', 'w-[88px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Progress</TableHead>
+            <TableHead className="w-[52px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Aksi</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
               {testCases.length === 0 ? (
                 <TableRow className="border-white/5">
                   <TableCell colSpan={tableColSpan} className="h-44 text-center">
@@ -505,8 +503,8 @@ export function TestCaseTable({
                       {(page - 1) * limit + index + 1}
                     </TableCell>
                     <TableCell className="font-mono text-sm font-black text-foreground whitespace-nowrap">{tc.testCaseId}</TableCell>
-                    <TableCell className="max-w-[140px] truncate text-sm font-bold text-foreground" title={tc.page}>{tc.page}</TableCell>
-                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[130px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>
+                    <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={tc.page}>{tc.page}</TableCell>
+                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[100px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>
                     <TableCell className={getColumnClass('weight')}>
                       {tc.calculatedWeight != null ? (
                         <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-[10px] font-mono text-muted-foreground">
@@ -526,7 +524,7 @@ export function TestCaseTable({
                         {tc.priority}
                       </Badge>
                     </TableCell>
-                    <TableCell className={getColumnClass('action', 'max-w-[250px]')}>
+                    <TableCell className={getColumnClass('action', 'max-w-[180px]')}>
                       <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{tc.testAction}</p>
                     </TableCell>
                     <TableCell className={getColumnClass('status')}>
@@ -621,9 +619,7 @@ export function TestCaseTable({
               )}
             </TableBody>
           </Table>
-        </div>
       </div>
-
       {totalPages > 1 && (
         <div className="flex flex-col gap-3 rounded-lg border border-white/5 bg-secondary/50 px-3 py-2 shadow-xl backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">

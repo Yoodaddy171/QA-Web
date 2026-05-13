@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Edit3, FolderOpen, FolderPlus, Layers, Save, Trash, Upload, X } from 'lucide-react';
+import { BookOpen, Edit3, FolderOpen, FolderPlus, Layers, Link, RefreshCw, Save, Trash, Upload, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,9 @@ const KNOWLEDGE_TYPE_OPTIONS = [
   { value: 'CHANGELOG', label: 'Release Notes' },
   { value: 'KNOWN_ISSUE', label: 'Known Issues' },
   { value: 'ENV_NOTE', label: 'Env Notes' },
+  { value: 'AI_PROFILE', label: 'AI Profile' },
+  { value: 'QA_PREFERENCE', label: 'QA Preference' },
+  { value: 'PROJECT_RULE', label: 'Project Rule' },
 ];
 
 const EMPTY_KNOWLEDGE_FORM = {
@@ -89,6 +92,10 @@ export function SettingsPanel({
   const [knowledgeUploading, setKnowledgeUploading] = useState(false);
   const [knowledgeFile, setKnowledgeFile] = useState<File | null>(null);
   const [knowledgeForm, setKnowledgeForm] = useState(EMPTY_KNOWLEDGE_FORM);
+  const [figmaUrl, setFigmaUrl] = useState('');
+  const [figmaDepth, setFigmaDepth] = useState('3');
+  const [figmaSyncing, setFigmaSyncing] = useState(false);
+  const [figmaSyncMessage, setFigmaSyncMessage] = useState('');
 
   const loadKnowledge = async () => {
     if (!selectedProject) {
@@ -111,6 +118,7 @@ export function SettingsPanel({
     const timer = window.setTimeout(() => {
       loadKnowledge();
       setKnowledgeForm(EMPTY_KNOWLEDGE_FORM);
+      setFigmaSyncMessage('');
     }, 0);
     return () => window.clearTimeout(timer);
   }, [selectedProject]);
@@ -172,6 +180,35 @@ export function SettingsPanel({
       // Keep selected file so the user can retry.
     } finally {
       setKnowledgeUploading(false);
+    }
+  };
+
+  const syncFigmaKnowledge = async () => {
+    if (!selectedProject || !figmaUrl.trim()) return;
+    setFigmaSyncing(true);
+    setFigmaSyncMessage('');
+    try {
+      const response = await fetch('/api/project-knowledge/figma-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: selectedProject,
+          figmaUrl: figmaUrl.trim(),
+          depth: Number(figmaDepth) || 3,
+          title: knowledgeForm.title.trim() || undefined,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Failed to sync Figma file');
+
+      setFigmaUrl('');
+      setKnowledgeForm(EMPTY_KNOWLEDGE_FORM);
+      setFigmaSyncMessage(`Figma knowledge tersimpan: ${data.title || 'Feature Map'}`);
+      loadKnowledge();
+    } catch (error) {
+      setFigmaSyncMessage(error instanceof Error ? error.message : 'Gagal sync Figma knowledge.');
+    } finally {
+      setFigmaSyncing(false);
     }
   };
 
@@ -320,7 +357,7 @@ export function SettingsPanel({
                   value={knowledgeForm.content}
                   onChange={(event) => setKnowledgeForm(prev => ({ ...prev, content: event.target.value }))}
                   placeholder="Paste API docs, feature map, aturan QA, atau catatan testing..."
-                  className="min-h-36 bg-secondary/50 border-border/60 text-foreground placeholder:text-muted-foreground focus:ring-primary/30 resize-y rounded-xl"
+                  className="h-36 max-h-[360px] overflow-y-auto bg-secondary/50 border-border/60 text-foreground placeholder:text-muted-foreground focus:ring-primary/30 resize-y rounded-xl [field-sizing:fixed]"
                 />
               </div>
               <div className="rounded-xl border border-dashed border-border bg-secondary/20 p-4">
@@ -351,6 +388,45 @@ export function SettingsPanel({
                     </Button>
                   </div>
                 </div>
+              </div>
+              <div className="rounded-xl border border-dashed border-border bg-secondary/20 p-4">
+                <div className="grid gap-4 lg:grid-cols-[1fr_120px_auto] lg:items-end">
+                  <div className="min-w-0 space-y-2">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sync Figma File</Label>
+                    <Input
+                      value={figmaUrl}
+                      onChange={(event) => setFigmaUrl(event.target.value)}
+                      placeholder="Paste Figma file URL atau file key"
+                      className="bg-secondary/50 border-border/60 text-foreground placeholder:text-muted-foreground focus:ring-primary/30 rounded-xl"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Fetch 1 Figma file, pecah page/frame/text menjadi Feature Map knowledge.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Depth</Label>
+                    <Select value={figmaDepth} onValueChange={setFigmaDepth}>
+                      <SelectTrigger className="bg-secondary/50 border-border/60 text-foreground focus:ring-primary/30 rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-card border-border/60 rounded-xl elevation-3">
+                        {['1', '2', '3', '4', '5', '6'].map(depth => (
+                          <SelectItem key={depth} value={depth} className="rounded-lg">{depth}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={syncFigmaKnowledge}
+                    disabled={!figmaUrl.trim() || figmaSyncing}
+                    className="gap-1.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-[10px] uppercase elevation-1"
+                  >
+                    {figmaSyncing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Link className="h-3.5 w-3.5" />}
+                    Sync
+                  </Button>
+                </div>
+                {figmaSyncMessage && (
+                  <p className="mt-3 text-[11px] font-medium text-muted-foreground">{figmaSyncMessage}</p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button

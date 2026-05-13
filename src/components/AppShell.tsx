@@ -44,6 +44,7 @@ const NAV_ITEMS = [
 ] as const;
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
 
 export function AppShell({
   projects,
@@ -54,6 +55,9 @@ export function AppShell({
   setActiveTab,
   children,
 }: AppShellProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-background" suppressHydrationWarning>
       {/* ===== HEADER - Material Design Surface with elevation ===== */}
@@ -99,7 +103,7 @@ export function AppShell({
                       : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                   )}
                 >
-                  {isActive && (
+                  {isActive && mounted && (
                     <motion.div
                       layoutId="nav-pill"
                       className="absolute inset-0 rounded-xl bg-primary shadow-sm"

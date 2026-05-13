@@ -1767,6 +1767,7 @@ export default function TestCaseManager() {
             setAiSelectedCases(new Set());
           }
         }}
+        projectId={selectedProject}
         modules={modules}
         aiGenerating={aiGenerating}
         aiGeneratedCases={aiGeneratedCases}

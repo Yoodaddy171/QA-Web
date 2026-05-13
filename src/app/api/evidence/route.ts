@@ -35,11 +35,20 @@ type RecordingFrame = {
 };
 
 type RecordingMetadata = {
+  mode?: 'frame' | 'video' | 'hybrid';
   sessionId: string;
   testCaseId: string;
   targetUrl?: string | null;
   startedAt?: string;
   stoppedAt?: string | null;
+  video?: {
+    file?: string;
+    url?: string;
+    mimeType?: string;
+    startedAtRelativeMs?: number;
+    durationMs?: number;
+    status?: string;
+  };
   frames: RecordingFrame[];
 };
 
@@ -243,10 +252,11 @@ function readLatestRecording(testCaseIds: string[]) {
   for (const item of getRecordingMetadataCandidates(testCaseIds)) {
     try {
       const metadata = JSON.parse(fs.readFileSync(item.metadataPath, 'utf8')) as RecordingMetadata;
-      if (!metadata.frames?.length) continue;
+      if (!metadata.frames?.length && !metadata.video?.url) continue;
       return {
         metadata,
         framesDir: path.join(path.dirname(item.metadataPath), 'frames'),
+        videoDir: path.join(path.dirname(item.metadataPath), 'video'),
       };
     } catch (_) {}
   }
@@ -327,6 +337,8 @@ function renderHtml(params: {
   const { record, type, logs, recording, frames } = params;
   const statusClass = /done|fixed|as expected/i.test(`${record.status} ${record.actualResult}`) ? 'pass' : /fail|not as expected/i.test(`${record.status} ${record.actualResult}`) ? 'fail' : 'neutral';
   const initialFrame = frames[0];
+  const videoUrl = recording?.metadata.video?.url ? `http://127.0.0.1:3001${recording.metadata.video.url}` : '';
+  const hasVisualEvidence = Boolean(frames.length || videoUrl);
 
   return `<!doctype html>
 <html lang="id">
@@ -352,7 +364,7 @@ function renderHtml(params: {
     .screen{display:flex;flex-direction:column;min-width:0;min-height:0;background:#000}
     .screen-head,.dev-head{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px;border-bottom:1px solid #1e293b;background:#020617;color:white}
     .screen-body{min-height:0;flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:18px;overflow:hidden}
-    .screen-body img{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+    .screen-body img,.screen-body video{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 18px 50px rgba(0,0,0,.45)}
     .timeline{height:76px;flex:0 0 76px;border-top:1px solid #1e293b;background:#020617;padding:10px 12px}
     .timeline-label{display:flex;justify-content:space-between;color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
     .timeline-row{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding-bottom:8px;scrollbar-color:#475569 #020617;scrollbar-width:thin}
@@ -400,7 +412,7 @@ function renderHtml(params: {
       <div class="box"><b>Type</b>${escapeHtml(record.testType)}</div>
       <div class="box"><b>Priority</b>${escapeHtml(record.priority || '-')}</div>
       <div class="box"><b>Updated</b>${escapeHtml(formatDate(record.updatedAt))}</div>
-      <div class="box"><b>Recording</b>${escapeHtml(recording ? `${recording.metadata.frames.length} frames` : 'No recording')}</div>
+      <div class="box"><b>Recording</b>${escapeHtml(recording ? `${recording.metadata.mode || 'frame'} / ${recording.metadata.frames?.length || 0} frames` : 'No recording')}</div>
     </section>
 
     <section class="section">
@@ -416,7 +428,7 @@ function renderHtml(params: {
 
     <section class="section evidence-section">
       <h2>Interactive Screen Recording & DevTools</h2>
-      ${frames.length ? `
+      ${hasVisualEvidence ? `
       <div class="viewer">
         <div class="screen">
           <div class="screen-head">
@@ -424,10 +436,11 @@ function renderHtml(params: {
             <span id="currentTime" class="status neutral">${escapeHtml(initialFrame?.time || '-')}</span>
           </div>
           <div class="screen-body">
-            <img id="frameImage" src="${initialFrame?.src || ''}" alt="Selected evidence frame" />
+            ${videoUrl ? `<video id="frameVideo" src="${escapeHtml(videoUrl)}" controls preload="metadata"></video>` : `<img id="frameImage" src="${initialFrame?.src || ''}" alt="Selected evidence frame" />`}
+            ${videoUrl && initialFrame ? `<img id="frameImage" src="${initialFrame.src}" alt="Selected evidence frame" style="display:none" />` : ''}
           </div>
           <div class="timeline">
-            <div class="timeline-label"><span>Timeline</span><span>${escapeHtml(frames.length)} frames</span></div>
+            <div class="timeline-label"><span>Timeline</span><span>${escapeHtml(frames.length)} keyframes</span></div>
             <div class="timeline-row" id="timeline"></div>
           </div>
         </div>
@@ -470,6 +483,7 @@ function renderHtml(params: {
   <script>
     const frames = ${toJsonScript(frames)};
     const logs = ${toJsonScript(logs)};
+    const video = ${toJsonScript(recording?.metadata.video || null)};
     let activeFrameIndex = 0;
     let activeTab = 'network';
     let activeLogId = null;
@@ -492,11 +506,21 @@ function renderHtml(params: {
       ), 0);
     };
     const renderFrame = (index) => {
-      if (!frames.length) return;
-      activeFrameIndex = Math.max(0, Math.min(frames.length - 1, index));
-      byId('frameImage').src = frames[activeFrameIndex].src;
-      byId('currentTime').textContent = frames[activeFrameIndex].time;
+      if (frames.length) {
+        activeFrameIndex = Math.max(0, Math.min(frames.length - 1, index));
+        const frameImage = byId('frameImage');
+        if (frameImage) frameImage.src = frames[activeFrameIndex].src;
+        byId('currentTime').textContent = frames[activeFrameIndex].time;
+      }
       document.querySelectorAll('.time-btn').forEach((button, idx) => button.classList.toggle('active', idx === activeFrameIndex));
+    };
+    const seekVideo = (relativeMs) => {
+      const player = byId('frameVideo');
+      if (!player || typeof relativeMs !== 'number') return;
+      const startedAt = Number(video?.startedAtRelativeMs || 0);
+      const duration = Number(video?.durationMs || 0) / 1000;
+      const target = Math.max(0, Math.min(duration || Number.POSITIVE_INFINITY, (relativeMs - startedAt) / 1000));
+      try { player.currentTime = target; } catch {}
     };
     const renderTimeline = () => {
       const target = byId('timeline');
@@ -573,7 +597,10 @@ function renderHtml(params: {
         const log = logs.find(item => item.id === row.dataset.id);
         if (!log) return;
         activeLogId = log.id;
-        if (typeof log.relativeMs === 'number') renderFrame(closestFrameIndex(log.relativeMs));
+        if (typeof log.relativeMs === 'number') {
+          seekVideo(log.relativeMs);
+          renderFrame(closestFrameIndex(log.relativeMs));
+        }
         renderDetail(log);
         renderLogs();
       }));

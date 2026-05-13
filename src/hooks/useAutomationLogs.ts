@@ -5,10 +5,12 @@ import { useToast } from '@/hooks/use-toast';
 
 export type DevLogTab = 'console' | 'network' | 'execution';
 export type ManualCaptureBrowserMode = 'clean' | 'profiled';
+export type ManualCaptureMode = 'frame' | 'video' | 'hybrid';
 
 export interface AutomationLogEntry {
   id?: string;
   type?: string;
+  source?: string;
   testCaseId?: string;
   timestamp?: string | number | Date;
   relativeMs?: number;
@@ -28,6 +30,7 @@ export interface AutomationLogEntry {
     data?: unknown;
     success?: boolean;
   };
+  sessionId?: string;
 }
 
 export interface ManualRecordingFrame {
@@ -40,14 +43,32 @@ export interface ManualRecordingFrame {
   url: string;
 }
 
+export interface ManualRecordingVideo {
+  file: string;
+  url?: string;
+  mimeType?: string;
+  startedAtRelativeMs?: number;
+  durationMs?: number;
+  width?: number;
+  height?: number;
+  fps?: number;
+  bitrateMbps?: number;
+  sizeBytes?: number;
+  status?: 'starting' | 'recording' | 'finalizing' | 'ready' | 'failed';
+}
+
 export interface ManualRecordingMeta {
+  mode?: ManualCaptureMode;
   sessionId: string;
   testCaseId: string;
   targetUrl?: string | null;
   startedAt: string;
   stoppedAt?: string | null;
   frameIntervalMs: number;
-  status: 'recording' | 'stopped';
+  keyframeIntervalMs?: number;
+  status: 'recording' | 'stopped' | 'stopped_limit' | 'interrupted';
+  video?: ManualRecordingVideo;
+  warnings?: string[];
   frames: ManualRecordingFrame[];
 }
 
@@ -65,6 +86,7 @@ interface UseAutomationLogsOptions<TTestCase extends AutomationLogTestCase> {
 
 interface StartManualCaptureOptions {
   browserMode?: ManualCaptureBrowserMode;
+  captureMode?: ManualCaptureMode;
 }
 
 function createLogId() {
@@ -119,6 +141,13 @@ function parseJsonlLogs(text: string) {
     .filter((log): log is AutomationLogEntry => log !== null);
 }
 
+function getManualRecordingSessionId(logs: AutomationLogEntry[]) {
+  return [...logs]
+    .reverse()
+    .find(log => String(log.source || '').startsWith('manual-') && log.sessionId)
+    ?.sessionId;
+}
+
 export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   viewTestCase,
   setViewTestCase,
@@ -139,6 +168,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   const [manualRecording, setManualRecording] = useState<ManualRecordingMeta | null>(null);
   const [isStartingManualCapture, setIsStartingManualCapture] = useState(false);
   const [isStoppingManualCapture, setIsStoppingManualCapture] = useState(false);
+  const [isProcessingManualRecording, setIsProcessingManualRecording] = useState(false);
 
   const isManualCaptureActive = !!manualCaptureSessionId;
 
@@ -157,6 +187,22 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     } catch {
       setManualRecording(null);
       return null;
+    }
+  };
+
+  const loadRecordingForRun = async (testCaseId: string | undefined, logs: AutomationLogEntry[]) => {
+    if (!testCaseId) return null;
+    const sessionId = getManualRecordingSessionId(logs);
+    if (!sessionId) return loadLatestRecording(testCaseId);
+
+    try {
+      const response = await fetch(`http://127.0.0.1:3001/recordings/${encodeURIComponent(testCaseId)}/${encodeURIComponent(sessionId)}/metadata`);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.recording) return loadLatestRecording(testCaseId);
+      setManualRecording(data.recording);
+      return data.recording as ManualRecordingMeta;
+    } catch {
+      return loadLatestRecording(testCaseId);
     }
   };
 
@@ -295,7 +341,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     setIsLoadingHistory(true);
     try {
       const logs = await loadCurrentRun(viewTestCase.id);
-      await loadLatestRecording(viewTestCase.id);
+      await loadRecordingForRun(viewTestCase.id, logs || []);
       if (!logs) throw new Error('Run terbaru belum ditemukan.');
       toast({
         title: 'Current Run Dimuat',
@@ -325,7 +371,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
 
       setLiveLogs(logs.length > 500 ? logs.slice(logs.length - 500) : logs);
       setLoadedRunLabel('previous');
-      loadLatestRecording(targetId);
+      await loadRecordingForRun(targetId, logs);
       toast({
         title: 'History Run Sebelumnya Dimuat',
         description: `Berhasil memuat ${logs.length} entri log dari run sebelumnya.`,
@@ -409,6 +455,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
           captureUrl,
           launchBrowser: true,
           browserMode,
+          captureMode: options.captureMode || 'frame',
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -452,14 +499,33 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       if (!response.ok) throw new Error(data.error || 'Gagal menghentikan manual capture.');
 
       setManualCaptureSessionId(null);
-      await loadLatestRecording(viewTestCase?.id);
+      const recording = await loadLatestRecording(viewTestCase?.id);
       const frameCount = data.cleanup?.recording?.frameCount;
+      const video = data.cleanup?.recording?.video || recording?.video;
+      const videoSizeMb = typeof video?.sizeBytes === 'number' ? `${(video.sizeBytes / 1024 / 1024).toFixed(1)} MB` : '';
+      const videoDuration = typeof video?.durationMs === 'number' ? `${Math.round(video.durationMs / 1000)}s` : '';
+      const videoText = video?.status
+        ? ` Video ${video.status}${videoDuration ? `, ${videoDuration}` : ''}${videoSizeMb ? `, ${videoSizeMb}` : ''}.`
+        : '';
       toast({
         title: 'Manual capture dihentikan',
         description: typeof frameCount === 'number'
-          ? `Browser ditutup dan ${frameCount} frame recording tersimpan.`
+          ? `Browser ditutup dan ${frameCount} frame/keyframe tersimpan.${videoText}`
           : 'Browser ditutup dan log berikutnya dari session ini akan ditolak relay.',
       });
+      if (['starting', 'recording', 'finalizing'].includes(video?.status || '')) {
+        setIsProcessingManualRecording(true);
+        const pollDelays = [800, 1800, 3200, 5200, 8000];
+        pollDelays.forEach((delay, index) => {
+          window.setTimeout(async () => {
+            const latest = await loadLatestRecording(viewTestCase?.id);
+            const status = latest?.video?.status;
+            if (status === 'ready' || status === 'failed' || index === pollDelays.length - 1) {
+              setIsProcessingManualRecording(false);
+            }
+          }, delay);
+        });
+      }
     } catch (error: any) {
       toast({
         title: 'Gagal stop manual capture',
@@ -486,6 +552,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     isManualCaptureActive,
     isStartingManualCapture,
     isStoppingManualCapture,
+    isProcessingManualRecording,
     logEndRef,
     setManualCaptureTargetUrl,
     setActiveDevLogTab,

@@ -401,6 +401,7 @@ export default function TestCaseManager() {
     isManualCaptureActive,
     isStartingManualCapture,
     isStoppingManualCapture,
+    isProcessingManualRecording,
     logEndRef,
     setManualCaptureTargetUrl,
     setActiveDevLogTab,
@@ -1657,6 +1658,7 @@ export default function TestCaseManager() {
         isManualCaptureActive={isManualCaptureActive}
         isStartingManualCapture={isStartingManualCapture}
         isStoppingManualCapture={isStoppingManualCapture}
+        isProcessingManualRecording={isProcessingManualRecording}
         logEndRef={logEndRef}
         setManualCaptureTargetUrl={setManualCaptureTargetUrl}
         setActiveDevLogTab={setActiveDevLogTab}

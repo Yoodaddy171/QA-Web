@@ -14,10 +14,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TestCase } from '@/components/TestCaseTable';
-import type { ManualCaptureBrowserMode, ManualRecordingMeta } from '@/hooks/useAutomationLogs';
+import type { ManualCaptureBrowserMode, ManualCaptureMode, ManualRecordingMeta } from '@/hooks/useAutomationLogs';
 import { cn } from '@/lib/utils';
 
 type DevLogTab = 'console' | 'network' | 'execution';
@@ -146,6 +147,10 @@ const escapeHtml = (value: string) => (
 
 const getManualFrameUrl = (frameUrl?: string) => (
   frameUrl ? `http://127.0.0.1:3001${frameUrl}` : ''
+);
+
+const getManualVideoUrl = (videoUrl?: string) => (
+  videoUrl ? `http://127.0.0.1:3001${videoUrl}` : ''
 );
 
 const blobToDataUrl = async (blob: Blob) => (
@@ -437,13 +442,14 @@ interface TestCaseDetailDialogProps {
   isManualCaptureActive: boolean;
   isStartingManualCapture: boolean;
   isStoppingManualCapture: boolean;
+  isProcessingManualRecording?: boolean;
   logEndRef: React.RefObject<HTMLDivElement | null>;
   setManualCaptureTargetUrl: (url: string) => void;
   setActiveDevLogTab: (tab: DevLogTab) => void;
   setExpandedLogId: (id: string | null) => void;
   setAiSummary: (summary: string | null) => void;
   clearLogs: () => void;
-  startManualCapture: (options?: { browserMode?: ManualCaptureBrowserMode }) => void;
+  startManualCapture: (options?: { browserMode?: ManualCaptureBrowserMode; captureMode?: ManualCaptureMode }) => void;
   stopManualCapture: () => void;
   loadCurrentLogRun: () => void;
   generateAISummary: () => void;
@@ -479,6 +485,7 @@ export function TestCaseDetailDialog({
   isManualCaptureActive,
   isStartingManualCapture,
   isStoppingManualCapture,
+  isProcessingManualRecording = false,
   logEndRef,
   setManualCaptureTargetUrl,
   setActiveDevLogTab,
@@ -505,7 +512,9 @@ export function TestCaseDetailDialog({
   const [activeMainTab, setActiveMainTab] = useState('details');
   const [expandedGuide, setExpandedGuide] = useState<'automation' | 'manual' | null>(null);
   const [manualCaptureBrowserMode, setManualCaptureBrowserMode] = useState<ManualCaptureBrowserMode>('clean');
+  const [manualCaptureMode, setManualCaptureMode] = useState<ManualCaptureMode>('frame');
   const [recordingSeekMs, setRecordingSeekMs] = useState(0);
+  const [recordingSeekApprox, setRecordingSeekApprox] = useState(false);
   const [recordingZoom, setRecordingZoom] = useState(1);
   const [isRecordingFullscreen, setIsRecordingFullscreen] = useState(false);
   const [isRecordingFullscreenExpanded, setIsRecordingFullscreenExpanded] = useState(false);
@@ -517,8 +526,12 @@ export function TestCaseDetailDialog({
   const [networkFilters, setNetworkFilters] = useState<NetworkFilterState>(DEFAULT_NETWORK_FILTERS);
   const [fullscreenLogFilter, setFullscreenLogFilter] = useState<FullscreenLogFilter>('all');
   const [selectedFullscreenLog, setSelectedFullscreenLog] = useState<SelectedFullscreenLog>(null);
+  const [syncedNetworkLogIds, setSyncedNetworkLogIds] = useState<string[]>([]);
   const [copiedEvidence, setCopiedEvidence] = useState(false);
   const recordingViewportRef = useRef<HTMLDivElement>(null);
+  const recordingVideoRef = useRef<HTMLVideoElement>(null);
+  const fullscreenRecordingVideoRef = useRef<HTMLVideoElement>(null);
+  const fullscreenNetworkRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const fullscreenTimelineRef = useRef<HTMLDivElement>(null);
   const recordingPanRef = useRef({ active: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
   const recordingFullscreenTimerRef = useRef<number | null>(null);
@@ -630,6 +643,21 @@ export function TestCaseDetailDialog({
       Math.abs(frame.relativeMs - recordingSeekMs) < Math.abs(closest.relativeMs - recordingSeekMs) ? frame : closest
     ), manualRecording.frames[0]);
   }, [manualRecording, recordingSeekMs]);
+  const manualRecordingVideoUrl = getManualVideoUrl(manualRecording?.video?.url);
+  const hasManualRecordingVideo = Boolean(manualRecordingVideoUrl && manualRecording?.video?.status !== 'failed');
+  const manualRecordingFrames = manualRecording?.frames ?? [];
+  const manualRecordingMode = manualRecording?.mode || 'frame';
+  const manualRecordingTargetUrl = manualRecording?.targetUrl || 'Manual capture target';
+  const manualRecordingVideoStatus = manualRecording?.video?.status;
+  const isVideoFinalizing = isProcessingManualRecording || ['starting', 'recording', 'finalizing'].includes(manualRecordingVideoStatus || '');
+  const getVideoRelativeMs = (relativeMs: number) => {
+    if (!manualRecording?.video || !hasManualRecordingVideo) return relativeMs;
+    const startedAtRelativeMs = manualRecording.video.startedAtRelativeMs || 0;
+    const durationMs = typeof manualRecording.video.durationMs === 'number' ? manualRecording.video.durationMs : Number.POSITIVE_INFINITY;
+    return Math.max(0, Math.min(durationMs, relativeMs - startedAtRelativeMs));
+  };
+  const recordingDisplayMs = getVideoRelativeMs(recordingSeekMs);
+  const syncedNetworkLogIdSet = useMemo(() => new Set(syncedNetworkLogIds), [syncedNetworkLogIds]);
 
   const formatRelativeTime = (relativeMs?: number) => {
     if (typeof relativeMs !== 'number') return '-';
@@ -641,7 +669,48 @@ export function TestCaseDetailDialog({
   };
 
   const seekRecordingFromLog = (log: LogEntry) => {
-    if (typeof log.relativeMs === 'number') setRecordingSeekMs(log.relativeMs);
+    if (typeof log.relativeMs !== 'number') return;
+    setRecordingSeekMs(log.relativeMs);
+    setRecordingSeekApprox(false);
+    if (!manualRecording?.video || !hasManualRecordingVideo) return;
+    const startedAtRelativeMs = manualRecording.video.startedAtRelativeMs || 0;
+    const durationSeconds = typeof manualRecording.video.durationMs === 'number' ? manualRecording.video.durationMs / 1000 : Number.POSITIVE_INFINITY;
+    const rawTargetSeconds = (log.relativeMs - startedAtRelativeMs) / 1000;
+    const targetSeconds = Math.max(0, Math.min(durationSeconds, rawTargetSeconds));
+    setRecordingSeekApprox(Math.abs(rawTargetSeconds - targetSeconds) > 0.5);
+    for (const player of [recordingVideoRef.current, fullscreenRecordingVideoRef.current]) {
+      if (!player) continue;
+      try {
+        player.currentTime = targetSeconds;
+      } catch {}
+    }
+  };
+
+  const handleFullscreenVideoTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    if (!manualRecording?.video || !hasManualRecordingVideo) return;
+    const startedAtRelativeMs = manualRecording.video.startedAtRelativeMs || 0;
+    const currentRelativeMs = startedAtRelativeMs + (event.currentTarget.currentTime * 1000);
+    const currentSecond = Math.floor(currentRelativeMs / 1000);
+    const matchingIds = fullscreenNetworkGroups
+      .filter((group) => group.entries.some((entry) => (
+        typeof entry.log.relativeMs === 'number'
+        && Math.floor(entry.log.relativeMs / 1000) === currentSecond
+      )))
+      .map((group) => `fullscreen-${group.id}`);
+    const previousKey = syncedNetworkLogIds.join('|');
+    const nextKey = matchingIds.join('|');
+    setRecordingSeekMs(currentRelativeMs);
+    setRecordingSeekApprox(false);
+    if (previousKey === nextKey) return;
+    setSyncedNetworkLogIds(matchingIds);
+    if (activeDevLogTab === 'network' && matchingIds[0]) {
+      window.setTimeout(() => {
+        fullscreenNetworkRowRefs.current.get(matchingIds[0])?.scrollIntoView({
+          block: 'nearest',
+          behavior: 'smooth',
+        });
+      }, 0);
+    }
   };
 
   const selectFullscreenNetworkLog = (
@@ -764,6 +833,7 @@ export function TestCaseDetailDialog({
     setRecordingZoom(1);
     setFullscreenLogFilter('all');
     setSelectedFullscreenLog(null);
+    setSyncedNetworkLogIds([]);
     setCopiedEvidence(false);
     setIsClosingRecordingFullscreen(false);
     setIsRecordingFullscreenExpanded(false);
@@ -854,6 +924,7 @@ export function TestCaseDetailDialog({
           setIsRecordingFullscreenExpanded(false);
           setIsRecordingFullscreenContentVisible(false);
           setIsClosingRecordingFullscreen(false);
+          setSyncedNetworkLogIds([]);
           recordingFullscreenTimerRef.current = null;
         }, 220);
       }, 40);
@@ -1340,8 +1411,34 @@ export function TestCaseDetailDialog({
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="mt-3 flex flex-col gap-3 xl:flex-row">
-                                  <div className="grid shrink-0 grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background p-1 shadow-inner dark:bg-muted/40">
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                  <div className="grid w-full grid-cols-3 gap-1 rounded-xl border border-border/60 bg-background p-1 shadow-inner sm:w-auto dark:bg-muted/40">
+                                    {([
+                                      { value: 'frame', label: 'Frame' },
+                                      { value: 'video', label: 'Video' },
+                                      { value: 'hybrid', label: 'Hybrid' },
+                                    ] as Array<{ value: ManualCaptureMode; label: string }>).map((option) => {
+                                      const active = manualCaptureMode === option.value;
+                                      return (
+                                        <button
+                                          key={option.value}
+                                          type="button"
+                                          disabled={isManualCaptureActive || isStartingManualCapture}
+                                          onClick={() => setManualCaptureMode(option.value)}
+                                          className={cn(
+                                            "inline-flex h-8 min-w-0 items-center justify-center rounded-lg px-3 text-[9px] font-black uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[76px]",
+                                            active
+                                              ? 'bg-indigo-600 text-white shadow-sm dark:bg-indigo-400 dark:text-slate-950'
+                                              : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                                          )}
+                                          title={option.value === 'hybrid' ? 'Video plus keyframe evidence' : option.value === 'video' ? 'Video review only' : 'Frame evidence only'}
+                                        >
+                                          {option.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="grid w-full grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background p-1 shadow-inner sm:w-auto dark:bg-muted/40">
                                     {([
                                       { value: 'clean', label: 'Kosong', icon: Globe2 },
                                       { value: 'profiled', label: 'Profiled', icon: UserRound },
@@ -1355,7 +1452,7 @@ export function TestCaseDetailDialog({
                                           disabled={isManualCaptureActive || isStartingManualCapture}
                                           onClick={() => setManualCaptureBrowserMode(option.value)}
                                           className={cn(
-                                            "inline-flex h-8 min-w-[92px] items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-black uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                                            "inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-black uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[92px]",
                                             active
                                               ? 'bg-teal-600 text-white shadow-sm dark:bg-teal-500 dark:text-slate-950'
                                               : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
@@ -1373,14 +1470,14 @@ export function TestCaseDetailDialog({
                                     onChange={(event) => setManualCaptureTargetUrl(event.target.value)}
                                     placeholder="https://target-app.example/path"
                                     disabled={isManualCaptureActive}
-                                    className="h-10 rounded-xl border-border/60 bg-background text-[11px] text-foreground placeholder:text-muted-foreground focus:ring-teal-500/40 dark:bg-muted/50"
+                                    className="h-10 min-w-[260px] flex-1 rounded-xl border-border/60 bg-background text-[11px] text-foreground placeholder:text-muted-foreground focus:ring-teal-500/40 dark:bg-muted/50"
                                   />
                                   {isManualCaptureActive ? (
                                     <Button
                                       type="button"
                                       variant="outline"
                                       size="sm"
-                                      className="h-10 shrink-0 gap-2 rounded-xl border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-black uppercase tracking-widest text-[10px] dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
+                                      className="h-10 min-w-[150px] shrink-0 gap-2 rounded-xl border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-black uppercase tracking-widest text-[10px] dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
                                       onClick={stopManualCapture}
                                       disabled={isStoppingManualCapture}
                                     >
@@ -1391,8 +1488,8 @@ export function TestCaseDetailDialog({
                                     <Button
                                       type="button"
                                       size="sm"
-                                      className="h-10 shrink-0 gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] shadow-lg shadow-teal-900/40"
-                                      onClick={() => startManualCapture({ browserMode: manualCaptureBrowserMode })}
+                                      className="h-10 min-w-[150px] shrink-0 gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] shadow-lg shadow-teal-900/40"
+                                      onClick={() => startManualCapture({ browserMode: manualCaptureBrowserMode, captureMode: manualCaptureMode })}
                                       disabled={!manualCaptureTargetUrl.trim() || isStartingManualCapture}
                                     >
                                       {isStartingManualCapture ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
@@ -1414,20 +1511,29 @@ export function TestCaseDetailDialog({
                             </div>
                           </div>
 
-                          {manualRecording?.frames?.length ? (
+                          {(manualRecording?.frames?.length || hasManualRecordingVideo) ? (
                             <div className="mb-4 grid gap-4 rounded-2xl border border-border/60 bg-secondary/20 p-4 shadow-xl lg:grid-cols-[320px_1fr]">
                               <button
                                 type="button"
                                 className="group relative overflow-hidden rounded-xl border border-border/60 bg-background text-left shadow-2xl"
                                 onClick={openRecordingFullscreen}
                               >
-                                {selectedRecordingFrame && (
+                                {hasManualRecordingVideo ? (
+                                  <video
+                                    ref={recordingVideoRef}
+                                    src={manualRecordingVideoUrl}
+                                    controls
+                                    preload="metadata"
+                                    onTimeUpdate={handleFullscreenVideoTimeUpdate}
+                                    className="aspect-video w-full bg-black object-contain opacity-90 group-hover:opacity-100 transition-opacity"
+                                  />
+                                ) : selectedRecordingFrame ? (
                                   <img
                                     src={`http://127.0.0.1:3001${selectedRecordingFrame.url}`}
                                     alt="Manual capture recording frame"
                                     className="aspect-video w-full bg-black object-contain opacity-80 group-hover:opacity-100 transition-opacity"
                                   />
-                                )}
+                                ) : null}
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-300 group-hover:bg-black/40 group-hover:opacity-100">
                                   <span className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-teal-700 shadow-2xl dark:border-teal-500/20 dark:bg-teal-500/10 dark:text-teal-200">
                                     <Maximize2 className="h-4 w-4" />
@@ -1443,11 +1549,30 @@ export function TestCaseDetailDialog({
                                     </div>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Screen Analytics</p>
                                     <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-black text-indigo-400 uppercase tracking-tighter">
-                                      {manualRecording.frames.length} frames
+                                      {manualRecordingMode}
                                     </Badge>
+                                    <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-black text-indigo-400 uppercase tracking-tighter">
+                                      {manualRecordingMode === 'video' && manualRecordingFrames.length === 0 ? 'Video only' : `${manualRecordingFrames.length} keyframes`}
+                                    </Badge>
+                                    {manualRecordingVideoStatus && (
+                                      <Badge variant="outline" className="rounded-md border-cyan-500/20 bg-cyan-500/10 text-[9px] font-black text-cyan-500 uppercase tracking-tighter">
+                                        Video {manualRecordingVideoStatus}
+                                      </Badge>
+                                    )}
+                                    {isVideoFinalizing && (
+                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-black text-amber-600 uppercase tracking-tighter dark:text-amber-300">
+                                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                        Processing
+                                      </Badge>
+                                    )}
                                     <Badge variant="outline" className="rounded-md border-border/60 bg-muted/50 text-[9px] font-black text-foreground uppercase tracking-tighter">
-                                      {formatRelativeTime(recordingSeekMs)}
+                                      {formatRelativeTime(recordingDisplayMs)}
                                     </Badge>
+                                    {recordingSeekApprox && (
+                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-black text-amber-600 uppercase tracking-tighter dark:text-amber-300">
+                                        Approx
+                                      </Badge>
+                                    )}
                                     <Button
                                       type="button"
                                       variant="outline"
@@ -1460,12 +1585,18 @@ export function TestCaseDetailDialog({
                                     </Button>
                                   </div>
                                   <p className="mt-3 truncate text-[11px] font-medium text-muted-foreground">
-                                    {manualRecording.targetUrl || 'Manual capture target'}
+                                    {manualRecordingTargetUrl}
                                   </p>
+                                  {isVideoFinalizing && (
+                                    <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                                      <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+                                      <span>Video sedang diproses. Viewer akan refresh otomatis setelah file siap.</span>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                  {manualRecording.frames
-                                    .filter((_, index) => index % Math.max(1, Math.floor(manualRecording.frames.length / 12)) === 0)
+                                  {manualRecordingFrames
+                                    .filter((_, index) => index % Math.max(1, Math.floor(manualRecordingFrames.length / 12)) === 0)
                                     .slice(0, 12)
                                     .map((frame) => (
                                       <Button
@@ -1479,7 +1610,10 @@ export function TestCaseDetailDialog({
                                             ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/40'
                                             : 'border-border/50 bg-secondary/30 text-muted-foreground hover:text-foreground dark:text-slate-500 dark:hover:text-slate-200'
                                         )}
-                                        onClick={() => setRecordingSeekMs(frame.relativeMs)}
+                                        onClick={() => {
+                                          setRecordingSeekMs(frame.relativeMs);
+                                          setRecordingSeekApprox(false);
+                                        }}
                                       >
                                         {formatRelativeTime(frame.relativeMs)}
                                       </Button>
@@ -2351,7 +2485,7 @@ export function TestCaseDetailDialog({
           </div>
         )}
 
-        {isRecordingFullscreen && manualRecording?.frames?.length && (
+        {isRecordingFullscreen && (manualRecording?.frames?.length || hasManualRecordingVideo) && (
           <div
             className={cn(
               "fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4 text-foreground transition-opacity duration-200",
@@ -2379,18 +2513,24 @@ export function TestCaseDetailDialog({
               {!isRecordingFullscreenContentVisible ? (
                 <div className="flex h-full w-full bg-background" />
               ) : (
-                <>
-            <div className="flex min-w-0 flex-1 flex-col">
+                <ResizablePanelGroup direction="horizontal" className="h-full w-full">
+            <ResizablePanel defaultSize={58} minSize={28} maxSize={74} className="min-w-0">
+            <div className="flex h-full min-w-0 flex-col">
               <div className="flex min-h-20 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-5 py-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Film className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
                     <p className="whitespace-nowrap text-xs font-black uppercase tracking-widest text-foreground">Screen Record Review</p>
                     <Badge variant="outline" className="rounded-md border-indigo-200 bg-indigo-50 text-[10px] font-bold text-indigo-700 dark:border-indigo-400/30 dark:bg-indigo-950 dark:text-indigo-200">
-                      {formatRelativeTime(recordingSeekMs)}
+                      {formatRelativeTime(recordingDisplayMs)}
                     </Badge>
+                    {recordingSeekApprox && (
+                      <Badge variant="outline" className="rounded-md border-amber-200 bg-amber-50 text-[10px] font-bold text-amber-700 dark:border-amber-400/30 dark:bg-amber-950 dark:text-amber-200">
+                        Approx
+                      </Badge>
+                    )}
                   </div>
-                  <p className="mt-1 truncate text-[11px] text-muted-foreground">{manualRecording.targetUrl || 'Manual capture target'}</p>
+                  <p className="mt-1 truncate text-[11px] text-muted-foreground">{manualRecordingTargetUrl}</p>
                 </div>
                 <div className="mr-12 flex items-center gap-1 rounded-md bg-muted p-1">
                   <Button
@@ -2417,10 +2557,12 @@ export function TestCaseDetailDialog({
                 </div>
               </div>
 
+              <ResizablePanelGroup direction="vertical" className="min-h-0 flex-1">
+              <ResizablePanel defaultSize={82} minSize={35} className="min-h-[220px]">
               <div
                 ref={recordingViewportRef}
                 className={cn(
-                  "flex min-h-0 flex-1 overflow-auto bg-slate-950 p-4",
+                  "flex h-full min-h-0 overflow-auto bg-slate-950 p-4",
                   recordingZoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'items-center justify-center'
                 )}
                 onPointerDown={startRecordingPan}
@@ -2429,7 +2571,16 @@ export function TestCaseDetailDialog({
                 onPointerCancel={stopRecordingPan}
                 onPointerLeave={stopRecordingPan}
               >
-                {selectedRecordingFrame && (
+                {hasManualRecordingVideo ? (
+                  <video
+                    ref={fullscreenRecordingVideoRef}
+                    src={manualRecordingVideoUrl}
+                    controls
+                    preload="metadata"
+                    onTimeUpdate={handleFullscreenVideoTimeUpdate}
+                    className="m-auto max-h-full max-w-full rounded-lg bg-black shadow-2xl"
+                  />
+                ) : selectedRecordingFrame ? (
                   <div
                     className="m-auto flex shrink-0 items-center justify-center"
                     style={{
@@ -2450,14 +2601,17 @@ export function TestCaseDetailDialog({
                       }}
                     />
                   </div>
-                )}
+                ) : null}
               </div>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
 
-              <div className="shrink-0 border-t border-border bg-background p-3">
+              <ResizablePanel defaultSize={18} minSize={12} maxSize={45} className="min-h-[86px]">
+              <div className="h-full overflow-hidden border-t border-border bg-background p-3">
                 <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   <span>Timeline</span>
                   <div className="flex items-center gap-2">
-                    <span>{manualRecording.frames.length} frames</span>
+                    <span>{manualRecordingMode === 'video' && manualRecordingFrames.length === 0 ? 'Video only' : `${manualRecordingFrames.length} keyframes`}</span>
                     <Button
                       type="button"
                       variant="ghost"
@@ -2483,8 +2637,8 @@ export function TestCaseDetailDialog({
                   className="flex gap-1.5 overflow-x-auto pb-1"
                   onWheel={handleTimelineWheel}
                 >
-                  {manualRecording.frames
-                    .filter((_, index) => index % Math.max(1, Math.floor(manualRecording.frames.length / 28)) === 0)
+                  {manualRecordingFrames
+                    .filter((_, index) => index % Math.max(1, Math.floor(manualRecordingFrames.length / 28)) === 0)
                     .slice(0, 28)
                     .map((frame) => (
                       <Button
@@ -2498,16 +2652,24 @@ export function TestCaseDetailDialog({
                             ? 'bg-indigo-500 text-white hover:bg-indigo-500'
                             : 'border border-border bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground'
                         )}
-                        onClick={() => setRecordingSeekMs(frame.relativeMs)}
+                        onClick={() => {
+                          setRecordingSeekMs(frame.relativeMs);
+                          setRecordingSeekApprox(false);
+                        }}
                       >
                         {formatRelativeTime(frame.relativeMs)}
                       </Button>
                     ))}
                 </div>
               </div>
+              </ResizablePanel>
+              </ResizablePanelGroup>
             </div>
 
-            <div className={cn("flex min-w-[480px] w-[min(48vw,640px)] shrink-0 flex-col border-l border-border bg-background transition duration-200", isClosingRecordingFullscreen ? 'translate-x-4' : 'translate-x-0')}>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={42} minSize={26} className={cn("min-w-[420px] border-l border-border bg-background transition duration-200", isClosingRecordingFullscreen ? 'translate-x-4' : 'translate-x-0')}>
+            <div className="flex h-full min-w-0 flex-col">
               <div className="flex min-h-[116px] shrink-0 flex-col justify-end gap-3 border-b border-border px-4 pb-3 pt-4 pr-16">
                 <div className="flex items-end justify-between gap-4">
                   <div className="min-w-0">
@@ -2626,6 +2788,36 @@ export function TestCaseDetailDialog({
                           <p className="mt-1 truncate text-foreground">{manualRecording?.targetUrl || '-'}</p>
                         </div>
                       </div>
+                      {selectedFullscreenLog.kind === 'network' && (
+                        <div className="space-y-3 rounded-lg border border-border bg-background p-3">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Full URL</p>
+                            <pre className={cn("mt-1 max-h-24 overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-foreground", networkCodeWhitespaceClass)}>
+                              {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.url || '-')}
+                            </pre>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+                            <div className="min-w-0 space-y-1">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Headers</p>
+                              <pre className={cn("max-h-56 resize-y overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-foreground", networkCodeWhitespaceClass)}>
+                                {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.headers)}
+                              </pre>
+                            </div>
+                            <div className="min-w-0 space-y-1">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Payload</p>
+                              <pre className={cn("max-h-56 resize-y overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-cyan-700 dark:text-cyan-200", networkCodeWhitespaceClass)}>
+                                {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.request)}
+                              </pre>
+                            </div>
+                            <div className="min-w-0 space-y-1">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Response</p>
+                              <pre className={cn("max-h-56 resize-y overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-emerald-700 dark:text-emerald-200", networkCodeWhitespaceClass)}>
+                                {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.response)}
+                              </pre>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between gap-2">
                         <Button
                           type="button"
@@ -2658,12 +2850,18 @@ export function TestCaseDetailDialog({
                       fullscreenNetworkGroups.map((group) => {
                         const { log: net, meta, entries, count } = group;
                         const logId = `fullscreen-${group.id}`;
+                        const isSyncedWithVideo = syncedNetworkLogIdSet.has(logId);
 
                         return (
                           <div
                             key={logId}
+                            ref={(node) => {
+                              if (node) fullscreenNetworkRowRefs.current.set(logId, node);
+                              else fullscreenNetworkRowRefs.current.delete(logId);
+                            }}
                             className={cn(
                               "overflow-hidden rounded-lg border border-border bg-background shadow-sm transition hover:border-indigo-200 hover:bg-secondary/50 dark:hover:border-indigo-500/30 dark:hover:bg-white/5",
+                              isSyncedWithVideo && "border-teal-300 bg-teal-50 shadow-[0_0_0_1px_rgba(20,184,166,0.25),0_0_24px_rgba(20,184,166,0.28)] dark:border-teal-400/50 dark:bg-teal-950/30 dark:shadow-[0_0_0_1px_rgba(45,212,191,0.2),0_0_28px_rgba(45,212,191,0.2)]",
                               selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'network' && "border-indigo-300 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-950/30"
                             )}
                           >
@@ -2698,6 +2896,11 @@ export function TestCaseDetailDialog({
                               </span>
                               <span className="col-span-2 flex items-center justify-end gap-2 text-right text-[10px] font-bold text-muted-foreground">
                                 <span>{formatRelativeTime(net.relativeMs)}</span>
+                                {isSyncedWithVideo && (
+                                  <span className="rounded-full border border-teal-200 bg-teal-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-teal-700 dark:border-teal-400/30 dark:bg-teal-500/15 dark:text-teal-200">
+                                    Now
+                                  </span>
+                                )}
                                 {count > 1 && (
                                   <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                     x{count}
@@ -2809,7 +3012,8 @@ export function TestCaseDetailDialog({
                 )}
               </div>
             </div>
-                </>
+            </ResizablePanel>
+                </ResizablePanelGroup>
               )}
             </div>
           </div>

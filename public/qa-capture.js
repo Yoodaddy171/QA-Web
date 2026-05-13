@@ -224,6 +224,37 @@
     };
   }
 
+  window.addEventListener('click', function (event) {
+    var target = event.target;
+    var targetLabel = '';
+    try {
+      targetLabel = target && target.closest
+        ? target.closest('button,a,input,select,textarea,[role="button"],[data-testid],[aria-label]') || target
+        : target;
+      targetLabel = targetLabel
+        ? [
+            targetLabel.tagName,
+            targetLabel.getAttribute && (targetLabel.getAttribute('aria-label') || targetLabel.getAttribute('data-testid') || targetLabel.id || targetLabel.name),
+            targetLabel.textContent && targetLabel.textContent.trim().slice(0, 80),
+          ].filter(Boolean).join(' ')
+        : '';
+    } catch (_) {}
+
+    sendLog({
+      level: 'INFO',
+      console: false,
+      log: 'Manual Click',
+      interaction: {
+        type: 'click',
+        x: event.clientX,
+        y: event.clientY,
+        viewportWidth: window.innerWidth || document.documentElement.clientWidth || 0,
+        viewportHeight: window.innerHeight || document.documentElement.clientHeight || 0,
+        target: truncate(targetLabel),
+      },
+    });
+  }, true);
+
   sendLog({
     level: 'INFO',
     console: true,

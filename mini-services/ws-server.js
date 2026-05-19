@@ -4,7 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 let sharp = null;
 try {
   sharp = require('sharp');
@@ -296,6 +296,35 @@ function resolveManualUserDataDir(sessionId, browserMode) {
     userDataDir: path.join(os.tmpdir(), `qadesk-manual-${sessionId}`),
     cleanupUserDataDir: true,
   };
+}
+
+function cleanupProfileBrowserProcesses(userDataDir) {
+  if (process.platform !== 'win32' || !userDataDir) return;
+  const escapedProfile = userDataDir.replace(/'/g, "''");
+  const script = [
+    `$profile='${escapedProfile}'`,
+    "Get-CimInstance Win32_Process -Filter \"name='chrome.exe' or name='msedge.exe'\"",
+    " | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($profile) }",
+    " | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+  ].join('');
+  try {
+    spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script], {
+      windowsHide: true,
+      timeout: 5000,
+      stdio: 'ignore',
+    });
+  } catch (error) {
+    console.warn('Failed to cleanup profiled browser processes:', error.message);
+  }
+}
+
+function cleanupProfileLockFiles(userDataDir) {
+  if (!userDataDir || !fs.existsSync(userDataDir)) return;
+  for (const name of ['lockfile', 'SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+    try {
+      fs.rmSync(path.join(userDataDir, name), { force: true });
+    } catch (_) {}
+  }
 }
 
 async function waitForCdpPage(port, targetUrl) {
@@ -918,6 +947,10 @@ async function startCdpCapture(session, targetUrl, options = {}) {
   const port = 9300 + Math.floor(Math.random() * 500);
   const browserMode = options.browserMode === 'profiled' ? 'profiled' : 'clean';
   const { userDataDir, cleanupUserDataDir } = resolveManualUserDataDir(session.sessionId, browserMode);
+  if (browserMode === 'profiled') {
+    cleanupProfileBrowserProcesses(userDataDir);
+    cleanupProfileLockFiles(userDataDir);
+  }
   fs.mkdirSync(userDataDir, { recursive: true });
   const browserArgs = [
     `--remote-debugging-port=${port}`,
@@ -929,10 +962,22 @@ async function startCdpCapture(session, targetUrl, options = {}) {
     targetUrl,
   ];
   const browser = launchBrowser(browserPath, browserArgs);
-
-  const target = await waitForCdpPage(port, targetUrl);
-  const cdp = createCdpClient(target.webSocketDebuggerUrl);
-  await cdp.waitOpen();
+  let target;
+  let cdp;
+  try {
+    target = await waitForCdpPage(port, targetUrl);
+    cdp = createCdpClient(target.webSocketDebuggerUrl);
+    await cdp.waitOpen();
+  } catch (error) {
+    try {
+      if (!browser.killed) browser.kill();
+    } catch (_) {}
+    if (browserMode === 'profiled') {
+      cleanupProfileBrowserProcesses(userDataDir);
+      cleanupProfileLockFiles(userDataDir);
+    }
+    throw new Error(`${error.message}. Jika memakai Profiled Browser, coba start ulang; profile QA lama sudah dibersihkan.`);
+  }
 
   const sessionInfo = {
     browser,
@@ -1076,7 +1121,18 @@ async function startCdpCapture(session, targetUrl, options = {}) {
         stoppedAt: new Date().toISOString(),
       });
     }
-    stopManualRecorder(sessionInfo.recording);
+    stopManualRecorder(sessionInfo.recording, 'interrupted');
+    stopCdpCapture(session.sessionId).catch(() => {});
+    emitLog({
+      type: 'log',
+      source: 'manual-capture',
+      sessionId: session.sessionId,
+      testCaseId: session.testCaseId,
+      level: 'INFO',
+      log: 'Manual Capture Stopped',
+      timestamp: new Date().toISOString(),
+      relativeMs: getRelativeMs(currentSession || session),
+    });
     cdpSessions.delete(session.sessionId);
   });
 
@@ -1196,6 +1252,8 @@ const server = http.createServer((req, res) => {
             await stopCdpCapture(id);
           }
         }
+        cleanupProfileBrowserProcesses(getManualCaptureProfileDir());
+        cleanupProfileLockFiles(getManualCaptureProfileDir());
       }
 
       const startedAtMs = Date.now();

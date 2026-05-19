@@ -256,6 +256,12 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
 
         if (message.type !== 'log' || !message.testCaseId) return;
 
+        const logText = typeof message.log === 'string' ? message.log : JSON.stringify(message.log);
+        if (/Manual Capture Stopped/i.test(logText)) {
+          setManualCaptureSessionId(null);
+          return;
+        }
+
         const logEntry = normalizeLogEntry(message);
 
         if (currentViewIdRef.current === message.testCaseId) {

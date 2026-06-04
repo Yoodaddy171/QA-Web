@@ -1,9 +1,10 @@
 import { db } from '@/lib/db';
+import { BUGFIX_STATUS, isBugFixStatus, isEditableBugFixStatus } from '@/lib/domain/bugfix';
+import { getProgressFromStatus } from '@/lib/domain/progress';
+import { TESTCASE_STATUS } from '@/lib/domain/testcase';
 import { NextRequest, NextResponse } from 'next/server';
 
 const BUGFIX_SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'testCaseId', 'page', 'status', 'priority']);
-const BUGFIX_STATUSES = new Set(['SUDAH DILAPORKAN', 'SEDANG DI FIX', 'READY TO RETEST', 'VERIFIED & FIXED']);
-const EDITABLE_BUGFIX_STATUSES = new Set(['SUDAH DILAPORKAN', 'SEDANG DI FIX', 'READY TO RETEST']);
 
 function parsePositiveInt(value: string | null, fallback: number, max: number) {
   const parsed = Number.parseInt(value || '', 10);
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
       where.projectId = projectId;
     }
     if (status) {
-      if (!BUGFIX_STATUSES.has(status)) return NextResponse.json({ error: 'Status bug fix tidak valid.' }, { status: 400 });
+      if (!isBugFixStatus(status)) return NextResponse.json({ error: 'Status bug fix tidak valid.' }, { status: 400 });
       where.status = status;
     }
     if (search) {
@@ -93,7 +94,7 @@ export async function PUT(req: NextRequest) {
     // Update timestamps based on status change
     const updateData: Record<string, unknown> = {};
     if (data.status !== undefined) {
-      if (!EDITABLE_BUGFIX_STATUSES.has(data.status)) {
+      if (!isEditableBugFixStatus(data.status)) {
         return NextResponse.json(
           { error: 'Bug fix hanya bisa diproses sampai READY TO RETEST. Verified & Fixed dilakukan dari halaman Test Case setelah retest berhasil.' },
           { status: 400 }
@@ -103,18 +104,18 @@ export async function PUT(req: NextRequest) {
       updateData.status = data.status;
       const now = new Date();
 
-      if (data.status === 'SUDAH DILAPORKAN' && !current.reportedAt) {
+      if (data.status === BUGFIX_STATUS.REPORTED && !current.reportedAt) {
         updateData.reportedAt = now;
       }
-      if (data.status === 'SEDANG DI FIX') {
+      if (data.status === BUGFIX_STATUS.FIXING) {
         updateData.fixingAt = now;
       }
-      if (data.status === 'READY TO RETEST') {
+      if (data.status === BUGFIX_STATUS.READY_TO_RETEST) {
         updateData.readyAt = now;
         // Sync: update the original test case status to READY TO RETEST
         const updateResult = await db.testCase.updateMany({
           where: { id: current.sourceTestCaseId },
-          data: { status: 'READY TO RETEST', progress: 50 },
+          data: { status: TESTCASE_STATUS.READY_TO_RETEST, progress: getProgressFromStatus(TESTCASE_STATUS.READY_TO_RETEST) },
         });
         if (updateResult.count === 0) {
           return NextResponse.json(

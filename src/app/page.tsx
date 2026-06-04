@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   AlertTriangle, Bug, CheckCircle2, Clock, HelpCircle, RefreshCw, XCircle
 } from 'lucide-react';
@@ -13,255 +13,76 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { AppShell } from '@/components/AppShell';
 import { BugFixPanel, type BugFixItem } from '@/components/BugFixPanel';
-import { AutomatedPanel, type AutomatedTestCase } from '@/components/AutomatedPanel';
+import { AutomatedPanel } from '@/components/AutomatedPanel';
 import { TestCaseTable } from '@/components/TestCaseTable';
 import { TestCaseDialog, EMPTY_TEST_CASE } from '@/components/TestCaseDialog';
 import { TestCaseDetailDialog } from '@/components/TestCaseDetailDialog';
 import { DashboardPanel } from '@/components/DashboardPanel';
-import { ImportExcelDialog, type ImportPreview } from '@/components/ImportExcelDialog';
+import { ImportExcelDialog } from '@/components/ImportExcelDialog';
 import { AIGenerateDialog } from '@/components/AIGenerateDialog';
-import { AIRefineDialog, type RefinedTestCasePreview } from '@/components/AIRefineDialog';
+import { AIRefineDialog } from '@/components/AIRefineDialog';
 import { BulkStatusDialog } from '@/components/BulkStatusDialog';
 import { ProjectModuleDialogs } from '@/components/ProjectModuleDialogs';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { FloatingAIChat, type TestCaseDraft } from '@/components/FloatingAIChat';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { useAutomationLogs } from '@/hooks/useAutomationLogs';
-
-// ============== TYPES ==============
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  automationContext?: string;
-  createdAt: string;
-  _count?: { testCases: number; modules: number };
-}
-
-interface Module {
-  id: string;
-  name: string;
-  projectId: string;
-  _count?: { testCases: number };
-}
-
-interface TestCase {
-  id: string;
-  testCaseId: string;
-  page: string;
-  subMenu?: string | null;
-  weight?: string | null;
-  calculatedWeight?: number | null;
-  testType: string;
-  testAction: string;
-  steps: string;
-  expectedResult: string;
-  actualResult?: string | null;
-  stepLogs?: string | null;
-  status: string;
-  progress: number;
-  remarks?: string | null;
-  priority: string;
-  projectId: string;
-  moduleId?: string | null;
-  project?: Project;
-  module?: Module;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface MenuProgressItem {
-  page: string;
-  subMenu: string;
-  totalCases: number;
-  weightPerCase: number;
-  progressPercent: number;
-  doneCount: number;
-  inProgressCount: number;
-  notDoneCount: number;
-  blockedCount: number;
-  failedCount: number;
-  readyToRetestCount: number;
-  tbaCount: number;
-  activeCount: number;
-}
-
-interface ModuleProgressItem {
-  id: string;
-  name: string;
-  totalMenus: number;
-  totalCases: number;
-  totalDone: number;
-  avgProgress: number;
-  menus: MenuProgressItem[];
-}
-
-interface UngroupedProgressItem {
-  id: null;
-  name: string;
-  totalMenus: number;
-  totalCases: number;
-  totalDone: number;
-  avgProgress: number;
-  menus: MenuProgressItem[];
-}
-
-interface Stats {
-  totalTestCases: number;
-  doneCount: number;
-  notDoneCount: number;
-  inProgressCount: number;
-  blockedCount: number;
-  failedCount: number;
-  readyToRetestCount: number;
-  tbaCount: number;
-  bugFixTotal: number;
-  bugFixReported: number;
-  bugFixFixing: number;
-  bugFixReadyRetest: number;
-  bugFixFixed: number;
-  positiveCount: number;
-  negativeCount: number;
-  criticalCount: number;
-  highCount: number;
-  mediumCount: number;
-  lowCount: number;
-  overallProgress: number;
-  moduleData: { name: string; total: number; done: number; notDone: number; inProgress: number; blocked: number }[];
-  pageGroups: { page: string; _count: { id: number } }[];
-  weightMap: Record<string, number>;
-  menuProgress: {
-    menuKey: string;
-    page: string;
-    subMenu: string;
-    totalCases: number;
-    weightPerCase: number;
-    totalWeight: number;
-    contributedWeight: number;
-    progressPercent: number;
-    doneCount: number;
-    inProgressCount: number;
-    notDoneCount: number;
-    blockedCount: number;
-    failedCount: number;
-    readyToRetestCount: number;
-    tbaCount: number;
-    moduleId: string | null;
-    moduleName: string | null;
-  }[];
-  moduleProgress: ModuleProgressItem[];
-  ungroupedProgress: UngroupedProgressItem | null;
-  retestQueue?: {
-    id: string;
-    testCaseId: string;
-    page: string;
-    subMenu: string | null;
-    priority: string;
-    moduleName: string | null;
-    updatedAt: string;
-    waitingDays: number;
-  }[];
-  bugAging?: {
-    id: string;
-    testCaseId: string;
-    page: string;
-    subMenu: string | null;
-    testAction: string;
-    priority: string;
-    status: string;
-    moduleName: string | null;
-    startedAt: string;
-    ageDays: number;
-  }[];
-  moduleRisks?: {
-    moduleId: string | null;
-    moduleName: string;
-    total: number;
-    failed: number;
-    readyToRetest: number;
-    inProgress: number;
-    blocked: number;
-    notDone: number;
-    riskScore: number;
-  }[];
-}
+import { useAiTestcaseFlows } from '@/hooks/use-ai-testcase-flows';
+import { useAutomationDevlog } from '@/hooks/use-automation-devlog';
+import { useBugFixes } from '@/hooks/use-bugfixes';
+import { useExcelImportExport } from '@/hooks/use-excel-import-export';
+import { useProjects } from '@/hooks/use-projects';
+import { useTestCases } from '@/hooks/use-testcases';
+import { fetchNextTestCaseId } from '@/lib/client/api/testcases-client';
+import type { Stats, TestCase } from '@/lib/client/api/types';
+import { BUGFIX_STATUS } from '@/lib/domain/bugfix';
+import { TESTCASE_STATUS } from '@/lib/domain/testcase';
+import { FEATURES } from '@/lib/features';
 
 type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
 
-interface GeneratedTestCasePreview {
-  testCaseId: string;
-  page: string;
-  subMenu: string;
-  weight: string;
-  testType: string;
-  testAction: string;
-  steps: string;
-  expectedResult: string;
-  priority: string;
-  moduleId: string | null;
-}
-
-function useDebouncedValue<T>(value: T, delayMs: number) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => setDebouncedValue(value), delayMs);
-    return () => window.clearTimeout(timeoutId);
-  }, [value, delayMs]);
-
-  return debouncedValue;
-}
-
-const LAST_PROJECT_STORAGE_KEY = 'web-qa:last-project-id';
 const LAST_ACTIVE_TAB_STORAGE_KEY = 'web-qa:last-active-tab';
 const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'settings'] as const;
 type AppTab = typeof APP_TABS[number];
 
-const getInitialActiveTab = (): AppTab => {
-  if (typeof window === 'undefined') return 'dashboard';
-  const savedTab = window.localStorage.getItem(LAST_ACTIVE_TAB_STORAGE_KEY);
-  return APP_TABS.includes(savedTab as AppTab) ? savedTab as AppTab : 'dashboard';
-};
-
 // ============== PURE UTILITY FUNCTIONS (outside component to avoid re-creation) ==============
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'DONE': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-100 dark:text-emerald-800 dark:border-emerald-200';
-    case 'NOT DONE': return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-100 dark:text-gray-800 dark:border-gray-200';
-    case 'IN PROGRESS': return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-100 dark:text-amber-800 dark:border-amber-200';
-    case 'BLOCKED': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-100 dark:text-red-800 dark:border-red-200';
-    case 'FAILED': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-100 dark:text-red-800 dark:border-red-200';
-    case 'READY TO RETEST': return 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-100 dark:text-cyan-800 dark:border-cyan-200';
-    case 'VERIFIED & FIXED': return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-100 dark:text-emerald-800 dark:border-emerald-200';
-    case 'TBA': return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-100 dark:text-purple-800 dark:border-purple-200';
+    case TESTCASE_STATUS.DONE: return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-100 dark:text-emerald-800 dark:border-emerald-200';
+    case TESTCASE_STATUS.NOT_DONE: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-100 dark:text-gray-800 dark:border-gray-200';
+    case TESTCASE_STATUS.IN_PROGRESS: return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-100 dark:text-amber-800 dark:border-amber-200';
+    case TESTCASE_STATUS.BLOCKED: return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-100 dark:text-red-800 dark:border-red-200';
+    case TESTCASE_STATUS.FAILED: return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-100 dark:text-red-800 dark:border-red-200';
+    case TESTCASE_STATUS.READY_TO_RETEST: return 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-100 dark:text-cyan-800 dark:border-cyan-200';
+    case BUGFIX_STATUS.VERIFIED_FIXED: return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-100 dark:text-emerald-800 dark:border-emerald-200';
+    case TESTCASE_STATUS.TBA: return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-100 dark:text-purple-800 dark:border-purple-200';
     default: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-100 dark:text-gray-800 dark:border-gray-200';
   }
 };
 
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
-    case 'DONE': return 'success';
-    case 'NOT DONE': return 'notdone';
-    case 'IN PROGRESS': return 'inprogress';
-    case 'BLOCKED': return 'blocked';
-    case 'FAILED': return 'failed';
-    case 'READY TO RETEST': return 'readyretest';
-    case 'VERIFIED & FIXED': return 'verifiedfixed';
-    case 'TBA': return 'tba';
+    case TESTCASE_STATUS.DONE: return 'success';
+    case TESTCASE_STATUS.NOT_DONE: return 'notdone';
+    case TESTCASE_STATUS.IN_PROGRESS: return 'inprogress';
+    case TESTCASE_STATUS.BLOCKED: return 'blocked';
+    case TESTCASE_STATUS.FAILED: return 'failed';
+    case TESTCASE_STATUS.READY_TO_RETEST: return 'readyretest';
+    case BUGFIX_STATUS.VERIFIED_FIXED: return 'verifiedfixed';
+    case TESTCASE_STATUS.TBA: return 'tba';
     default: return 'outline';
   }
 };
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'DONE': return <CheckCircle2 className="w-3.5 h-3.5" />;
-    case 'NOT DONE': return <XCircle className="w-3.5 h-3.5" />;
-    case 'IN PROGRESS': return <Clock className="w-3.5 h-3.5" />;
-    case 'BLOCKED': return <AlertTriangle className="w-3.5 h-3.5" />;
-    case 'FAILED': return <XCircle className="w-3.5 h-3.5" />;
-    case 'READY TO RETEST': return <RefreshCw className="w-3.5 h-3.5" />;
-    case 'VERIFIED & FIXED': return <CheckCircle2 className="w-3.5 h-3.5" />;
-    case 'TBA': return <HelpCircle className="w-3.5 h-3.5" />;
+    case TESTCASE_STATUS.DONE: return <CheckCircle2 className="w-3.5 h-3.5" />;
+    case TESTCASE_STATUS.NOT_DONE: return <XCircle className="w-3.5 h-3.5" />;
+    case TESTCASE_STATUS.IN_PROGRESS: return <Clock className="w-3.5 h-3.5" />;
+    case TESTCASE_STATUS.BLOCKED: return <AlertTriangle className="w-3.5 h-3.5" />;
+    case TESTCASE_STATUS.FAILED: return <XCircle className="w-3.5 h-3.5" />;
+    case TESTCASE_STATUS.READY_TO_RETEST: return <RefreshCw className="w-3.5 h-3.5" />;
+    case BUGFIX_STATUS.VERIFIED_FIXED: return <CheckCircle2 className="w-3.5 h-3.5" />;
+    case TESTCASE_STATUS.TBA: return <HelpCircle className="w-3.5 h-3.5" />;
     default: return <XCircle className="w-3.5 h-3.5" />;
   }
 };
@@ -286,43 +107,83 @@ const getTestTypeColor = (type: string) => {
 export default function TestCaseManager() {
   const { toast } = useToast();
 
-  // Core state
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [testCases, setTestCases] = useState<TestCase[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [selectedProject, setSelectedProject] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<AppTab>(getInitialActiveTab);
-
-  // Filter & search
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterTestType, setFilterTestType] = useState<string>('all');
-  const [filterPriority, setFilterPriority] = useState<string>('all');
-  const [filterModule, setFilterModule] = useState<string>('all');
-  const [filterSubMenu, setFilterSubMenu] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('testCaseId');
-  const [sortOrder, setSortOrder] = useState<string>('asc');
-  const debouncedSearch = useDebouncedValue(search, 300);
-
-  // Pagination
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const limit = 50;
-
-  // Loading states
-  const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
-  const [isLoadingStats, setIsLoadingStats] = useState(false);
-
-  // Selection
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  // AbortController for race condition prevention
-  const testCaseAbortRef = useRef<AbortController | null>(null);
-
-  // Dashboard refresh
-  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const {
+    projects,
+    modules,
+    selectedProject,
+    newProjectName,
+    newProjectDesc,
+    newModuleName,
+    setSelectedProject,
+    setNewProjectName,
+    setNewProjectDesc,
+    setNewModuleName,
+    loadModules,
+    handleCreateProject: createProject,
+    handleDeleteProject,
+    handleCreateModule: createModule,
+    handleDeleteModule,
+  } = useProjects();
+  const {
+    testCases,
+    setTestCases,
+    stats,
+    search,
+    setSearch,
+    filterStatus,
+    setFilterStatus,
+    filterTestType,
+    setFilterTestType,
+    filterPriority,
+    setFilterPriority,
+    filterModule,
+    setFilterModule,
+    filterSubMenu,
+    setFilterSubMenu,
+    sortBy,
+    sortOrder,
+    page,
+    setPage,
+    totalPages,
+    total,
+    limit,
+    isLoadingTestCases,
+    isLoadingStats,
+    selectedIds,
+    setSelectedIds,
+    lastRefreshed,
+    loadTestCases,
+    loadStats,
+    handleQuickStatusChange,
+    handleDeleteTestCase: deleteTestCase,
+    handleBulkDelete: bulkDelete,
+    handleBulkStatusUpdate: bulkStatusUpdate,
+    handleDuplicate,
+    toggleSort,
+    toggleSelectAll,
+    toggleSelect,
+  } = useTestCases(selectedProject);
+  const {
+    visibleBugFixItems,
+    bugFixFilterModules,
+    hasUnassignedBugFixItems,
+    bugFixSearch,
+    bugFixFilterStatus,
+    bugFixFilterModule,
+    bugFixTab,
+    setBugFixSearch,
+    setBugFixFilterStatus,
+    setBugFixFilterModule,
+    setBugFixTab,
+    loadBugFix,
+    handleBugFixStatusChange,
+    transformBugFixToDetail,
+  } = useBugFixes(selectedProject, modules, () => {
+    loadStats(selectedProject);
+    loadTestCases(selectedProject);
+  });
+  const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
+  const skipInitialActiveTabPersistRef = useRef(true);
 
   // Dialogs
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -337,46 +198,9 @@ export default function TestCaseManager() {
   const [viewTestCase, setViewTestCase] = useState<TestCase | null>(null);
   const [navigationContextList, setNavigationContextList] = useState<TestCase[] | null>(null);
   const [draftTestCase, setDraftTestCase] = useState<Partial<typeof EMPTY_TEST_CASE> | null>(null);
-  const [newProjectName, setNewProjectName] = useState('');
-  const [newProjectDesc, setNewProjectDesc] = useState('');
-  const [newModuleName, setNewModuleName] = useState('');
 
   // Bulk action
-  const [bulkStatus, setBulkStatus] = useState<string>('DONE');
-
-  // AI Generation
-  const [showAIDialog, setShowAIDialog] = useState(false);
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiGeneratedCases, setAiGeneratedCases] = useState<GeneratedTestCasePreview[]>([]);
-  const [aiSelectedCases, setAiSelectedCases] = useState<Set<number>>(new Set());
-  const [aiSaving, setAiSaving] = useState(false);
-  const [showAIRefineDialog, setShowAIRefineDialog] = useState(false);
-  const [refiningTestCase, setRefiningTestCase] = useState<TestCase | null>(null);
-  const [aiRefinedCase, setAiRefinedCase] = useState<RefinedTestCasePreview | null>(null);
-  const [aiRefining, setAiRefining] = useState(false);
-  const [aiRefineSaving, setAiRefineSaving] = useState(false);
-
-  // BugFix state
-  const [bugFixItems, setBugFixItems] = useState<BugFixItem[]>([]);
-  const [bugFixSearch, setBugFixSearch] = useState('');
-  const [bugFixFilterStatus, setBugFixFilterStatus] = useState<string>('all');
-  const [bugFixFilterModule, setBugFixFilterModule] = useState<string>('all');
-  const [bugFixTab, setBugFixTab] = useState<'active' | 'resolved'>('active');
-  const debouncedBugFixSearch = useDebouncedValue(bugFixSearch, 300);
-
-  // Test record state
-  const [automatedItems, setAutomatedItems] = useState<AutomatedTestCase[]>([]);
-  const [automatedSearch, setAutomatedSearch] = useState('');
-  const [automatedFilterModule, setAutomatedFilterModule] = useState<string>('all');
-  const [automatedLoading, setAutomatedLoading] = useState(false);
-
-  // Import state
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [importCreateModules, setImportCreateModules] = useState(true);
-  const [importing, setImporting] = useState(false);
-  const [previewingImport, setPreviewingImport] = useState(false);
-  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
-  const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
+  const [bulkStatus, setBulkStatus] = useState<string>(TESTCASE_STATUS.DONE);
 
   // Expandable modules state
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -384,9 +208,16 @@ export default function TestCaseManager() {
   // Dashboard filter state
   const [selectedModuleFilter, setSelectedModuleFilter] = useState<string>('all');
 
-  // File ref
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const {
+    automatedItems,
+    automatedSearch,
+    automatedFilterModule,
+    automatedLoading,
+    visibleAutomatedItems,
+    testRecordById,
+    setAutomatedSearch,
+    setAutomatedFilterModule,
+    loadAutomated,
     socketReady,
     liveLogs,
     activeDevLogTab,
@@ -414,54 +245,7 @@ export default function TestCaseManager() {
     generateAISummary,
     loadLogHistory,
     filterConsoleLogs,
-  } = useAutomationLogs({ viewTestCase, setViewTestCase });
-
-  const visibleBugFixItems = useMemo(
-    () => bugFixItems.filter((bf) => {
-      const tabMatches = bugFixTab === 'resolved'
-        ? bf.status === 'VERIFIED & FIXED'
-        : bf.status !== 'VERIFIED & FIXED';
-      if (!tabMatches) return false;
-      if (bugFixFilterModule === 'all') return true;
-      return (bf.moduleId || 'unassigned') === bugFixFilterModule;
-    }),
-    [bugFixItems, bugFixTab, bugFixFilterModule]
-  );
-  const visibleAutomatedItems = useMemo(
-    () => automatedItems.filter((item) => {
-      if (automatedFilterModule !== 'all') {
-        const moduleKey = item.moduleId || 'unassigned';
-        if (moduleKey !== automatedFilterModule) return false;
-      }
-
-      const keyword = automatedSearch.trim().toLowerCase();
-      if (!keyword) return true;
-      return [
-        item.testCaseId,
-        item.page,
-        item.subMenu || '',
-        item.testAction,
-        item.module?.name || '',
-        item.status,
-      ].some((value) => value.toLowerCase().includes(keyword));
-    }),
-    [automatedItems, automatedFilterModule, automatedSearch]
-  );
-  const testRecordById = useMemo(() => {
-    return automatedItems.reduce<Record<string, {
-      hasAutomationRun: boolean;
-      hasManualCapture: boolean;
-      lastRunAt: string | null;
-    }>>((acc, item) => {
-      if (item.automationSource !== 'testcase') return acc;
-      acc[item.id] = {
-        hasAutomationRun: item.automation.hasAutomationRun,
-        hasManualCapture: item.automation.hasManualCapture,
-        lastRunAt: item.automation.lastRunAt,
-      };
-      return acc;
-    }, {});
-  }, [automatedItems]);
+  } = useAutomationDevlog({ viewTestCase, setViewTestCase });
   const selectedProjectName = useMemo(
     () => projects.find(project => project.id === selectedProject)?.name,
     [projects, selectedProject]
@@ -483,49 +267,6 @@ export default function TestCaseManager() {
     () => (stats?.menuProgress || []).some(item => !item.moduleId),
     [stats?.menuProgress]
   );
-  const bugFixFilterModules = useMemo(() => {
-    const visibleModuleIds = new Set(bugFixItems
-      .filter((item) => bugFixTab === 'resolved' ? item.status === 'VERIFIED & FIXED' : item.status !== 'VERIFIED & FIXED')
-      .map(item => item.moduleId)
-      .filter((id): id is string => Boolean(id)));
-    return modules.filter(module => visibleModuleIds.has(module.id) || module.id === bugFixFilterModule);
-  }, [bugFixFilterModule, bugFixItems, bugFixTab, modules]);
-  const hasUnassignedBugFixItems = useMemo(
-    () => bugFixItems
-      .filter((item) => bugFixTab === 'resolved' ? item.status === 'VERIFIED & FIXED' : item.status !== 'VERIFIED & FIXED')
-      .some(item => !item.moduleId),
-    [bugFixItems, bugFixTab]
-  );
-
-  const handleBugFixStatusChange = async (bfId: string, newStatus: string) => {
-    const response = await fetch('/api/bugfix', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: bfId, status: newStatus }),
-    });
-    const updatedItem = await response.json();
-    if (response.ok) {
-      setBugFixItems(prev => prev.map(item => item.id === bfId ? updatedItem : item));
-      loadStats(selectedProject);
-      loadTestCases(selectedProject);
-      toast({ title: 'Berhasil', description: `Status bug fix diubah ke ${newStatus}` });
-    } else {
-      toast({
-        title: 'Gagal mengubah status',
-        description: updatedItem?.error || 'Status bug fix tidak dapat diubah',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const transformBugFixToDetail = (bugFix: BugFixItem) => ({
-      ...bugFix,
-      status: bugFix.status,
-      progress: bugFix.status === 'VERIFIED & FIXED' ? 100 : bugFix.status === 'READY TO RETEST' ? 50 : 0,
-      module: bugFix.module ? { name: bugFix.module.name } : null,
-      detailSource: 'bugfix',
-  }) as unknown as TestCase;
-
   const openBugFixDetail = (bugFix: BugFixItem) => {
     const transformed = transformBugFixToDetail(bugFix);
     const contextList = visibleBugFixItems.map(transformBugFixToDetail);
@@ -535,160 +276,70 @@ export default function TestCaseManager() {
   };
 
   // ============== DATA FETCHING ==============
-  const loadProjects = async () => {
-    try {
-      const res = await fetch('/api/projects');
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setProjects(data);
-        if (data.length > 0) {
-          const lastProjectId = window.localStorage.getItem(LAST_PROJECT_STORAGE_KEY);
-          const restoredProject = lastProjectId
-            ? data.find((project: Project) => project.id === lastProjectId)
-            : null;
-          const selectedStillExists = selectedProject
-            ? data.some((project: Project) => project.id === selectedProject)
-            : false;
-          if (!selectedStillExists) {
-            setSelectedProject(restoredProject?.id || data[0].id);
-          }
-        } else if (selectedProject) {
-          setSelectedProject('');
-        }
-      } else {
-        console.error('Projects API returned non-array data:', data);
-        setProjects([]);
-        if (data.error) {
-          toast({ title: 'Database Error', description: data.error, variant: 'destructive' });
-        }
-      }
-    } catch (err: any) {
-      console.error('Failed to load projects:', err);
-      toast({ title: 'Error', description: 'Failed to load projects', variant: 'destructive' });
-      setProjects([]);
-    }
-  };
-
-  const loadModules = async (projId: string) => {
-    if (!projId) return;
-    try {
-      const res = await fetch(`/api/modules?projectId=${projId}`);
-      const data = await res.json();
-      setModules(data);
-    } catch {
-      toast({ title: 'Error', description: 'Failed to load modules', variant: 'destructive' });
-    }
-  };
-
-  const loadTestCases = async (projId: string, opts?: { searchVal?: string; statusVal?: string; typeVal?: string; prioVal?: string; modVal?: string; subMenuVal?: string; pageVal?: number; sortVal?: string; orderVal?: string }) => {
-    if (!projId) return;
-
-    // Abort previous request to prevent race conditions
-    testCaseAbortRef.current?.abort();
-    const controller = new AbortController();
-    testCaseAbortRef.current = controller;
-
-    setIsLoadingTestCases(true);
-    try {
-      const params = new URLSearchParams({
-        projectId: projId,
-        page: String(opts?.pageVal ?? page),
-        limit: String(limit),
-        sortBy: opts?.sortVal ?? sortBy,
-        sortOrder: opts?.orderVal ?? sortOrder,
-      });
-      const s = opts?.searchVal ?? debouncedSearch;
-      const fs = opts?.statusVal ?? filterStatus;
-      const ft = opts?.typeVal ?? filterTestType;
-      const fp = opts?.prioVal ?? filterPriority;
-      const fm = opts?.modVal ?? filterModule;
-      const fsm = opts?.subMenuVal ?? filterSubMenu;
-      if (s) params.set('search', s);
-      if (fs !== 'all') params.set('status', fs);
-      if (ft !== 'all') params.set('testType', ft);
-      if (fp !== 'all') params.set('priority', fp);
-      if (fm !== 'all') params.set('moduleId', fm);
-      if (fsm !== 'all') params.set('subMenu', fsm);
-
-      const res = await fetch(`/api/testcases?${params}`, { signal: controller.signal });
-      const data = await res.json();
-      setTestCases(data.testCases || []);
-      setTotal(data.total || 0);
-      setTotalPages(data.totalPages || 1);
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') return; // Expected, ignore
-      toast({ title: 'Error', description: 'Failed to load test cases', variant: 'destructive' });
-    } finally {
-      setIsLoadingTestCases(false);
-    }
-  };
-
-  const loadStats = async (projId: string) => {
-    if (!projId) return;
-    setIsLoadingStats(true);
-    try {
-      const res = await fetch(`/api/stats?projectId=${projId}`);
-      const data = await res.json();
-      setStats(data);
-      setLastRefreshed(new Date());
-    } catch {
-      // silently fail
-    } finally {
-      setIsLoadingStats(false);
-    }
-  };
-
-  const loadBugFix = async (projId: string) => {
-    if (!projId) return;
-    try {
-      const params = new URLSearchParams({ projectId: projId, limit: '100' });
-      if (debouncedBugFixSearch) params.set('search', debouncedBugFixSearch);
-      
-      // Filter by status if not 'all'
-      // When in resolved tab, we specifically want 'VERIFIED & FIXED'
-      if (bugFixTab === 'resolved') {
-        params.set('status', 'VERIFIED & FIXED');
-      } else if (bugFixFilterStatus !== 'all') {
-        params.set('status', bugFixFilterStatus);
-      }
-
-      const res = await fetch(`/api/bugfix?${params}`);
-      const data = await res.json();
-      setBugFixItems(data.bugFixItems || []);
-    } catch {
-      // silently fail
-    }
-  };
-
-  const loadAutomated = async (projId: string) => {
-    if (!projId) return;
-    setAutomatedLoading(true);
-    try {
-      const res = await fetch(`/api/automation/history?projectId=${projId}`);
-      const data = await res.json();
-      setAutomatedItems(data.items || []);
-    } catch {
-      toast({ title: 'Error', description: 'Failed to load test records', variant: 'destructive' });
-    } finally {
-      setAutomatedLoading(false);
-    }
-  };
-
   const loadAll = async (projId: string) => {
     await Promise.all([loadModules(projId), loadStats(projId), loadTestCases(projId), loadBugFix(projId), loadAutomated(projId)]);
   };
+  const {
+    showImportDialog,
+    setShowImportDialog,
+    importCreateModules,
+    setImportCreateModules,
+    importing,
+    previewingImport,
+    importPreview,
+    selectedImportFile,
+    fileInputRef,
+    resetImportPreview,
+    handleImportExcel,
+    handleConfirmImportExcel,
+    handleExportExcel,
+  } = useExcelImportExport(selectedProject, () => loadAll(selectedProject));
+  const {
+    showAIDialog,
+    setShowAIDialog,
+    aiGenerating,
+    aiGeneratedCases,
+    setAiGeneratedCases,
+    aiSelectedCases,
+    setAiSelectedCases,
+    aiSaving,
+    showAIRefineDialog,
+    setShowAIRefineDialog,
+    refiningTestCase,
+    setRefiningTestCase,
+    aiRefinedCase,
+    setAiRefinedCase,
+    aiRefining,
+    aiRefineSaving,
+    openAIDialog,
+    openAIRefineDialog,
+    handleAIGenerate,
+    handleAISaveSelected,
+    handleAIRefine,
+    handleApplyAIRefinement,
+    toggleAISelectAll,
+    toggleAISelect,
+  } = useAiTestcaseFlows({
+    selectedProject,
+    modules,
+    loadAll,
+    setViewTestCase,
+  });
 
-  // Initial load
   useEffect(() => {
-    const timer = window.setTimeout(() => loadProjects(), 0);
+    const timer = window.setTimeout(() => {
+      const savedTab = window.localStorage.getItem(LAST_ACTIVE_TAB_STORAGE_KEY);
+      if (APP_TABS.includes(savedTab as AppTab)) {
+        setActiveTab(savedTab as AppTab);
+      }
+    }, 0);
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
-    if (selectedProject) {
-      window.localStorage.setItem(LAST_PROJECT_STORAGE_KEY, selectedProject);
+    if (skipInitialActiveTabPersistRef.current) {
+      skipInitialActiveTabPersistRef.current = false;
+      return;
     }
-  }, [selectedProject]);
-  useEffect(() => {
     window.localStorage.setItem(LAST_ACTIVE_TAB_STORAGE_KEY, activeTab);
   }, [activeTab]);
   // Reload when project changes
@@ -697,19 +348,6 @@ export default function TestCaseManager() {
     const timer = window.setTimeout(() => loadAll(selectedProject), 0);
     return () => window.clearTimeout(timer);
   }, [selectedProject]);
-  // Reload test cases when filters/pagination change
-  useEffect(() => {
-    if (selectedProject) loadTestCases(selectedProject);
-    // Clear selection when filters/page change to prevent invisible selections
-    setSelectedIds(new Set());
-  }, [page, sortBy, sortOrder, debouncedSearch, filterStatus, filterTestType, filterPriority, filterModule, filterSubMenu]);
-  // Reload bugfix when filters or tab change
-  useEffect(() => {
-    if (!selectedProject) return;
-    const timer = window.setTimeout(() => loadBugFix(selectedProject), 0);
-    return () => window.clearTimeout(timer);
-  }, [debouncedBugFixSearch, bugFixFilterStatus, bugFixTab]);
-
   // Auto-refresh dashboard every 60s when on dashboard tab
   useEffect(() => {
     if (activeTab !== 'dashboard' || !selectedProject) return;
@@ -760,505 +398,27 @@ export default function TestCaseManager() {
 
   // ============== HANDLERS ==============
   const handleCreateProject = async () => {
-    if (!newProjectName.trim()) return;
-    try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newProjectName.trim(), description: newProjectDesc.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Project gagal dibuat');
-
-      toast({ title: 'Berhasil', description: 'Project berhasil dibuat' });
-      setShowCreateProject(false);
-      setNewProjectName('');
-      setNewProjectDesc('');
-      loadProjects();
-    } catch (error: any) {
-      toast({ title: 'Gagal membuat project', description: error.message, variant: 'destructive' });
-    }
-  };
-
-  const handleDeleteProject = async (id: string) => {
-    try {
-      const res = await fetch(`/api/projects?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Project gagal dihapus');
-      toast({ title: 'Berhasil', description: 'Project berhasil dihapus' });
-      if (selectedProject === id) {
-        window.localStorage.removeItem(LAST_PROJECT_STORAGE_KEY);
-        setSelectedProject('');
-      }
-      loadProjects();
-    } catch (error: any) {
-      toast({ title: 'Gagal menghapus project', description: error.message, variant: 'destructive' });
-    }
+    if (await createProject()) setShowCreateProject(false);
   };
 
   const handleCreateModule = async () => {
-    if (!newModuleName.trim() || !selectedProject) return;
-    try {
-      const res = await fetch('/api/modules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newModuleName.trim(), projectId: selectedProject }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Module gagal dibuat');
-
-      toast({ title: 'Berhasil', description: 'Module berhasil dibuat' });
-      setShowCreateModule(false);
-      setNewModuleName('');
-      loadModules(selectedProject);
-    } catch (error: any) {
-      toast({ title: 'Gagal membuat module', description: error.message, variant: 'destructive' });
-    }
+    if (await createModule()) setShowCreateModule(false);
   };
 
-  const handleDeleteModule = async (id: string) => {
-    try {
-      const res = await fetch(`/api/modules?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Module gagal dihapus');
-      toast({ title: 'Berhasil', description: 'Module berhasil dihapus' });
-      loadModules(selectedProject);
-    } catch (error: any) {
-      toast({ title: 'Gagal menghapus module', description: error.message, variant: 'destructive' });
-    }
-  };
-
-  const handleQuickStatusChange = async (testCaseId: string, newStatus: string) => {
-    try {
-      const res = await fetch('/api/testcases', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: testCaseId, status: newStatus }),
-      });
-      if (!res.ok) throw new Error('Failed to update status');
-      // Optimistic update in local state
-      setTestCases(prev => prev.map(tc => tc.id === testCaseId ? { ...tc, status: newStatus } : tc));
-      loadStats(selectedProject);
-      toast({ title: 'Status updated', description: `Status diubah ke ${newStatus}` });
-    } catch {
-      toast({ title: 'Gagal', description: 'Status gagal diubah', variant: 'destructive' });
-    }
+  const refreshAll = () => {
+    loadAll(selectedProject);
   };
 
   const handleDeleteTestCase = async (id: string) => {
-    try {
-      const res = await fetch(`/api/testcases?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Test case gagal dihapus');
-      toast({ title: 'Berhasil', description: 'Test case berhasil dihapus' });
-      setShowDeleteConfirm(false);
-      loadAll(selectedProject);
-    } catch (error: any) {
-      toast({ title: 'Gagal menghapus test case', description: error.message, variant: 'destructive' });
-    }
+    if (await deleteTestCase(id, refreshAll)) setShowDeleteConfirm(false);
   };
 
   const handleBulkDelete = async () => {
-    const ids = Array.from(selectedIds).join(',');
-    try {
-      const res = await fetch(`/api/testcases?ids=${encodeURIComponent(ids)}`, { method: 'DELETE' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Bulk delete gagal');
-      toast({ title: 'Berhasil', description: `${selectedIds.size} test case berhasil dihapus` });
-      setSelectedIds(new Set());
-      loadAll(selectedProject);
-    } catch (error: any) {
-      toast({ title: 'Gagal bulk delete', description: error.message, variant: 'destructive' });
-    }
+    bulkDelete(refreshAll);
   };
 
   const handleBulkStatusUpdate = async () => {
-    if (selectedIds.size === 0) return;
-
-    const updates = await Promise.all(Array.from(selectedIds).map(async (id) => {
-      try {
-        const response = await fetch('/api/testcases', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, status: bulkStatus }),
-        });
-        const data = await response.json().catch(() => ({}));
-        return { ok: response.ok, error: data.error || 'Update gagal' };
-      } catch (error: any) {
-        return { ok: false, error: error.message || 'Update gagal' };
-      }
-    }));
-
-    const successCount = updates.filter(result => result.ok).length;
-    const errorCount = updates.length - successCount;
-
-    if (successCount > 0) {
-      toast({
-        title: errorCount > 0 ? 'Sebagian Berhasil' : 'Berhasil',
-        description: `${successCount} test case berhasil diupdate${errorCount > 0 ? `, ${errorCount} gagal` : ''}`,
-        variant: errorCount > 0 ? 'default' : undefined,
-      });
-      setSelectedIds(new Set());
-      setShowBulkAction(false);
-      loadAll(selectedProject);
-    } else {
-      toast({
-        title: 'Gagal update status',
-        description: updates[0]?.error || 'Tidak ada test case yang berhasil diupdate',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleDuplicate = async (tc: TestCase) => {
-    try {
-      const response = await fetch('/api/testcases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...EMPTY_TEST_CASE,
-          testCaseId: `${tc.testCaseId}-COPY-${Date.now().toString().slice(-5)}`,
-          page: tc.page,
-          subMenu: tc.subMenu,
-          weight: tc.weight,
-          testType: tc.testType,
-          testAction: tc.testAction,
-          steps: tc.steps,
-          expectedResult: tc.expectedResult,
-          status: 'NOT DONE',
-          priority: tc.priority,
-          projectId: selectedProject,
-          moduleId: tc.moduleId,
-        }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'Test case gagal diduplikasi');
-
-      toast({ title: 'Berhasil', description: 'Test case berhasil diduplikasi' });
-      loadTestCases(selectedProject);
-    } catch (error: any) {
-      toast({ title: 'Gagal duplikasi', description: error.message, variant: 'destructive' });
-    }
-  };
-
-  const resetImportPreview = () => {
-    setImportPreview(null);
-    setSelectedImportFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedProject) return;
-
-    setPreviewingImport(true);
-    setImportPreview(null);
-    setSelectedImportFile(file);
-    try {
-      const formDataObj = new FormData();
-      formDataObj.append('file', file);
-      formDataObj.append('projectId', selectedProject);
-      formDataObj.append('createModules', importCreateModules ? 'true' : 'false');
-      formDataObj.append('mode', 'preview');
-
-      const res = await fetch('/api/excel', {
-        method: 'POST',
-        body: formDataObj,
-      });
-
-      if (res.ok) {
-        const data = await res.json() as ImportPreview;
-        setImportPreview(data);
-        toast({
-          title: data.canImport ? 'Preview Siap' : 'Preview Perlu Dicek',
-          description: `${data.importableRows}/${data.totalRows} row siap import dari ${data.totalSheets} sheet`,
-          variant: data.canImport ? undefined : 'destructive',
-        });
-      } else {
-        resetImportPreview();
-        toast({ title: 'Preview Gagal', description: 'Format file tidak sesuai', variant: 'destructive' });
-      }
-    } catch {
-      resetImportPreview();
-      toast({ title: 'Preview Gagal', description: 'Terjadi kesalahan saat membaca file', variant: 'destructive' });
-    }
-    setPreviewingImport(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleConfirmImportExcel = async () => {
-    if (!selectedImportFile || !selectedProject) return;
-
-    setImporting(true);
-    try {
-      const formDataObj = new FormData();
-      formDataObj.append('file', selectedImportFile);
-      formDataObj.append('projectId', selectedProject);
-      formDataObj.append('createModules', importCreateModules ? 'true' : 'false');
-      formDataObj.append('mode', 'import');
-
-      const res = await fetch('/api/excel', {
-        method: 'POST',
-        body: formDataObj,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const sheetInfo = data.sheets?.map((s: { sheet: string; imported: number; skipped: number }) =>
-          `${s.sheet}: ${s.imported} TC${s.skipped > 0 ? ` (${s.skipped} skipped)` : ''}`
-        ).join('\n');
-        toast({
-          title: 'Import Berhasil',
-          description: `${data.imported} test case dari ${data.totalSheets} sheet berhasil diimport${sheetInfo ? '\n' + sheetInfo : ''}`,
-        });
-        loadAll(selectedProject);
-        setShowImportDialog(false);
-        resetImportPreview();
-      } else {
-        toast({ title: 'Import Gagal', description: 'Format file tidak sesuai', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Import Gagal', description: 'Terjadi kesalahan saat import', variant: 'destructive' });
-    }
-    setImporting(false);
-  };
-
-  const handleExportExcel = (format: string = 'xlsx') => {
-    if (!selectedProject) return;
-    window.open(`/api/excel?projectId=${selectedProject}&format=${format}`, '_blank');
-  };
-
-  // ============== AI HANDLERS ==============
-  const handleAIGenerate = async ({ prompt, moduleFilter, count }: { prompt: string; moduleFilter: string; count: number }) => {
-    if (!selectedProject || !prompt.trim()) return;
-    setAiGenerating(true);
-    setAiGeneratedCases([]);
-    setAiSelectedCases(new Set());
-
-    try {
-      // Use AbortController with 90s timeout for AI generation
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000);
-
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: selectedProject,
-          userPrompt: prompt,
-          moduleFilter,
-          count,
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast({ title: 'AI Error', description: data.error || 'Gagal generate test case', variant: 'destructive' });
-        setAiGenerating(false);
-        return;
-      }
-
-      const generated = data.generated || [];
-      if (generated.length === 0) {
-        toast({ title: 'Info', description: 'AI tidak menghasilkan test case. Coba prompt yang lebih spesifik.' });
-      } else {
-        setAiGeneratedCases(generated);
-        // Select all by default
-        setAiSelectedCases(new Set(generated.map((_: unknown, i: number) => i)));
-        toast({ title: 'Berhasil', description: `AI menghasilkan ${generated.length} test case` });
-      }
-    } catch (err: unknown) {
-      console.error('AI generate error:', err);
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        toast({ title: 'Timeout', description: 'AI membutuhkan waktu terlalu lama. Silakan coba lagi dengan prompt yang lebih singkat.', variant: 'destructive' });
-      } else {
-        toast({ title: 'Error', description: 'Gagal menghubungi AI. Silakan coba lagi.', variant: 'destructive' });
-      }
-    }
-    setAiGenerating(false);
-  };
-
-  const handleAISaveSelected = async () => {
-    if (aiSelectedCases.size === 0 || !selectedProject) return;
-    setAiSaving(true);
-
-    try {
-      const casesToSave = Array.from(aiSelectedCases).map(i => aiGeneratedCases[i]);
-      let savedCount = 0;
-      let errorCount = 0;
-
-      // Save one by one to avoid Promise.all failing entirely
-      for (const tc of casesToSave) {
-        try {
-          const res = await fetch('/api/testcases', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...tc,
-              actualResult: null,
-              status: 'NOT DONE',
-              progress: 0,
-              remarks: '',
-              projectId: selectedProject,
-              // Ensure moduleId is valid or null
-              moduleId: tc.moduleId && modules.some(m => m.id === tc.moduleId) ? tc.moduleId : null,
-              // Ensure subMenu is null if empty
-              subMenu: tc.subMenu || null,
-            }),
-          });
-          if (res.ok) {
-            savedCount++;
-          } else {
-            errorCount++;
-            console.error('Failed to save AI test case:', tc.testCaseId, await res.text());
-          }
-        } catch (err) {
-          errorCount++;
-          console.error('Error saving AI test case:', tc.testCaseId, err);
-        }
-      }
-
-      if (savedCount > 0) {
-        toast({
-          title: 'Berhasil',
-          description: `${savedCount} test case berhasil disimpan${errorCount > 0 ? ` (${errorCount} gagal)` : ''}`,
-          variant: errorCount > 0 ? 'default' : undefined,
-        });
-        setShowAIDialog(false);
-        setAiGeneratedCases([]);
-        setAiSelectedCases(new Set());
-        loadAll(selectedProject);
-      } else {
-        toast({ title: 'Error', description: 'Gagal menyimpan semua test case. Silakan coba lagi.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Error', description: 'Gagal menyimpan test case', variant: 'destructive' });
-    }
-    setAiSaving(false);
-  };
-
-  const openAIRefineDialog = (testCase: TestCase) => {
-    setRefiningTestCase(testCase);
-    setAiRefinedCase(null);
-    setShowAIRefineDialog(true);
-  };
-
-  const handleAIRefine = async (mode: string) => {
-    if (!refiningTestCase) return;
-
-    setAiRefining(true);
-    setAiRefinedCase(null);
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000);
-
-      const response = await fetch('/api/ai/refine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode, testCase: refiningTestCase }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast({ title: 'AI Error', description: data.error || 'Gagal refine testcase', variant: 'destructive' });
-        return;
-      }
-
-      setAiRefinedCase(data.refined);
-      toast({ title: 'Preview Siap', description: 'AI refinement sudah dibuat. Review dulu sebelum apply.' });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        toast({ title: 'Timeout', description: 'AI membutuhkan waktu terlalu lama. Coba mode refinement lain.', variant: 'destructive' });
-      } else {
-        toast({ title: 'Error', description: 'Gagal menghubungi AI refinement.', variant: 'destructive' });
-      }
-    } finally {
-      setAiRefining(false);
-    }
-  };
-
-  const handleApplyAIRefinement = async () => {
-    if (!refiningTestCase || !aiRefinedCase) return;
-
-    setAiRefineSaving(true);
-    try {
-      const response = await fetch('/api/testcases', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: refiningTestCase.id,
-          testAction: aiRefinedCase.testAction,
-          steps: aiRefinedCase.steps,
-          expectedResult: aiRefinedCase.expectedResult,
-          remarks: aiRefinedCase.remarks,
-          priority: aiRefinedCase.priority,
-          testType: aiRefinedCase.testType,
-        }),
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast({ title: 'Gagal Apply', description: data.error || 'Refinement tidak tersimpan', variant: 'destructive' });
-        return;
-      }
-
-      setViewTestCase(prev => prev?.id === data.id ? { ...prev, ...data } : prev);
-      setShowAIRefineDialog(false);
-      setAiRefinedCase(null);
-      setRefiningTestCase(null);
-      loadAll(selectedProject);
-      toast({ title: 'Berhasil', description: 'AI refinement berhasil diterapkan ke testcase.' });
-    } catch {
-      toast({ title: 'Error', description: 'Gagal menyimpan refinement', variant: 'destructive' });
-    } finally {
-      setAiRefineSaving(false);
-    }
-  };
-
-  const toggleAISelectAll = () => {
-    if (aiSelectedCases.size === aiGeneratedCases.length) {
-      setAiSelectedCases(new Set());
-    } else {
-      setAiSelectedCases(new Set(aiGeneratedCases.map((_, i) => i)));
-    }
-  };
-
-  const toggleAISelect = (idx: number) => {
-    const next = new Set(aiSelectedCases);
-    if (next.has(idx)) next.delete(idx);
-    else next.add(idx);
-    setAiSelectedCases(next);
-  };
-
-  const toggleSort = (field: string) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === testCases.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(testCases.map((tc) => tc.id)));
-    }
-  };
-
-  const toggleSelect = (id: string) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedIds(next);
+    if (await bulkStatusUpdate(bulkStatus, refreshAll)) setShowBulkAction(false);
   };
 
   const openEditDialog = (tc: TestCase) => {
@@ -1267,7 +427,7 @@ export default function TestCaseManager() {
     setShowTestCaseDialog(true);
   };
 
-  const openCreateDialog = async () => {
+  async function openCreateDialog() {
     setEditingTestCase(null);
 
     if (!selectedProject || filterModule === 'all' || filterModule === 'unassigned') {
@@ -1280,13 +440,11 @@ export default function TestCaseManager() {
     setShowTestCaseDialog(true);
 
     try {
-      const params = new URLSearchParams({
+      const data = await fetchNextTestCaseId({
         projectId: selectedProject,
         moduleId: filterModule,
       });
-      const response = await fetch(`/api/testcases/next-id?${params}`);
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) return;
+      if (!data) return;
 
       setDraftTestCase(prev => ({
         ...(prev || {}),
@@ -1296,7 +454,7 @@ export default function TestCaseManager() {
     } catch {
       // Keep the dialog usable; users can still fill the ID manually.
     }
-  };
+  }
 
   const openDraftCreateDialog = (draft: TestCaseDraft) => {
     setEditingTestCase(null);
@@ -1311,7 +469,7 @@ export default function TestCaseManager() {
       expectedResult: draft.expectedResult,
       priority: draft.priority,
       moduleId: draft.moduleId || '',
-      status: 'NOT DONE',
+      status: TESTCASE_STATUS.NOT_DONE,
       progress: 0,
       actualResult: '',
       remarks: '',
@@ -1421,11 +579,11 @@ export default function TestCaseManager() {
   };
 
   const getModuleRiskTargetStatus = (moduleRisk: ModuleRiskItem) => {
-    if (moduleRisk.failed > 0) return 'FAILED';
-    if (moduleRisk.blocked > 0) return 'BLOCKED';
-    if (moduleRisk.readyToRetest > 0) return 'READY TO RETEST';
-    if (moduleRisk.inProgress > 0) return 'IN PROGRESS';
-    if (moduleRisk.notDone > 0) return 'NOT DONE';
+    if (moduleRisk.failed > 0) return TESTCASE_STATUS.FAILED;
+    if (moduleRisk.blocked > 0) return TESTCASE_STATUS.BLOCKED;
+    if (moduleRisk.readyToRetest > 0) return TESTCASE_STATUS.READY_TO_RETEST;
+    if (moduleRisk.inProgress > 0) return TESTCASE_STATUS.IN_PROGRESS;
+    if (moduleRisk.notDone > 0) return TESTCASE_STATUS.NOT_DONE;
     return 'all';
   };
 
@@ -1493,6 +651,7 @@ export default function TestCaseManager() {
       totalPages={totalPages}
       testRecordById={testRecordById}
       fileInputRef={fileInputRef}
+      aiEnabled={FEATURES.aiTestcaseFlows}
       setSearch={setSearch}
       setFilterStatus={setFilterStatus}
       setFilterTestType={setFilterTestType}
@@ -1503,7 +662,7 @@ export default function TestCaseManager() {
       setShowBulkAction={setShowBulkAction}
       setShowDeleteConfirm={setShowDeleteConfirm}
       openCreateDialog={openCreateDialog}
-      openAIDialog={() => { setShowAIDialog(true); setAiGeneratedCases([]); }}
+      openAIDialog={FEATURES.aiTestcaseFlows ? openAIDialog : () => {}}
       openImportDialog={() => setShowImportDialog(true)}
       handleImportExcel={handleImportExcel}
       handleExportExcel={handleExportExcel}
@@ -1677,7 +836,7 @@ export default function TestCaseManager() {
         getTestTypeColor={getTestTypeColor}
         getPriorityColor={getPriorityColor}
         onEdit={openEditDialog}
-        onRefine={openAIRefineDialog}
+        onRefine={FEATURES.aiTestcaseFlows ? openAIRefineDialog : undefined}
         onCopyId={(id) => {
           navigator.clipboard.writeText(id);
           toast({ title: 'ID Disalin', description: 'Internal ID berhasil disalin untuk Katalon.' });
@@ -1686,25 +845,27 @@ export default function TestCaseManager() {
         onNavigate={handleNavigate}
       />
 
-      <AIRefineDialog
-        open={showAIRefineDialog}
-        onOpenChange={(open) => {
-          setShowAIRefineDialog(open);
-          if (!open) {
-            setAiRefinedCase(null);
-            setRefiningTestCase(null);
-          }
-        }}
-        testCase={refiningTestCase}
-        refinedCase={aiRefinedCase}
-        refining={aiRefining}
-        saving={aiRefineSaving}
-        onRefine={handleAIRefine}
-        onApply={handleApplyAIRefinement}
-        onReset={() => setAiRefinedCase(null)}
-        getPriorityColor={getPriorityColor}
-        getTestTypeColor={getTestTypeColor}
-      />
+      {FEATURES.aiTestcaseFlows && (
+        <AIRefineDialog
+          open={showAIRefineDialog}
+          onOpenChange={(open) => {
+            setShowAIRefineDialog(open);
+            if (!open) {
+              setAiRefinedCase(null);
+              setRefiningTestCase(null);
+            }
+          }}
+          testCase={refiningTestCase}
+          refinedCase={aiRefinedCase}
+          refining={aiRefining}
+          saving={aiRefineSaving}
+          onRefine={handleAIRefine}
+          onApply={handleApplyAIRefinement}
+          onReset={() => setAiRefinedCase(null)}
+          getPriorityColor={getPriorityColor}
+          getTestTypeColor={getTestTypeColor}
+        />
+      )}
       {/* Delete Confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
@@ -1760,40 +921,44 @@ export default function TestCaseManager() {
       />
 
       {/* AI Generate Dialog */}
-      <AIGenerateDialog
-        open={showAIDialog}
-        onOpenChange={(open) => {
-          setShowAIDialog(open);
-          if (!open) {
-            setAiGeneratedCases([]);
-            setAiSelectedCases(new Set());
-          }
-        }}
-        projectId={selectedProject}
-        modules={modules}
-        aiGenerating={aiGenerating}
-        aiGeneratedCases={aiGeneratedCases}
-        aiSelectedCases={aiSelectedCases}
-        aiSaving={aiSaving}
-        handleAIGenerate={handleAIGenerate}
-        handleAISaveSelected={handleAISaveSelected}
-        toggleAISelectAll={toggleAISelectAll}
-        toggleAISelect={toggleAISelect}
-        resetGeneratedCases={() => {
-          setAiGeneratedCases([]);
-          setAiSelectedCases(new Set());
-        }}
-        getTestTypeColor={getTestTypeColor}
-        getPriorityColor={getPriorityColor}
-      />
+      {FEATURES.aiTestcaseFlows && (
+        <>
+          <AIGenerateDialog
+            open={showAIDialog}
+            onOpenChange={(open) => {
+              setShowAIDialog(open);
+              if (!open) {
+                setAiGeneratedCases([]);
+                setAiSelectedCases(new Set());
+              }
+            }}
+            projectId={selectedProject}
+            modules={modules}
+            aiGenerating={aiGenerating}
+            aiGeneratedCases={aiGeneratedCases}
+            aiSelectedCases={aiSelectedCases}
+            aiSaving={aiSaving}
+            handleAIGenerate={handleAIGenerate}
+            handleAISaveSelected={handleAISaveSelected}
+            toggleAISelectAll={toggleAISelectAll}
+            toggleAISelect={toggleAISelect}
+            resetGeneratedCases={() => {
+              setAiGeneratedCases([]);
+              setAiSelectedCases(new Set());
+            }}
+            getTestTypeColor={getTestTypeColor}
+            getPriorityColor={getPriorityColor}
+          />
 
-      <FloatingAIChat
-        projectId={selectedProject}
-        projectName={selectedProjectName}
-        selectedTestCase={viewTestCase?.projectId === selectedProject ? viewTestCase : null}
-        onOpenTestCaseId={openTestCaseFromChat}
-        onCreateTestCaseDraft={openDraftCreateDialog}
-      />
+          <FloatingAIChat
+            projectId={selectedProject}
+            projectName={selectedProjectName}
+            selectedTestCase={viewTestCase?.projectId === selectedProject ? viewTestCase : null}
+            onOpenTestCaseId={openTestCaseFromChat}
+            onCreateTestCaseDraft={openDraftCreateDialog}
+          />
+        </>
+      )}
     </div>
     </ErrorBoundary>
   );

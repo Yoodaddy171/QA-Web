@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { BUGFIX_STATUS } from '@/lib/domain/bugfix';
 
 /**
  * Shared AI context utilities for all AI endpoints.
@@ -250,7 +251,7 @@ export async function getSiblingTestCases(
  */
 export async function getRecentBugFixes(projectId: string, limit = 6) {
   return db.bugFix.findMany({
-    where: { projectId, status: { not: 'VERIFIED & FIXED' } },
+    where: { projectId, status: { not: BUGFIX_STATUS.VERIFIED_FIXED } },
     select: {
       testCaseId: true,
       page: true,

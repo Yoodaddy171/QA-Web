@@ -372,7 +372,7 @@ function flowPathToTarget(flowLine: string, target: string) {
 function buildDraftStepsFromContext(input: {
   location: string;
   feature: string;
-  scenario: { invalidData: string; action?: string };
+  scenario: { invalidData: string; action?: string; expected: string };
   flowLine: string;
   figmaText: string[];
 }) {
@@ -655,6 +655,7 @@ export async function getBugFixes(projectId: string, filters?: {
       testAction: true,
       status: true,
       priority: true,
+      actualResult: true,
       reportedAt: true,
       readyAt: true,
       fixedAt: true,

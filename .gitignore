@@ -54,11 +54,26 @@ server.log
 db/*.db
 db/*.db-journal
 db/*.db-wal
+prisma/db/*.db
+prisma/db/*.db-journal
+prisma/db/*.db-wal
 
 # Transient data
 mini-services/logs/
 mini-services/recordings/
 upload/
+download/*.xlsx
+download/*.xls
+download/*.csv
+
+# Local workspace/import-export artifacts
+workspace_file
+Konteks.txt
+*.bak
+*.backup-*
+testcases.csv
+Template - Test Case*.csv
+Template - Test Case*.xlsx
 
 # Skills directory
 /skills/

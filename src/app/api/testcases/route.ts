@@ -1,24 +1,23 @@
 import { db } from '@/lib/db';
+import { getProgressFromStatus } from '@/lib/domain/progress';
+import {
+  isTestCasePriority,
+  isTestCaseStatus,
+  isTestType,
+  resolveTestCaseStatusTransition,
+  TESTCASE_ACTUAL_RESULT,
+  TESTCASE_STATUS,
+} from '@/lib/domain/testcase';
+import {
+  createTestCaseRecord,
+  deleteTestCaseById,
+  deleteTestCasesByIds,
+  updateTestCaseRecordWithBugFixSync,
+} from '@/lib/services/testcase-service';
+import { scheduleWeightRecalculation } from '@/lib/services/weight-service';
 import { NextRequest, NextResponse } from 'next/server';
 
 const TESTCASE_SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'testCaseId', 'page', 'status', 'priority', 'testType']);
-const TESTCASE_STATUSES = new Set(['DONE', 'NOT DONE', 'IN PROGRESS', 'BLOCKED', 'FAILED', 'READY TO RETEST', 'TBA']);
-const TEST_TYPES = new Set(['Positive', 'Negative']);
-const PRIORITIES = new Set(['Low', 'Medium', 'High', 'Critical']);
-
-// Auto-calculate progress based on status
-const getProgressFromStatus = (status: string): number => {
-  switch (status) {
-    case 'DONE': return 100;
-    case 'IN PROGRESS': return 50;
-    case 'BLOCKED': return 0;
-    case 'NOT DONE': return 0;
-    case 'FAILED': return 0;
-    case 'READY TO RETEST': return 50;
-    case 'TBA': return 0; // Excluded from progress calculations
-    default: return 0;
-  }
-};
 
 const cleanText = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 const cleanNullableText = (value: unknown) => {
@@ -72,15 +71,15 @@ export async function GET(req: NextRequest) {
       where.subMenu = subMenu === '__empty__' ? null : subMenu;
     }
     if (status) {
-      if (!TESTCASE_STATUSES.has(status)) return validationError('Status testcase tidak valid.');
+      if (!isTestCaseStatus(status)) return validationError('Status testcase tidak valid.');
       where.status = status;
     }
     if (testType) {
-      if (!TEST_TYPES.has(testType)) return validationError('Tipe testcase tidak valid.');
+      if (!isTestType(testType)) return validationError('Tipe testcase tidak valid.');
       where.testType = testType;
     }
     if (priority) {
-      if (!PRIORITIES.has(priority)) return validationError('Prioritas testcase tidak valid.');
+      if (!isTestCasePriority(priority)) return validationError('Prioritas testcase tidak valid.');
       where.priority = priority;
     }
     if (search) {
@@ -151,9 +150,9 @@ export async function POST(req: NextRequest) {
     const steps = cleanText(body.steps);
     const expectedResult = cleanText(body.expectedResult);
     const projectId = cleanText(body.projectId);
-    const status = TESTCASE_STATUSES.has(body.status) ? body.status : 'NOT DONE';
-    const testType = TEST_TYPES.has(body.testType) ? body.testType : 'Positive';
-    const priority = PRIORITIES.has(body.priority) ? body.priority : 'Medium';
+    const status = isTestCaseStatus(body.status) ? body.status : TESTCASE_STATUS.NOT_DONE;
+    const testType = isTestType(body.testType) ? body.testType : 'Positive';
+    const priority = isTestCasePriority(body.priority) ? body.priority : 'Medium';
 
     if (!projectId) return validationError('Project wajib dipilih.');
     if (!testCaseId) return validationError('Test Case ID wajib diisi.');
@@ -182,29 +181,25 @@ export async function POST(req: NextRequest) {
       if (!moduleRecord) return NextResponse.json({ error: 'Module tidak ditemukan pada project ini.' }, { status: 404 });
     }
 
-    const testCase = await db.testCase.create({
-      data: {
-        testCaseId,
-        page,
-        subMenu,
-        weight,
-        testType,
-        testAction,
-        steps,
-        expectedResult,
-        actualResult,
-        status,
-        progress,
-        remarks,
-        priority,
-        projectId,
-        moduleId,
-      },
-      include: { project: true, module: true },
+    const testCase = await createTestCaseRecord({
+      testCaseId,
+      page,
+      subMenu,
+      weight,
+      testType,
+      testAction,
+      steps,
+      expectedResult,
+      actualResult,
+      status,
+      progress,
+      remarks,
+      priority,
+      projectId,
+      moduleId,
     });
 
-    // Recalculate weights for all test cases in the same menu (background, non-blocking)
-    recalculateWeights(projectId, page, subMenu).catch(() => {});
+    scheduleWeightRecalculation([{ projectId, page, subMenu }], 'test case create');
 
     return NextResponse.json(testCase, { status: 201 });
   } catch (error) {
@@ -227,10 +222,9 @@ export async function PUT(req: NextRequest) {
     if (!current) return NextResponse.json({ error: 'Test case not found' }, { status: 404 });
 
     // Keep status and actual result in sync for the bug-fix retest flow.
-    let finalStatus = data.status ?? current.status;
-    if (!TESTCASE_STATUSES.has(finalStatus)) return validationError('Status testcase tidak valid.');
-    if (data.testType !== undefined && !TEST_TYPES.has(data.testType)) return validationError('Tipe testcase tidak valid.');
-    if (data.priority !== undefined && !PRIORITIES.has(data.priority)) return validationError('Prioritas testcase tidak valid.');
+    if (!isTestCaseStatus(data.status ?? current.status)) return validationError('Status testcase tidak valid.');
+    if (data.testType !== undefined && !isTestType(data.testType)) return validationError('Tipe testcase tidak valid.');
+    if (data.priority !== undefined && !isTestCasePriority(data.priority)) return validationError('Prioritas testcase tidak valid.');
     if (data.testCaseId !== undefined && !cleanText(data.testCaseId)) return validationError('Test Case ID wajib diisi.');
     if (data.page !== undefined && !cleanText(data.page)) return validationError('Page wajib diisi.');
     if (data.testAction !== undefined && !cleanText(data.testAction)) return validationError('Test Action wajib diisi.');
@@ -247,17 +241,12 @@ export async function PUT(req: NextRequest) {
       });
       if (duplicate) return NextResponse.json({ error: `Test Case ID "${cleanText(data.testCaseId)}" sudah digunakan di project ini.` }, { status: 409 });
     }
-    let finalActualResult = data.actualResult !== undefined ? data.actualResult : current.actualResult;
-
-    if (finalStatus === 'DONE') {
-      finalActualResult = 'As Expected';
-    }
-
-    if (finalActualResult === 'Not As Expected') {
-      finalStatus = 'FAILED';
-    } else if (finalActualResult === 'As Expected' && (current.status === 'FAILED' || finalStatus === 'DONE')) {
-      finalStatus = 'DONE';
-    }
+    const { finalStatus, finalActualResult } = resolveTestCaseStatusTransition({
+      currentStatus: current.status,
+      currentActualResult: current.actualResult,
+      nextStatus: data.status,
+      nextActualResult: data.actualResult,
+    });
 
     // Handle moduleId: convert empty string to null for Prisma
     const finalModuleId = data.moduleId === '' || data.moduleId === null ? null : data.moduleId;
@@ -270,78 +259,31 @@ export async function PUT(req: NextRequest) {
     // Handle actualResult: convert empty string to null
     const finalActualResultForDb = finalActualResult === '' ? null : finalActualResult;
     const shouldWriteActualResult = data.actualResult !== undefined
-      || (finalStatus === 'DONE' && finalActualResultForDb === 'As Expected' && current.actualResult !== 'As Expected');
+      || (finalStatus === TESTCASE_STATUS.DONE && finalActualResultForDb === TESTCASE_ACTUAL_RESULT.AS_EXPECTED && current.actualResult !== TESTCASE_ACTUAL_RESULT.AS_EXPECTED);
 
     // Auto-calculate progress from status
     const progress = getProgressFromStatus(finalStatus || current.status);
 
-    const testCase = await db.testCase.update({
-      where: { id },
-      data: {
-        ...(data.testCaseId !== undefined && { testCaseId: cleanText(data.testCaseId) }),
-        ...(data.page !== undefined && { page: cleanText(data.page) }),
-        ...(data.subMenu !== undefined && { subMenu: finalSubMenu }),
-        ...(data.weight !== undefined && { weight: data.weight }),
-        ...(data.testType !== undefined && { testType: data.testType }),
-        ...(data.testAction !== undefined && { testAction: cleanText(data.testAction) }),
-        ...(data.steps !== undefined && { steps: cleanText(data.steps) }),
-        ...(data.expectedResult !== undefined && { expectedResult: cleanText(data.expectedResult) }),
-        ...(shouldWriteActualResult && { actualResult: finalActualResultForDb }),
-        ...(data.stepLogs !== undefined && { stepLogs: data.stepLogs }),
-        ...(finalStatus !== undefined && { status: finalStatus }),
-        ...(progress !== undefined && { progress }),
-        ...(data.remarks !== undefined && { remarks: data.remarks }),
-        ...(data.priority !== undefined && { priority: data.priority }),
-        ...(data.moduleId !== undefined && { moduleId: finalModuleId }),
-      },
-      include: { project: true, module: true },
+    const testCase = await updateTestCaseRecordWithBugFixSync({
+      id,
+      data,
+      current,
+      finalStatus,
+      finalActualResultForDb,
+      shouldWriteActualResult,
+      progress,
+      finalModuleId,
+      finalSubMenu,
     });
-
-    // If status became FAILED, auto-copy to BugFix table (if not already there)
-    if (finalStatus === 'FAILED') {
-      const existingBugFix = await db.bugFix.findFirst({
-        where: { sourceTestCaseId: id },
-      });
-      if (!existingBugFix) {
-        await db.bugFix.create({
-          data: {
-            sourceTestCaseId: id,
-            testCaseId: current.testCaseId,
-            projectId: current.projectId,
-            page: current.page,
-            subMenu: current.subMenu,
-            testType: current.testType,
-            testAction: current.testAction,
-            steps: current.steps,
-            expectedResult: current.expectedResult,
-            actualResult: 'Not As Expected',
-            priority: current.priority,
-            moduleId: current.moduleId,
-            status: 'SUDAH DILAPORKAN',
-            reportedAt: new Date(),
-          },
-        });
-      }
-    } else if (finalStatus === 'DONE' || finalActualResultForDb === 'As Expected') {
-      // A bug is only verified after its source test case passes retest.
-      await db.bugFix.updateMany({
-        where: { 
-          sourceTestCaseId: id,
-          status: { not: 'VERIFIED & FIXED' }
-        },
-        data: {
-          status: 'VERIFIED & FIXED',
-          fixedAt: new Date()
-        }
-      });
-    }
 
     // Recalculate weights if page/subMenu changed (background, non-blocking)
     const pageChanged = data.page !== undefined && data.page !== current.page;
     const subMenuChanged = finalSubMenu !== current.subMenu;
     if (pageChanged || subMenuChanged) {
-      recalculateWeights(current.projectId, current.page, current.subMenu).catch(() => {});
-      recalculateWeights(testCase.projectId, testCase.page, testCase.subMenu).catch(() => {});
+      scheduleWeightRecalculation([
+        { projectId: current.projectId, page: current.page, subMenu: current.subMenu },
+        { projectId: testCase.projectId, page: testCase.page, subMenu: testCase.subMenu },
+      ], 'test case update');
     }
 
     return NextResponse.json(testCase);
@@ -360,62 +302,20 @@ export async function DELETE(req: NextRequest) {
     if (ids) {
       const idList = ids.split(',').map(id => id.trim()).filter(Boolean);
       if (idList.length === 0) return validationError('ID is required');
-      const casesToDelete = await db.testCase.findMany({
-        where: { id: { in: idList } },
-        select: { id: true, projectId: true, page: true, subMenu: true },
-      });
-      await db.testCase.deleteMany({ where: { id: { in: idList } } });
+      const result = await deleteTestCasesByIds(idList);
+      scheduleWeightRecalculation(result.weightTargets, 'test case bulk delete');
 
-      // Recalculate weights for affected menus (background)
-      const affectedMenus = new Set<string>();
-      for (const tc of casesToDelete) {
-        affectedMenus.add(`${tc.projectId}|||${tc.page}|||${tc.subMenu || ''}`);
-      }
-      for (const key of affectedMenus) {
-        const [projId, page, subMenu] = key.split('|||');
-        recalculateWeights(projId, page, subMenu === '' ? null : subMenu).catch(() => {});
-      }
-
-      return NextResponse.json({ deleted: idList.length });
+      return NextResponse.json({ deleted: result.deleted });
     }
 
     if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
-    const tc = await db.testCase.findUnique({ where: { id }, select: { projectId: true, page: true, subMenu: true } });
-    if (!tc) return NextResponse.json({ error: 'Test case not found' }, { status: 404 });
-    await db.testCase.delete({ where: { id } });
+    const result = await deleteTestCaseById(id);
+    if (!result) return NextResponse.json({ error: 'Test case not found' }, { status: 404 });
+    scheduleWeightRecalculation(result.weightTargets, 'test case delete');
 
-    recalculateWeights(tc.projectId, tc.page, tc.subMenu).catch(() => {});
-
-    return NextResponse.json({ deleted: 1 });
+    return NextResponse.json({ deleted: result.deleted });
   } catch (error) {
     console.error('DELETE /api/testcases error:', error);
     return NextResponse.json({ error: 'Failed to delete test case' }, { status: 500 });
   }
-}
-
-// Helper: Recalculate weight for all test cases in a menu
-async function recalculateWeights(projectId: string, page: string, subMenu: string | null) {
-  // Only count active (non-TBA) test cases for weight calculation
-  const casesInMenu = await db.testCase.findMany({
-    where: { projectId, page, subMenu: subMenu || null, status: { not: 'TBA' } },
-    select: { id: true },
-  });
-
-  if (casesInMenu.length === 0) return;
-
-  const weightPerCase = (100 / casesInMenu.length).toFixed(2) + '%';
-
-  const caseIds = casesInMenu.map(tc => tc.id);
-
-  // Batch update all cases in menu with calculated weight
-  await db.testCase.updateMany({
-    where: { id: { in: caseIds } },
-    data: { weight: weightPerCase },
-  });
-
-  // Set weight to null for TBA test cases in this menu (they don't contribute)
-  await db.testCase.updateMany({
-    where: { projectId, page, subMenu: subMenu || null, status: 'TBA' },
-    data: { weight: null },
-  });
 }

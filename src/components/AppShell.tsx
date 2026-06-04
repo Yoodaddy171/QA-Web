@@ -1,7 +1,7 @@
 'use client';
 
 import { Bug, ClipboardList, FolderOpen, LayoutDashboard, MonitorDot, Settings2 } from 'lucide-react';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -44,7 +44,6 @@ const NAV_ITEMS = [
 ] as const;
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
 
 export function AppShell({
   projects,
@@ -56,7 +55,10 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background" suppressHydrationWarning>

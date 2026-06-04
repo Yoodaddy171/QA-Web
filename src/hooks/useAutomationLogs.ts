@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { buildDevlogRelayUrl, DEVLOG_RELAY_URL } from '@/lib/client/api/devlog-client';
 
 export type DevLogTab = 'console' | 'network' | 'execution';
 export type ManualCaptureBrowserMode = 'clean' | 'profiled';
@@ -176,7 +177,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     if (!testCaseId) return null;
 
     try {
-      const response = await fetch(`http://127.0.0.1:3001/recordings/${encodeURIComponent(testCaseId)}/latest`);
+      const response = await fetch(buildDevlogRelayUrl(`/recordings/${encodeURIComponent(testCaseId)}/latest`));
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.recording) {
         setManualRecording(null);
@@ -196,7 +197,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     if (!sessionId) return loadLatestRecording(testCaseId);
 
     try {
-      const response = await fetch(`http://127.0.0.1:3001/recordings/${encodeURIComponent(testCaseId)}/${encodeURIComponent(sessionId)}/metadata`);
+      const response = await fetch(buildDevlogRelayUrl(`/recordings/${encodeURIComponent(testCaseId)}/${encodeURIComponent(sessionId)}/metadata`));
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.recording) return loadLatestRecording(testCaseId);
       setManualRecording(data.recording);
@@ -210,7 +211,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     if (!testCaseId) return null;
 
     try {
-      const response = await fetch(`http://127.0.0.1:3001/logs/${encodeURIComponent(testCaseId)}?run=current`);
+      const response = await fetch(buildDevlogRelayUrl(`/logs/${encodeURIComponent(testCaseId)}?run=current`));
       if (!response.ok) return null;
 
       const logs = parseJsonlLogs(await response.text());
@@ -303,7 +304,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       if (closedByHook) return;
 
       try {
-        ws = new WebSocket('ws://127.0.0.1:3001');
+        ws = new WebSocket(DEVLOG_RELAY_URL.replace(/^http/, 'ws'));
       } catch {
         setSocketReady(false);
         scheduleReconnect();
@@ -370,7 +371,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
 
     setIsLoadingHistory(true);
     try {
-      const response = await fetch(`http://127.0.0.1:3001/logs/${encodeURIComponent(viewTestCase.id)}?run=previous`);
+      const response = await fetch(buildDevlogRelayUrl(`/logs/${encodeURIComponent(viewTestCase.id)}?run=previous`));
       if (!response.ok) throw new Error('Riwayat run sebelumnya belum ada. Run terbaru sudah dimuat otomatis jika tersedia.');
 
       const logs = parseJsonlLogs(await response.text());
@@ -430,7 +431,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
 
   const buildManualCaptureUrl = (targetUrl: string, sessionId: string, testCaseId: string) => {
     const url = new URL(targetUrl);
-    const relayUrl = 'http://127.0.0.1:3001';
+    const relayUrl = DEVLOG_RELAY_URL;
     url.searchParams.set('qaCapture', '1');
     url.searchParams.set('qaTestCaseId', testCaseId);
     url.searchParams.set('qaSessionId', sessionId);
@@ -451,7 +452,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       if (!targetUrl) throw new Error('Isi URL target terlebih dahulu.');
 
       const captureUrl = buildManualCaptureUrl(targetUrl, sessionId, viewTestCase.id);
-      const response = await fetch('http://127.0.0.1:3001/manual/start', {
+      const response = await fetch(buildDevlogRelayUrl('/manual/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -496,7 +497,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
 
     setIsStoppingManualCapture(true);
     try {
-      const response = await fetch('http://127.0.0.1:3001/manual/stop', {
+      const response = await fetch(buildDevlogRelayUrl('/manual/stop'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: manualCaptureSessionId }),

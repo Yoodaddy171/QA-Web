@@ -129,6 +129,7 @@ interface TestCaseTableProps {
   totalPages: number;
   testRecordById: Record<string, TestRecordSummary>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  aiEnabled?: boolean;
   setSearch: (value: string) => void;
   setFilterStatus: (value: string) => void;
   setFilterTestType: (value: string) => void;
@@ -179,6 +180,7 @@ export function TestCaseTable({
   totalPages,
   testRecordById,
   fileInputRef,
+  aiEnabled = true,
   setSearch,
   setFilterStatus,
   setFilterTestType,
@@ -351,9 +353,11 @@ export function TestCaseTable({
           <Button onClick={openCreateDialog} size="sm" variant="majestic" className={toolbarButtonClass}>
             <Plus className="w-4 h-4" /> Tambah Test Case
           </Button>
-          <Button onClick={openAIDialog} size="sm" className={`${toolbarButtonClass} bg-teal-500/10 text-teal-400 border border-teal-500/20 hover:bg-teal-500/20`}>
-            <Sparkles className="w-4 h-4" /> Generate AI
-          </Button>
+          {aiEnabled && (
+            <Button onClick={openAIDialog} size="sm" className={`${toolbarButtonClass} bg-teal-500/10 text-teal-400 border border-teal-500/20 hover:bg-teal-500/20`}>
+              <Sparkles className="w-4 h-4" /> Generate AI
+            </Button>
+          )}
           {selectedIds.size > 0 && (
             <>
               <Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-9 rounded-md gap-1.5 font-bold border-border/60 bg-secondary/50 text-foreground">

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { BUGFIX_STATUS } from '@/lib/domain/bugfix';
+import { HIGH_TESTCASE_PRIORITIES, TESTCASE_STATUS, TEST_TYPES } from '@/lib/domain/testcase';
 
 export const maxDuration = 30;
 
@@ -83,13 +85,13 @@ export async function GET(req: NextRequest) {
     ]);
 
     const total = testCases.length;
-    const negative = testCases.filter(row => row.testType === 'Negative').length;
-    const notDone = testCases.filter(row => row.status === 'NOT DONE').length;
-    const inProgress = testCases.filter(row => row.status === 'IN PROGRESS').length;
-    const highPriorityOpen = testCases.filter(row => ['High', 'Critical'].includes(row.priority) && row.status !== 'DONE').length;
+    const negative = testCases.filter(row => row.testType === TEST_TYPES[1]).length;
+    const notDone = testCases.filter(row => row.status === TESTCASE_STATUS.NOT_DONE).length;
+    const inProgress = testCases.filter(row => row.status === TESTCASE_STATUS.IN_PROGRESS).length;
+    const highPriorityOpen = testCases.filter(row => HIGH_TESTCASE_PRIORITIES.includes(row.priority) && row.status !== TESTCASE_STATUS.DONE).length;
     const weakSteps = testCases.filter(row => isWeakText(row.steps));
     const genericExpected = testCases.filter(row => isWeakText(row.expectedResult));
-    const activeBugFixes = bugFixes.filter(row => !['VERIFIED & FIXED', 'CLOSED', 'DONE'].includes(row.status));
+    const activeBugFixes = bugFixes.filter(row => ![BUGFIX_STATUS.VERIFIED_FIXED, 'CLOSED', TESTCASE_STATUS.DONE].includes(row.status));
 
     const buckets = new Map<string, {
       label: string;
@@ -121,10 +123,10 @@ export async function GET(req: NextRequest) {
         samples: [],
       };
       bucket.total += 1;
-      if (row.testType === 'Negative') bucket.negative += 1;
+      if (row.testType === TEST_TYPES[1]) bucket.negative += 1;
       else bucket.positive += 1;
-      if (['High', 'Critical'].includes(row.priority)) bucket.highPriority += 1;
-      if (row.status === 'NOT DONE') bucket.notDone += 1;
+      if (HIGH_TESTCASE_PRIORITIES.includes(row.priority)) bucket.highPriority += 1;
+      if (row.status === TESTCASE_STATUS.NOT_DONE) bucket.notDone += 1;
       if (bucket.samples.length < 3) bucket.samples.push(row.testCaseId);
       buckets.set(key, bucket);
     }
@@ -141,9 +143,9 @@ export async function GET(req: NextRequest) {
     const riskModules = modules
       .map(module => {
         const rows = testCases.filter(row => row.module?.id === module.id);
-        const openHigh = rows.filter(row => ['High', 'Critical'].includes(row.priority) && row.status !== 'DONE').length;
-        const moduleNegative = rows.filter(row => row.testType === 'Negative').length;
-        const moduleNotDone = rows.filter(row => row.status === 'NOT DONE').length;
+        const openHigh = rows.filter(row => HIGH_TESTCASE_PRIORITIES.includes(row.priority) && row.status !== TESTCASE_STATUS.DONE).length;
+        const moduleNegative = rows.filter(row => row.testType === TEST_TYPES[1]).length;
+        const moduleNotDone = rows.filter(row => row.status === TESTCASE_STATUS.NOT_DONE).length;
         return {
           id: module.id,
           name: module.name,

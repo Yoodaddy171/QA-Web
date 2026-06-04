@@ -72,6 +72,12 @@ type EvidenceFrame = {
   src: string;
 };
 
+type EvidenceVideo = {
+  src: string;
+  sizeBytes: number;
+  mimeType: string;
+};
+
 const RUNTIME_DIR = process.env.QA_RUNTIME_DIR
   || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
 const RECORDINGS_DIR = path.join(RUNTIME_DIR, 'recordings');
@@ -180,10 +186,24 @@ function getNetworkMeta(network: { method?: string; event?: string; url?: string
   const parsed = parseNetworkUrl(url);
   const method = (network.method || network.event || 'TRACE').toUpperCase();
   const pathname = parsed.pathname.toLowerCase();
+  const isLikelyApi =
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/graphql') ||
+    pathname.startsWith('/rest/') ||
+    pathname.startsWith('/rpc/') ||
+    /^\/v\d+\//.test(pathname) ||
+    pathname.includes('/api/') ||
+    pathname.includes('/ajax/') ||
+    pathname.includes('/service/') ||
+    pathname.includes('/oauth') ||
+    pathname.includes('/auth') ||
+    pathname.includes('/token') ||
+    !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method);
 
   if (parsed.protocol === 'data:' || parsed.protocol === 'blob:') return { category: 'data' as const, host: parsed.host };
   if (method === 'OPTIONS') return { category: 'preflight' as const, host: parsed.host };
   if (pathname.includes('/cdn-cgi/rum') || pathname.includes('/collect') || pathname.includes('/analytics')) return { category: 'telemetry' as const, host: parsed.host };
+  if (isLikelyApi) return { category: 'business' as const, host: parsed.host };
   if (
     pathname.includes('/_next/') ||
     pathname.includes('/assets/') ||
@@ -192,7 +212,6 @@ function getNetworkMeta(network: { method?: string; event?: string; url?: string
     pathname.includes('/images/') ||
     /\.(js|css|png|jpe?g|svg|gif|webp|ico|woff2?|ttf|map|json)$/i.test(pathname)
   ) return { category: 'static' as const, host: parsed.host };
-  if (pathname.startsWith('/api/')) return { category: 'business' as const, host: parsed.host };
   return { category: 'other' as const, host: parsed.host };
 }
 
@@ -304,6 +323,16 @@ function imageDataUri(filePath: string) {
   return `data:image/jpeg;base64,${fs.readFileSync(filePath).toString('base64')}`;
 }
 
+function videoDataUri(filePath: string, mimeType = 'video/webm'): EvidenceVideo | null {
+  if (!fs.existsSync(filePath)) return null;
+  const stat = fs.statSync(filePath);
+  return {
+    src: `data:${mimeType};base64,${fs.readFileSync(filePath).toString('base64')}`,
+    sizeBytes: stat.size,
+    mimeType,
+  };
+}
+
 function toJsonScript(value: unknown) {
   return JSON.stringify(value)
     .replace(/</g, '\\u003c')
@@ -333,11 +362,12 @@ function renderHtml(params: {
   logs: EvidenceLog[];
   recording: ReturnType<typeof readLatestRecording>;
   frames: EvidenceFrame[];
+  video: EvidenceVideo | null;
 }) {
-  const { record, type, logs, recording, frames } = params;
+  const { record, type, logs, recording, frames, video } = params;
   const statusClass = /done|fixed|as expected/i.test(`${record.status} ${record.actualResult}`) ? 'pass' : /fail|not as expected/i.test(`${record.status} ${record.actualResult}`) ? 'fail' : 'neutral';
   const initialFrame = frames[0];
-  const videoUrl = recording?.metadata.video?.url ? `http://127.0.0.1:3001${recording.metadata.video.url}` : '';
+  const videoUrl = video?.src || '';
   const hasVisualEvidence = Boolean(frames.length || videoUrl);
 
   return `<!doctype html>
@@ -412,7 +442,7 @@ function renderHtml(params: {
       <div class="box"><b>Type</b>${escapeHtml(record.testType)}</div>
       <div class="box"><b>Priority</b>${escapeHtml(record.priority || '-')}</div>
       <div class="box"><b>Updated</b>${escapeHtml(formatDate(record.updatedAt))}</div>
-      <div class="box"><b>Recording</b>${escapeHtml(recording ? `${recording.metadata.mode || 'frame'} / ${recording.metadata.frames?.length || 0} frames` : 'No recording')}</div>
+      <div class="box"><b>Recording</b>${escapeHtml(recording ? `${recording.metadata.mode || 'frame'} / ${recording.metadata.frames?.length || 0} frames${video ? ` / ${Math.round(video.sizeBytes / 1024 / 1024)} MB video embedded` : ''}` : 'No recording')}</div>
     </section>
 
     <section class="section">
@@ -646,6 +676,7 @@ function renderHtml(params: {
 export async function GET(req: NextRequest) {
   try {
     const requestedId = req.nextUrl.searchParams.get('testCaseId')?.trim();
+    const shouldDownload = req.nextUrl.searchParams.get('download') === '1';
     if (!requestedId) return NextResponse.json({ error: 'testCaseId is required' }, { status: 400 });
 
     const { record, type } = await findRecord(requestedId);
@@ -665,13 +696,19 @@ export async function GET(req: NextRequest) {
       relativeMs: frame.relativeMs,
       src: imageDataUri(path.join(recording.framesDir, frame.file)),
     })).filter(frame => frame.src) : [];
-    const html = renderHtml({ record, type, logs, recording, frames });
+    const video = recording?.metadata.video?.file
+      ? videoDataUri(
+          path.join(recording.videoDir, recording.metadata.video.file),
+          recording.metadata.video.mimeType || 'video/webm'
+        )
+      : null;
+    const html = renderHtml({ record, type, logs, recording, frames, video });
     const safeName = record.testCaseId.replace(/[^a-z0-9-_]/gi, '_');
 
     return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `inline; filename="qa-evidence-${safeName}.html"`,
+        'Content-Disposition': `${shouldDownload ? 'attachment' : 'inline'}; filename="qa-evidence-${safeName}.html"`,
       },
     });
   } catch (error: any) {

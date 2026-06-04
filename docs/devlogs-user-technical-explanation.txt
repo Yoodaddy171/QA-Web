@@ -1,0 +1,534 @@
+PENJELASAN FITUR DEVLOG DAN AUTOMATION CAPTURE - QA-WEB
+Tanggal pembaruan: 4 Juni 2026
+
+============================================================
+1. OVERVIEW
+============================================================
+
+Devlog adalah fitur pada detail test case QA-Web yang menampilkan jejak eksekusi dan bukti pengujian secara live maupun dari run sebelumnya.
+
+Automation Capture adalah bagian dari Devlog yang menangkap aktivitas testing dari browser manual atau automation Katalon, lalu menghubungkannya ke test case QA-Web yang benar.
+
+Fitur ini menyelesaikan masalah ketika hasil test hanya menunjukkan PASS atau FAIL tanpa menjelaskan:
+
+- langkah terakhir yang dijalankan;
+- error atau warning dari browser console;
+- request atau response network yang gagal;
+- apakah CDP tersedia atau fallback capture digunakan;
+- screenshot, recording, evidence, dan history yang mendukung hasil test.
+
+Pengguna utama fitur ini:
+
+- QA engineer;
+- automation engineer;
+- developer yang melakukan investigasi;
+- QA lead atau reviewer hasil testing.
+
+Di Devlog, user dapat melihat:
+
+- Execution: run start, run finish, step, warning, error, screenshot, dan evidence;
+- Console: browser console activity;
+- Network: request dan response network, status, URL, header, payload, serta kategori resource;
+- Current dan Previous run;
+- recording atau evidence yang tersedia.
+
+
+============================================================
+2. CAPTURE MODE YANG DIDUKUNG
+============================================================
+
+Devlog mendukung dua capture mode. Kedua mode tetap terpisah pada layer browser capture karena browser owner dan browser session-nya berbeda.
+
+------------------------------------------------------------
+2.1 MANUAL CAPTURE MODE
+------------------------------------------------------------
+
+Pada Manual Capture:
+
+- web app meminta relay untuk memulai capture;
+- relay membuka dan mengontrol browser miliknya sendiri;
+- relay memiliki browser session tersebut;
+- relay menangkap event melalui Chrome DevTools Protocol (CDP);
+- network, console, screenshot, recording, dan interaksi manual dapat ditangkap;
+- event dinormalisasi dan dikirim ke Devlog.
+
+Alur Manual Capture:
+
+relay browser/CDP
+  -> normalized AutomationEventV1
+  -> relay ingestion dan WebSocket broadcast
+  -> Devlog
+
+Manual Capture digunakan ketika tester ingin melakukan pengujian manual tetapi tetap memiliki jejak browser dan evidence yang dapat direview.
+
+------------------------------------------------------------
+2.2 KATALON CAPTURE MODE
+------------------------------------------------------------
+
+Pada Katalon Capture:
+
+- Katalon membuka dan mengontrol browser Selenium miliknya sendiri;
+- Katalon memiliki browser session tersebut;
+- DevLogListener.groovy memulai dan menyelesaikan lifecycle run;
+- DevLog.groovy mengirim step, console, network, screenshot, dan browser signal;
+- HasDevTools digunakan bila tersedia;
+- browser log atau performance log fallback dapat digunakan bila CDP tidak tersedia;
+- network dan console event dari automation sekarang dapat terlihat di Devlog;
+- event masuk ke pipeline normalisasi yang sama.
+
+Alur Katalon Capture:
+
+Katalon Selenium/DevLog
+  -> normalized AutomationEventV1
+  -> relay ingestion dan WebSocket broadcast
+  -> Devlog
+
+Test case Katalon yang saat ini menjadi foundation utama adalah:
+
+QA WEB automation
+
+
+============================================================
+3. ATURAN ARSITEKTUR PENTING
+============================================================
+
+Jangan memaksa relay CDP untuk attach ke browser Katalon.
+
+Alasannya:
+
+- Manual Capture browser dimiliki relay.
+- Katalon Capture browser dimiliki Katalon/Selenium.
+- Keduanya adalah browser session yang berbeda.
+- Relay CDP attachment ke browser Katalon dapat merusak ownership, stabilitas, atau lifecycle browser.
+
+Capture layer harus tetap terpisah.
+
+Yang dibagikan adalah event pipeline setelah capture:
+
+capture source
+  -> AutomationEventV1 normalization
+  -> relay ingestion
+  -> WebSocket broadcast
+  -> frontend Devlog parsing
+  -> future evidence/history integration
+
+
+============================================================
+4. AUTOMATIONEVENTV1
+============================================================
+
+AutomationEventV1 adalah kontrak event terstruktur yang digunakan untuk menyatukan event dari Manual Capture, Katalon Capture, dan payload legacy.
+
+Field penting:
+
+- schemaVersion: versi schema, saat ini 1;
+- eventId: ID unik untuk event dan deduplikasi;
+- runId: ID stabil untuk satu automation run;
+- mode: manual, katalon, atau unknown;
+- testCaseId: internal database ID test case QA-Web;
+- testCaseName: nama atau path test case;
+- source: sumber event, misalnya manual-cdp, katalon-devtools, atau katalon-fallback;
+- eventType: jenis event;
+- message: pesan yang ditampilkan;
+- timestamp: waktu event;
+- url: URL untuk event network;
+- method: HTTP method atau resource type bila berasal dari browser CDP;
+- responseStatus: status response network;
+- cdpAvailable: apakah CDP tersedia;
+- fallbackUsed: apakah fallback capture digunakan;
+- metadata: informasi tambahan untuk diagnosis dan kompatibilitas.
+
+Event type umum:
+
+- run.started
+- run.finished
+- step
+- console
+- network.request
+- network.response
+- screenshot
+- warning
+- error
+- log
+
+Normalisasi relay terjadi di:
+
+mini-services/automation-event.js
+
+Kontrak teknis lebih lengkap tersedia di:
+
+docs/automation-event-contract.md
+
+
+============================================================
+5. RELAY DAN WEBSOCKET
+============================================================
+
+Relay lokal berjalan melalui:
+
+node mini-services/ws-server.js
+
+Default relay base URL:
+
+http://127.0.0.1:3001
+
+Endpoint log legacy-compatible:
+
+http://127.0.0.1:3001/log
+
+Backward compatibility dipertahankan dengan sengaja.
+
+Format legacy masih didukung:
+
+{
+  "type": "log",
+  "testCaseId": "...",
+  "message": "..."
+}
+
+Format WebSocket baru yang lebih disukai:
+
+{
+  "type": "automation.event",
+  "schemaVersion": 1,
+  "event": {
+    "schemaVersion": 1
+  }
+}
+
+Frontend Devlog menerima kedua format tersebut.
+
+Karena relay dapat mengirim payload legacy dan automation.event untuk sumber event yang sama, frontend memakai deduplikasi ringan:
+
+1. eventId bila tersedia;
+2. fingerprint timestamp + source + message + eventType sebagai fallback.
+
+Tujuannya adalah menjaga kompatibilitas client lama tanpa menampilkan baris visual ganda.
+
+
+============================================================
+6. PERILAKU DEVLOG UI
+============================================================
+
+Frontend menerima event melalui WebSocket dan memfilter event berdasarkan internal QA-Web testCaseId dari test case yang sedang dibuka.
+
+Aturan kategorisasi utama:
+
+- network.request dan network.response tampil sebagai Network activity;
+- console tampil sebagai Console activity;
+- step, run.started, dan run.finished tampil sebagai Execution activity;
+- screenshot, evidence, warning, error, dan event lain tampil sebagai Execution activity bila tidak memiliki kategori khusus.
+
+Tab Network menyediakan filter untuk:
+
+- host;
+- method;
+- status;
+- API;
+- Preflight;
+- Document;
+- Script;
+- Image;
+- Static;
+- Telemetry;
+- Data URL;
+- Other.
+
+API dan network error tetap terlihat secara default. Resource lain dapat ditampilkan melalui filter.
+
+Event harus memiliki testCaseId yang benar. Jika mapping Katalon salah, event dapat muncul pada test case yang salah atau tidak muncul pada test case yang diharapkan.
+
+
+============================================================
+7. INTEGRASI KATALON
+============================================================
+
+File penting pada project Katalon:
+
+- Scripts/QA Web automation/Script1777866267090.groovy
+- Test Listeners/DevLogListener.groovy
+- Keywords/com/utils/DevLog.groovy
+- Include/testcase-map.json
+- Profiles/default.glbl
+- README-AUTOMATION-CAPTURE.md
+- Templates/automation-capture-template/
+
+------------------------------------------------------------
+7.1 PROFILE CONFIGURATION
+------------------------------------------------------------
+
+Variable utama:
+
+- webQaEnabled: harus true agar event dikirim;
+- webQaRelayUrl: harus menunjuk ke endpoint relay /log;
+- webQaProjectId: project QA-Web opsional;
+- webQaDefaultTestCaseId: fallback sementara saja;
+- webQaCaptureNetwork: mengaktifkan network capture;
+- webQaCaptureConsole: mengaktifkan browser console capture;
+- webQaCaptureScreenshots: mengaktifkan screenshot event.
+
+Contoh relay URL:
+
+http://127.0.0.1:3001/log
+
+------------------------------------------------------------
+7.2 TEST CASE MAPPING
+------------------------------------------------------------
+
+Gunakan Include/testcase-map.json untuk memetakan path test case Katalon ke internal QA-Web testCaseId.
+
+Contoh:
+
+{
+  "Test Cases/QA Web automation": "00000000-0000-0000-0000-000000000001"
+}
+
+Ganti placeholder dengan internal database ID test case QA-Web.
+
+Jangan hardcode testCaseId pada script automation.
+
+Hardcoded ID membuat script sulit dipakai ulang dan meningkatkan risiko event masuk ke test case yang salah.
+
+Jika mapping hilang:
+
+- DevLog mengirim warning;
+- event memakai ID bertanda unmapped:<katalon-path>; atau
+- event memakai webQaDefaultTestCaseId bila fallback sementara dikonfigurasi.
+
+Fallback bukan pengganti mapping permanen.
+
+------------------------------------------------------------
+7.3 RUN ID DAN CAPTURE STATUS
+------------------------------------------------------------
+
+Satu automation run harus memakai satu runId yang stabil untuk:
+
+- run.started;
+- semua step;
+- console event;
+- network event;
+- screenshot event;
+- run.finished.
+
+Event Katalon harus memiliki:
+
+- mode: katalon;
+- testCaseId sesuai mapping;
+- cdpAvailable sesuai status DevTools;
+- fallbackUsed sesuai status fallback.
+
+Jika cdpAvailable false atau fallbackUsed true, periksa metadata.devToolsAttachError. Fallback network capture dapat bersifat parsial.
+
+
+============================================================
+8. MANUAL CAPTURE GUIDE RINGKAS
+============================================================
+
+1. Jalankan QA-Web dan relay.
+2. Buka detail test case.
+3. Buka tab Devlog dan bagian Manual Capture.
+4. Pastikan relay berstatus live.
+5. Masukkan URL target.
+6. Klik Start Capture.
+7. Lakukan interaksi pada browser yang dibuka relay.
+8. Periksa Execution, Console, dan Network.
+9. Klik Stop Capture.
+10. Periksa recording, evidence, dan history bila tersedia.
+
+
+============================================================
+9. KATALON CAPTURE GUIDE RINGKAS
+============================================================
+
+1. Buka project Katalon.
+2. Pilih profile yang memiliki konfigurasi webQa.
+3. Pastikan webQaEnabled bernilai true.
+4. Pastikan webQaRelayUrl benar.
+5. Pastikan Include/testcase-map.json memiliki mapping test case.
+6. Jalankan QA-Web dan relay.
+7. Buka Devlog test case QA-Web yang sudah dipetakan.
+8. Jalankan QA WEB automation.
+9. Verifikasi run.started, step, network, console, dan run.finished.
+10. Pastikan mode adalah katalon dan testCaseId sesuai.
+
+
+============================================================
+10. TROUBLESHOOTING
+============================================================
+
+Problem: Devlog kosong
+Possible cause:
+- relay offline;
+- WebSocket belum terhubung;
+- testCaseId tidak sesuai.
+Fix:
+- restart relay;
+- refresh QA-Web;
+- cek mapping atau testCaseId.
+
+Problem: Network log tidak muncul
+Possible cause:
+- webQaCaptureNetwork false;
+- CDP attach gagal;
+- fallback network tidak lengkap;
+- filter Network menyembunyikan resource.
+Fix:
+- aktifkan network capture;
+- cek cdpAvailable dan metadata.devToolsAttachError;
+- gunakan DevLog.network untuk request non-browser;
+- aktifkan filter yang sesuai.
+
+Problem: Console log tidak muncul
+Possible cause:
+- webQaCaptureConsole false;
+- browser logs tidak tersedia;
+- Desired Capabilities atau Selenium DevTools tidak sesuai.
+Fix:
+- aktifkan console capture;
+- periksa browser logging capability;
+- periksa kompatibilitas browser, driver, dan DevTools library.
+
+Problem: Test case yang salah menerima log
+Possible cause:
+- testcase-map.json salah;
+- fallback testCaseId salah.
+Fix:
+- perbaiki mapping;
+- kosongkan fallback jika tidak diperlukan;
+- jangan hardcode ID pada script.
+
+Problem: Relay port sudah digunakan
+Possible cause:
+- proses lain memakai port 3001.
+Fix:
+- hentikan proses lain;
+- restart relay;
+- jangan mengubah port hanya pada satu sisi konfigurasi.
+
+Problem: Katalon run bekerja tetapi Devlog tidak update
+Possible cause:
+- webQaEnabled false;
+- webQaRelayUrl salah;
+- relay tidak dapat diakses;
+- mapping hilang.
+Fix:
+- periksa profile aktif;
+- gunakan endpoint /log yang benar;
+- jalankan relay;
+- perbaiki testcase-map.json.
+
+Problem: testcase-map.json hilang atau salah
+Possible cause:
+- file tidak tersedia;
+- path Katalon tidak cocok;
+- JSON tidak valid.
+Fix:
+- buat Include/testcase-map.json;
+- gunakan path lengkap dengan prefix Test Cases/;
+- validasi JSON.
+
+Problem: CDP attach gagal
+Possible cause:
+- driver tidak mendukung HasDevTools;
+- Selenium DevTools library tidak cocok dengan browser.
+Fix:
+- gunakan browser dan driver yang kompatibel;
+- periksa library DevTools;
+- baca metadata.devToolsAttachError.
+
+Problem: fallbackUsed bernilai true
+Possible cause:
+- DevTools tidak tersedia.
+Fix:
+- periksa cdpAvailable;
+- periksa attach error;
+- pahami bahwa fallback network dapat parsial.
+
+Problem: Log duplikat muncul
+Possible cause:
+- producer tidak mempertahankan eventId atau fingerprint yang sama.
+Fix:
+- pastikan eventId, timestamp, source, dan eventType konsisten;
+- jangan mengirim ulang event yang sama secara manual.
+
+
+============================================================
+11. VALIDATION CHECKLIST
+============================================================
+
+Manual Capture:
+
+[ ] Relay berjalan.
+[ ] Manual Capture dapat dimulai.
+[ ] Browser dibuka oleh relay.
+[ ] Network log terlihat.
+[ ] Console log terlihat.
+[ ] Devlog update secara live.
+[ ] Stop Capture bekerja.
+
+Katalon Capture:
+
+[ ] Katalon profile dikonfigurasi.
+[ ] testcase-map.json dikonfigurasi.
+[ ] QA WEB automation berjalan.
+[ ] run.started terlihat.
+[ ] Network terlihat.
+[ ] Console terlihat.
+[ ] run.finished terlihat.
+[ ] mode bernilai katalon.
+[ ] testCaseId sesuai mapping.
+
+
+============================================================
+12. DEVELOPER NOTES
+============================================================
+
+File penting pada QA-Web:
+
+- mini-services/ws-server.js
+  Relay HTTP, WebSocket broadcast, Manual Capture, dan JSONL storage.
+
+- mini-services/automation-event.js
+  Normalisasi AutomationEventV1.
+
+- mini-services/automation-event.test.js
+  Unit test untuk relay-side normalizer.
+
+- src/lib/client/automation/automation-event-client.ts
+  Parser dan adapter frontend untuk automation.event dan legacy log.
+
+- src/lib/client/automation/automation-event-client.test.ts
+  Unit test untuk frontend parser dan adapter.
+
+- src/hooks/useAutomationLogs.ts
+  WebSocket consumption, filtering testCaseId, dan visible log deduplication.
+
+- docs/automation-event-contract.md
+  Kontrak event teknis.
+
+- docs/automation-capture-user-guide.md
+  Panduan user dan developer yang lebih lengkap.
+
+File penting pada Katalon:
+
+- Keywords/com/utils/DevLog.groovy
+  Capture, normalisasi, dan pengiriman event.
+
+- Test Listeners/DevLogListener.groovy
+  Memulai dan menyelesaikan run.
+
+- Include/testcase-map.json
+  Mapping path Katalon ke internal QA-Web testCaseId.
+
+Ketika menambah event type baru:
+
+1. Perbarui kontrak relay.
+2. Perbarui normalizer.
+3. Perbarui parser frontend dan aturan kategorisasi.
+4. Perbarui producer Katalon bila diperlukan.
+5. Tambahkan unit test.
+6. Jalankan npm test, npm run lint, dan npx tsc --noEmit.
+
+Jangan menghapus kompatibilitas legacy /log sampai migrasi selesai.
+Jangan mengubah relay CDP tanpa menguji Manual Capture.
+Jangan mengubah Katalon capture tanpa menguji QA WEB automation.

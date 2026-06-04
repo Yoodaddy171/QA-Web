@@ -52,7 +52,7 @@ interface LogEntry {
   };
 }
 
-type NetworkCategory = 'business' | 'preflight' | 'static' | 'telemetry' | 'data' | 'other';
+type NetworkCategory = 'business' | 'preflight' | 'document' | 'script' | 'image' | 'static' | 'telemetry' | 'data' | 'other';
 
 interface NetworkMeta {
   category: NetworkCategory;
@@ -89,6 +89,9 @@ interface NetworkFilterState {
   method: string;
   status: string;
   showPreflight: boolean;
+  showDocument: boolean;
+  showScript: boolean;
+  showImage: boolean;
   showStatic: boolean;
   showTelemetry: boolean;
   showDataUrls: boolean;
@@ -101,6 +104,9 @@ const DEFAULT_NETWORK_FILTERS: NetworkFilterState = {
   method: 'all',
   status: 'all',
   showPreflight: false,
+  showDocument: false,
+  showScript: false,
+  showImage: false,
   showStatic: false,
   showTelemetry: false,
   showDataUrls: false,
@@ -108,9 +114,12 @@ const DEFAULT_NETWORK_FILTERS: NetworkFilterState = {
 };
 
 const STATIC_EXTENSIONS = [
-  '.js', '.css', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.ico',
-  '.woff', '.woff2', '.ttf', '.map', '.json',
+  '.css', '.woff', '.woff2', '.ttf', '.map', '.json',
 ];
+
+const DOCUMENT_EXTENSIONS = ['.html', '.htm'];
+const SCRIPT_EXTENSIONS = ['.js', '.mjs'];
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.ico', '.avif'];
 
 const networkCodePanelClass = "overflow-auto rounded border border-border bg-muted p-3 font-mono text-[10px] leading-relaxed [tab-size:2]";
 const networkFullscreenCodePanelClass = "min-h-[420px] min-w-[280px] max-h-[64vh] resize overflow-auto rounded-xl border border-border bg-background p-4 font-mono text-[11px] leading-relaxed shadow-sm [tab-size:2]";
@@ -216,19 +225,49 @@ const getNetworkMeta = (network: NonNullable<LogEntry['network']>): NetworkMeta 
   const url = network.url || '';
   const parsed = parseNetworkUrl(url);
   const method = (network.method || network.event || 'TRACE').toUpperCase();
+  const resourceType = (network.method || '').toLowerCase();
   const pathname = parsed.pathname.toLowerCase();
   const isError = typeof network.status === 'number' && network.status >= 400;
+  const isLikelyApi =
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/graphql') ||
+    pathname.startsWith('/rest/') ||
+    pathname.startsWith('/rpc/') ||
+    /^\/v\d+\//.test(pathname) ||
+    pathname.includes('/api/') ||
+    pathname.includes('/ajax/') ||
+    pathname.includes('/service/') ||
+    pathname.includes('/oauth') ||
+    pathname.includes('/auth') ||
+    pathname.includes('/token') ||
+    !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method);
 
   if (parsed.protocol === 'data:' || parsed.protocol === 'blob:') {
     return { category: 'data', label: 'Data URL', host: parsed.host, method, pathname: parsed.pathname, isError };
   }
 
-  if (method === 'OPTIONS') {
+  if (method === 'OPTIONS' || resourceType === 'preflight') {
     return { category: 'preflight', label: 'Preflight', host: parsed.host, method, pathname: parsed.pathname, isError };
+  }
+
+  if (resourceType === 'document' || DOCUMENT_EXTENSIONS.some((extension) => pathname.endsWith(extension))) {
+    return { category: 'document', label: 'Document', host: parsed.host, method, pathname: parsed.pathname, isError };
+  }
+
+  if (resourceType === 'script' || SCRIPT_EXTENSIONS.some((extension) => pathname.endsWith(extension))) {
+    return { category: 'script', label: 'Script', host: parsed.host, method, pathname: parsed.pathname, isError };
+  }
+
+  if (resourceType === 'image' || IMAGE_EXTENSIONS.some((extension) => pathname.endsWith(extension))) {
+    return { category: 'image', label: 'Image', host: parsed.host, method, pathname: parsed.pathname, isError };
   }
 
   if (pathname.includes('/cdn-cgi/rum') || pathname.includes('/collect') || pathname.includes('/analytics')) {
     return { category: 'telemetry', label: 'Telemetry', host: parsed.host, method, pathname: parsed.pathname, isError };
+  }
+
+  if (isLikelyApi) {
+    return { category: 'business', label: 'API', host: parsed.host, method, pathname: parsed.pathname, isError };
   }
 
   const isStatic = STATIC_EXTENSIONS.some((extension) => pathname.endsWith(extension)) ||
@@ -240,10 +279,6 @@ const getNetworkMeta = (network: NonNullable<LogEntry['network']>): NetworkMeta 
 
   if (isStatic) {
     return { category: 'static', label: 'Static', host: parsed.host, method, pathname: parsed.pathname, isError };
-  }
-
-  if (pathname.startsWith('/api/')) {
-    return { category: 'business', label: 'API', host: parsed.host, method, pathname: parsed.pathname, isError };
   }
 
   return { category: 'other', label: 'Other', host: parsed.host, method, pathname: parsed.pathname, isError };
@@ -312,6 +347,9 @@ const getNetworkCategoryClass = (category: NetworkCategory) => {
   switch (category) {
     case 'business': return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/30 dark:bg-cyan-950/60 dark:text-cyan-300';
     case 'preflight': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-950/60 dark:text-amber-300';
+    case 'document': return 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-950/60 dark:text-blue-300';
+    case 'script': return 'border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-500/30 dark:bg-yellow-950/60 dark:text-yellow-300';
+    case 'image': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-950/60 dark:text-emerald-300';
     case 'static': return 'border-border bg-muted text-muted-foreground dark:border-slate-600 dark:text-slate-400';
     case 'telemetry': return 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-950/60 dark:text-violet-300';
     case 'data': return 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-500/30 dark:bg-fuchsia-950/60 dark:text-fuchsia-300';
@@ -559,7 +597,7 @@ export function TestCaseDetailDialog({
     networkLogItems.reduce<Record<NetworkCategory, number>>((counts, item) => {
       counts[item.meta.category] += 1;
       return counts;
-    }, { business: 0, preflight: 0, static: 0, telemetry: 0, data: 0, other: 0 })
+    }, { business: 0, preflight: 0, document: 0, script: 0, image: 0, static: 0, telemetry: 0, data: 0, other: 0 })
   ), [networkLogItems]);
   const networkLogs = useMemo(() => {
     const query = networkFilters.search.trim().toLowerCase();
@@ -569,6 +607,9 @@ export function TestCaseDetailDialog({
       const categoryVisible = meta.isError ||
         meta.category === 'business' ||
         (meta.category === 'preflight' && networkFilters.showPreflight) ||
+        (meta.category === 'document' && networkFilters.showDocument) ||
+        (meta.category === 'script' && networkFilters.showScript) ||
+        (meta.category === 'image' && networkFilters.showImage) ||
         (meta.category === 'static' && networkFilters.showStatic) ||
         (meta.category === 'telemetry' && networkFilters.showTelemetry) ||
         (meta.category === 'data' && networkFilters.showDataUrls) ||
@@ -775,7 +816,7 @@ export function TestCaseDetailDialog({
     setNetworkFilters((current) => ({ ...current, ...nextFilters }));
   };
 
-  const toggleNetworkFilter = (key: keyof Pick<NetworkFilterState, 'showPreflight' | 'showStatic' | 'showTelemetry' | 'showDataUrls' | 'showOther'>) => {
+  const toggleNetworkFilter = (key: keyof Pick<NetworkFilterState, 'showPreflight' | 'showDocument' | 'showScript' | 'showImage' | 'showStatic' | 'showTelemetry' | 'showDataUrls' | 'showOther'>) => {
     setNetworkFilters((current) => ({ ...current, [key]: !current[key] }));
   };
 
@@ -933,7 +974,7 @@ export function TestCaseDetailDialog({
 
   const openEvidenceReport = () => {
     if (!viewTestCase) return;
-    window.open(`/api/evidence?testCaseId=${encodeURIComponent(viewTestCase.id)}`, '_blank', 'noopener,noreferrer');
+    window.location.href = `/api/evidence?testCaseId=${encodeURIComponent(viewTestCase.id)}&download=1`;
   };
 
   useEffect(() => {
@@ -1338,15 +1379,35 @@ export function TestCaseDetailDialog({
                                         <li>Pastikan Katalon script mengirim log ke <span className="font-mono text-[11px] text-teal-700 bg-teal-50 px-1 rounded dark:text-teal-400 dark:bg-white/5">http://127.0.0.1:3001/log</span>.</li>
                                         <li>Review hasil dari tab Execution, Console, Network, atau AI Summary.</li>
                                       </ol>
-                                      <a
-                                        href="/docs/devlog-automation-capture-guide.pdf"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 text-[10px] font-black uppercase tracking-widest text-foreground shadow-sm transition hover:bg-secondary dark:text-slate-300 dark:shadow-lg dark:hover:bg-white/10 dark:hover:text-white"
-                                      >
-                                        <FileDown className="h-4 w-4" />
-                                        Panduan PDF
-                                      </a>
+                                      <div className="mt-4 flex flex-wrap gap-2">
+                                        <a
+                                          href="/docs/devlog-katalon-semi-auto-guide.html"
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-teal-500/30 bg-teal-50 px-4 text-[10px] font-black uppercase tracking-widest text-teal-700 shadow-sm transition hover:bg-teal-100 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300 dark:shadow-lg dark:hover:bg-teal-500/20"
+                                        >
+                                          <Code2 className="h-4 w-4" />
+                                          Template Semi Otomatis
+                                        </a>
+                                        <a
+                                          href="/docs/devlog-automation-capture-guide.pdf"
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 text-[10px] font-black uppercase tracking-widest text-foreground shadow-sm transition hover:bg-secondary dark:text-slate-300 dark:shadow-lg dark:hover:bg-white/10 dark:hover:text-white"
+                                        >
+                                          <FileDown className="h-4 w-4" />
+                                          Panduan PDF
+                                        </a>
+                                        <a
+                                          href="/docs/devlog-katalon-semi-auto-guide.pdf"
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 text-[10px] font-black uppercase tracking-widest text-foreground shadow-sm transition hover:bg-secondary dark:text-slate-300 dark:shadow-lg dark:hover:bg-white/10 dark:hover:text-white"
+                                        >
+                                          <FileDown className="h-4 w-4" />
+                                          Template PDF
+                                        </a>
+                                      </div>
                                     </div>
                                   </motion.div>
                                 )}
@@ -1938,6 +1999,9 @@ export function TestCaseDetailDialog({
                                     <div className="flex flex-wrap items-center gap-2 text-[10px]">
                                       {[
                                         { key: 'showPreflight' as const, label: `Preflight ${networkCategoryCounts.preflight}` },
+                                        { key: 'showDocument' as const, label: `Document ${networkCategoryCounts.document}` },
+                                        { key: 'showScript' as const, label: `Script ${networkCategoryCounts.script}` },
+                                        { key: 'showImage' as const, label: `Image ${networkCategoryCounts.image}` },
                                         { key: 'showStatic' as const, label: `Static ${networkCategoryCounts.static}` },
                                         { key: 'showTelemetry' as const, label: `Telemetry ${networkCategoryCounts.telemetry}` },
                                         { key: 'showDataUrls' as const, label: `Data URL ${networkCategoryCounts.data}` },

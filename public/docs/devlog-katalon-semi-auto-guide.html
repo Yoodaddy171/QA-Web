@@ -1,0 +1,690 @@
+﻿<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DevLog Katalon Semi-Auto Template</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f7fafc;
+      color: #102033;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+      line-height: 1.48;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 28px; }
+    .hero {
+      background: #071326;
+      color: white;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 18px 44px rgba(15, 23, 42, .16);
+    }
+    .eyebrow {
+      display: inline-flex;
+      border: 1px solid rgba(45, 212, 191, .35);
+      border-radius: 999px;
+      padding: 5px 9px;
+      color: #99f6e4;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 12px 0 6px; font-size: 30px; line-height: 1.05; }
+    h2 { margin: 24px 0 10px; font-size: 18px; }
+    h3 { margin: 0 0 8px; font-size: 15px; }
+    p { margin: 0 0 10px; }
+    .muted { color: #64748b; }
+    .hero .muted { color: #cbd5e1; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+    .card, .panel, .note {
+      border: 1px solid #dce7ef;
+      border-radius: 12px;
+      background: white;
+      padding: 16px;
+    }
+    .card b {
+      display: block;
+      margin-bottom: 5px;
+      color: #0f766e;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+    .note { background: #f0fdfa; border-color: #99f6e4; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 12px; }
+    .tab {
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      background: white;
+      color: #334155;
+      padding: 9px 13px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .tab.active { background: #0f766e; border-color: #0f766e; color: white; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .copy {
+      border: 1px solid #0f766e;
+      border-radius: 8px;
+      background: #ecfeff;
+      color: #0f766e;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    pre {
+      margin: 0;
+      max-height: 620px;
+      overflow: auto;
+      border-radius: 10px;
+      background: #08111f;
+      color: #d8f3ff;
+      padding: 15px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+      line-height: 1.42;
+      white-space: pre;
+      tab-size: 2;
+    }
+    code { font-family: inherit; }
+    ol, ul { margin: 8px 0 0 20px; padding: 0; }
+    li { margin: 0 0 6px; }
+    table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #dce7ef; }
+    th, td { border: 1px solid #dce7ef; padding: 9px 10px; text-align: left; vertical-align: top; }
+    th { background: #f1f5f9; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .footer { margin-top: 22px; padding-top: 14px; border-top: 1px solid #dce7ef; color: #64748b; font-size: 11px; }
+    @media (max-width: 820px) {
+      .wrap { padding: 16px; }
+      .grid { grid-template-columns: 1fr; }
+      pre { font-size: 10px; }
+    }
+    @media print {
+      body { background: white; font-size: 10px; line-height: 1.32; }
+      .wrap { max-width: none; padding: 0; }
+      .hero { box-shadow: none; padding: 14px; border-radius: 9px; }
+      h1 { font-size: 22px; }
+      h2 { font-size: 13px; margin: 13px 0 6px; }
+      .tabs, .copy { display: none; }
+      .panel { display: block; break-inside: auto; margin-top: 10px; padding: 8px; }
+      .panel::before { content: attr(data-title); display: block; margin-bottom: 6px; font-weight: 900; color: #0f766e; text-transform: uppercase; }
+      .grid { gap: 6px; margin-top: 10px; }
+      .card, .note { padding: 8px; border-radius: 8px; }
+      pre { max-height: none; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 7.5px; line-height: 1.22; padding: 7px; break-inside: auto; }
+      th, td { padding: 5px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <span class="eyebrow">QA Desk DevLog</span>
+      <h1>Katalon Semi-Auto Capture Template</h1>
+      <p class="muted">Template copy-paste untuk membuat DevLog lebih semi otomatis: user setup sekali di project Katalon, lalu testcase cukup run dengan mapping UUID QA Desk.</p>
+      <div class="grid">
+        <div class="card" style="color: #000000;">
+    <b>Target</b> QA bisa run testcase Katalon tanpa copy setup DevLog di setiap script.
+</div>
+
+<div class="card" style="color: #000000;">
+    <b>Yang otomatis</b> Start, finish, fail, relay send, mapping UUID, browser log fallback.
+</div>
+
+<div class="card" style="color: #000000;">
+    <b>Yang tetap manual</b>
+    <span style="color: #000000;">Step penting tetap dipanggil dengan DevLog.step(), API JVM bisa memakai DevLog.network().</span>
+</div>
+      </div>
+    </section>
+
+    <section class="note" style="margin-top:16px">
+      <h3>Struktur file yang disarankan</h3>
+      <pre style="max-height:none">Keywords/com/utils/DevLog.groovy
+Test Listeners/DevLogListener.groovy
+Include/testcase-map.json
+Profiles/default.glbl: webQaRelayUrl, webQaEnabled</pre>
+    </section>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="keyword">DevLog.groovy</button>
+      <button class="tab" data-tab="listener">Test Listener</button>
+      <button class="tab" data-tab="mapping">Mapping JSON</button>
+      <button class="tab" data-tab="usage">Contoh Testcase</button>
+      <button class="tab" data-tab="httphelper">HttpHelper Opsional</button>
+    </div>
+
+    <section id="overview" class="panel active" data-title="Overview">
+      <h2>Alur semi otomatis</h2>
+      <ol>
+        <li>Copy <b>DevLog.groovy</b> ke folder <b>Keywords/com/webqa</b>.</li>
+        <li>Copy <b>DevLogListener.groovy</b> ke <b>Test Listeners</b>.</li>
+        <li>Buat mapping <b>Include/testcase-map.json</b>.</li>
+        <li>Tambahkan GlobalVariable <b>webQaRelayUrl</b> dan <b>webQaEnabled</b>.</li>
+        <li>Di testcase, panggil <b>DevLog.attachBrowser()</b> setelah browser dibuka.</li>
+        <li>Untuk step penting, panggil <b>DevLog.step("...")</b>.</li>
+        <li>Untuk API call dari JVM/HttpHelper, panggil <b>DevLog.network(...)</b> atau modifikasi HttpHelper agar otomatis.</li>
+      </ol>
+
+      <h2>Global Variable yang dibutuhkan</h2>
+      <table>
+        <thead><tr><th>Nama</th><th>Contoh nilai</th><th>Fungsi</th></tr></thead>
+        <tbody>
+          <tr><td>webQaRelayUrl</td><td>http://127.0.0.1:3001/log</td><td>Endpoint relay DevLog.</td></tr>
+          <tr><td>webQaEnabled</td><td>true</td><td>Bisa mematikan DevLog tanpa edit script.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="keyword" class="panel" data-title="DevLog.groovy">
+      <div class="toolbar">
+        <h2>Keywords/com/utils/DevLog.groovy</h2>
+        <button class="copy" data-copy="code-keyword">Copy code</button>
+      </div>
+      <pre><code id="code-keyword">package com.utils
+
+import com.kms.katalon.core.annotation.Keyword
+import com.kms.katalon.core.configuration.RunConfiguration
+import com.kms.katalon.core.webui.driver.DriverFactory
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import internal.GlobalVariable
+import org.apache.http.client.config.RequestConfig
+import org.apache.http.client.methods.HttpPost
+import org.apache.http.entity.StringEntity
+import org.apache.http.impl.client.CloseableHttpClient
+import org.apache.http.impl.client.HttpClients
+import org.openqa.selenium.logging.LogEntry
+import org.openqa.selenium.logging.LogType
+import org.openqa.selenium.devtools.DevTools
+import org.openqa.selenium.devtools.HasDevTools
+import java.text.SimpleDateFormat
+import java.util.Optional
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.function.Consumer
+
+class DevLog {
+    private static String relayUrl = ''
+    private static String testCaseId = ''
+    private static String katalonPath = ''
+    private static long startedAtMs = 0L
+    private static DevTools devTools = null
+    private static ConcurrentLinkedQueue cdpEventQueue = new ConcurrentLinkedQueue()
+    private static volatile boolean cdpWorkerRunning = false
+
+    @Keyword
+    def start(def context) {
+        if (!isEnabled()) return
+        relayUrl = getRelayUrl()
+        katalonPath = context?.testCaseId ?: context?.getTestCaseId() ?: ''
+        testCaseId = resolveMappedTestCaseId(katalonPath)
+        startedAtMs = System.currentTimeMillis()
+        sendStructuredLog('execution', [
+            message: &quot;Starting Automation: ${katalonPath ?: 'Unknown Katalon Test Case'}&quot;
+        ])
+    }
+
+    @Keyword
+    def finish(def context) {
+        if (!isEnabled()) return
+        drainCdpQueue()
+        sniffBrowserLogs()
+        String status = context?.testCaseStatus ?: context?.getTestCaseStatus() ?: 'UNKNOWN'
+        long durationMs = startedAtMs ? System.currentTimeMillis() - startedAtMs : 0L
+        sendStructuredLog('execution', [
+            message: &quot;Execution complete. Status: ${status}. Duration: ${durationMs}ms&quot;
+        ])
+        devTools = null
+        cdpWorkerRunning = false
+    }
+
+    @Keyword
+    def step(String message) {
+        writeLocalComment(message)
+        sendStructuredLog('execution', [message: message])
+        maybeSniffLogs()
+    }
+
+    @Keyword
+    def console(String level, String message) {
+        sendStructuredLog('console', [level: level ?: 'INFO', message: message ?: ''])
+    }
+
+    @Keyword
+    def network(String method, String url, def responseOrData = null) {
+        try {
+            Map data = [
+                event: 'Response',
+                method: (method ?: 'TRACE').toString().toUpperCase(),
+                url: url ?: '',
+                status: extractStatus(responseOrData),
+                success: extractSuccess(responseOrData),
+                data: extractBody(responseOrData)
+            ]
+            sendStructuredLog('network', data)
+        } catch (Exception e) {
+            System.out.println('[DevLog.network] ' + e.message)
+        }
+    }
+
+    @Keyword
+    def attachBrowser() {
+        if (!isEnabled()) return
+        initDevTools()
+    }
+
+    @Keyword
+    def setTestCaseId(String id) {
+        testCaseId = id ?: testCaseId
+        System.setProperty('webqa.testCaseId', testCaseId)
+    }
+
+    static boolean isEnabled() {
+        try {
+            return String.valueOf(GlobalVariable.webQaEnabled ?: 'true').toBoolean()
+        } catch (Exception ignored) {
+            return true
+        }
+    }
+
+    static String getRelayUrl() {
+        try {
+            return String.valueOf(GlobalVariable.webQaRelayUrl ?: 'http://127.0.0.1:3001/log')
+        } catch (Exception ignored) {
+            return 'http://127.0.0.1:3001/log'
+        }
+    }
+
+    static String resolveMappedTestCaseId(String path) {
+        String override = System.getProperty('webqa.testCaseId')
+        if (override) return override
+
+        File mapFile = new File(RunConfiguration.getProjectDir(), 'Include/testcase-map.json')
+        if (!mapFile.exists()) {
+            System.out.println('[DevLog] Mapping file not found: ' + mapFile.absolutePath)
+            return path
+        }
+
+        try {
+            def map = new JsonSlurper().parse(mapFile)
+            String mapped = map[path] ?: map[path?.replace('Test Cases/', '')]
+            if (mapped) {
+                System.setProperty('webqa.testCaseId', mapped)
+                return mapped
+            }
+            System.out.println('[DevLog] Mapping not found for: ' + path)
+        } catch (Exception e) {
+            System.out.println('[DevLog] Failed reading mapping: ' + e.message)
+        }
+        return path
+    }
+
+    static void sendStructuredLog(String category, Map data) {
+        if (!isEnabled()) return
+        try {
+            String id = testCaseId ?: System.getProperty('webqa.testCaseId') ?: katalonPath
+            if (!id) {
+                System.out.println('[DevLog] testCaseId is empty. Log skipped.')
+                return
+            }
+
+            Map payload
+            switch (category) {
+                case 'console':
+                    payload = [
+                        type: 'log',
+                        testCaseId: id,
+                        level: data.level ?: 'INFO',
+                        log: data.message ?: '',
+                        relativeMs: relativeMs()
+                    ]
+                    break
+                case 'network':
+                    payload = [
+                        type: 'log',
+                        testCaseId: id,
+                        network: data,
+                        log: 'Network Trace',
+                        relativeMs: relativeMs()
+                    ]
+                    break
+                case 'execution':
+                default:
+                    payload = [
+                        type: 'log',
+                        testCaseId: id,
+                        log: data.message ?: '',
+                        relativeMs: relativeMs()
+                    ]
+                    break
+            }
+
+            RequestConfig config = RequestConfig.custom()
+                .setConnectTimeout(1000)
+                .setSocketTimeout(1000)
+                .setConnectionRequestTimeout(1000)
+                .build()
+
+            HttpPost post = new HttpPost(relayUrl ?: getRelayUrl())
+            post.setHeader('Content-Type', 'application/json')
+            post.setEntity(new StringEntity(JsonOutput.toJson(payload), 'UTF-8'))
+            CloseableHttpClient client = HttpClients.custom()
+                .setDefaultRequestConfig(config)
+                .build()
+            client.execute(post).close()
+            client.close()
+        } catch (Exception e) {
+            System.out.println('[DevLog] Relay offline or send failed: ' + e.message)
+        }
+    }
+
+    static void writeLocalComment(String message) {
+        String timestamp = new SimpleDateFormat('yyyy-MM-dd HH:mm:ss.SSS').format(new Date())
+        String formatted = &quot;[${timestamp}] ${message}&quot;
+        try { WebUI.comment(message) } catch (Exception ignored) {}
+        System.out.println(formatted)
+    }
+
+    static long relativeMs() {
+        return startedAtMs ? Math.max(0L, System.currentTimeMillis() - startedAtMs) : 0L
+    }
+
+    static Integer extractStatus(def responseOrData) {
+        try {
+            if (responseOrData instanceof Map && responseOrData.status != null) return responseOrData.status as Integer
+            if (responseOrData?.statusCode != null) return responseOrData.statusCode as Integer
+        } catch (Exception ignored) {}
+        return 0
+    }
+
+    static Boolean extractSuccess(def responseOrData) {
+        try {
+            if (responseOrData instanceof Map && responseOrData.success != null) return responseOrData.success as Boolean
+            if (responseOrData?.success != null) return responseOrData.success as Boolean
+            Integer status = extractStatus(responseOrData)
+            return status &gt;= 200 && status &lt; 400
+        } catch (Exception ignored) {}
+        return false
+    }
+
+    static Object extractBody(def responseOrData) {
+        try {
+            def body = responseOrData?.responseText ?: responseOrData?.data ?: responseOrData
+            String text = body == null ? '' : String.valueOf(body)
+            return text.length() &gt; 3000 ? text.substring(0, 3000) + '... [truncated]' : text
+        } catch (Exception ignored) {
+            return ''
+        }
+    }
+
+    static void maybeSniffLogs() {
+        if (devTools == null) sniffBrowserLogs()
+    }
+
+    static void sniffBrowserLogs() {
+        try {
+            def driver = DriverFactory.getWebDriver()
+            def entries = driver.manage().logs().get(LogType.BROWSER).all
+            entries?.each { LogEntry entry -&gt;
+                sendStructuredLog('console', [
+                    level: entry.level?.name()?.toUpperCase() ?: 'INFO',
+                    message: '[BrowserLog Fallback] ' + entry.message
+                ])
+            }
+        } catch (Exception ignored) {}
+    }
+
+    static void initDevTools() {
+        try {
+            def driver = DriverFactory.getWebDriver()
+            if (!(driver instanceof HasDevTools)) {
+                sendStructuredLog('console', [level: 'WARNING', message: 'Browser driver does not support DevTools.'])
+                return
+            }
+
+            devTools = ((HasDevTools) driver).getDevTools()
+            devTools.createSession()
+
+            String version = ['v143', 'v138', 'v129', 'v128', 'v120', 'v112', 'v85'].find { v -&gt;
+                try { Class.forName(&quot;org.openqa.selenium.devtools.${v}.network.Network&quot;); return true }
+                catch (Exception ignored) { return false }
+            }
+            if (!version) {
+                sendStructuredLog('console', [level: 'WARNING', message: 'No selenium-devtools version found. Fallback browser logs only.'])
+                devTools = null
+                return
+            }
+
+            def netClass = Class.forName(&quot;org.openqa.selenium.devtools.${version}.network.Network&quot;)
+            def conClass = Class.forName(&quot;org.openqa.selenium.devtools.${version}.console.Console&quot;)
+
+            try {
+                def netEnable = netClass.methods.find { it.name == 'enable' }
+                Object[] netArgs = new Object[netEnable.parameterTypes.length]
+                for (int i = 0; i &lt; netArgs.length; i++) {
+                    netArgs[i] = netEnable.parameterTypes[i] == Optional ? Optional.empty() : null
+                }
+                devTools.send(netEnable.invoke(null, netArgs))
+                def conEnable = conClass.methods.find { it.name == 'enable' }
+                if (conEnable) devTools.send(conEnable.invoke(null))
+            } catch (Exception ignored) {}
+
+            registerListener(netClass, 'requestWillBeSent') { ev -&gt;
+                try {
+                    def req = ev.request
+                    queueCdp('network', [
+                        event: 'Request',
+                        method: req?.method,
+                        url: req?.url,
+                        headers: req?.headers?.toString()?.take(800)
+                    ])
+                } catch (Exception ignored) {}
+            }
+
+            registerListener(netClass, 'responseReceived') { ev -&gt;
+                try {
+                    def res = ev.response
+                    queueCdp('network', [
+                        event: 'Response',
+                        method: ev.type?.toString(),
+                        url: res?.url,
+                        status: res?.status as Integer,
+                        success: (res?.status as Integer) &lt; 400,
+                        headers: res?.headers?.toString()?.take(800)
+                    ])
+                } catch (Exception ignored) {}
+            }
+
+            registerListener(conClass, 'messageAdded') { ev -&gt;
+                try {
+                    def msg = ev.message
+                    queueCdp('console', [
+                        level: msg?.level?.toString()?.toUpperCase() ?: 'INFO',
+                        message: msg?.text?.toString() ?: String.valueOf(msg)
+                    ])
+                } catch (Exception ignored) {}
+            }
+
+            startCdpWorker()
+            sendStructuredLog('console', [level: 'INFO', message: &quot;DevTools attached using ${version}.&quot;])
+        } catch (Exception e) {
+            devTools = null
+            sendStructuredLog('console', [level: 'WARNING', message: 'DevTools init failed: ' + e.message])
+        }
+    }
+
+    static void registerListener(def domainClass, String eventMethod, Closure callback) {
+        try {
+            def eventObj = domainClass.methods.find { it.name == eventMethod && it.parameterTypes.length == 0 }?.invoke(null)
+            if (!eventObj) return
+            def addMethod = devTools.class.methods.find {
+                it.name == 'addListener' && it.parameterTypes.length == 2 && it.parameterTypes[1].name.contains('Consumer')
+            }
+            if (!addMethod) return
+            addMethod.invoke(devTools, eventObj, new Consumer&lt;Object&gt;() {
+                @Override void accept(Object ev) { callback(ev) }
+            })
+        } catch (Exception e) {
+            System.out.println('[DevLog] Listener failed for ' + eventMethod + ': ' + e.message)
+        }
+    }
+
+    static void queueCdp(String category, Map data) {
+        cdpEventQueue.offer([category: category, data: data])
+    }
+
+    static void startCdpWorker() {
+        if (cdpWorkerRunning) return
+        cdpWorkerRunning = true
+        Thread.startDaemon('DevLog-CDP-Worker') {
+            while (cdpWorkerRunning) {
+                drainCdpQueue()
+                Thread.sleep(250)
+            }
+        }
+    }
+
+    static void drainCdpQueue() {
+        while (!cdpEventQueue.isEmpty()) {
+            def event = cdpEventQueue.poll()
+            if (event) sendStructuredLog(event.category as String, event.data as Map)
+        }
+    }
+}</code></pre>
+    </section>
+
+    <section id="listener" class="panel" data-title="Test Listener">
+      <div class="toolbar">
+        <h2>Test Listeners/DevLogListener.groovy</h2>
+        <button class="copy" data-copy="code-listener">Copy code</button>
+      </div>
+      <pre><code id="code-listener">import com.kms.katalon.core.annotation.BeforeTestCase
+import com.kms.katalon.core.annotation.AfterTestCase
+import com.kms.katalon.core.context.TestCaseContext
+
+class DevLogListener {
+    @BeforeTestCase
+    def beforeTestCase(TestCaseContext testCaseContext) {
+        CustomKeywords.'com.utils.DevLog.start'(testCaseContext)
+    }
+
+    @AfterTestCase
+    def afterTestCase(TestCaseContext testCaseContext) {
+        CustomKeywords.'com.utils.DevLog.finish'(testCaseContext)
+    }
+}</code></pre>
+    </section>
+
+    <section id="mapping" class="panel" data-title="Mapping JSON">
+      <div class="toolbar">
+        <h2>Include/testcase-map.json</h2>
+        <button class="copy" data-copy="code-mapping">Copy code</button>
+      </div>
+      <pre><code id="code-mapping">{
+  "Test Cases/M-Servios/POS Order Flow": "00000000-0000-0000-0000-000000000001",
+  "Test Cases/M-Servios/Login": "GANTI_DENGAN_UUID_QA_DESK",
+  "Test Cases/Regression/Checkout": "GANTI_DENGAN_UUID_QA_DESK"
+}</code></pre>
+      <p class="muted" style="margin-top:10px">Kiri adalah path testcase di Katalon. Kanan adalah Internal Database ID / UUID dari QA Desk, bukan display ID seperti E-124.</p>
+    </section>
+
+    <section id="usage" class="panel" data-title="Contoh Testcase">
+      <div class="toolbar">
+        <h2>Contoh script testcase setelah semi otomatis</h2>
+        <button class="copy" data-copy="code-usage">Copy code</button>
+      </div>
+      <pre><code id="code-usage">import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import internal.GlobalVariable as GlobalVariable
+import groovy.json.JsonSlurper
+
+String apiBase = GlobalVariable.baseUrl
+String posLogin = 'sammy'
+String posPin = '1234'
+
+CustomKeywords.'com.utils.DevLog.step'('Open browser and attach DevLog capture')
+WebUI.openBrowser('')
+WebUI.maximizeWindow()
+CustomKeywords.'com.utils.DevLog.attachBrowser'()
+
+CustomKeywords.'com.utils.DevLog.step'('Login POS')
+String loginUrl = &quot;${apiBase}/api/pos/login&quot;
+def loginResp = CustomKeywords.'com.utils.HttpHelper.postJson'(loginUrl, [login: posLogin, pin: posPin])
+CustomKeywords.'com.utils.DevLog.network'('POST', loginUrl, loginResp)
+
+if (!loginResp.success) {
+    throw new Exception(&quot;POS Login failed. Status: ${loginResp.statusCode}&quot;)
+}
+
+def loginData = new JsonSlurper().parseText(loginResp.responseText).data
+String companyToken = loginData.access_token
+
+CustomKeywords.'com.utils.DevLog.step'('Navigate to target app')
+WebUI.navigateToUrl(GlobalVariable.targetUrl)
+WebUI.waitForPageLoad(10)
+
+CustomKeywords.'com.utils.DevLog.step'('Click submit order')
+WebUI.click(findTestObject('Object Repository/Checkout/Button_SubmitOrder'))
+
+CustomKeywords.'com.utils.DevLog.step'('Validate order success message')
+WebUI.verifyElementPresent(findTestObject('Object Repository/Checkout/Success_Message'), 10)
+
+WebUI.closeBrowser()</code></pre>
+    </section>
+
+    <section id="httphelper" class="panel" data-title="HttpHelper Opsional">
+      <div class="toolbar">
+        <h2>Opsional: auto network log di HttpHelper</h2>
+        <button class="copy" data-copy="code-httphelper">Copy code</button>
+      </div>
+      <p>Jika semua API call memakai HttpHelper, tambahkan panggilan DevLog di dalam HttpHelper supaya testcase tidak perlu memanggil DevLog.network() berkali-kali.</p>
+      <pre><code id="code-httphelper">// Contoh pola yang ditambahkan setelah response didapat di HttpHelper.
+// Sesuaikan nama variable response dengan implementasi HttpHelper kamu.
+
+try {
+    CustomKeywords.'com.utils.DevLog.network'(method, url, response)
+} catch (Exception ignored) {
+    // DevLog tidak boleh membuat API helper gagal.
+}</code></pre>
+    </section>
+
+    <p class="footer">Catatan: template ini sengaja semi otomatis. Start/finish/fail dibuat otomatis oleh listener, tetapi step bisnis tetap sebaiknya ditulis eksplisit agar DevLog mudah dibaca manusia.</p>
+  </main>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab');
+    const panels = document.querySelectorAll('.panel');
+    tabs.forEach(tab => tab.addEventListener('click', () => {
+      tabs.forEach(item => item.classList.toggle('active', item === tab));
+      panels.forEach(panel => panel.classList.toggle('active', panel.id === tab.dataset.tab));
+    }));
+
+    document.querySelectorAll('[data-copy]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const target = document.getElementById(button.dataset.copy);
+        const text = target ? target.textContent : '';
+        try {
+          await navigator.clipboard.writeText(text);
+          const original = button.textContent;
+          button.textContent = 'Copied';
+          setTimeout(() => { button.textContent = original; }, 1200);
+        } catch (_) {
+          window.prompt('Copy code:', text);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

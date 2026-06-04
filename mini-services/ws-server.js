@@ -5,6 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawn, spawnSync } = require('child_process');
+const {
+  normalizeAutomationEvent,
+  validateAutomationEvent,
+} = require('./automation-event');
 let sharp = null;
 try {
   sharp = require('sharp');
@@ -61,10 +65,11 @@ function broadcast(data) {
 }
 
 function getRunPaths(testCaseId) {
+  const fileSafeTestCaseId = encodeURIComponent(String(testCaseId));
   return {
-    current: path.join(LOGS_DIR, `${testCaseId}.current.jsonl`),
-    previous: path.join(LOGS_DIR, `${testCaseId}.previous.jsonl`),
-    legacy: path.join(LOGS_DIR, `${testCaseId}.jsonl`),
+    current: path.join(LOGS_DIR, `${fileSafeTestCaseId}.current.jsonl`),
+    previous: path.join(LOGS_DIR, `${fileSafeTestCaseId}.previous.jsonl`),
+    legacy: path.join(LOGS_DIR, `${fileSafeTestCaseId}.jsonl`),
   };
 }
 
@@ -131,8 +136,24 @@ function readJsonBody(req, callback) {
 }
 
 function emitLog(logData) {
-  saveLog(logData);
+  const automationEvent = normalizeAutomationEvent(logData);
+  const validation = validateAutomationEvent(automationEvent);
+  const persistedLog = {
+    ...logData,
+    automationEvent,
+  };
+
+  saveLog(persistedLog);
   broadcast(logData);
+  if (validation.valid) {
+    broadcast({
+      type: 'automation.event',
+      schemaVersion: 1,
+      event: automationEvent,
+    });
+  } else {
+    console.warn('[AUTOMATION EVENT] Legacy log preserved without normalized broadcast:', validation.errors.join(', '));
+  }
 }
 
 function getManualSession(sessionId) {

@@ -3,36 +3,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { buildDevlogRelayUrl, DEVLOG_RELAY_URL } from '@/lib/client/api/devlog-client';
+import {
+  adaptAutomationEventToLogEntry,
+  adaptLegacyLogToLogEntry,
+  getAutomationEventTestCaseId,
+  getAutomationLogDedupKeys,
+  isAutomationEventEnvelope,
+  isLegacyLogMessage,
+} from '@/lib/client/automation/automation-event-client';
+import type { AutomationLogEntry } from '@/lib/client/automation/automation-event-client';
 
 export type DevLogTab = 'console' | 'network' | 'execution';
 export type ManualCaptureBrowserMode = 'clean' | 'profiled';
 export type ManualCaptureMode = 'frame' | 'video' | 'hybrid';
-
-export interface AutomationLogEntry {
-  id?: string;
-  type?: string;
-  source?: string;
-  testCaseId?: string;
-  timestamp?: string | number | Date;
-  relativeMs?: number;
-  level?: string;
-  log?: unknown;
-  console?: unknown;
-  isExecution?: boolean;
-  isConsole?: boolean;
-  isNetwork?: boolean;
-  network?: {
-    event?: string;
-    method?: string;
-    url: string;
-    status?: number;
-    duration?: number;
-    headers?: unknown;
-    data?: unknown;
-    success?: boolean;
-  };
-  sessionId?: string;
-}
+export type { AutomationLogEntry } from '@/lib/client/automation/automation-event-client';
 
 export interface ManualRecordingFrame {
   file: string;
@@ -90,23 +74,8 @@ interface StartManualCaptureOptions {
   captureMode?: ManualCaptureMode;
 }
 
-function createLogId() {
-  return Math.random().toString(36).slice(2, 11);
-}
-
 function normalizeLogEntry(message: AutomationLogEntry): AutomationLogEntry {
-  const isNetwork = !!message.network || message.log?.toString().startsWith('Network:');
-  const isConsole = !!message.level || !!message.console;
-  const isExecution = !isNetwork && !isConsole;
-
-  return {
-    ...message,
-    id: message.id || createLogId(),
-    timestamp: message.timestamp || new Date().toISOString(),
-    isExecution,
-    isConsole,
-    isNetwork,
-  };
+  return adaptLegacyLogToLogEntry(message);
 }
 
 export const filterConsoleLogs = (logs: AutomationLogEntry[]) => logs.filter(log => log.isConsole);
@@ -156,6 +125,8 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   const { toast } = useToast();
   const logEndRef = useRef<HTMLDivElement>(null);
   const currentViewIdRef = useRef<string | null>(null);
+  const seenLogKeysRef = useRef<Set<string>>(new Set());
+  const seenLogKeyOrderRef = useRef<string[]>([]);
   const [socketReady, setSocketReady] = useState(false);
   const [liveLogs, setLiveLogs] = useState<AutomationLogEntry[]>([]);
   const [activeDevLogTab, setActiveDevLogTab] = useState<DevLogTab>('execution');
@@ -231,6 +202,8 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     const targetId = viewTestCase.id;
 
     const timer = window.setTimeout(() => {
+      seenLogKeysRef.current.clear();
+      seenLogKeyOrderRef.current = [];
       setLiveLogs([]);
       setExpandedLogId(null);
       setAiSummary(null);
@@ -250,25 +223,44 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
 
     const handleMessage = (event: MessageEvent) => {
       try {
-        const message = JSON.parse(event.data) as AutomationLogEntry;
+        const message: unknown = JSON.parse(event.data);
+        const testCaseId = getAutomationEventTestCaseId(message);
         if (DEBUG_AUTOMATION_LOGS) {
-          console.log(`[WS INCOMING] Type: ${message.type}, TC: ${message.testCaseId}`);
+          const type = typeof message === 'object' && message && 'type' in message ? message.type : 'unknown';
+          console.log(`[WS INCOMING] Type: ${String(type)}, TC: ${testCaseId}`);
         }
 
-        if (message.type !== 'log' || !message.testCaseId) return;
+        if (!testCaseId || (!isAutomationEventEnvelope(message) && !isLegacyLogMessage(message))) return;
 
-        const logText = typeof message.log === 'string' ? message.log : JSON.stringify(message.log);
+        const isNormalizedEnvelope = isAutomationEventEnvelope(message);
+        const logEntry = isNormalizedEnvelope
+          ? adaptAutomationEventToLogEntry(message)
+          : adaptLegacyLogToLogEntry(message);
+
+        const logText = typeof logEntry.log === 'string' ? logEntry.log : JSON.stringify(logEntry.log);
         if (/Manual Capture Stopped/i.test(logText)) {
           setManualCaptureSessionId(null);
           return;
         }
 
-        const logEntry = normalizeLogEntry(message);
-
-        if (currentViewIdRef.current === message.testCaseId) {
+        if (currentViewIdRef.current === testCaseId) {
           if (DEBUG_AUTOMATION_LOGS) {
-            console.log(`[WS ACCEPTED] Matching TC ID: ${message.testCaseId}`);
+            console.log(`[WS ACCEPTED] Matching TC ID: ${testCaseId}`);
           }
+          const dedupKeys = getAutomationLogDedupKeys(logEntry);
+          if (dedupKeys.some(key => seenLogKeysRef.current.has(key))) return;
+          const keysToRemember = isNormalizedEnvelope && logEntry.eventId
+            ? dedupKeys.filter(key => key.startsWith('event:'))
+            : dedupKeys;
+          keysToRemember.forEach(key => {
+            seenLogKeysRef.current.add(key);
+            seenLogKeyOrderRef.current.push(key);
+          });
+          while (seenLogKeyOrderRef.current.length > 2000) {
+            const oldestKey = seenLogKeyOrderRef.current.shift();
+            if (oldestKey) seenLogKeysRef.current.delete(oldestKey);
+          }
+
           setLiveLogs(prev => {
             const next = [...prev, logEntry];
             return next.length > 500 ? next.slice(next.length - 500) : next;
@@ -276,16 +268,15 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
           setLoadedRunLabel('live');
 
           if (logEntry.isExecution) {
-            const logText = typeof message.log === 'string' ? message.log : JSON.stringify(message.log);
             setViewTestCase(prev => {
-              if (prev && prev.id === message.testCaseId) {
+              if (prev && prev.id === testCaseId) {
                 return { ...prev, stepLogs: `${prev.stepLogs || ''}${logText}\n` };
               }
               return prev;
             });
           }
         } else if (DEBUG_AUTOMATION_LOGS) {
-          console.warn(`[WS FILTERED OUT] Expected: ${currentViewIdRef.current}, Got: ${message.testCaseId}`);
+          console.warn(`[WS FILTERED OUT] Expected: ${currentViewIdRef.current}, Got: ${testCaseId}`);
         }
       } catch (error) {
         console.error('[WS ERROR] Failed to process message:', error, event.data);
@@ -425,6 +416,8 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   };
 
   const clearLogs = () => {
+    seenLogKeysRef.current.clear();
+    seenLogKeyOrderRef.current = [];
     setLiveLogs([]);
     setViewTestCase(prev => prev ? { ...prev, stepLogs: '' } : null);
   };

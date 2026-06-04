@@ -1,616 +1,460 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <title>DevLog Automation Capture Guide</title>
+  <meta charset="utf-8">
+  <title>Automation Capture User Guide</title>
   <style>
     @page {
       size: A4;
-      margin: 18mm 16mm;
+      margin: 20mm 15mm;
     }
 
     * {
       box-sizing: border-box;
     }
 
+    /* Mengubah background body menjadi abu-abu lembut untuk efek centered view */
     body {
       margin: 0;
-      color: #102033;
-      background: #ffffff;
-      font-family: Arial, Helvetica, sans-serif;
+      padding: 40px 20px;
+      color: #334155;
+      background: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 11px;
-      line-height: 1.48;
+      line-height: 1.6;
     }
 
-    .cover {
-      border: 1px solid #d9e7ef;
-      border-radius: 14px;
-      padding: 22px;
-      background: linear-gradient(135deg, #f5fbfb 0%, #ffffff 54%, #eef6ff 100%);
-      margin-bottom: 18px;
-    }
-
-    .eyebrow {
-      display: inline-block;
-      padding: 5px 9px;
-      border-radius: 999px;
-      background: #e6fffb;
-      border: 1px solid #b8eee8;
-      color: #0f766e;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-
-    h1 {
-      margin: 13px 0 6px;
-      color: #071326;
-      font-size: 28px;
-      line-height: 1.05;
-      letter-spacing: 0;
-    }
-
-    .subtitle {
-      max-width: 620px;
-      margin: 0;
-      color: #52627a;
-      font-size: 12px;
-    }
-
-    .meta {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-top: 18px;
-    }
-
-    .meta div,
-    .callout,
-    .step,
-    .checklist,
-    .codebox,
-    .trouble {
-      border: 1px solid #dce7ef;
-      border-radius: 10px;
+    /* Container utama untuk membuat konten terpusat (Centered View) */
+    .document-container {
+      max-width: 800px;
+      margin: 0 auto;
       background: #ffffff;
+      padding: 40px 50px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
     }
 
-    .meta div {
-      padding: 9px 10px;
-    }
-
-    .label {
-      display: block;
-      color: #7b8aa0;
-      font-size: 8px;
+    /* Typography */
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 26px;
       font-weight: 800;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-
-    .value {
-      display: block;
-      margin-top: 3px;
-      color: #16243a;
-      font-size: 10px;
-      font-weight: 700;
-    }
-
-    h2 {
-      margin: 18px 0 8px;
-      color: #071326;
-      font-size: 16px;
+      color: #0f172a;
       line-height: 1.2;
     }
 
+    h2 {
+      margin: 32px 0 12px 0;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e2e8f0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e293b;
+      break-after: avoid;
+    }
+
     h3 {
-      margin: 0 0 6px;
-      color: #12233a;
-      font-size: 12px;
+      margin: 16px 0 6px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      break-after: avoid;
     }
 
     p {
-      margin: 0 0 8px;
+      margin: 0 0 10px 0;
     }
 
-    ul,
-    ol {
-      margin: 6px 0 0 18px;
-      padding: 0;
+    ul, ol {
+      margin: 6px 0 12px 0;
+      padding-left: 20px;
     }
 
     li {
-      margin: 0 0 5px;
+      margin-bottom: 4px;
     }
 
-    .callout {
-      display: grid;
-      grid-template-columns: 34px 1fr;
-      gap: 10px;
-      padding: 12px;
-      background: #f8fafc;
+    b, strong {
+      color: #0f172a;
     }
 
-    .icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 9px;
-      display: grid;
-      place-items: center;
+    /* Code Block Formatting */
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
       color: #0f766e;
-      background: #ccfbf1;
-      font-weight: 900;
-    }
-
-    .steps {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .steps.single {
-      grid-template-columns: 1fr;
-    }
-
-    .step {
-      min-height: 116px;
-      padding: 12px;
-      break-inside: avoid;
-    }
-
-    .step-number {
-      display: inline-grid;
-      place-items: center;
-      width: 22px;
-      height: 22px;
-      margin-bottom: 8px;
-      border-radius: 8px;
-      background: #08111f;
-      color: #ffffff;
-      font-size: 10px;
-      font-weight: 800;
-    }
-
-    .codebox {
-      padding: 11px 12px;
-      background: #08111f;
-      color: #d8f3ff;
-      font-family: Consolas, "Courier New", monospace;
+      background-color: #f0fdfa;
       font-size: 9.5px;
+    }
+
+    pre {
+      margin: 10px 0;
+      padding: 12px;
+      border-radius: 8px;
+      color: #e2e8f0;
+      background: #0f172a;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+      font-size: 10px;
+      line-height: 1.5;
     }
 
+    /* Structured Layout Components */
     table {
       width: 100%;
+      margin: 12px 0 18px 0;
       border-collapse: collapse;
-      margin-top: 8px;
-      border: 1px solid #dce7ef;
-      break-inside: avoid;
+      break-inside: auto;
     }
 
-    th,
-    td {
-      padding: 8px 9px;
-      border: 1px solid #dce7ef;
+    th, td {
+      padding: 8px 10px;
+      border: 1px solid #e2e8f0;
       vertical-align: top;
       text-align: left;
     }
 
     th {
-      background: #f2f7fb;
-      color: #1b2b43;
-      font-size: 9px;
+      color: #475569;
+      background: #f8fafc;
+      font-size: 9.5px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: .06em;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      font-size: 10.5px;
+    }
+
+    /* Document Elements */
+    .cover {
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 6px;
+      color: #0f766e;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .subtitle {
+      max-width: 680px;
+      color: #475569;
+      font-size: 12px;
+      margin-bottom: 0;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .meta div {
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .meta b {
+      display: block;
+      color: #64748b;
+      font-size: 8.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .meta span {
+      font-size: 10.5px;
+      color: #334155;
+    }
+
+    .callout {
+      margin: 12px 0;
+      padding: 12px;
+      border-left: 4px solid #0f766e;
+      border-radius: 0 8px 8px 0;
+      background: #f0fdfa;
+      font-size: 11px;
     }
 
     .checklist {
-      padding: 12px;
-      background: #fffdf7;
-      border-color: #f1dfac;
+      margin: 12px 0;
+      padding: 14px;
+      background: #fffdf5;
+      border: 1px solid #fef08a;
+      border-radius: 8px;
     }
 
-    .checklist li {
-      list-style: none;
-      margin-left: -18px;
+    .flow {
+      color: #34d399;
+      background: #0f172a;
+      border-left: 4px solid #10b981;
     }
 
-    .checklist li::before {
-      content: "□";
-      display: inline-block;
-      width: 18px;
-      color: #b7791f;
-      font-weight: 900;
+    .page-break {
+      break-before: page;
     }
 
-    .trouble {
-      padding: 12px;
-      background: #fff7f7;
-      border-color: #ffd6d6;
+    .small {
+      display: block;
+      margin-top: 24px;
+      color: #94a3b8;
+      font-size: 9.5px;
+      font-style: italic;
     }
 
-    .footer-note {
-      margin-top: 18px;
-      padding-top: 10px;
-      border-top: 1px solid #e6eef5;
-      color: #64748b;
-      font-size: 9px;
+    /* Table-specific styles for Troubleshooting */
+    .table-troubleshooting th:nth-child(1) { width: 25%; }
+    .table-troubleshooting th:nth-child(2) { width: 35%; }
+    .table-troubleshooting th:nth-child(3) { width: 40%; }
+
+    /* CSS khusus untuk print agar background abu-abu dan bayangan tidak ikut tercetak */
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .document-container {
+        max-width: 100%;
+        padding: 0;
+        box-shadow: none;
+        border-radius: 0;
+      }
     }
   </style>
 </head>
 <body>
-  <section class="cover">
-    <span class="eyebrow">QA Desk Guide</span>
-    <h1>DevLog Automation Capture</h1>
-    <p class="subtitle">
-      Panduan singkat untuk menghubungkan automation Katalon ke DevLog, menangkap execution log, console, network, lalu meninjau hasilnya dari detail test case.
-    </p>
 
-    <div class="meta">
-      <div>
-        <span class="label">Aplikasi</span>
-        <span class="value">QA Desk / Web QA</span>
+  <div class="document-container">
+
+    <section class="cover">
+      <span class="eyebrow">QA-Web User &amp; Developer Guide</span>
+      <h1>Automation Capture User Guide</h1>
+      <p class="subtitle">Panduan lengkap untuk Manual Capture dan Katalon Capture, mulai dari setup, mapping test case, validasi Devlog, troubleshooting, hingga referensi developer.</p>
+      <div class="meta">
+        <div><b>Relay default</b><span>http://127.0.0.1:3001</span></div>
+        <div><b>Event contract</b><span>AutomationEventV1</span></div>
+        <div><b>Audience</b><span>QA &amp; Automation Engineer</span></div>
       </div>
-      <div>
-        <span class="label">Relay</span>
-        <span class="value">http://127.0.0.1:3001</span>
-      </div>
-      <div>
-        <span class="label">Target User</span>
-        <span class="value">QA Engineer</span>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="callout">
-    <div class="icon">i</div>
-    <div>
-      <h3>Konsep singkat</h3>
-      <p>
-        DevLog adalah tempat review hasil testing. Automation mengirim log ke relay lokal, relay menyimpan data berdasarkan UUID test case, lalu QA Desk menampilkan hasilnya pada tab DevLog di detail test case.
-      </p>
-    </div>
-  </section>
+    <h2>1. Overview</h2>
+    <p>Automation Capture membantu tim melihat apa yang terjadi selama pengujian, bukan hanya status lulus atau gagal. Devlog menampilkan execution step, browser console, network activity, screenshot, evidence, dan history pada test case QA-Web yang tepat.</p>
+    <div class="callout"><b>Dua mode, satu pipeline.</b> Manual Capture memakai browser yang dikontrol relay. Katalon Capture memakai browser Selenium yang dikontrol Katalon. Keduanya baru menyatu setelah event dinormalisasi.</div>
+    <p><b>Evidence</b> adalah artefak pendukung seperti screenshot atau recording. <b>History</b> adalah hasil run sebelumnya yang disimpan relay untuk membantu perbandingan.</p>
 
-  <h2>Persiapan</h2>
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 28%">Komponen</th>
-        <th>Yang perlu dipastikan</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>QA Desk</td>
-        <td>Website berjalan di localhost dan project/test case yang ingin dites sudah tersedia.</td>
-      </tr>
-      <tr>
-        <td>Relay DevLog</td>
-        <td>Jalankan relay dengan <strong>node mini-services/ws-server.js</strong> atau gunakan <strong>run-web-qa.bat</strong> agar web dan relay berjalan bersamaan.</td>
-      </tr>
-      <tr>
-        <td>Test Case UUID</td>
-        <td>Buka detail test case, bagian Informasi Utama, lalu salin Internal Database ID (UUID). ID ini berbeda dari display ID seperti E-124.</td>
-      </tr>
-      <tr>
-        <td>Katalon Script</td>
-        <td>Script harus memiliki konfigurasi UUID test case, helper pengiriman log ke relay, dan inisialisasi DevTools/CDP. Contoh lengkap struktur script tersedia pada bagian Detail Setup di dokumen ini.</td>
-      </tr>
-      <tr>
-        <td>DevTools Library</td>
-        <td>Pastikan Katalon memiliki Selenium DevTools library yang sesuai dengan versi browser. Contoh project ini memakai jar <strong>Drivers/selenium-devtools-v138-4.36.0.jar</strong> dan classpath Katalon juga dapat memuat <strong>selenium-devtools-v143</strong>.</td>
-      </tr>
-      <tr>
-        <td>Desired Capabilities</td>
-        <td>Aktifkan logging browser/performance pada browser yang dipakai automation, terutama untuk fallback console/network log.</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h2>Alur Automation Capture</h2>
-  <div class="steps">
-    <div class="step">
-      <span class="step-number">1</span>
-      <h3>Jalankan QA Desk dan relay</h3>
-      <p>Buka terminal dari folder Web QA, lalu jalankan launcher atau relay manual.</p>
-      <div class="codebox">run-web-qa.bat
-
-atau
-
-node mini-services/ws-server.js</div>
-    </div>
-
-    <div class="step">
-      <span class="step-number">2</span>
-      <h3>Ambil UUID test case</h3>
-      <p>Buka test case yang akan dites, pilih tab Informasi Utama, lalu copy Internal Database ID.</p>
-      <p>Gunakan UUID ini pada script Katalon agar log masuk ke test case yang benar.</p>
-    </div>
-
-    <div class="step">
-      <span class="step-number">3</span>
-      <h3>Siapkan script Katalon</h3>
-      <p>Tambahkan import, config, helper logging, dan init DevTools/CDP seperti contoh lengkap di bawah. Jika sudah punya script lama, sisipkan bagian DevLog ini tanpa mengubah flow test utama.</p>
-    </div>
-
-    <div class="step">
-      <span class="step-number">4</span>
-      <h3>Jalankan automation</h3>
-      <p>Run script dari Katalon. Selama relay live, log execution, console, dan network akan dikirim ke DevLog.</p>
-      <p>Jika log tidak muncul, cek lagi status relay dan UUID test case.</p>
-    </div>
-  </div>
-
-  <h2>Detail Setup Katalon untuk DevLog</h2>
-  <section class="callout" style="margin-bottom: 10px;">
-    <div class="icon">!</div>
-    <div>
-      <h3>Yang akan ditambahkan ke script</h3>
-      <p>
-        Agar DevLog bekerja, script Katalon perlu mengirim structured log ke relay lokal dan, jika ingin network/console browser tertangkap otomatis, perlu membuka Selenium DevTools/CDP session.
-        Bagian di bawah menjelaskan setup minimal yang bisa ditempel ke script automation baru atau script existing.
-      </p>
-    </div>
-  </section>
-  <div class="steps single">
-    <div class="step">
-      <span class="step-number">0</span>
-      <h3>Install/aktifkan Selenium DevTools library</h3>
-      <p>Fitur auto-sniffer Network dan Console memakai Selenium CDP. Jika library DevTools tidak cocok dengan versi browser, <strong>initDevTools()</strong> bisa gagal dan Network otomatis tidak lengkap.</p>
-      <ul>
-        <li>Cek versi browser automation yang dipakai, misalnya Edge/Chrome major version.</li>
-        <li>Pastikan Katalon memiliki jar <strong>selenium-devtools-v&lt;versi&gt;</strong> yang mendekati versi browser.</li>
-        <li>Jika belum ada, tambahkan jar ke folder <strong>Drivers</strong> project Katalon atau gunakan DevTools jar terbaru dari paket Katalon/Selenium yang tersedia.</li>
-        <li>Contoh project ini memiliki <strong>Drivers/selenium-devtools-v138-4.36.0.jar</strong> dan classpath juga memuat <strong>org.seleniumhq.selenium.selenium-devtools-v143_4.39.0.jar</strong>.</li>
-      </ul>
-    </div>
-
-    <div class="step">
-      <span class="step-number">1</span>
-      <h3>Set Desired Capabilities browser</h3>
-      <p>Untuk Edge Chromium, setting project yang sudah dipakai ada di <strong>settings/internal/com.kms.katalon.core.webui.edge chromium.properties</strong>.</p>
-      <div class="codebox">{
-  "EDGE_CHROMIUM_DRIVER": {
-    "goog:loggingPrefs": {
-      "browser": "ALL",
-      "performance": "ALL"
-    },
-    "ms:edgeOptions": {
-      "args": ["--disable-notifications"]
-    }
-  }
-}</div>
-      <p>Jika memakai Chrome, isi Chrome Desired Capabilities dengan konsep yang sama. Di Katalon biasanya bisa diatur dari <strong>Project &gt; Settings &gt; Desired Capabilities &gt; Web UI &gt; Chrome</strong>, atau lewat file <strong>settings/internal/com.kms.katalon.core.webui.chrome.properties</strong>.</p>
-      <div class="codebox">{
-  "CHROME_DRIVER": {
-    "goog:loggingPrefs": {
-      "browser": "ALL",
-      "performance": "ALL"
-    },
-    "goog:chromeOptions": {
-      "args": ["--disable-notifications"]
-    }
-  }
-}</div>
-      <p>Catatan: Chrome tetap membutuhkan Selenium DevTools jar yang cocok dengan versi Chrome. Jika <strong>initDevTools()</strong> gagal, fallback console log masih bisa berjalan, tetapi auto network capture dari browser bisa tidak lengkap.</p>
-    </div>
-
-    <div class="step">
-      <span class="step-number">2</span>
-      <h3>Tambahkan import library di bagian paling atas script</h3>
-      <p>Import pertama dipakai untuk structured log ke relay. Import DevTools dipakai agar browser network dan console bisa ditangkap otomatis.</p>
-      <div class="codebox">import groovy.transform.Field
-import groovy.json.JsonOutput
-import org.apache.http.entity.StringEntity
-import org.apache.http.client.config.RequestConfig
-import org.apache.http.client.methods.HttpPost
-import org.apache.http.impl.client.CloseableHttpClient
-import org.apache.http.impl.client.HttpClients
-
-import org.openqa.selenium.logging.LogEntry
-import org.openqa.selenium.logging.LogType
-import com.kms.katalon.core.webui.driver.DriverFactory
-
-import org.openqa.selenium.devtools.DevTools
-import org.openqa.selenium.devtools.HasDevTools
-import java.util.Optional
-import java.util.function.Consumer</div>
-    </div>
-
-    <div class="step">
-      <span class="step-number">3</span>
-      <h3>Tambahkan konfigurasi relay dan UUID test case</h3>
-      <p>Ganti <strong>&lt;UUID_TEST_CASE&gt;</strong> dengan Internal Database ID dari detail test case di QA Desk. Jangan memakai display ID seperti E-124.</p>
-      <div class="codebox">@Field String webQaTestCaseId = "&lt;UUID_TEST_CASE&gt;"
-@Field String RELAY_URL = "http://127.0.0.1:3001/log"</div>
-    </div>
-
-    <div class="step">
-      <span class="step-number">4</span>
-      <h3>Copy helper structured log dari contoh script</h3>
-      <p>Tambahkan helper bernama <strong>sendStructuredLog</strong>. Helper ini mengirim tiga kategori log: execution untuk langkah test, console untuk browser log, dan network untuk request API.</p>
-      <div class="codebox">def sendStructuredLog(String category, Map data) {
-    try {
-        Map payload
-
-        switch (category) {
-            case 'console':
-                payload = [
-                    type      : 'log',
-                    testCaseId: webQaTestCaseId,
-                    level     : data.level ?: 'INFO',
-                    log       : data.message ?: ''
-                ]
-                break
-
-            case 'network':
-                payload = [
-                    type      : 'log',
-                    testCaseId: webQaTestCaseId,
-                    network   : data,
-                    log       : 'Network Trace'
-                ]
-                break
-
-            case 'execution':
-            default:
-                payload = [
-                    type      : 'log',
-                    testCaseId: webQaTestCaseId,
-                    log       : data.message ?: ''
-                ]
-                break
-        }
-
-        RequestConfig config = RequestConfig.custom()
-            .setConnectTimeout(1000)
-            .setSocketTimeout(1000)
-            .setConnectionRequestTimeout(1000)
-            .build()
-
-        HttpPost post = new HttpPost(RELAY_URL)
-        post.setHeader("Content-Type", "application/json")
-        post.setEntity(new StringEntity(JsonOutput.toJson(payload), "UTF-8"))
-        CloseableHttpClient client = HttpClients.custom()
-            .setDefaultRequestConfig(config)
-            .build()
-        client.execute(post).close()
-        client.close()
-    } catch (Exception ignored) {
-        // DevLog tidak boleh membuat automation gagal.
-    }
-}</div>
-    </div>
-
-    <div class="step">
-      <span class="step-number">5</span>
-      <h3>Gunakan helper sesuai jenis log</h3>
-      <p>Buat wrapper sederhana agar setiap step penting otomatis masuk ke DevLog. Browser network dan console ditangkap otomatis setelah <strong>initDevTools()</strong> berhasil dipanggil.</p>
-      <div class="codebox">def writeLog(String message) {
-    WebUI.comment(message)
-    sendStructuredLog('execution', [message: message])
-    maybeSniffLogs()
-}
-
-def logNetworkCall(String method, String url, def resp) {
-    sendStructuredLog('network', [
-        method : method.toUpperCase(),
-        url    : url,
-        status : resp?.statusCode ?: 0,
-        success: resp?.success ?: false,
-        data   : resp?.responseText ?: ''
-    ])
-}
-
-// Panggil setelah browser dibuka agar Network dan Console otomatis tertangkap.
-initDevTools()</div>
-    </div>
-
-    <div class="step">
-      <span class="step-number">6</span>
-      <h3>Tambahkan initDevTools untuk auto capture browser</h3>
-      <p>Bagian ini membuka CDP session. Setelah aktif, script bisa menangkap browser console dan network tanpa menulis log manual untuk setiap request. Implementasi detail bisa berbeda antar versi Selenium, jadi mulai dari pola ini lalu sesuaikan versi DevTools jar yang tersedia.</p>
-      <div class="codebox">def initDevTools() {
-    try {
-        def driver = DriverFactory.getWebDriver()
-        if (!(driver instanceof HasDevTools)) {
-            writeLog("Browser driver does not support DevTools.")
-            return
-        }
-
-        devTools = ((HasDevTools) driver).getDevTools()
-        devTools.createSession()
-
-        // Enable Network dan Console domain sesuai versi selenium-devtools.
-        // Jika versi browser berbeda, sesuaikan import/class DevTools jar.
-        writeLog("DevTools session started.")
-    } catch (Exception e) {
-        writeLog("DevTools init failed: " + e.message)
-    }
-}</div>
-      <p>Jika <strong>initDevTools()</strong> gagal, execution log tetap masuk, tetapi auto network/console bisa berkurang. Untuk request dari helper/API JVM, tetap kirim manual lewat <strong>logNetworkCall</strong>.</p>
-    </div>
-  </div>
-
-  <h2>Cara Review Hasil di DevLog</h2>
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 24%">Tab</th>
-        <th>Fungsi</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Execution</td>
-        <td>Melihat langkah utama automation, termasuk step yang sukses, warning, atau gagal.</td>
-      </tr>
-      <tr>
-        <td>Console</td>
-        <td>Melihat error atau warning browser yang terjadi selama testing.</td>
-      </tr>
-      <tr>
-        <td>Network</td>
-        <td>Melihat request API yang relevan, status code, payload, header, dan response.</td>
-      </tr>
-      <tr>
-        <td>Current</td>
-        <td>Kembali ke run terbaru setelah membuka history/previous run.</td>
-      </tr>
-      <tr>
-        <td>Previous</td>
-        <td>Membuka run sebelumnya. History disimpan ringkas agar tidak memenuhi storage.</td>
-      </tr>
-      <tr>
-        <td>AI Summary</td>
-        <td>Membuat ringkasan hasil test berdasarkan log terbaru, bukan dari history.</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h2>Checklist Sebelum Run</h2>
-  <div class="checklist">
-    <ul>
-      <li>QA Desk terbuka di project yang benar.</li>
-      <li>Relay menunjukkan status live.</li>
-      <li>UUID test case sudah sesuai dengan test case yang akan dijalankan.</li>
-      <li>Script Katalon memakai endpoint relay <strong>http://127.0.0.1:3001/log</strong>.</li>
-      <li>Setelah automation selesai, buka detail test case dan cek tab DevLog.</li>
-    </ul>
-  </div>
-
-  <h2>Troubleshooting Cepat</h2>
-  <div class="trouble">
+    <h2>2. System Requirements</h2>
     <table>
       <thead>
-        <tr>
-          <th style="width: 34%">Masalah</th>
-          <th>Yang dicek</th>
-        </tr>
+        <tr><th>Komponen</th><th>Kebutuhan</th></tr>
       </thead>
       <tbody>
-        <tr>
-          <td>Relay belum live</td>
-          <td>Pastikan mini-service berjalan dan port 3001 tidak dipakai proses lain.</td>
-        </tr>
-        <tr>
-          <td>Log tidak masuk</td>
-          <td>Cek UUID test case, URL relay, dan apakah script benar-benar memanggil fungsi pengiriman log.</td>
-        </tr>
-        <tr>
-          <td>Network terlalu sedikit</td>
-          <td>Pastikan CDP/devtools sniffer aktif. Request dari helper JVM tidak selalu tertangkap oleh browser CDP, jadi perlu dikirim manual sebagai structured log.</td>
-        </tr>
-        <tr>
-          <td>AI Summary terasa salah</td>
-          <td>Pastikan sedang melihat Current run, bukan Previous. Summary seharusnya memakai hasil test terbaru.</td>
-        </tr>
+        <tr><td>QA-Web</td><td>Aplikasi berjalan lokal dan test case target sudah tersedia.</td></tr>
+        <tr><td>Relay</td><td><code>mini-services/ws-server.js</code> berjalan dan dapat diakses.</td></tr>
+        <tr><td>Browser</td><td>Chrome atau Edge Chromium yang kompatibel.</td></tr>
+        <tr><td>Katalon Studio</td><td>Dibutuhkan untuk Katalon Capture.</td></tr>
+        <tr><td>Mapping</td><td>Katalon test case dipetakan ke internal QA-Web <code>testCaseId</code>.</td></tr>
+        <tr><td>Network</td><td>Katalon dan browser dapat mengakses relay URL.</td></tr>
       </tbody>
     </table>
-  </div>
 
-</body>
+    <table>
+      <thead>
+        <tr><th>Profile Variable</th><th>Nilai Umum</th><th>Fungsi</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>webQaEnabled</td><td>true</td><td>Mengaktifkan pengiriman event.</td></tr>
+        <tr><td>webQaRelayUrl</td><td>http://127.0.0.1:3001/log</td><td>Endpoint ingestion legacy-compatible.</td></tr>
+        <tr><td>webQaProjectId</td><td>kosong</td><td>Project QA-Web opsional.</td></tr>
+        <tr><td>webQaDefaultTestCaseId</td><td>kosong</td><td>Fallback sementara saja.</td></tr>
+        <tr><td>webQaCaptureNetwork</td><td>true</td><td>Mengaktifkan network capture.</td></tr>
+        <tr><td>webQaCaptureConsole</td><td>true</td><td>Mengaktifkan browser console capture.</td></tr>
+        <tr><td>webQaCaptureScreenshots</td><td>false / true</td><td>Mengaktifkan screenshot event.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>3. Architecture</h2>
+    <h3>Manual Capture</h3>
+    <pre class="flow">User starts Manual Capture
+    -> relay opens browser
+    -> CDP captures browser events
+    -> relay normalizes events
+    -> WebSocket broadcasts events
+    -> Devlog displays logs</pre>
+    <h3>Katalon Capture</h3>
+    <pre class="flow">Katalon runs test case
+    -> DevLogListener starts run
+    -> DevLog.groovy captures steps, network, and console
+    -> events are normalized
+    -> relay receives events through /log
+    -> WebSocket broadcasts events
+    -> Devlog displays logs</pre>
+
+    <h2>4. Manual Capture Guide</h2>
+    <ol>
+      <li>Jalankan QA-Web dan relay dengan <code>run-web-qa.bat</code>, atau jalankan <code>npm run dev</code> dan <code>node mini-services/ws-server.js</code> secara terpisah.</li>
+      <li>Buka detail test case yang ingin diuji, lalu buka tab <b>Devlog</b>.</li>
+      <li>Pastikan status relay aktif. Buka bagian <b>Manual Capture</b>.</li>
+      <li>Masukkan URL target, pilih browser atau mode recording bila tersedia, lalu klik <b>Start Capture</b>.</li>
+      <li>Lakukan interaksi pada browser yang dibuka relay.</li>
+      <li>Periksa tab <b>Network</b>, <b>Console</b>, dan <b>Execution</b>.</li>
+      <li>Gunakan filter Network seperti Document, Script, Image, dan Preflight bila diperlukan.</li>
+      <li>Klik <b>Stop Capture</b>, lalu periksa recording, evidence, dan history.</li>
+    </ol>
+    <div class="callout"><b>Manual Capture troubleshooting:</b> jika browser tidak terbuka, cek instalasi browser dan profile lock. Jika log kosong, restart relay dan ulangi capture setelah CDP terhubung.</div>
+
+    <h2>5. Katalon Capture Guide</h2>
+    <ol>
+      <li>Pastikan project memiliki <code>Keywords/com/utils/DevLog.groovy</code>, <code>Test Listeners/DevLogListener.groovy</code>, dan <code>Include/testcase-map.json</code>.</li>
+      <li>Pilih execution profile yang benar. Set <code>webQaEnabled=true</code> dan <code>webQaRelayUrl=http://127.0.0.1:3001/log</code>.</li>
+      <li>Set <code>webQaCaptureNetwork=true</code> dan screenshot sesuai kebutuhan.</li>
+      <li>Tambahkan mapping path test case Katalon ke internal QA-Web <code>testCaseId</code>.</li>
+      <li>Jalankan QA-Web dan relay, lalu buka Devlog test case yang sudah dipetakan.</li>
+      <li>Jalankan test case Katalon, misalnya <b>QA WEB automation</b>.</li>
+      <li>Verifikasi <code>run.started</code>, step, network, console, dan <code>run.finished</code>.</li>
+    </ol>
+    <pre>CustomKeywords.'com.utils.DevLog.step'('Opening checkout page')
+CustomKeywords.'com.utils.DevLog.network'('POST', checkoutUrl, checkoutResponse)
+CustomKeywords.'com.utils.DevLog.console'('WARNING', 'Optional warning message')
+CustomKeywords.'com.utils.DevLog.captureScreenshot'('checkout-result')</pre>
+    <p><code>DevLogListener</code> menangani start dan finish run secara otomatis. Jangan membuat <code>runId</code> baru untuk setiap step.</p>
+
+    <h2>6. Katalon Test Case Mapping</h2>
+    <p><code>Include/testcase-map.json</code> menghubungkan path test case Katalon dengan internal database ID test case QA-Web.</p>
+    <pre>{
+    "Test Cases/QA Web automation": "00000000-0000-0000-0000-000000000001",
+    "Test Cases/Checkout/Happy Path": "00000000-0000-0000-0000-000000000002"
+}</pre>
+    <p>Ganti placeholder dengan internal QA-Web <code>testCaseId</code>, bukan display ID seperti E-124. Jika mapping hilang, DevLog mengirim warning dan memakai ID bertanda <code>unmapped:&lt;katalon-path&gt;</code>, atau fallback sementara bila dikonfigurasi.</p>
+    <ol>
+      <li>Salin internal database ID dari detail test case QA-Web.</li>
+      <li>Salin path lengkap test case Katalon, termasuk prefix <code>Test Cases/</code>.</li>
+      <li>Tambahkan pasangan path dan ID, validasi JSON, lalu jalankan ulang test.</li>
+    </ol>
+    <div class="callout"><b>Jangan hardcode testCaseId pada script.</b> Mapping membuat script reusable dan mencegah event masuk ke test case yang salah.</div>
+
+    <h2>7. Event Contract</h2>
+    <p><code>AutomationEventV1</code> adalah format bersama untuk Manual Capture dan Katalon Capture.</p>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Arti</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>schemaVersion, eventId, runId</td><td>Versi kontrak, ID unik event, dan ID stabil untuk satu run.</td></tr>
+        <tr><td>mode, source, eventType</td><td>Mode capture, sumber event, dan jenis event.</td></tr>
+        <tr><td>testCaseId, testCaseName</td><td>Identitas test case QA-Web dan nama/path test case.</td></tr>
+        <tr><td>message, timestamp</td><td>Pesan dan waktu event.</td></tr>
+        <tr><td>url, method, responseStatus</td><td>Informasi network.</td></tr>
+        <tr><td>cdpAvailable, fallbackUsed</td><td>Status CDP dan fallback capture.</td></tr>
+        <tr><td>screenshotPath, metadata</td><td>Lokasi screenshot dan informasi tambahan.</td></tr>
+      </tbody>
+    </table>
+    <p>Event type umum: <code>run.started</code>, <code>run.finished</code>, <code>step</code>, <code>console</code>, <code>network.request</code>, <code>network.response</code>, <code>screenshot</code>, <code>warning</code>, dan <code>error</code>.</p>
+
+    <h2>8. Devlog Page</h2>
+    <table>
+      <thead>
+        <tr><th>Tab</th><th>Isi</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Execution</td><td>Run start, run finish, step, warning, error, screenshot, dan evidence.</td></tr>
+        <tr><td>Console</td><td>Browser console activity.</td></tr>
+        <tr><td>Network</td><td>Request dan response, status, URL, header, payload, serta kategori resource.</td></tr>
+        <tr><td>Current / Previous</td><td>Run terbaru atau history sebelumnya.</td></tr>
+      </tbody>
+    </table>
+    <p>Frontend menerima envelope baru <code>automation.event</code> dan payload legacy <code>log</code>. Baris duplikat dicegah menggunakan <code>eventId</code>, lalu fingerprint event sebagai fallback.</p>
+
+    <h2 class="page-break">9. Troubleshooting</h2>
+    <table class="table-troubleshooting">
+      <thead>
+        <tr><th>Problem</th><th>Possible Cause</th><th>How To Fix</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Devlog tidak menampilkan log</td><td>Relay offline atau WebSocket belum terhubung</td><td>Restart relay lalu refresh QA-Web.</td></tr>
+        <tr><td>Network event tidak muncul</td><td>CDP gagal, network capture mati, atau filter menyembunyikan resource</td><td>Set network capture aktif, cek CDP, dan aktifkan filter yang sesuai.</td></tr>
+        <tr><td>Console event tidak muncul</td><td>Browser log tidak tersedia</td><td>Cek browser, driver, dan Desired Capabilities.</td></tr>
+        <tr><td>Katalon berjalan tetapi Devlog kosong</td><td>Capture mati, URL salah, atau mapping hilang</td><td>Perbaiki profile, URL, dan mapping.</td></tr>
+        <tr><td>Test case yang salah menerima log</td><td>Mapping atau fallback ID salah</td><td>Perbaiki mapping dan kosongkan fallback bila tidak diperlukan.</td></tr>
+        <tr><td>Relay port sudah dipakai</td><td>Proses lain memakai port 3001</td><td>Hentikan proses tersebut lalu restart relay.</td></tr>
+        <tr><td>CDP attach gagal</td><td>Driver tidak mendukung HasDevTools atau library tidak cocok</td><td>Gunakan browser/driver dan Selenium DevTools yang kompatibel.</td></tr>
+        <tr><td>fallbackUsed=true</td><td>DevTools tidak tersedia</td><td>Cek metadata attach error; fallback network dapat parsial.</td></tr>
+        <tr><td>testcase-map.json mapping missing</td><td>File atau path tidak cocok</td><td>Buat mapping dengan path lengkap dan validasi JSON.</td></tr>
+        <tr><td>webQaEnabled=false</td><td>Profile salah</td><td>Gunakan profile yang benar dan aktifkan variable.</td></tr>
+        <tr><td>webQaRelayUrl salah</td><td>URL tidak menuju /log</td><td>Gunakan endpoint relay yang benar.</td></tr>
+        <tr><td>Browser logs unavailable</td><td>Logging capability belum aktif</td><td>Aktifkan browser/performance logging capability.</td></tr>
+        <tr><td>Log duplikat muncul</td><td>Producer tidak mempertahankan fingerprint</td><td>Pertahankan eventId, timestamp, source, dan eventType.</td></tr>
+        <tr><td>Screenshot hilang</td><td>Capture mati atau browser belum terbuka</td><td>Aktifkan screenshot dan panggil setelah browser tersedia.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>10. Validation Checklist</h2>
+    <div class="checklist">
+      <h3>Manual Capture</h3>
+      <p>[ ] Relay berjalan &nbsp; [ ] Browser terbuka &nbsp; [ ] CDP bekerja &nbsp; [ ] Network muncul &nbsp; [ ] Console muncul &nbsp; [ ] Devlog benar &nbsp; [ ] Stop Capture bekerja</p>
+      <h3>Katalon Capture</h3>
+      <p>[ ] Profile benar &nbsp; [ ] Mapping benar &nbsp; [ ] Automation berjalan &nbsp; [ ] runId stabil &nbsp; [ ] mode=katalon &nbsp; [ ] testCaseId benar &nbsp; [ ] Network muncul &nbsp; [ ] Console muncul &nbsp; [ ] run.finished muncul</p>
+    </div>
+
+    <h2>11. Best Practices</h2>
+    <ul>
+      <li>Selalu gunakan <code>testcase-map.json</code> dan jangan hardcode <code>testCaseId</code>.</li>
+      <li>Gunakan satu <code>runId</code> stabil per run.</li>
+      <li>Restart relay dengan sengaja sebelum validasi besar.</li>
+      <li>Biarkan Manual Capture dan Katalon Capture terpisah pada capture layer.</li>
+      <li>Jangan mengubah perilaku CDP relay tanpa menguji Manual Capture.</li>
+      <li>Jangan menghapus kompatibilitas <code>/log</code> sampai migrasi selesai.</li>
+    </ul>
+
+    <h2>12. For Developers</h2>
+    <table>
+      <thead>
+        <tr><th>QA-Web File</th><th>Tanggung Jawab</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>mini-services/ws-server.js</td><td>Relay HTTP, WebSocket broadcast, Manual Capture, dan JSONL storage.</td></tr>
+        <tr><td>mini-services/automation-event.js</td><td>Normalisasi AutomationEventV1.</td></tr>
+        <tr><td>mini-services/automation-event.test.js</td><td>Test normalizer relay.</td></tr>
+        <tr><td>src/lib/client/automation/automation-event-client.ts</td><td>Parser dan adapter event frontend.</td></tr>
+        <tr><td>src/lib/client/automation/automation-event-client.test.ts</td><td>Test parser frontend.</td></tr>
+        <tr><td>src/hooks/useAutomationLogs.ts</td><td>WebSocket consumption dan visible log deduplication.</td></tr>
+        <tr><td>docs/automation-event-contract.md</td><td>Kontrak event teknis.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr><th>Katalon File</th><th>Tanggung Jawab</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Scripts/QA Web automation/Script1777866267090.groovy</td><td>Flow automation dan pemanggilan step/network penting.</td></tr>
+        <tr><td>Test Listeners/DevLogListener.groovy</td><td>Memulai dan menyelesaikan run.</td></tr>
+        <tr><td>Keywords/com/utils/DevLog.groovy</td><td>Capture, normalisasi, dan pengiriman event.</td></tr>
+        <tr><td>Include/testcase-map.json</td><td>Mapping Katalon path ke QA-Web testCaseId.</td></tr>
+        <tr><td>Profiles/default.glbl</td><td>Konfigurasi capture.</td></tr>
+        <tr><td>README-AUTOMATION-CAPTURE.md</td><td>Catatan integrasi Katalon.</td></tr>
+      </tbody>
+    </table>
+    <p>Untuk menambah event type baru: perbarui kontrak relay, normalizer, parser frontend, producer Katalon bila perlu, lalu tambahkan test dan jalankan <code>npm test</code>, <code>npm run lint</code>, dan <code>npx tsc --noEmit</code>.</p>
+
+    <span class="small">Sumber lengkap dan mudah diedit: docs/automation-capture-user-guide.md</span>
+
+  </div> </body>
 </html>

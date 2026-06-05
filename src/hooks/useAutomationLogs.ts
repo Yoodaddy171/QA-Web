@@ -33,6 +33,8 @@ export interface ManualRecordingVideo {
   url?: string;
   mimeType?: string;
   startedAtRelativeMs?: number;
+  startedAt?: string;
+  endedAt?: string | null;
   durationMs?: number;
   width?: number;
   height?: number;
@@ -43,12 +45,16 @@ export interface ManualRecordingVideo {
 }
 
 export interface ManualRecordingMeta {
+  recordingId?: string;
+  runId?: string;
   mode?: ManualCaptureMode;
   sessionId: string;
   testCaseId: string;
   targetUrl?: string | null;
   startedAt: string;
   stoppedAt?: string | null;
+  recordingStartedAt?: string;
+  recordingEndedAt?: string | null;
   frameIntervalMs: number;
   keyframeIntervalMs?: number;
   status: 'recording' | 'stopped' | 'stopped_limit' | 'interrupted';

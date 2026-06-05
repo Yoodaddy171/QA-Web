@@ -51,6 +51,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "build/**",
     "next-env.d.ts",
     "examples/**",
+    "WEB QA Old/**",
     "skills",
     "mini-services/**",
     "public/qa-capture.js",

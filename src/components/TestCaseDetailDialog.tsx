@@ -19,6 +19,12 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TestCase } from '@/components/TestCaseTable';
 import type { ManualCaptureBrowserMode, ManualCaptureMode, ManualRecordingMeta } from '@/hooks/useAutomationLogs';
+import {
+  buildSyncedVideoEvents,
+  buildVideoEventMarkers,
+  getNearestVideoEvent,
+  type SyncedVideoEvent,
+} from '@/lib/client/automation/video-event-sync';
 import { cn } from '@/lib/utils';
 
 type DevLogTab = 'console' | 'network' | 'execution';
@@ -34,10 +40,16 @@ type SelectedFullscreenLog = {
 
 interface LogEntry {
   id?: string;
+  eventId?: string;
+  runId?: string;
+  mode?: 'manual' | 'katalon' | 'unknown';
+  source?: string;
   timestamp?: string | number | Date;
   relativeMs?: number;
   level?: string;
+  eventType?: string;
   log?: unknown;
+  message?: unknown;
   isConsole?: boolean;
   isNetwork?: boolean;
   network?: {
@@ -366,6 +378,12 @@ const getStatusBucket = (status?: number) => {
   return 'other';
 };
 
+const normalizedLogRelativeMs = (relativeMs?: number) => (
+  typeof relativeMs === 'number' && Number.isFinite(relativeMs) && relativeMs >= 0 && relativeMs <= 12 * 60 * 60 * 1000
+    ? relativeMs
+    : undefined
+);
+
 const formatDateTime = (dateStr?: string | null) => {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
@@ -552,6 +570,7 @@ export function TestCaseDetailDialog({
   const [manualCaptureBrowserMode, setManualCaptureBrowserMode] = useState<ManualCaptureBrowserMode>('clean');
   const [manualCaptureMode, setManualCaptureMode] = useState<ManualCaptureMode>('frame');
   const [recordingSeekMs, setRecordingSeekMs] = useState(0);
+  const [recordingVideoDurationMs, setRecordingVideoDurationMs] = useState<{ key: string; durationMs: number } | null>(null);
   const [recordingSeekApprox, setRecordingSeekApprox] = useState(false);
   const [recordingZoom, setRecordingZoom] = useState(1);
   const [isRecordingFullscreen, setIsRecordingFullscreen] = useState(false);
@@ -564,6 +583,7 @@ export function TestCaseDetailDialog({
   const [networkFilters, setNetworkFilters] = useState<NetworkFilterState>(DEFAULT_NETWORK_FILTERS);
   const [fullscreenLogFilter, setFullscreenLogFilter] = useState<FullscreenLogFilter>('all');
   const [selectedFullscreenLog, setSelectedFullscreenLog] = useState<SelectedFullscreenLog>(null);
+  const [selectedSyncedEventId, setSelectedSyncedEventId] = useState<string | null>(null);
   const [syncedNetworkLogIds, setSyncedNetworkLogIds] = useState<string[]>([]);
   const [copiedEvidence, setCopiedEvidence] = useState(false);
   const recordingViewportRef = useRef<HTMLDivElement>(null);
@@ -691,13 +711,53 @@ export function TestCaseDetailDialog({
   const manualRecordingTargetUrl = manualRecording?.targetUrl || 'Manual capture target';
   const manualRecordingVideoStatus = manualRecording?.video?.status;
   const isVideoFinalizing = isProcessingManualRecording || ['starting', 'recording', 'finalizing'].includes(manualRecordingVideoStatus || '');
+  const recordingVideoKey = `${manualRecording?.sessionId ?? 'none'}:${manualRecording?.video?.url ?? 'none'}`;
+  const recordingTimelineBounds = useMemo(() => {
+    const values = liveLogs
+      .map((log) => normalizedLogRelativeMs(log.relativeMs))
+      .filter((value): value is number => typeof value === 'number');
+    if (!values.length) return { min: 0, max: 0 };
+    return {
+      min: Math.max(0, Math.min(...values) - 10000),
+      max: Math.max(...values),
+    };
+  }, [liveLogs]);
+  const getRecordingVideoDurationMs = () => {
+    if (recordingVideoDurationMs?.key === recordingVideoKey && recordingVideoDurationMs.durationMs > 0) {
+      return recordingVideoDurationMs.durationMs;
+    }
+    if (typeof manualRecording?.video?.durationMs === 'number' && manualRecording.video.durationMs > 0) return manualRecording.video.durationMs;
+    return 0;
+  };
+  const syncedVideoEvents = useMemo(() => (
+    buildSyncedVideoEvents(liveLogs, manualRecording, {
+      measuredDurationMs: recordingVideoDurationMs?.key === recordingVideoKey ? recordingVideoDurationMs.durationMs : undefined,
+    })
+      .filter((event) => typeof event.clampedOffsetMs === 'number')
+      .slice(0, 80)
+  ), [liveLogs, manualRecording, recordingVideoDurationMs, recordingVideoKey]);
+  const recordingVideoDurationForMarkersMs = getRecordingVideoDurationMs();
+  const syncedVideoMarkers = useMemo(() => (
+    buildVideoEventMarkers(syncedVideoEvents, recordingVideoDurationForMarkersMs)
+  ), [recordingVideoDurationForMarkersMs, syncedVideoEvents]);
+  const getLogVideoMs = (log: Pick<LogEntry, 'relativeMs'>) => {
+    const relativeMs = normalizedLogRelativeMs(log.relativeMs);
+    const durationMs = getRecordingVideoDurationMs();
+    if (typeof relativeMs !== 'number') return undefined;
+    if (!manualRecording?.video || !hasManualRecordingVideo) return relativeMs;
+    const span = Math.max(1, recordingTimelineBounds.max - recordingTimelineBounds.min);
+    const mapped = Math.max(0, relativeMs - recordingTimelineBounds.min) * durationMs / span;
+    return durationMs > 0 ? Math.min(durationMs, mapped) : mapped;
+  };
   const getVideoRelativeMs = (relativeMs: number) => {
     if (!manualRecording?.video || !hasManualRecordingVideo) return relativeMs;
-    const startedAtRelativeMs = manualRecording.video.startedAtRelativeMs || 0;
-    const durationMs = typeof manualRecording.video.durationMs === 'number' ? manualRecording.video.durationMs : Number.POSITIVE_INFINITY;
-    return Math.max(0, Math.min(durationMs, relativeMs - startedAtRelativeMs));
+    const durationMs = getRecordingVideoDurationMs();
+    return durationMs > 0 ? Math.max(0, Math.min(durationMs, relativeMs)) : Math.max(0, relativeMs);
   };
   const recordingDisplayMs = getVideoRelativeMs(recordingSeekMs);
+  const currentSyncedVideoEvent = useMemo(() => (
+    getNearestVideoEvent(syncedVideoEvents, recordingDisplayMs, 1500)
+  ), [recordingDisplayMs, syncedVideoEvents]);
   const syncedNetworkLogIdSet = useMemo(() => new Set(syncedNetworkLogIds), [syncedNetworkLogIds]);
 
   const formatRelativeTime = (relativeMs?: number) => {
@@ -708,17 +768,28 @@ export function TestCaseDetailDialog({
     const seconds = totalSeconds % 60;
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
   };
+  const formatLogRecordingTime = (log: Pick<LogEntry, 'relativeMs'>) => (
+    formatRelativeTime(hasManualRecordingVideo ? getLogVideoMs(log) : normalizedLogRelativeMs(log.relativeMs))
+  );
+  const handleRecordingVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    const durationSeconds = event.currentTarget.duration;
+    if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
+      setRecordingVideoDurationMs({
+        key: recordingVideoKey,
+        durationMs: Math.round(durationSeconds * 1000),
+      });
+    }
+  };
 
   const seekRecordingFromLog = (log: LogEntry) => {
     if (typeof log.relativeMs !== 'number') return;
-    setRecordingSeekMs(log.relativeMs);
+    const targetMs = hasManualRecordingVideo ? getLogVideoMs(log) : log.relativeMs;
+    if (typeof targetMs !== 'number') return;
+    setRecordingSeekMs(targetMs);
     setRecordingSeekApprox(false);
     if (!manualRecording?.video || !hasManualRecordingVideo) return;
-    const startedAtRelativeMs = manualRecording.video.startedAtRelativeMs || 0;
-    const durationSeconds = typeof manualRecording.video.durationMs === 'number' ? manualRecording.video.durationMs / 1000 : Number.POSITIVE_INFINITY;
-    const rawTargetSeconds = (log.relativeMs - startedAtRelativeMs) / 1000;
-    const targetSeconds = Math.max(0, Math.min(durationSeconds, rawTargetSeconds));
-    setRecordingSeekApprox(Math.abs(rawTargetSeconds - targetSeconds) > 0.5);
+    const durationSeconds = getRecordingVideoDurationMs() / 1000;
+    const targetSeconds = Math.max(0, Math.min(durationSeconds || Number.POSITIVE_INFINITY, targetMs / 1000));
     for (const player of [recordingVideoRef.current, fullscreenRecordingVideoRef.current]) {
       if (!player) continue;
       try {
@@ -729,18 +800,15 @@ export function TestCaseDetailDialog({
 
   const handleFullscreenVideoTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
     if (!manualRecording?.video || !hasManualRecordingVideo) return;
-    const startedAtRelativeMs = manualRecording.video.startedAtRelativeMs || 0;
-    const currentRelativeMs = startedAtRelativeMs + (event.currentTarget.currentTime * 1000);
-    const currentSecond = Math.floor(currentRelativeMs / 1000);
+    const currentVideoMs = event.currentTarget.currentTime * 1000;
     const matchingIds = fullscreenNetworkGroups
       .filter((group) => group.entries.some((entry) => (
-        typeof entry.log.relativeMs === 'number'
-        && Math.floor(entry.log.relativeMs / 1000) === currentSecond
+        Math.abs((getLogVideoMs(entry.log) ?? Number.POSITIVE_INFINITY) - currentVideoMs) <= 650
       )))
       .map((group) => `fullscreen-${group.id}`);
     const previousKey = syncedNetworkLogIds.join('|');
     const nextKey = matchingIds.join('|');
-    setRecordingSeekMs(currentRelativeMs);
+    setRecordingSeekMs(currentVideoMs);
     setRecordingSeekApprox(false);
     if (previousKey === nextKey) return;
     setSyncedNetworkLogIds(matchingIds);
@@ -763,7 +831,7 @@ export function TestCaseDetailDialog({
     setSelectedFullscreenLog({
       id: logId,
       kind: 'network',
-      relativeMs: net.relativeMs,
+      relativeMs: getLogVideoMs(net) ?? net.relativeMs,
       text: `${getNetworkMethod(net.network)} ${getNetworkStatus(net.network)} ${net.network.url}`,
       detail: {
         category: meta.label,
@@ -784,7 +852,7 @@ export function TestCaseDetailDialog({
     setSelectedFullscreenLog({
       id: logId,
       kind: 'console',
-      relativeMs: log.relativeMs,
+      relativeMs: getLogVideoMs(log) ?? log.relativeMs,
       text: String(typeof log.log === 'object' ? JSON.stringify(log.log) : log.log ?? ''),
       detail: log.log,
     });
@@ -806,6 +874,22 @@ export function TestCaseDetailDialog({
     return network.status < 400
       ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
       : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-400';
+  };
+
+  const getSyncedEventSeverityClass = (event: SyncedVideoEvent) => {
+    if (event.severity === 'error') return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-950/30 dark:text-rose-200';
+    if (event.severity === 'warning') return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-200';
+    if (event.severity === 'success') return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-200';
+    return 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-200';
+  };
+
+  const getSyncedMarkerClass = (event: SyncedVideoEvent) => {
+    if (event.severity === 'error') return 'border-rose-200 bg-rose-500 shadow-rose-500/40';
+    if (event.severity === 'warning') return 'border-amber-200 bg-amber-400 shadow-amber-400/40';
+    if (event.severity === 'success') return 'border-emerald-200 bg-emerald-500 shadow-emerald-500/40';
+    if (event.category === 'step') return 'border-violet-200 bg-violet-500 shadow-violet-500/40';
+    if (event.category === 'screenshot' || event.category === 'evidence') return 'border-cyan-200 bg-cyan-500 shadow-cyan-500/40';
+    return 'border-indigo-200 bg-indigo-500 shadow-indigo-500/40';
   };
 
   const getNetworkDuration = (network: NonNullable<LogEntry['network']>) => (
@@ -874,6 +958,7 @@ export function TestCaseDetailDialog({
     setRecordingZoom(1);
     setFullscreenLogFilter('all');
     setSelectedFullscreenLog(null);
+    setSelectedSyncedEventId(null);
     setSyncedNetworkLogIds([]);
     setCopiedEvidence(false);
     setIsClosingRecordingFullscreen(false);
@@ -975,6 +1060,21 @@ export function TestCaseDetailDialog({
   const openEvidenceReport = () => {
     if (!viewTestCase) return;
     window.location.href = `/api/evidence?testCaseId=${encodeURIComponent(viewTestCase.id)}&download=1`;
+  };
+  const seekRecordingFromSyncedEvent = (event: SyncedVideoEvent) => {
+    if (typeof event.clampedOffsetMs !== 'number') return;
+    setSelectedSyncedEventId(event.id);
+    setRecordingSeekMs(event.clampedOffsetMs);
+    setRecordingSeekApprox(event.isBeforeVideo || event.isAfterVideo);
+    if (!manualRecording?.video || !hasManualRecordingVideo) return;
+    const durationSeconds = getRecordingVideoDurationMs() / 1000;
+    const targetSeconds = Math.max(0, Math.min(durationSeconds || Number.POSITIVE_INFINITY, event.clampedOffsetMs / 1000));
+    for (const player of [recordingVideoRef.current, fullscreenRecordingVideoRef.current]) {
+      if (!player) continue;
+      try {
+        player.currentTime = targetSeconds;
+      } catch {}
+    }
   };
 
   useEffect(() => {
@@ -1585,6 +1685,7 @@ export function TestCaseDetailDialog({
                                     src={manualRecordingVideoUrl}
                                     controls
                                     preload="metadata"
+                                    onLoadedMetadata={handleRecordingVideoLoadedMetadata}
                                     onTimeUpdate={handleFullscreenVideoTimeUpdate}
                                     className="aspect-video w-full bg-black object-contain opacity-90 group-hover:opacity-100 transition-opacity"
                                   />
@@ -2626,7 +2727,7 @@ export function TestCaseDetailDialog({
               <div
                 ref={recordingViewportRef}
                 className={cn(
-                  "flex h-full min-h-0 overflow-auto bg-slate-950 p-4",
+                  "relative flex h-full min-h-0 overflow-auto bg-slate-950 p-4",
                   recordingZoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'items-center justify-center'
                 )}
                 onPointerDown={startRecordingPan}
@@ -2641,6 +2742,7 @@ export function TestCaseDetailDialog({
                     src={manualRecordingVideoUrl}
                     controls
                     preload="metadata"
+                    onLoadedMetadata={handleRecordingVideoLoadedMetadata}
                     onTimeUpdate={handleFullscreenVideoTimeUpdate}
                     className="m-auto max-h-full max-w-full rounded-lg bg-black shadow-2xl"
                   />
@@ -2666,6 +2768,30 @@ export function TestCaseDetailDialog({
                     />
                   </div>
                 ) : null}
+                {hasManualRecordingVideo && (
+                  <div className="pointer-events-none absolute left-5 top-5 max-w-[360px] rounded-xl border border-white/15 bg-black/70 p-3 text-white shadow-2xl backdrop-blur">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="rounded-md border-white/20 bg-white/10 text-[10px] font-black text-white">
+                        {formatRelativeTime(recordingDisplayMs)}
+                      </Badge>
+                      {currentSyncedVideoEvent && (
+                        <Badge variant="outline" className={cn("rounded-md text-[9px] font-black uppercase tracking-widest", getSyncedEventSeverityClass(currentSyncedVideoEvent))}>
+                          {currentSyncedVideoEvent.severity}
+                        </Badge>
+                      )}
+                    </div>
+                    {currentSyncedVideoEvent && (
+                      <div className="mt-2 min-w-0">
+                        <p className="truncate text-[10px] font-black uppercase tracking-widest text-white/70">
+                          {currentSyncedVideoEvent.label} / {currentSyncedVideoEvent.category}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-white">
+                          {currentSyncedVideoEvent.summary}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               </ResizablePanel>
               <ResizableHandle withHandle />
@@ -2696,6 +2822,34 @@ export function TestCaseDetailDialog({
                     </Button>
                   </div>
                 </div>
+                {hasManualRecordingVideo && (
+                  <div className="mb-3 rounded-lg border border-border bg-muted/40 p-2">
+                    <div className="mb-1 flex items-center justify-between gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                      <span>Event Markers</span>
+                      <span>{syncedVideoMarkers.length}</span>
+                    </div>
+                    <div className="relative h-8 rounded-md border border-border bg-background">
+                      <div className="absolute left-2 right-2 top-1/2 h-1 -translate-y-1/2 rounded-full bg-muted" />
+                      {syncedVideoMarkers.map((marker) => {
+                        const selected = selectedSyncedEventId === marker.event.id || currentSyncedVideoEvent?.id === marker.event.id;
+                        return (
+                          <button
+                            key={`marker-${marker.event.id}`}
+                            type="button"
+                            title={`${marker.event.label} - ${marker.event.summary}`}
+                            className={cn(
+                              "absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-lg transition hover:scale-125",
+                              getSyncedMarkerClass(marker.event),
+                              selected && "ring-2 ring-white ring-offset-2 ring-offset-background"
+                            )}
+                            style={{ left: `${marker.leftPercent}%` }}
+                            onClick={() => seekRecordingFromSyncedEvent(marker.event)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div
                   ref={fullscreenTimelineRef}
                   className="flex gap-1.5 overflow-x-auto pb-1"
@@ -2902,6 +3056,46 @@ export function TestCaseDetailDialog({
                 )}
               </AnimatePresence>
 
+              {hasManualRecordingVideo && (
+                <div className="shrink-0 border-b border-border bg-background px-3 py-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Synced Events</p>
+                    <span className="text-[10px] font-bold text-muted-foreground">{syncedVideoEvents.length} events</span>
+                  </div>
+                  {syncedVideoEvents.length === 0 ? (
+                    <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-[10px] font-semibold text-muted-foreground">
+                      Belum ada event dengan timestamp yang bisa disinkronkan ke video.
+                    </p>
+                  ) : (
+                    <div className="flex max-h-28 gap-2 overflow-x-auto pb-1">
+                      {syncedVideoEvents.slice(0, 20).map((event) => (
+                        <button
+                          key={event.id}
+                          type="button"
+                          className={cn(
+                            "min-w-[180px] rounded-lg border px-2 py-1.5 text-left shadow-sm transition hover:scale-[1.01]",
+                            getSyncedEventSeverityClass(event),
+                            selectedSyncedEventId === event.id && "ring-2 ring-indigo-300 ring-offset-1 ring-offset-background"
+                          )}
+                          onClick={() => seekRecordingFromSyncedEvent(event)}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-[9px] font-black uppercase tracking-widest">{event.label}</span>
+                            <span className="font-mono text-[10px] font-black">{formatRelativeTime(event.clampedOffsetMs)}</span>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-[10px] font-semibold">{event.summary}</p>
+                          {(event.isBeforeVideo || event.isAfterVideo) && (
+                            <p className="mt-1 text-[9px] font-black uppercase tracking-widest opacity-80">
+                              {event.isBeforeVideo ? 'Before video' : 'After video'}
+                            </p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="min-h-0 flex-1 overflow-y-auto bg-muted/25">
                 {activeDevLogTab === 'network' ? (
                   <div className="space-y-2 p-3">
@@ -2959,7 +3153,7 @@ export function TestCaseDetailDialog({
                                 </span>
                               </span>
                               <span className="col-span-2 flex items-center justify-end gap-2 text-right text-[10px] font-bold text-muted-foreground">
-                                <span>{formatRelativeTime(net.relativeMs)}</span>
+                                <span>{formatLogRecordingTime(net)}</span>
                                 {isSyncedWithVideo && (
                                   <span className="rounded-full border border-teal-200 bg-teal-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-teal-700 dark:border-teal-400/30 dark:bg-teal-500/15 dark:text-teal-200">
                                     Now
@@ -3006,7 +3200,7 @@ export function TestCaseDetailDialog({
                                               onClick={() => seekRecordingFromLog(entry.log)}
                                             >
                                               <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
-                                              <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
+                                              <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatLogRecordingTime(entry.log)}</span>
                                               <span className="truncate text-foreground">{getNetworkDuration(entry.log.network)}</span>
                                             </button>
                                           ))}
@@ -3056,7 +3250,7 @@ export function TestCaseDetailDialog({
                               }
                             }}
                           >
-                            <span className="col-span-2 text-[10px] font-bold text-muted-foreground">{formatRelativeTime(log.relativeMs)}</span>
+                            <span className="col-span-2 text-[10px] font-bold text-muted-foreground">{formatLogRecordingTime(log)}</span>
                             <span className={cn("col-span-8 break-all text-[11px]", isError ? 'text-rose-700 dark:text-rose-300' : isWarning ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300/90')}>
                               {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 240)}...` : String(log.log ?? '')}
                             </span>

@@ -4,6 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { spawn, spawnSync } = require('child_process');
 const {
   normalizeAutomationEvent,
@@ -22,6 +23,12 @@ const wss = new WebSocketServer({ noServer: true });
 const clients = new Set();
 const activeManualSessions = new Map();
 const cdpSessions = new Map();
+
+function createRecordingId() {
+  return typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : crypto.randomBytes(16).toString('hex');
+}
 
 // Ensure logs directory exists
 const LOGS_DIR = path.join(__dirname, 'logs');
@@ -368,11 +375,25 @@ function createCdpClient(wsUrl) {
   let nextId = 1;
   const pending = new Map();
 
-  const send = (method, params = {}) => new Promise((resolve, reject) => {
+  const rejectPending = (error) => {
+    for (const [id, promise] of pending.entries()) {
+      clearTimeout(promise.timer);
+      promise.reject(error);
+      pending.delete(id);
+    }
+  };
+
+  const send = (method, params = {}, timeoutMs = 5000) => new Promise((resolve, reject) => {
     const id = nextId++;
-    pending.set(id, { resolve, reject });
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      reject(new Error(`CDP ${method} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    pending.set(id, { resolve, reject, timer });
     ws.send(JSON.stringify({ id, method, params }), (error) => {
       if (error) {
+        const promise = pending.get(id);
+        if (promise) clearTimeout(promise.timer);
         pending.delete(id);
         reject(error);
       }
@@ -384,6 +405,7 @@ function createCdpClient(wsUrl) {
       const message = JSON.parse(data.toString());
       if (message.id && pending.has(message.id)) {
         const promise = pending.get(message.id);
+        clearTimeout(promise.timer);
         pending.delete(message.id);
         if (message.error) promise.reject(new Error(message.error.message));
         else promise.resolve(message.result);
@@ -392,6 +414,9 @@ function createCdpClient(wsUrl) {
       console.error('CDP message parse error:', error.message);
     }
   });
+
+  ws.on('close', () => rejectPending(new Error('CDP connection closed')));
+  ws.on('error', error => rejectPending(error));
 
   return {
     ws,
@@ -520,6 +545,13 @@ function getNumberEnv(name, fallback, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function getEncodedVideoDurationMs(recording) {
+  const fps = Number(recording?.video?.fps || 0);
+  const frameCount = Number(recording?.videoFrameIndex || 0);
+  if (fps > 0 && frameCount > 0) return Math.round((frameCount / fps) * 1000);
+  return Math.max(0, Number(recording?.video?.durationMs || 0));
+}
+
 function shouldSaveKeyframe(recording, reason) {
   if (recording.mode === 'frame') return true;
   if (recording.mode === 'video' && recording.video?.status !== 'failed') return false;
@@ -564,12 +596,16 @@ async function drawClickMarkers(imageBuffer, markers) {
 function writeRecordingMetadata(recording) {
   if (!recording) return;
   const payload = {
+    recordingId: recording.recordingId,
+    runId: recording.runId,
     mode: recording.mode || 'frame',
     sessionId: recording.sessionId,
     testCaseId: recording.testCaseId,
     targetUrl: recording.targetUrl,
     startedAt: recording.startedAt,
     stoppedAt: recording.stoppedAt || null,
+    recordingStartedAt: recording.recordingStartedAt || recording.startedAt,
+    recordingEndedAt: recording.recordingEndedAt || recording.stoppedAt || null,
     frameIntervalMs: recording.frameIntervalMs,
     keyframeIntervalMs: recording.keyframeIntervalMs,
     status: recording.status,
@@ -597,10 +633,11 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
   const frameIntervalMs = Number.isFinite(configuredInterval)
     ? Math.min(1000, Math.max(150, configuredInterval))
     : 300;
+  const captureTimeoutMs = getNumberEnv('QA_CAPTURE_TIMEOUT_MS', 2500, 500, 10000);
   const keyframeIntervalMs = getNumberEnv('QA_KEYFRAME_INTERVAL_MS', 2000, 500, 10000);
   const videoWidth = getNumberEnv('QA_VIDEO_WIDTH', 1280, 640, 3840);
   const videoHeight = getNumberEnv('QA_VIDEO_HEIGHT', 720, 360, 2160);
-  const videoFps = getNumberEnv('QA_VIDEO_FPS', 30, 1, 60);
+  const videoFps = getNumberEnv('QA_VIDEO_FPS', 12, 1, 30);
   const videoBitrateMbps = getNumberEnv('QA_VIDEO_BITRATE_MBPS', 4, 1, 20);
   const videoMaxDurationMs = getNumberEnv('QA_VIDEO_MAX_DURATION_MS', 300000, 10000, 3600000);
   const configuredQuality = Number(process.env.QA_RECORDING_JPEG_QUALITY);
@@ -612,12 +649,16 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
   fs.mkdirSync(paths.videoDir, { recursive: true });
 
   const recording = {
+    recordingId: createRecordingId(),
+    runId: session.runId || session.sessionId,
     mode,
     sessionId: session.sessionId,
     testCaseId: session.testCaseId,
     targetUrl,
     startedAt: session.startedAt,
     stoppedAt: null,
+    recordingStartedAt: session.startedAt,
+    recordingEndedAt: null,
     frameIntervalMs,
     keyframeIntervalMs,
     status: 'recording',
@@ -631,6 +672,7 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
     ffmpeg: null,
     videoFrameIndex: 0,
     videoMaxDurationTimer: null,
+    videoBackpressured: false,
     warnings: [],
     capturing: false,
     pendingCapture: false,
@@ -661,6 +703,8 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
       file,
       mimeType: 'video/webm',
       startedAtRelativeMs: getRelativeMs(session),
+      startedAt: new Date().toISOString(),
+      endedAt: null,
       durationMs: 0,
       width: videoWidth,
       height: videoHeight,
@@ -680,6 +724,9 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
         '-r', String(videoFps),
         '-c:v', 'libvpx',
         '-b:v', `${videoBitrateMbps}M`,
+        '-deadline', 'realtime',
+        '-cpu-used', '6',
+        '-threads', '2',
         '-an',
         filePath,
       ];
@@ -703,9 +750,13 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
         recording.warnings.push(`Video pipe failed: ${error.message}`);
         ensureKeyframeFallback();
       });
+      ffmpeg.stdin.on('drain', () => {
+        recording.videoBackpressured = false;
+      });
       ffmpeg.on('close', () => {
         if (fs.existsSync(filePath)) {
           recording.video.sizeBytes = fs.statSync(filePath).size;
+          recording.video.durationMs = getEncodedVideoDurationMs(recording);
           if (recording.video.status !== 'failed') recording.video.status = 'ready';
         } else {
           recording.video.status = 'failed';
@@ -736,7 +787,7 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
             return { state, pendingImages, fontsReady };
           })()`,
           returnByValue: true,
-        });
+        }, captureTimeoutMs);
         const value = result?.result?.value || {};
         if (quietEnough && value.state === 'complete' && value.pendingImages === 0 && value.fontsReady) return;
       } catch (_) {
@@ -757,21 +808,19 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
 
     recording.capturing = true;
     recording.pendingCapture = false;
-    if (reason !== 'video-frame') await waitForPageSettled();
-    const settledSession = getManualSession(session.sessionId);
-    if (!settledSession || (!settledSession.active && reason !== 'final')) {
-      recording.capturing = false;
-      return;
-    }
-    const captureStartedRelativeMs = getRelativeMs(currentSession);
-    const captureStartedAt = Date.now();
-    recording.lastCaptureStartedAt = captureStartedAt;
     try {
+      if (reason !== 'video-frame') await waitForPageSettled();
+      const settledSession = getManualSession(session.sessionId);
+      if (!settledSession || (!settledSession.active && reason !== 'final')) return;
+
+      const captureStartedRelativeMs = getRelativeMs(currentSession);
+      const captureStartedAt = Date.now();
+      recording.lastCaptureStartedAt = captureStartedAt;
       const result = await cdp.send('Page.captureScreenshot', {
         format: 'jpeg',
         quality: jpegQuality,
         captureBeyondViewport: false,
-      });
+      }, captureTimeoutMs);
       if (!result?.data) return;
       const capturedSession = getManualSession(session.sessionId);
       if (!capturedSession || (!capturedSession.active && reason !== 'final')) return;
@@ -784,17 +833,25 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
         .filter(marker => Math.abs(relativeMs - marker.relativeMs) <= markerWindowMs)
         .slice(-3);
 
-      if (recording.video?.status === 'recording' && recording.ffmpeg?.stdin?.writable) {
+      if (recording.video?.status === 'recording' && recording.ffmpeg?.stdin?.writable && !recording.videoBackpressured) {
         const elapsedSinceLastVideoFrame = recording.lastVideoFrameRelativeMs === null
           ? Math.round(1000 / videoFps)
           : Math.max(0, relativeMs - recording.lastVideoFrameRelativeMs);
-        const videoFrameCopies = Math.max(1, Math.min(120, Math.round(elapsedSinceLastVideoFrame * videoFps / 1000)));
+        const videoFrameCopies = Math.max(1, Math.min(videoFps * 3, Math.round(elapsedSinceLastVideoFrame * videoFps / 1000)));
+        let writtenFrameCopies = 0;
         for (let copyIndex = 0; copyIndex < videoFrameCopies; copyIndex += 1) {
-          recording.ffmpeg.stdin.write(imageBuffer);
+          const canContinue = recording.ffmpeg.stdin.write(imageBuffer);
+          writtenFrameCopies += 1;
+          if (!canContinue) {
+            recording.videoBackpressured = true;
+            break;
+          }
         }
-        recording.videoFrameIndex += videoFrameCopies;
-        recording.lastVideoFrameRelativeMs = relativeMs;
-        recording.video.durationMs = Math.max(0, relativeMs - (recording.video.startedAtRelativeMs || 0));
+        if (writtenFrameCopies > 0) {
+          recording.videoFrameIndex += writtenFrameCopies;
+          recording.lastVideoFrameRelativeMs = relativeMs;
+          recording.video.durationMs = getEncodedVideoDurationMs(recording);
+        }
       }
 
       if (shouldSaveKeyframe(recording, reason)) {
@@ -819,6 +876,10 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
     } catch (error) {
       if (getManualSession(session.sessionId)?.active) {
         console.warn('Manual recording frame skipped:', error.message);
+        if (/timed out|closed|disconnected/i.test(error.message || '')) {
+          const warning = `Frame capture skipped: ${error.message}`;
+          if (!recording.warnings.includes(warning)) recording.warnings.push(warning);
+        }
       }
     } finally {
       recording.capturing = false;
@@ -900,8 +961,11 @@ function stopManualRecorder(recording, stopStatus = 'stopped') {
   recording.videoMaxDurationTimer = null;
   recording.status = recording.status === 'stopped_limit' ? 'stopped_limit' : stopStatus;
   recording.stoppedAt = new Date().toISOString();
+  recording.recordingEndedAt = recording.stoppedAt;
   if (recording.video) {
-    recording.video.durationMs = Math.max(0, getRelativeMs({ startedAt: recording.startedAt, startedAtMs: new Date(recording.startedAt).getTime() }) - (recording.video.startedAtRelativeMs || 0));
+    recording.video.endedAt = recording.stoppedAt;
+    recording.video.durationMs = getEncodedVideoDurationMs(recording)
+      || Math.max(0, getRelativeMs({ startedAt: recording.startedAt, startedAtMs: new Date(recording.startedAt).getTime() }) - (recording.video.startedAtRelativeMs || 0));
     if (recording.video.status === 'recording' || recording.video.status === 'starting') recording.video.status = 'finalizing';
   }
   recording.captureNow?.('final');
@@ -912,6 +976,8 @@ function stopManualRecorder(recording, stopStatus = 'stopped') {
   }
   writeRecordingMetadata(recording);
   return {
+    recordingId: recording.recordingId,
+    runId: recording.runId,
     sessionId: recording.sessionId,
     testCaseId: recording.testCaseId,
     mode: recording.mode || 'frame',

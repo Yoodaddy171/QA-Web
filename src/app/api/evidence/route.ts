@@ -55,6 +55,7 @@ type RecordingMetadata = {
 type EvidenceLog = {
   id: string;
   tab: 'console' | 'network';
+  order: number;
   category?: 'business' | 'preflight' | 'static' | 'telemetry' | 'data' | 'other';
   host?: string;
   relativeMs?: number;
@@ -65,6 +66,12 @@ type EvidenceLog = {
   url?: string;
   detail?: unknown;
 };
+
+function normalizeRelativeMs(value: unknown) {
+  const relativeMs = Number(value);
+  if (!Number.isFinite(relativeMs) || relativeMs < 0 || relativeMs > 12 * 60 * 60 * 1000) return undefined;
+  return relativeMs;
+}
 
 type EvidenceFrame = {
   time: string;
@@ -127,9 +134,10 @@ function parseEvidenceLog(line: string, index: number): EvidenceLog | null {
       return {
         id: parsed.id || `network-${index}`,
         tab: 'network',
+        order: index,
         category: meta.category,
         host: meta.host,
-        relativeMs: parsed.relativeMs,
+        relativeMs: normalizeRelativeMs(parsed.relativeMs),
         message: network.url || parsed.log || 'Network Trace',
         method: network.method || network.event,
         status: typeof network.status === 'number' ? network.status : undefined,
@@ -146,7 +154,8 @@ function parseEvidenceLog(line: string, index: number): EvidenceLog | null {
     return {
       id: parsed.id || `console-${index}`,
       tab: 'console',
-      relativeMs: parsed.relativeMs,
+      order: index,
+      relativeMs: normalizeRelativeMs(parsed.relativeMs),
       level: parsed.level,
       message: String(parsed.log || parsed.console || ''),
       detail: parsed.log,
@@ -157,6 +166,7 @@ function parseEvidenceLog(line: string, index: number): EvidenceLog | null {
     return {
       id: `log-${index}`,
       tab: 'console',
+      order: index,
       message: text,
       detail: text,
     };
@@ -205,22 +215,11 @@ function readRunLogs(candidateIds: string[]) {
 
   const raw = fs.readFileSync(logPath, 'utf8');
   const lines = raw.split('\n').filter(line => line.trim());
-  const important = lines.filter(line => IMPORTANT_LOG_PATTERN.test(line)).slice(-35);
-  const tail = lines.slice(-35);
-  const networkLines = lines.filter(line => {
-    try {
-      return Boolean(JSON.parse(line).network);
-    } catch {
-      return false;
-    }
-  });
-  const selectedSet = new Set([...networkLines, ...important, ...tail]);
-  const selectedRaw = lines.filter(line => selectedSet.has(line)).slice(0, 500);
-  const selected = selectedRaw.map(compactLogLine).slice(-60);
-  const logs = selectedRaw
+  const visibleLines = lines.length > 500 ? lines.slice(lines.length - 500) : lines;
+  const selected = visibleLines.map(compactLogLine);
+  const logs = visibleLines
     .map(parseEvidenceLog)
-    .filter((log): log is EvidenceLog => Boolean(log))
-    .slice(0, 300);
+    .filter((log): log is EvidenceLog => Boolean(log) && Boolean(log.message || log.url || log.detail));
 
   return { raw, path: logPath, selected, logs };
 }
@@ -304,6 +303,11 @@ function imageDataUri(filePath: string) {
   return `data:image/jpeg;base64,${fs.readFileSync(filePath).toString('base64')}`;
 }
 
+function videoDataUri(filePath: string, mimeType = 'video/webm') {
+  if (!fs.existsSync(filePath)) return '';
+  return `data:${mimeType};base64,${fs.readFileSync(filePath).toString('base64')}`;
+}
+
 function toJsonScript(value: unknown) {
   return JSON.stringify(value)
     .replace(/</g, '\\u003c')
@@ -333,12 +337,16 @@ function renderHtml(params: {
   logs: EvidenceLog[];
   recording: ReturnType<typeof readLatestRecording>;
   frames: EvidenceFrame[];
+  videoSrc: string;
 }) {
-  const { record, type, logs, recording, frames } = params;
+  const { record, type, logs, recording, frames, videoSrc } = params;
   const statusClass = /done|fixed|as expected/i.test(`${record.status} ${record.actualResult}`) ? 'pass' : /fail|not as expected/i.test(`${record.status} ${record.actualResult}`) ? 'fail' : 'neutral';
   const initialFrame = frames[0];
-  const videoUrl = recording?.metadata.video?.url ? `http://127.0.0.1:3001${recording.metadata.video.url}` : '';
-  const hasVisualEvidence = Boolean(frames.length || videoUrl);
+  const videoDurationText = typeof recording?.metadata.video?.durationMs === 'number' ? formatRelativeTime(recording.metadata.video.durationMs) : '-';
+  const recordingSummary = recording
+    ? `${recording.metadata.mode || 'frame'} / ${recording.metadata.frames?.length || 0} frames${videoSrc ? ` / video ${videoDurationText}` : ''}`
+    : 'No recording';
+  const hasVisualEvidence = Boolean(frames.length || videoSrc);
 
   return `<!doctype html>
 <html lang="id">
@@ -359,13 +367,14 @@ function renderHtml(params: {
     .status{display:inline-flex;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800}
     .pass{background:#dcfce7;color:#166534}.fail{background:#fee2e2;color:#991b1b}.neutral{background:#e0f2fe;color:#075985}
     pre{white-space:pre-wrap;background:#0f172a;color:#dbeafe;border-radius:12px;padding:16px;overflow:auto}
-    .evidence-section{width:min(96vw,1420px);margin-left:50%;transform:translateX(-50%)}
-    .viewer{display:grid;grid-template-columns:minmax(0,1fr) 480px;height:min(820px,84vh);min-height:620px;background:#020617;border-radius:16px;overflow:hidden;border:1px solid #1e293b}
+    .evidence-section{width:min(96vw,1480px);margin-left:50%;transform:translateX(-50%)}
+    .viewer{display:grid;grid-template-columns:minmax(0,1fr) 480px;height:min(860px,86vh);min-height:650px;background:#020617;border-radius:16px;overflow:hidden;border:1px solid #1e293b}
     .screen{display:flex;flex-direction:column;min-width:0;min-height:0;background:#000}
-    .screen-head,.dev-head{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px;border-bottom:1px solid #1e293b;background:#020617;color:white}
+    .screen-head,.dev-head{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px;padding:0 16px;border-bottom:1px solid #1e293b;background:#020617;color:white}
+    .screen-title,.dev-title{min-width:0}.screen-title b,.dev-title b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.screen-title small,.dev-title small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .screen-body{min-height:0;flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:18px;overflow:hidden}
     .screen-body img,.screen-body video{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 18px 50px rgba(0,0,0,.45)}
-    .timeline{height:76px;flex:0 0 76px;border-top:1px solid #1e293b;background:#020617;padding:10px 12px}
+    .timeline{height:82px;flex:0 0 82px;border-top:1px solid #1e293b;background:#020617;padding:10px 12px}
     .timeline-label{display:flex;justify-content:space-between;color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
     .timeline-row{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding-bottom:8px;scrollbar-color:#475569 #020617;scrollbar-width:thin}
     button{font:inherit;cursor:pointer}
@@ -380,18 +389,20 @@ function renderHtml(params: {
     .filter-btn.active{border-color:#6366f1;background:#312e81;color:#e0e7ff}
     .hidden-count{width:100%;color:#64748b;font-size:11px;font-weight:800}
     .log-list{min-height:0;flex:1 1 auto;overflow:auto}
-    .log-row{display:grid;grid-template-columns:62px 64px minmax(0,1fr) 54px;gap:8px;align-items:center;width:100%;border:0;border-bottom:1px solid #1e293b;background:transparent;color:#cbd5e1;text-align:left;padding:10px}
+    .log-row{display:grid;grid-template-columns:58px 78px minmax(0,1fr) 52px;gap:8px;align-items:center;width:100%;border:0;border-bottom:1px solid #1e293b;background:transparent;color:#cbd5e1;text-align:left;padding:10px}
     .log-row:hover{background:#0f172a}.log-row.active{background:#172554}
-    .method{font-weight:900;color:#a5b4fc}.status-code{justify-self:center;border-radius:6px;background:#064e3b;color:#6ee7b7;padding:2px 6px;font-size:11px;font-weight:900}.status-code.err{background:#7f1d1d;color:#fecaca}
+    .time,.method{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.method{font-weight:900;color:#a5b4fc}.status-code{justify-self:center;border-radius:6px;background:#064e3b;color:#6ee7b7;padding:2px 6px;font-size:11px;font-weight:900}.status-code.err{background:#7f1d1d;color:#fecaca}
     .url{min-width:0}.url b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.url small{display:block;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .detail-panel{height:220px;flex:0 0 220px;border-top:1px solid #1e293b;background:#0f172a;display:flex;flex-direction:column;min-height:0}
+    .repeat{display:inline-flex;margin-left:6px;border-radius:999px;background:#312e81;color:#c7d2fe;padding:1px 6px;font-size:10px;font-weight:900}
+    .detail-panel{height:240px;flex:0 0 240px;border-top:1px solid #1e293b;background:#0f172a;display:flex;flex-direction:column;min-height:0}
     .detail-tabs{display:flex;gap:6px;padding:8px;border-bottom:1px solid #1e293b}
     .detail-tab{border:1px solid #334155;background:#020617;color:#94a3b8;border-radius:8px;padding:6px 9px;font-size:11px;font-weight:900}
     .detail-tab.active{background:#0369a1;border-color:#0ea5e9;color:white}
     .log-detail{min-height:0;flex:1;overflow:auto;padding:12px;color:#bfdbfe;font-family:Consolas,monospace;font-size:11px;white-space:pre-wrap}
     .empty{padding:48px 18px;text-align:center;color:#64748b}
+    .meta-row{display:grid;grid-template-columns:160px minmax(0,1fr);gap:10px;border-top:1px solid #e2e8f0;padding:10px 0}.meta-row:first-child{border-top:0}.meta-row b{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b}.meta-row span{min-width:0;overflow-wrap:anywhere}
     .muted{color:#64748b}.section{background:white;border:1px solid #e2e8f0;border-radius:16px;padding:20px;margin-top:18px}
-    @media(max-width:980px){.evidence-section{width:auto;margin-left:0;transform:none}.viewer{grid-template-columns:1fr;height:auto}.devtools{border-left:0;border-top:1px solid #1e293b}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:980px){.evidence-section{width:auto;margin-left:0;transform:none}.viewer{grid-template-columns:1fr;height:auto}.screen{min-height:520px}.devtools{border-left:0;border-top:1px solid #1e293b;min-height:620px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.meta-row{grid-template-columns:1fr}}
     @media print{body{background:white}.wrap{padding:0}.hero,.section,.box{box-shadow:none;break-inside:avoid}.viewer{display:block}.devtools{display:none}}
   </style>
 </head>
@@ -412,10 +423,22 @@ function renderHtml(params: {
       <div class="box"><b>Type</b>${escapeHtml(record.testType)}</div>
       <div class="box"><b>Priority</b>${escapeHtml(record.priority || '-')}</div>
       <div class="box"><b>Updated</b>${escapeHtml(formatDate(record.updatedAt))}</div>
-      <div class="box"><b>Recording</b>${escapeHtml(recording ? `${recording.metadata.mode || 'frame'} / ${recording.metadata.frames?.length || 0} frames` : 'No recording')}</div>
+      <div class="box"><b>Recording</b>${escapeHtml(recordingSummary)}</div>
     </section>
 
     <section class="section">
+      <h2>Test Case Detail</h2>
+      <div class="meta-row"><b>Test Case ID</b><span>${escapeHtml(record.testCaseId)}</span></div>
+      <div class="meta-row"><b>Source</b><span>${escapeHtml(type)}</span></div>
+      <div class="meta-row"><b>Project</b><span>${escapeHtml(record.project?.name || record.projectId)}</span></div>
+      <div class="meta-row"><b>Module</b><span>${escapeHtml(record.module?.name || record.moduleId || '-')}</span></div>
+      <div class="meta-row"><b>Page</b><span>${escapeHtml(record.page)}</span></div>
+      <div class="meta-row"><b>Sub Menu</b><span>${escapeHtml(record.subMenu || '-')}</span></div>
+      <div class="meta-row"><b>Type</b><span>${escapeHtml(record.testType)}</span></div>
+      <div class="meta-row"><b>Priority</b><span>${escapeHtml(record.priority || '-')}</span></div>
+      <div class="meta-row"><b>Status</b><span>${escapeHtml(record.status)}</span></div>
+      <div class="meta-row"><b>Created</b><span>${escapeHtml(formatDate(record.createdAt))}</span></div>
+      <div class="meta-row"><b>Updated</b><span>${escapeHtml(formatDate(record.updatedAt))}</span></div>
       <h2>Test Steps</h2>
       <pre>${escapeHtml(record.steps)}</pre>
       <h2>Expected Result</h2>
@@ -432,12 +455,12 @@ function renderHtml(params: {
       <div class="viewer">
         <div class="screen">
           <div class="screen-head">
-            <div><b>Screen Record Review</b><br><small class="muted">${escapeHtml(recording?.metadata.targetUrl || '-')}</small></div>
-            <span id="currentTime" class="status neutral">${escapeHtml(initialFrame?.time || '-')}</span>
+            <div class="screen-title"><b>Screen Record Review</b><small class="muted">${escapeHtml(recording?.metadata.targetUrl || '-')}</small></div>
+            <span id="currentTime" class="status neutral">${escapeHtml(initialFrame?.time || (videoSrc ? '0:00' : '-'))}</span>
           </div>
           <div class="screen-body">
-            ${videoUrl ? `<video id="frameVideo" src="${escapeHtml(videoUrl)}" controls preload="metadata"></video>` : `<img id="frameImage" src="${initialFrame?.src || ''}" alt="Selected evidence frame" />`}
-            ${videoUrl && initialFrame ? `<img id="frameImage" src="${initialFrame.src}" alt="Selected evidence frame" style="display:none" />` : ''}
+            ${videoSrc ? `<video id="frameVideo" src="${escapeHtml(videoSrc)}" controls preload="metadata"></video>` : `<img id="frameImage" src="${initialFrame?.src || ''}" alt="Selected evidence frame" />`}
+            ${videoSrc && initialFrame ? `<img id="frameImage" src="${initialFrame.src}" alt="Selected evidence frame" style="display:none" />` : ''}
           </div>
           <div class="timeline">
             <div class="timeline-label"><span>Timeline</span><span>${escapeHtml(frames.length)} keyframes</span></div>
@@ -446,7 +469,7 @@ function renderHtml(params: {
         </div>
         <div class="devtools">
           <div class="dev-head">
-            <div><b>DevTools</b><br><small class="muted">Klik log untuk pindah timestamp.</small></div>
+            <div class="dev-title"><b>DevTools</b><small class="muted">Klik log untuk pindah timestamp.</small></div>
             <div class="tabs">
               <button class="tab-btn active" data-tab="network">Network</button>
               <button class="tab-btn" data-tab="console">Console</button>
@@ -499,6 +522,33 @@ function renderHtml(params: {
       const seconds = totalSeconds % 60;
       return minutes + ':' + String(seconds).padStart(2, '0');
     };
+    const getVideoDurationMs = () => {
+      const player = byId('frameVideo');
+      if (player && Number.isFinite(player.duration) && player.duration > 0) return Math.round(player.duration * 1000);
+      const metadataDuration = Number(video?.durationMs || 0);
+      return Number.isFinite(metadataDuration) && metadataDuration > 0 ? metadataDuration : 0;
+    };
+    const getTimelineBounds = () => {
+      const values = logs
+        .map(log => typeof log.relativeMs === 'number' ? log.relativeMs : null)
+        .filter(value => typeof value === 'number' && Number.isFinite(value));
+      if (!values.length) return { min: 0, max: 0 };
+      return { min: Math.max(0, Math.min(...values) - 10000), max: Math.max(...values) };
+    };
+    const getLogVideoMs = (log) => {
+      const durationMs = getVideoDurationMs();
+      if (typeof log?.relativeMs === 'number') {
+        const bounds = getTimelineBounds();
+        const span = Math.max(1, bounds.max - bounds.min);
+        const normalized = Math.max(0, log.relativeMs - bounds.min);
+        const mapped = durationMs > 0 ? normalized * durationMs / span : normalized;
+        return durationMs > 0 ? Math.min(durationMs, mapped) : mapped;
+      }
+      if (durationMs > 0 && logs.length > 1) {
+        return Math.min(durationMs, Math.max(0, (Number(log?.order || 0) / Math.max(1, logs.length - 1)) * durationMs));
+      }
+      return undefined;
+    };
     const closestFrameIndex = (relativeMs) => {
       if (!frames.length || typeof relativeMs !== 'number') return activeFrameIndex;
       return frames.reduce((best, frame, index) => (
@@ -510,23 +560,31 @@ function renderHtml(params: {
         activeFrameIndex = Math.max(0, Math.min(frames.length - 1, index));
         const frameImage = byId('frameImage');
         if (frameImage) frameImage.src = frames[activeFrameIndex].src;
-        byId('currentTime').textContent = frames[activeFrameIndex].time;
+        const currentTime = byId('currentTime');
+        if (currentTime) currentTime.textContent = frames[activeFrameIndex].time;
       }
       document.querySelectorAll('.time-btn').forEach((button, idx) => button.classList.toggle('active', idx === activeFrameIndex));
     };
-    const seekVideo = (relativeMs) => {
+    const seekVideo = (relativeMs, log) => {
       const player = byId('frameVideo');
-      if (!player || typeof relativeMs !== 'number') return;
-      const startedAt = Number(video?.startedAtRelativeMs || 0);
-      const duration = Number(video?.durationMs || 0) / 1000;
-      const target = Math.max(0, Math.min(duration || Number.POSITIVE_INFINITY, (relativeMs - startedAt) / 1000));
+      if (!player) return;
+      const videoMs = log ? getLogVideoMs(log) : relativeMs;
+      if (typeof videoMs !== 'number') return;
+      const duration = getVideoDurationMs() / 1000;
+      const target = Math.max(0, Math.min(duration || Number.POSITIVE_INFINITY, videoMs / 1000));
       try { player.currentTime = target; } catch {}
     };
     const renderTimeline = () => {
       const target = byId('timeline');
       if (!target) return;
-      target.innerHTML = frames.map((frame, index) => '<button class="time-btn '+(index===activeFrameIndex?'active':'')+'" data-index="'+index+'">'+frame.time+'</button>').join('');
-      target.querySelectorAll('.time-btn').forEach(button => button.addEventListener('click', () => renderFrame(Number(button.dataset.index))));
+      target.innerHTML = frames.length
+        ? frames.map((frame, index) => '<button class="time-btn '+(index===activeFrameIndex?'active':'')+'" data-index="'+index+'">'+frame.time+'</button>').join('')
+        : '<span class="muted">Video only</span>';
+      target.querySelectorAll('.time-btn').forEach(button => button.addEventListener('click', () => {
+        const index = Number(button.dataset.index);
+        renderFrame(index);
+        seekVideo(frames[index]?.relativeMs);
+      }));
       target.addEventListener('wheel', (event) => {
         if (!event.shiftKey) return;
         event.preventDefault();
@@ -569,6 +627,26 @@ function renderHtml(params: {
       const haystack = [log.url, log.message, log.host, log.method, log.status].join(' ').toLowerCase();
       return haystack.includes(networkFilter.search);
     };
+    const getLogSignature = (log) => {
+      if (log.tab === 'network') {
+        return [log.method || '', log.url || log.message || '', log.status || 'unknown', log.category || 'other'].join('|');
+      }
+      return [log.level || 'INFO', log.message || ''].join('|');
+    };
+    const groupRows = (rows) => {
+      const groups = [];
+      rows.forEach((log) => {
+        const signature = getLogSignature(log);
+        const previous = groups[groups.length - 1];
+        if (previous && previous.signature === signature) {
+          previous.count += 1;
+          previous.entries.push(log);
+          return;
+        }
+        groups.push({ id: log.id, signature, log, entries: [log], count: 1 });
+      });
+      return groups;
+    };
     const renderLogs = () => {
       document.querySelectorAll('.tab-btn').forEach(button => button.classList.toggle('active', button.dataset.tab === activeTab));
       byId('networkFilters').style.display = activeTab === 'network' ? 'flex' : 'none';
@@ -576,20 +654,25 @@ function renderHtml(params: {
       const tabRows = logs.filter(log => log.tab === activeTab);
       const rows = activeTab === 'network' ? tabRows.filter(isVisibleNetworkLog) : tabRows;
       const hidden = activeTab === 'network' ? tabRows.length - rows.length : 0;
+      const groups = groupRows(rows);
       byId('hiddenCount').textContent = activeTab === 'network' && hidden > 0 ? hidden + ' network rows hidden by filters' : '';
-      if (!rows.length) {
+      document.querySelector('[data-tab="network"]').textContent = 'Network (' + groupRows(logs.filter(log => log.tab === 'network').filter(isVisibleNetworkLog)).length + ')';
+      document.querySelector('[data-tab="console"]').textContent = 'Console (' + groupRows(logs.filter(log => log.tab === 'console')).length + ')';
+      if (!groups.length) {
         list.innerHTML = '<div class="empty">Tidak ada log '+activeTab+'.</div>';
         return;
       }
-      list.innerHTML = rows.map(log => {
+      list.innerHTML = groups.map(group => {
+        const log = group.log;
         const statusClass = log.status >= 400 ? ' err' : '';
         const title = log.tab === 'network' ? (log.url || log.message || '') : (log.message || '');
         let host = '';
         try { host = log.url ? new URL(log.url).host : ''; } catch {}
+        const repeat = group.count > 1 ? '<span class="repeat">x'+group.count+'</span>' : '';
         return '<button class="log-row '+(activeLogId===log.id?'active':'')+'" data-id="'+log.id+'">'
-          + '<span>'+formatLogTime(log.relativeMs)+'</span>'
+          + '<span class="time">'+formatLogTime(getLogVideoMs(log))+'</span>'
           + '<span class="method">'+escapeHtmlClient(log.method || log.level || 'LOG')+'</span>'
-          + '<span class="url"><b>'+escapeHtmlClient(title.split('/').pop() || title)+'</b><small>'+escapeHtmlClient(host || title)+'</small></span>'
+          + '<span class="url"><b>'+escapeHtmlClient(title.split('/').pop() || title)+repeat+'</b><small>'+escapeHtmlClient(host || title)+'</small></span>'
           + '<span class="status-code'+statusClass+'">'+escapeHtmlClient(log.status || '')+'</span>'
           + '</button>';
       }).join('');
@@ -598,8 +681,10 @@ function renderHtml(params: {
         if (!log) return;
         activeLogId = log.id;
         if (typeof log.relativeMs === 'number') {
-          seekVideo(log.relativeMs);
+          seekVideo(log.relativeMs, log);
           renderFrame(closestFrameIndex(log.relativeMs));
+        } else {
+          seekVideo(undefined, log);
         }
         renderDetail(log);
         renderLogs();
@@ -634,6 +719,22 @@ function renderHtml(params: {
       activeDetailTab = button.dataset.detail;
       renderDetail();
     }));
+    const player = byId('frameVideo');
+    if (player) {
+      player.addEventListener('loadedmetadata', () => {
+        renderLogs();
+      });
+      player.addEventListener('timeupdate', () => {
+        const startedAt = Number(video?.startedAtRelativeMs || 0);
+        const relativeMs = startedAt + (player.currentTime * 1000);
+        const currentTime = byId('currentTime');
+        if (currentTime) currentTime.textContent = formatLogTime(relativeMs);
+        if (frames.length) {
+          const nextIndex = closestFrameIndex(relativeMs);
+          if (nextIndex !== activeFrameIndex) renderFrame(nextIndex);
+        }
+      });
+    }
     renderTimeline();
     setupNetworkFilters();
     renderDetail(null);
@@ -665,13 +766,16 @@ export async function GET(req: NextRequest) {
       relativeMs: frame.relativeMs,
       src: imageDataUri(path.join(recording.framesDir, frame.file)),
     })).filter(frame => frame.src) : [];
-    const html = renderHtml({ record, type, logs, recording, frames });
+    const videoFile = recording?.metadata.video?.file ? path.join(recording.videoDir, recording.metadata.video.file) : '';
+    const videoSrc = videoFile ? videoDataUri(videoFile, recording?.metadata.video?.mimeType || 'video/webm') : '';
+    const html = renderHtml({ record, type, logs, recording, frames, videoSrc });
     const safeName = record.testCaseId.replace(/[^a-z0-9-_]/gi, '_');
 
     return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `inline; filename="qa-evidence-${safeName}.html"`,
+        'Content-Disposition': `attachment; filename="qa-evidence-${safeName}.html"`,
+        'Cache-Control': 'no-store',
       },
     });
   } catch (error: any) {

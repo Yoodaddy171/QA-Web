@@ -514,6 +514,7 @@ export function TestCaseDetailDialog({
   const [manualCaptureBrowserMode, setManualCaptureBrowserMode] = useState<ManualCaptureBrowserMode>('clean');
   const [manualCaptureMode, setManualCaptureMode] = useState<ManualCaptureMode>('frame');
   const [recordingSeekMs, setRecordingSeekMs] = useState(0);
+  const [recordingVideoDurationMs, setRecordingVideoDurationMs] = useState<{ key: string; durationMs: number } | null>(null);
   const [recordingSeekApprox, setRecordingSeekApprox] = useState(false);
   const [recordingZoom, setRecordingZoom] = useState(1);
   const [isRecordingFullscreen, setIsRecordingFullscreen] = useState(false);
@@ -650,11 +651,42 @@ export function TestCaseDetailDialog({
   const manualRecordingTargetUrl = manualRecording?.targetUrl || 'Manual capture target';
   const manualRecordingVideoStatus = manualRecording?.video?.status;
   const isVideoFinalizing = isProcessingManualRecording || ['starting', 'recording', 'finalizing'].includes(manualRecordingVideoStatus || '');
+  const normalizedLogRelativeMs = (relativeMs?: number) => (
+    typeof relativeMs === 'number' && Number.isFinite(relativeMs) && relativeMs >= 0 && relativeMs <= 12 * 60 * 60 * 1000
+      ? relativeMs
+      : undefined
+  );
+  const recordingVideoKey = `${manualRecording?.sessionId ?? 'none'}:${manualRecording?.video?.url ?? 'none'}`;
+  const recordingTimelineBounds = useMemo(() => {
+    const values = liveLogs
+      .map((log) => normalizedLogRelativeMs(log.relativeMs))
+      .filter((value): value is number => typeof value === 'number');
+    if (!values.length) return { min: 0, max: 0 };
+    return {
+      min: Math.max(0, Math.min(...values) - 10000),
+      max: Math.max(...values),
+    };
+  }, [liveLogs]);
+  const getRecordingVideoDurationMs = () => {
+    if (recordingVideoDurationMs?.key === recordingVideoKey && recordingVideoDurationMs.durationMs > 0) {
+      return recordingVideoDurationMs.durationMs;
+    }
+    if (typeof manualRecording?.video?.durationMs === 'number' && manualRecording.video.durationMs > 0) return manualRecording.video.durationMs;
+    return 0;
+  };
+  const getLogVideoMs = (log: Pick<LogEntry, 'relativeMs'>) => {
+    const relativeMs = normalizedLogRelativeMs(log.relativeMs);
+    const durationMs = getRecordingVideoDurationMs();
+    if (typeof relativeMs !== 'number') return undefined;
+    if (!manualRecording?.video || !hasManualRecordingVideo) return relativeMs;
+    const span = Math.max(1, recordingTimelineBounds.max - recordingTimelineBounds.min);
+    const mapped = Math.max(0, relativeMs - recordingTimelineBounds.min) * durationMs / span;
+    return durationMs > 0 ? Math.min(durationMs, mapped) : mapped;
+  };
   const getVideoRelativeMs = (relativeMs: number) => {
     if (!manualRecording?.video || !hasManualRecordingVideo) return relativeMs;
-    const startedAtRelativeMs = manualRecording.video.startedAtRelativeMs || 0;
-    const durationMs = typeof manualRecording.video.durationMs === 'number' ? manualRecording.video.durationMs : Number.POSITIVE_INFINITY;
-    return Math.max(0, Math.min(durationMs, relativeMs - startedAtRelativeMs));
+    const durationMs = getRecordingVideoDurationMs();
+    return durationMs > 0 ? Math.max(0, Math.min(durationMs, relativeMs)) : Math.max(0, relativeMs);
   };
   const recordingDisplayMs = getVideoRelativeMs(recordingSeekMs);
   const syncedNetworkLogIdSet = useMemo(() => new Set(syncedNetworkLogIds), [syncedNetworkLogIds]);
@@ -667,17 +699,28 @@ export function TestCaseDetailDialog({
     const seconds = totalSeconds % 60;
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
   };
+  const formatLogRecordingTime = (log: Pick<LogEntry, 'relativeMs'>) => (
+    formatRelativeTime(hasManualRecordingVideo ? getLogVideoMs(log) : normalizedLogRelativeMs(log.relativeMs))
+  );
+  const handleRecordingVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    const durationSeconds = event.currentTarget.duration;
+    if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
+      setRecordingVideoDurationMs({
+        key: recordingVideoKey,
+        durationMs: Math.round(durationSeconds * 1000),
+      });
+    }
+  };
 
   const seekRecordingFromLog = (log: LogEntry) => {
     if (typeof log.relativeMs !== 'number') return;
-    setRecordingSeekMs(log.relativeMs);
+    const targetMs = hasManualRecordingVideo ? getLogVideoMs(log) : log.relativeMs;
+    if (typeof targetMs !== 'number') return;
+    setRecordingSeekMs(targetMs);
     setRecordingSeekApprox(false);
     if (!manualRecording?.video || !hasManualRecordingVideo) return;
-    const startedAtRelativeMs = manualRecording.video.startedAtRelativeMs || 0;
-    const durationSeconds = typeof manualRecording.video.durationMs === 'number' ? manualRecording.video.durationMs / 1000 : Number.POSITIVE_INFINITY;
-    const rawTargetSeconds = (log.relativeMs - startedAtRelativeMs) / 1000;
-    const targetSeconds = Math.max(0, Math.min(durationSeconds, rawTargetSeconds));
-    setRecordingSeekApprox(Math.abs(rawTargetSeconds - targetSeconds) > 0.5);
+    const durationSeconds = getRecordingVideoDurationMs() / 1000;
+    const targetSeconds = Math.max(0, Math.min(durationSeconds || Number.POSITIVE_INFINITY, targetMs / 1000));
     for (const player of [recordingVideoRef.current, fullscreenRecordingVideoRef.current]) {
       if (!player) continue;
       try {
@@ -688,18 +731,15 @@ export function TestCaseDetailDialog({
 
   const handleFullscreenVideoTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
     if (!manualRecording?.video || !hasManualRecordingVideo) return;
-    const startedAtRelativeMs = manualRecording.video.startedAtRelativeMs || 0;
-    const currentRelativeMs = startedAtRelativeMs + (event.currentTarget.currentTime * 1000);
-    const currentSecond = Math.floor(currentRelativeMs / 1000);
+    const currentVideoMs = event.currentTarget.currentTime * 1000;
     const matchingIds = fullscreenNetworkGroups
       .filter((group) => group.entries.some((entry) => (
-        typeof entry.log.relativeMs === 'number'
-        && Math.floor(entry.log.relativeMs / 1000) === currentSecond
+        Math.abs((getLogVideoMs(entry.log) ?? Number.POSITIVE_INFINITY) - currentVideoMs) <= 650
       )))
       .map((group) => `fullscreen-${group.id}`);
     const previousKey = syncedNetworkLogIds.join('|');
     const nextKey = matchingIds.join('|');
-    setRecordingSeekMs(currentRelativeMs);
+    setRecordingSeekMs(currentVideoMs);
     setRecordingSeekApprox(false);
     if (previousKey === nextKey) return;
     setSyncedNetworkLogIds(matchingIds);
@@ -722,7 +762,7 @@ export function TestCaseDetailDialog({
     setSelectedFullscreenLog({
       id: logId,
       kind: 'network',
-      relativeMs: net.relativeMs,
+      relativeMs: getLogVideoMs(net) ?? net.relativeMs,
       text: `${getNetworkMethod(net.network)} ${getNetworkStatus(net.network)} ${net.network.url}`,
       detail: {
         category: meta.label,
@@ -743,7 +783,7 @@ export function TestCaseDetailDialog({
     setSelectedFullscreenLog({
       id: logId,
       kind: 'console',
-      relativeMs: log.relativeMs,
+      relativeMs: getLogVideoMs(log) ?? log.relativeMs,
       text: String(typeof log.log === 'object' ? JSON.stringify(log.log) : log.log ?? ''),
       detail: log.log,
     });
@@ -933,7 +973,12 @@ export function TestCaseDetailDialog({
 
   const openEvidenceReport = () => {
     if (!viewTestCase) return;
-    window.open(`/api/evidence?testCaseId=${encodeURIComponent(viewTestCase.id)}`, '_blank', 'noopener,noreferrer');
+    const link = document.createElement('a');
+    link.href = `/api/evidence?testCaseId=${encodeURIComponent(viewTestCase.id)}`;
+    link.download = `qa-evidence-${viewTestCase.testCaseId || viewTestCase.id}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   useEffect(() => {
@@ -1524,6 +1569,7 @@ export function TestCaseDetailDialog({
                                     src={manualRecordingVideoUrl}
                                     controls
                                     preload="metadata"
+                                    onLoadedMetadata={handleRecordingVideoLoadedMetadata}
                                     onTimeUpdate={handleFullscreenVideoTimeUpdate}
                                     className="aspect-video w-full bg-black object-contain opacity-90 group-hover:opacity-100 transition-opacity"
                                   />
@@ -1818,7 +1864,7 @@ export function TestCaseDetailDialog({
                                             </span>
                                             {typeof log.relativeMs === 'number' && (
                                               <span className="mt-0.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                                                {formatRelativeTime(log.relativeMs)}
+                                                {formatLogRecordingTime(log)}
                                               </span>
                                             )}
                                             <div className="flex-1 break-all">
@@ -1857,7 +1903,7 @@ export function TestCaseDetailDialog({
                                                             onClick={() => seekRecordingFromLog(entry)}
                                                           >
                                                             <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
-                                                            <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.relativeMs)}</span>
+                                                            <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatLogRecordingTime(entry)}</span>
                                                             <span className="truncate text-foreground">{getConsoleLogText(entry)}</span>
                                                           </button>
                                                         ))}
@@ -2015,7 +2061,7 @@ export function TestCaseDetailDialog({
                                               <div className="col-span-2 text-right text-muted-foreground">
                                                 <span>{getNetworkDuration(net.network)}</span>
                                                 {typeof net.relativeMs === 'number' && (
-                                                  <span className="ml-2 text-indigo-700 dark:text-indigo-300">{formatRelativeTime(net.relativeMs)}</span>
+                                                  <span className="ml-2 text-indigo-700 dark:text-indigo-300">{formatLogRecordingTime(net)}</span>
                                                 )}
                                               </div>
                                               <div className="col-span-1 flex items-center justify-end gap-1.5">
@@ -2049,7 +2095,7 @@ export function TestCaseDetailDialog({
                                                               onClick={() => seekRecordingFromLog(entry.log)}
                                                             >
                                                               <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
-                                                              <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
+                                                              <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatLogRecordingTime(entry.log)}</span>
                                                               <span className={cn("rounded px-1.5 py-0.5 text-center font-bold", getNetworkStatusClass(entry.log.network))}>
                                                                 {getNetworkStatus(entry.log.network)}
                                                               </span>
@@ -2290,7 +2336,7 @@ export function TestCaseDetailDialog({
                                 </span>
                               </span>
                               <span className="col-span-2 flex items-center justify-end gap-2 text-[10px] font-bold text-muted-foreground">
-                                <span>{formatRelativeTime(net.relativeMs)}</span>
+                                <span>{formatLogRecordingTime(net)}</span>
                                 {count > 1 && (
                                   <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                     x{count}
@@ -2337,7 +2383,7 @@ export function TestCaseDetailDialog({
                                 }
                               }}
                             >
-                              <span className="col-span-2 text-[10px] font-bold text-muted-foreground">{formatRelativeTime(log.relativeMs)}</span>
+                              <span className="col-span-2 text-[10px] font-bold text-muted-foreground">{formatLogRecordingTime(log)}</span>
                               <span className={cn("col-span-8 break-all text-[11px]", isError ? 'text-rose-700 dark:text-rose-300' : isWarning ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300/90')}>
                                 {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 220)}...` : String(log.log ?? '')}
                               </span>
@@ -2394,7 +2440,7 @@ export function TestCaseDetailDialog({
                                     onClick={() => seekRecordingFromLog(entry.log)}
                                   >
                                     <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
-                                    <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
+                                    <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatLogRecordingTime(entry.log)}</span>
                                     <span className={cn("rounded px-1.5 py-0.5 text-center font-bold", getNetworkStatusClass(entry.log.network))}>
                                       {getNetworkStatus(entry.log.network)}
                                     </span>
@@ -2463,7 +2509,7 @@ export function TestCaseDetailDialog({
                                     onClick={() => seekRecordingFromLog(entry)}
                                   >
                                     <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
-                                    <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.relativeMs)}</span>
+                                    <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatLogRecordingTime(entry)}</span>
                                     <span className="truncate text-foreground">{getConsoleLogText(entry)}</span>
                                   </button>
                                 ))}
@@ -2577,6 +2623,7 @@ export function TestCaseDetailDialog({
                     src={manualRecordingVideoUrl}
                     controls
                     preload="metadata"
+                    onLoadedMetadata={handleRecordingVideoLoadedMetadata}
                     onTimeUpdate={handleFullscreenVideoTimeUpdate}
                     className="m-auto max-h-full max-w-full rounded-lg bg-black shadow-2xl"
                   />
@@ -2895,7 +2942,7 @@ export function TestCaseDetailDialog({
                                 </span>
                               </span>
                               <span className="col-span-2 flex items-center justify-end gap-2 text-right text-[10px] font-bold text-muted-foreground">
-                                <span>{formatRelativeTime(net.relativeMs)}</span>
+                                <span>{formatLogRecordingTime(net)}</span>
                                 {isSyncedWithVideo && (
                                   <span className="rounded-full border border-teal-200 bg-teal-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-teal-700 dark:border-teal-400/30 dark:bg-teal-500/15 dark:text-teal-200">
                                     Now
@@ -2942,7 +2989,7 @@ export function TestCaseDetailDialog({
                                               onClick={() => seekRecordingFromLog(entry.log)}
                                             >
                                               <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
-                                              <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
+                                              <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatLogRecordingTime(entry.log)}</span>
                                               <span className="truncate text-foreground">{getNetworkDuration(entry.log.network)}</span>
                                             </button>
                                           ))}
@@ -2992,7 +3039,7 @@ export function TestCaseDetailDialog({
                               }
                             }}
                           >
-                            <span className="col-span-2 text-[10px] font-bold text-muted-foreground">{formatRelativeTime(log.relativeMs)}</span>
+                            <span className="col-span-2 text-[10px] font-bold text-muted-foreground">{formatLogRecordingTime(log)}</span>
                             <span className={cn("col-span-8 break-all text-[11px]", isError ? 'text-rose-700 dark:text-rose-300' : isWarning ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300/90')}>
                               {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 240)}...` : String(log.log ?? '')}
                             </span>

@@ -14,6 +14,8 @@ export type VideoEventCategory =
   | 'unknown';
 
 export type VideoEventSeverity = 'info' | 'success' | 'warning' | 'error';
+export type VideoEventFilterKey = 'network' | 'console' | 'errors' | 'warnings' | 'steps' | 'evidence' | 'unknown';
+export type VideoEventFilterState = Record<VideoEventFilterKey, boolean>;
 
 export interface VideoSyncRecording {
   recordingId?: string;
@@ -76,6 +78,34 @@ export interface VideoEventMarker {
   event: SyncedVideoEvent;
   leftPercent: number;
 }
+
+export interface GroupedVideoEventMarker {
+  id: string;
+  events: SyncedVideoEvent[];
+  leftPercent: number;
+  count: number;
+}
+
+export interface VideoEventDetail {
+  category: VideoEventCategory;
+  severity: VideoEventSeverity;
+  timestamp: string;
+  offset: string;
+  method?: string;
+  url?: string;
+  responseStatus?: string;
+  summary: string;
+}
+
+export const DEFAULT_VIDEO_EVENT_FILTERS: VideoEventFilterState = {
+  network: true,
+  console: true,
+  errors: true,
+  warnings: true,
+  steps: true,
+  evidence: true,
+  unknown: true,
+};
 
 export function parseAutomationTimestamp(value: VideoSyncEvent['timestamp']) {
   if (value == null || value === '') return undefined;
@@ -239,6 +269,47 @@ export function buildVideoEventMarkers(events: SyncedVideoEvent[], videoDuration
   });
 }
 
+export function getVideoEventFilterKey(event: Pick<SyncedVideoEvent, 'category' | 'severity'>): VideoEventFilterKey {
+  if (event.severity === 'error') return 'errors';
+  if (event.severity === 'warning') return 'warnings';
+  if (event.category.startsWith('api.')) return 'network';
+  if (event.category.startsWith('console.')) return 'console';
+  if (event.category === 'step') return 'steps';
+  if (event.category === 'screenshot' || event.category === 'evidence') return 'evidence';
+  return 'unknown';
+}
+
+export function filterVideoEventsByCategory(events: SyncedVideoEvent[], filters: Partial<VideoEventFilterState>) {
+  return events.filter((event) => filters[getVideoEventFilterKey(event)] !== false);
+}
+
+export function groupVideoEventMarkers(markers: VideoEventMarker[], thresholdPercent = 2.5): GroupedVideoEventMarker[] {
+  const sorted = [...markers].sort((a, b) => a.leftPercent - b.leftPercent);
+  const groups: GroupedVideoEventMarker[] = [];
+
+  for (const marker of sorted) {
+    const previous = groups[groups.length - 1];
+    if (previous && Math.abs(marker.leftPercent - previous.leftPercent) <= thresholdPercent) {
+      previous.events.push(marker.event);
+      previous.count = previous.events.length;
+      previous.leftPercent = previous.events.reduce((total, event) => {
+        const original = sorted.find(item => item.event.id === event.id);
+        return total + (original?.leftPercent ?? previous.leftPercent);
+      }, 0) / previous.events.length;
+      continue;
+    }
+
+    groups.push({
+      id: marker.event.id,
+      events: [marker.event],
+      leftPercent: marker.leftPercent,
+      count: 1,
+    });
+  }
+
+  return groups;
+}
+
 export function getNearestVideoEvent(events: SyncedVideoEvent[], currentOffsetMs: number, windowMs = 1500) {
   if (!Number.isFinite(currentOffsetMs) || !Number.isFinite(windowMs) || windowMs < 0) return null;
 
@@ -264,4 +335,22 @@ export function formatVideoOffset(offsetMs?: number) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+export function formatVideoEventDetail(event: SyncedVideoEvent): VideoEventDetail {
+  const network = event.originalEvent.network;
+  const eventTimestamp = typeof event.eventTimestampMs === 'number'
+    ? new Date(event.eventTimestampMs).toISOString()
+    : '-';
+
+  return {
+    category: event.category,
+    severity: event.severity,
+    timestamp: eventTimestamp,
+    offset: formatVideoOffset(event.clampedOffsetMs),
+    method: network?.method || network?.event,
+    url: network?.url,
+    responseStatus: typeof network?.status === 'number' ? String(network.status) : undefined,
+    summary: event.summary,
+  };
 }

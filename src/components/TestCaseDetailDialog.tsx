@@ -20,10 +20,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TestCase } from '@/components/TestCaseTable';
 import type { ManualCaptureBrowserMode, ManualCaptureMode, ManualRecordingMeta } from '@/hooks/useAutomationLogs';
 import {
+  DEFAULT_VIDEO_EVENT_FILTERS,
   buildSyncedVideoEvents,
   buildVideoEventMarkers,
+  filterVideoEventsByCategory,
+  formatVideoEventDetail,
   getNearestVideoEvent,
+  groupVideoEventMarkers,
   type SyncedVideoEvent,
+  type VideoEventFilterKey,
 } from '@/lib/client/automation/video-event-sync';
 import { cn } from '@/lib/utils';
 
@@ -584,6 +589,7 @@ export function TestCaseDetailDialog({
   const [fullscreenLogFilter, setFullscreenLogFilter] = useState<FullscreenLogFilter>('all');
   const [selectedFullscreenLog, setSelectedFullscreenLog] = useState<SelectedFullscreenLog>(null);
   const [selectedSyncedEventId, setSelectedSyncedEventId] = useState<string | null>(null);
+  const [syncedEventFilters, setSyncedEventFilters] = useState(DEFAULT_VIDEO_EVENT_FILTERS);
   const [syncedNetworkLogIds, setSyncedNetworkLogIds] = useState<string[]>([]);
   const [copiedEvidence, setCopiedEvidence] = useState(false);
   const recordingViewportRef = useRef<HTMLDivElement>(null);
@@ -736,10 +742,13 @@ export function TestCaseDetailDialog({
       .filter((event) => typeof event.clampedOffsetMs === 'number')
       .slice(0, 80)
   ), [liveLogs, manualRecording, recordingVideoDurationMs, recordingVideoKey]);
+  const filteredSyncedVideoEvents = useMemo(() => (
+    filterVideoEventsByCategory(syncedVideoEvents, syncedEventFilters)
+  ), [syncedEventFilters, syncedVideoEvents]);
   const recordingVideoDurationForMarkersMs = getRecordingVideoDurationMs();
-  const syncedVideoMarkers = useMemo(() => (
-    buildVideoEventMarkers(syncedVideoEvents, recordingVideoDurationForMarkersMs)
-  ), [recordingVideoDurationForMarkersMs, syncedVideoEvents]);
+  const groupedSyncedVideoMarkers = useMemo(() => (
+    groupVideoEventMarkers(buildVideoEventMarkers(filteredSyncedVideoEvents, recordingVideoDurationForMarkersMs))
+  ), [filteredSyncedVideoEvents, recordingVideoDurationForMarkersMs]);
   const getLogVideoMs = (log: Pick<LogEntry, 'relativeMs'>) => {
     const relativeMs = normalizedLogRelativeMs(log.relativeMs);
     const durationMs = getRecordingVideoDurationMs();
@@ -756,8 +765,16 @@ export function TestCaseDetailDialog({
   };
   const recordingDisplayMs = getVideoRelativeMs(recordingSeekMs);
   const currentSyncedVideoEvent = useMemo(() => (
-    getNearestVideoEvent(syncedVideoEvents, recordingDisplayMs, 1500)
-  ), [recordingDisplayMs, syncedVideoEvents]);
+    getNearestVideoEvent(filteredSyncedVideoEvents, recordingDisplayMs, 1500)
+  ), [filteredSyncedVideoEvents, recordingDisplayMs]);
+  const selectedSyncedVideoEvent = useMemo(() => (
+    selectedSyncedEventId
+      ? syncedVideoEvents.find((event) => event.id === selectedSyncedEventId) ?? null
+      : null
+  ), [selectedSyncedEventId, syncedVideoEvents]);
+  const selectedSyncedVideoEventDetail = useMemo(() => (
+    selectedSyncedVideoEvent ? formatVideoEventDetail(selectedSyncedVideoEvent) : null
+  ), [selectedSyncedVideoEvent]);
   const syncedNetworkLogIdSet = useMemo(() => new Set(syncedNetworkLogIds), [syncedNetworkLogIds]);
 
   const formatRelativeTime = (relativeMs?: number) => {
@@ -904,6 +921,10 @@ export function TestCaseDetailDialog({
     setNetworkFilters((current) => ({ ...current, [key]: !current[key] }));
   };
 
+  const toggleSyncedEventFilter = (key: VideoEventFilterKey) => {
+    setSyncedEventFilters((current) => ({ ...current, [key]: !current[key] }));
+  };
+
   const updateRecordingZoom = (delta: number) => {
     setRecordingZoom((current) => Math.min(3, Math.max(0.5, Number((current + delta).toFixed(2)))));
   };
@@ -959,6 +980,7 @@ export function TestCaseDetailDialog({
     setFullscreenLogFilter('all');
     setSelectedFullscreenLog(null);
     setSelectedSyncedEventId(null);
+    setSyncedEventFilters(DEFAULT_VIDEO_EVENT_FILTERS);
     setSyncedNetworkLogIds([]);
     setCopiedEvidence(false);
     setIsClosingRecordingFullscreen(false);
@@ -2826,25 +2848,30 @@ export function TestCaseDetailDialog({
                   <div className="mb-3 rounded-lg border border-border bg-muted/40 p-2">
                     <div className="mb-1 flex items-center justify-between gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
                       <span>Event Markers</span>
-                      <span>{syncedVideoMarkers.length}</span>
+                      <span>{groupedSyncedVideoMarkers.length} groups</span>
                     </div>
                     <div className="relative h-8 rounded-md border border-border bg-background">
                       <div className="absolute left-2 right-2 top-1/2 h-1 -translate-y-1/2 rounded-full bg-muted" />
-                      {syncedVideoMarkers.map((marker) => {
-                        const selected = selectedSyncedEventId === marker.event.id || currentSyncedVideoEvent?.id === marker.event.id;
+                      {groupedSyncedVideoMarkers.map((marker) => {
+                        const primaryEvent = marker.events[0];
+                        const selected = marker.events.some((event) => (
+                          selectedSyncedEventId === event.id || currentSyncedVideoEvent?.id === event.id
+                        ));
                         return (
                           <button
-                            key={`marker-${marker.event.id}`}
+                            key={`marker-${marker.id}`}
                             type="button"
-                            title={`${marker.event.label} - ${marker.event.summary}`}
+                            title={marker.count > 1 ? `${marker.count} events near ${primaryEvent.label}` : `${primaryEvent.label} - ${primaryEvent.summary}`}
                             className={cn(
-                              "absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-lg transition hover:scale-125",
-                              getSyncedMarkerClass(marker.event),
+                              "absolute top-1/2 flex h-4 min-w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 px-1 text-[8px] font-black text-white shadow-lg transition hover:scale-125",
+                              getSyncedMarkerClass(primaryEvent),
                               selected && "ring-2 ring-white ring-offset-2 ring-offset-background"
                             )}
                             style={{ left: `${marker.leftPercent}%` }}
-                            onClick={() => seekRecordingFromSyncedEvent(marker.event)}
-                          />
+                            onClick={() => seekRecordingFromSyncedEvent(primaryEvent)}
+                          >
+                            {marker.count > 1 ? marker.count : ''}
+                          </button>
                         );
                       })}
                     </div>
@@ -3060,15 +3087,46 @@ export function TestCaseDetailDialog({
                 <div className="shrink-0 border-b border-border bg-background px-3 py-2">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Synced Events</p>
-                    <span className="text-[10px] font-bold text-muted-foreground">{syncedVideoEvents.length} events</span>
+                    <span className="text-[10px] font-bold text-muted-foreground">{filteredSyncedVideoEvents.length}/{syncedVideoEvents.length} events</span>
+                  </div>
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {[
+                      { key: 'network' as const, label: 'Network' },
+                      { key: 'console' as const, label: 'Console' },
+                      { key: 'errors' as const, label: 'Errors' },
+                      { key: 'warnings' as const, label: 'Warnings' },
+                      { key: 'steps' as const, label: 'Steps' },
+                      { key: 'evidence' as const, label: 'Evidence' },
+                      { key: 'unknown' as const, label: 'Unknown' },
+                    ].map((item) => (
+                      <Button
+                        key={item.key}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-6 rounded-md border px-2 text-[9px] font-black uppercase tracking-widest",
+                          syncedEventFilters[item.key]
+                            ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200"
+                            : "border-border bg-muted text-muted-foreground hover:bg-secondary"
+                        )}
+                        onClick={() => toggleSyncedEventFilter(item.key)}
+                      >
+                        {item.label}
+                      </Button>
+                    ))}
                   </div>
                   {syncedVideoEvents.length === 0 ? (
                     <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-[10px] font-semibold text-muted-foreground">
                       Belum ada event dengan timestamp yang bisa disinkronkan ke video.
                     </p>
+                  ) : filteredSyncedVideoEvents.length === 0 ? (
+                    <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-[10px] font-semibold text-muted-foreground">
+                      Tidak ada synced event yang cocok dengan filter aktif.
+                    </p>
                   ) : (
-                    <div className="flex max-h-28 gap-2 overflow-x-auto pb-1">
-                      {syncedVideoEvents.slice(0, 20).map((event) => (
+                    <div className="flex max-h-32 gap-2 overflow-x-auto pb-1">
+                      {filteredSyncedVideoEvents.slice(0, 24).map((event) => (
                         <button
                           key={event.id}
                           type="button"
@@ -3091,6 +3149,24 @@ export function TestCaseDetailDialog({
                           )}
                         </button>
                       ))}
+                    </div>
+                  )}
+                  {selectedSyncedVideoEventDetail && (
+                    <div className={cn("mt-2 rounded-lg border p-2 text-[10px]", getSyncedEventSeverityClass(selectedSyncedVideoEvent!))}>
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <span className="font-black uppercase tracking-widest">{selectedSyncedVideoEventDetail.category}</span>
+                        <span className="rounded border border-current/20 px-1.5 py-0.5 font-black uppercase tracking-widest">{selectedSyncedVideoEventDetail.severity}</span>
+                        <span className="font-mono font-black">{selectedSyncedVideoEventDetail.offset}</span>
+                        <span className="truncate font-mono opacity-75">{selectedSyncedVideoEventDetail.timestamp}</span>
+                      </div>
+                      {(selectedSyncedVideoEventDetail.method || selectedSyncedVideoEventDetail.url || selectedSyncedVideoEventDetail.responseStatus) && (
+                        <div className="mb-1 grid grid-cols-[64px_1fr_48px] gap-2 rounded border border-current/15 bg-background/40 p-1.5">
+                          <span className="truncate font-black">{selectedSyncedVideoEventDetail.method || '-'}</span>
+                          <span className="truncate">{selectedSyncedVideoEventDetail.url || '-'}</span>
+                          <span className="text-right font-black">{selectedSyncedVideoEventDetail.responseStatus || '-'}</span>
+                        </div>
+                      )}
+                      <p className="line-clamp-3 font-semibold">{selectedSyncedVideoEventDetail.summary}</p>
                     </div>
                   )}
                 </div>

@@ -73,8 +73,8 @@ export function ImportExcelDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-hidden border-border bg-card text-foreground elevation-3 rounded-2xl sm:max-w-5xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden border-border bg-card text-foreground elevation-3 rounded-2xl sm:max-w-5xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <span className="rounded-xl bg-primary/15 p-1.5 text-primary">
               <Upload className="w-5 h-5" />
@@ -85,7 +85,7 @@ export function ImportExcelDialog({
             Preview file terlebih dahulu sebelum data masuk database.
           </DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 space-y-4 overflow-y-auto py-2 pr-1">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-2 pr-1">
           <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-secondary/30 p-3">
             <Checkbox
               id="createModules"
@@ -184,7 +184,7 @@ export function ImportExcelDialog({
                 </p>
               </div>
 
-              <ScrollArea className="h-[420px] rounded-xl border border-border/60 bg-secondary/10">
+              <ScrollArea className="h-[min(42vh,420px)] rounded-xl border border-border/60 bg-secondary/10">
                 <div className="space-y-6 p-4">
                   {importPreview.sheets.map((sheet) => {
                     const warningItems = Object.entries(sheet.missingRequiredCounts)
@@ -270,7 +270,7 @@ export function ImportExcelDialog({
             </p>
           )}
         </div>
-        <DialogFooter className="gap-2 border-t border-border/50 pt-4">
+        <DialogFooter className="shrink-0 gap-2 border-t border-border/50 pt-4">
           <Button variant="outline" onClick={() => hasPreview ? onClearPreview() : onOpenChange(false)} disabled={busy} className="rounded-xl">
             {hasPreview ? 'Ganti File' : 'Batal'}
           </Button>

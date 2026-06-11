@@ -147,6 +147,7 @@ export default function TestCaseManager() {
     totalPages,
     total,
     limit,
+    setLimit,
     isLoadingTestCases,
     isLoadingStats,
     selectedIds,
@@ -659,6 +660,7 @@ export default function TestCaseManager() {
       setFilterModule={setFilterModule}
       setFilterSubMenu={setFilterSubMenu}
       setPage={setPage}
+      setLimit={setLimit}
       setShowBulkAction={setShowBulkAction}
       setShowDeleteConfirm={setShowDeleteConfirm}
       openCreateDialog={openCreateDialog}

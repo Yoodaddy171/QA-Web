@@ -57,6 +57,7 @@ flowchart TD
 ### 3. Test Cases Module
 * **Purpose**: The primary entity registry for test plans.
 * **User Flow**: Users view a sortable list of test cases, search by keywords, filter by module/status/priority, edit steps/expected results, and view logs.
+* **Pagination UX**: The table now defaults to 10 rows per page and exposes a row-count dropdown for 10, 25, 50, or 100 rows. Changing the page size resets the table back to page 1 to avoid empty pages.
 * **Inputs**: Description, steps, page, sub-menu, weight, priority, and actual results.
 * **Outputs**: SQLite updates in `TestCase` table.
 * **Dependencies**: [use-testcases.ts](../src/hooks/use-testcases.ts) and [TestCaseTable.tsx](../src/components/TestCaseTable.tsx).
@@ -78,6 +79,7 @@ flowchart TD
 ### 6. Excel Import/Export Module
 * **Purpose**: Bi-directional integration with standard Excel test templates.
 * **User Flow**: Users download a template or upload an existing Excel sheet to populate or update the test suite database.
+* **Current UX Note**: The import preview dialog is constrained to 90vh, with a scrollable body and fixed footer so the confirmation button remains reachable after large previews.
 * **Inputs**: File upload (.xlsx).
 * **Outputs**: Parsed and validated SQLite records; downloaded Excel sheets with styles.
 * **Dependencies**: `exceljs`, `xlsx`, and [excel-import-service.ts](../src/lib/services/excel-import-service.ts).
@@ -85,9 +87,10 @@ flowchart TD
 ### 7. Automation & Devlog System
 * **Purpose**: Streams execution steps and network calls in real time.
 * **User Flow**: A user runs Katalon tests or clicks "Start Capture" on a manual test case. The page updates live with traces.
+* **Current Contract**: Manual Capture and Katalon Capture remain separate capture layers, but both converge into `AutomationEventV1` before reaching the frontend.
 * **Inputs**: HTTP POST logs on port 3001; Chrome DevTools Protocol events.
-* **Outputs**: Streamed WebSocket messages, stored JSONL files.
-* **Dependencies**: [ws-server.js](../mini-services/ws-server.js) and [useAutomationLogs.ts](../src/hooks/useAutomationLogs.ts).
+* **Outputs**: Legacy `/log` messages, normalized `automation.event` WebSocket envelopes, and stored JSONL files that preserve backward-compatible payloads.
+* **Dependencies**: [ws-server.js](../mini-services/ws-server.js), [automation-event.js](../mini-services/automation-event.js), [automation-event-client.ts](../src/lib/client/automation/automation-event-client.ts), and [useAutomationLogs.ts](../src/hooks/useAutomationLogs.ts).
 
 ### 8. Evidence Module
 * **Purpose**: Generates standalone, self-contained HTML documents of execution runs.
@@ -359,6 +362,36 @@ The local relay runs as an independent Node.js process ([ws-server.js](../mini-s
 2. **Katalon Integration**: The automated script uses custom Groovy keywords (stored in `docs/templates/`). At every action, the script POSTs a JSON payload to `http://127.0.0.1:3001/log`.
 3. **Log Rotation**: When the relay receives a log containing the string `"Starting Automation"` or `"Starting Manual Capture"`, it moves the contents of `logs/<testCaseId>.current.jsonl` to `logs/<testCaseId>.previous.jsonl`, truncating the current file to prevent endless log bloat.
 
+### AutomationEventV1 Normalization
+The relay now includes a shared event contract in [automation-event.js](../mini-services/automation-event.js). This module normalizes both Manual Capture and Katalon/devlog payloads into `AutomationEventV1`.
+
+Key behavior:
+* `schemaVersion`, `eventId`, and `timestamp` are generated when missing.
+* `runId` is preserved when available, or derived from session/execution/test case context.
+* `mode` is inferred from source (`manual`, `katalon`, or `unknown`).
+* Unknown legacy fields are preserved in metadata to keep old clients and diagnostics compatible.
+* `/log` remains backward compatible. During migration the relay may broadcast both the legacy `type: "log"` payload and the preferred `type: "automation.event"` envelope.
+
+Frontend parsing lives in [automation-event-client.ts](../src/lib/client/automation/automation-event-client.ts). It accepts both:
+
+```json
+{ "type": "automation.event", "schemaVersion": 1, "event": {} }
+```
+
+and legacy:
+
+```json
+{ "type": "log" }
+```
+
+The frontend maps normalized event types into the existing Devlog categories:
+* `network.request` / `network.response` -> Network
+* `console` -> Console
+* `step`, `run.started`, `run.finished` -> Execution
+* `screenshot` / `evidence` -> Evidence/execution fallback
+
+Because the relay can broadcast both old and new events for the same source payload, the frontend performs simple de-duplication using `eventId` when available, otherwise timestamp + source + message + event type.
+
 ### Manual Capture and CDP Integration
 When a user inputs a target URL in the Manual Capture tab and clicks **Start Capture**, the following event chain fires:
 
@@ -400,10 +433,25 @@ Depending on the selected capture mode:
 * **Hybrid Mode**: Performs both operations simultaneously—writing screenshots to `ffmpeg` for the WebM stream and saving selected frames to disk.
 * **Stand-Alone HTML (Evidence Export)**: Fetches the SQLite record, reads the `.jsonl` trace file, converts screenshots to Base64 data URIs, and injects them into a single self-contained HTML template with interactive log search and video playbacks.
 
+### Fullscreen Video/Event Synchronization
+Manual Capture video metadata now carries recording identifiers and time boundaries (`recordingId`, `runId`, `recordingStartedAt`, `recordingEndedAt`, and video `startedAt`/`endedAt` metadata). The frontend uses [video-event-sync.ts](../src/lib/client/automation/video-event-sync.ts) to align Devlog events with video playback.
+
+Implemented UX:
+* A synced event list appears in fullscreen video mode.
+* Clicking a synced event seeks the video to the event offset.
+* A marker strip displays normalized events on the video timeline.
+* The marker strip supports category filters: Network, Console, Errors, Warnings, Steps, Screenshots/Evidence, and Unknown.
+* Dense markers are grouped visually and show a count.
+* The overlay shows the current video time and nearest filtered event within a short time window.
+* The selected event detail panel shows category, severity, offset/timestamp, network method/URL/status when available, and a short event summary.
+
+Storage is intentionally unchanged in this phase: JSONL logs and the current evidence/history routes remain as-is. Run-based evidence folders are still a future migration.
+
 ### Known Limitations
 * **ffmpeg Dependency**: Video/Hybrid modes fail silently if `ffmpeg` is not in the system path or cannot be resolved by the `@ffmpeg-installer/ffmpeg` wrapper.
 * **Browser Locking**: Chrome/Edge will fail to open on remote debugging port 9222 if another instance is already using that user data directory. The relay attempts to force-kill locked processes using PowerShell scripts.
 * **Resource Intensive**: Capturing, drawing overlays with `sharp`, and pipe-streaming 30 FPS video to `ffmpeg` can cause high CPU usage on older machines.
+* **Dual Event Broadcast During Migration**: Some relay events can arrive as both legacy `log` and normalized `automation.event` envelopes. Frontend de-duplication handles common cases, but unusual payloads with missing timestamps/messages can still produce duplicate visual rows.
 
 ---
 
@@ -459,7 +507,7 @@ LLMs can return malformed JSON or wrap output in markdown formatting, which brea
 
 ## 9. Testing Strategy
 
-The project uses **Vitest** for unit and integration testing.
+The project uses **Vitest** for unit and integration testing. Current validation status: **7 test files / 54 tests passing**.
 
 * **Test Config**: Configured in [vitest.config.ts](../vitest.config.ts) to run under the default node environment without browser shims.
 * **Test Suite Location**: Core test suites are co-located with their service implementations under `src/lib/services/`.
@@ -469,13 +517,16 @@ The project uses **Vitest** for unit and integration testing.
 2. **Excel Import Service**: [excel-import-service.test.ts](../src/lib/services/excel-import-service.test.ts) validates transaction queries, file uploads, and status processing.
 3. **Excel Export Service**: [excel-export-service.test.ts](../src/lib/services/excel-export-service.test.ts) checks workbook generation, column formatting, and styling.
 4. **Stats Aggregation**: [stats-aggregation.test.ts](../src/lib/services/__tests__/stats-aggregation.test.ts) validates status counts, percentage formulas, and priority distribution calculations.
+5. **Relay Automation Event Normalization**: [automation-event.test.js](../mini-services/automation-event.test.js) verifies AutomationEventV1 defaults, mode inference, legacy preservation, generated IDs/timestamps, and validation behavior.
+6. **Frontend Automation Event Adapter**: [automation-event-client.test.ts](../src/lib/client/automation/automation-event-client.test.ts) verifies new `automation.event` envelopes and legacy `type: "log"` messages both adapt into the Devlog shape.
+7. **Video/Event Sync Helpers**: [video-event-sync.test.ts](../src/lib/client/automation/video-event-sync.test.ts) verifies timestamp offsets, event classification, de-duplication, before/after video handling, marker positions, filtering, marker grouping, nearest event lookup, and selected event detail formatting.
 
 ### Missing Test Coverage
 * **React Components & UI**: No tests for the main layout component `page.tsx` or dialogues.
-* **React Hooks**: Hooks like `useAutomationLogs` are untested.
+* **React Hooks**: Hooks like `useAutomationLogs` are still not directly tested, although their parser/helper dependencies now have unit tests.
 * **API Endpoints**: Next.js route handlers under `src/app/api/` are untested.
 * **SQLite / Database Transactions**: Core database operations are mocked in tests, leaving raw Prisma queries untested.
-* **CDP Relay**: The local relay server in `mini-services/ws-server.js` lacks automated test coverage.
+* **CDP Relay Integration**: The shared relay normalizer is tested, but the large `mini-services/ws-server.js` CDP/browser integration is still not covered end-to-end.
 
 ---
 
@@ -488,11 +539,12 @@ The project uses **Vitest** for unit and integration testing.
 | 3 | **Low Integration Test Coverage** | **MEDIUM** | Regressions in API contracts and database transactions | Medium | Implement integration tests for the API routes using `supertest` or MSW. |
 | 4 | **Monolithic Hook** (`useAutomationLogs.ts`) | **MEDIUM** | Large, complex hook that is difficult to modify safely | Medium | Split the hook into smaller, focused hooks (e.g., `useWebSocketConnection`, `useCdpCapture`). |
 | 5 | **Inline Database Operations** | **MEDIUM** | Duplicated database logic across route handlers | Low | Extract inline Prisma mutations from route handlers into dedicated service modules. |
-| 6 | **Mocked DB in Tests** | **LOW** | Potential for bugs due to differences between mock behavior and SQLite | Medium | Configure Vitest to run integration tests against a temporary SQLite database. |
-| 7 | **CamelCase vs Kebab-case Naming** | **LOW** | Inconsistent codebase styling | Low | Standardize file naming conventions (e.g., rename `useAutomationLogs.ts` to `use-automation-logs.ts`). |
-| 8 | **Unused Code** | **LOW** | Minor clutter in the hook directory | Trivial | Verify and remove unused files (e.g., `use-mobile.ts`). |
-| 9 | **Loose TypeScript Typings (`any`)** | **LOW** | Bypasses compiler type checks, increasing runtime risk | Low | Replace `any` typings with strict type definitions in core modules. |
-| 10 | **Transitive Dependency Vulnerabilities** | **LOW** | Pre-existing security risks in dependencies | Low | Run `npm audit fix` or update outdated dependencies in `package.json`. |
+| 6 | **Video Evidence Storage Still Flat/Legacy** | **MEDIUM** | Video sync UX improved, but storage is still JSONL/current-vs-previous and not run-folder based | Medium | Introduce run-based capture folders and update evidence/history routes in a dedicated migration phase. |
+| 7 | **Mocked DB in Tests** | **LOW** | Potential for bugs due to differences between mock behavior and SQLite | Medium | Configure Vitest to run integration tests against a temporary SQLite database. |
+| 8 | **CamelCase vs Kebab-case Naming** | **LOW** | Inconsistent codebase styling | Low | Standardize file naming conventions (e.g., rename `useAutomationLogs.ts` to `use-automation-logs.ts`). |
+| 9 | **Unused Code** | **LOW** | Minor clutter in the hook directory | Trivial | Verify and remove unused files (e.g., `use-mobile.ts`). |
+| 10 | **Loose TypeScript Typings (`any`)** | **LOW** | Bypasses compiler type checks, increasing runtime risk | Low | Replace `any` typings with strict type definitions in core modules. |
+| 11 | **Transitive Dependency Vulnerabilities** | **LOW** | Pre-existing security risks in dependencies | Low | Run `npm audit fix` or update outdated dependencies in `package.json`. |
 
 ---
 
@@ -524,7 +576,16 @@ A major refactoring of the codebase was completed in **Phases 1-11** to improve 
   * `stats/route.ts`: Reduced from 360 lines to 16 lines by delegating calculations to a service.
   * `excel/route.ts`: Reduced from 793 lines to 199 lines.
 * **Fixed Linting & Type Errors**: Standardized code formatting and fixed compiler warnings.
-* **Added Test Suite**: Added a test suite with 15 tests using Vitest to prevent regressions.
+* **Added Test Suite**: Expanded the Vitest suite to 7 files / 54 tests covering Excel helpers, stats aggregation, automation event normalization, frontend event adaptation, and video/event sync helpers.
+
+### Recent Updates After Phase 11
+* **Automation Capture Stabilization Phase 1**: Added the relay-side `AutomationEventV1` contract in [automation-event.js](../mini-services/automation-event.js) while preserving Manual Capture, Katalon Capture, and `/log` compatibility.
+* **Automation Capture Stabilization Phase 2**: Added frontend parsing for `automation.event` envelopes in [automation-event-client.ts](../src/lib/client/automation/automation-event-client.ts), while keeping legacy `type: "log"` support and simple de-duplication.
+* **Manual Capture Video Sync Phase 1**: Added recording metadata (`recordingId`, `runId`, start/end timestamps) and introduced [video-event-sync.ts](../src/lib/client/automation/video-event-sync.ts) to align Devlog events with videos.
+* **Fullscreen Video Sync Phase 2**: Added marker strip and current-event overlay in [TestCaseDetailDialog.tsx](../src/components/TestCaseDetailDialog.tsx).
+* **Fullscreen Video Sync Phase 3**: Added marker category filters, basic marker grouping/density handling, and selected event detail formatting.
+* **Excel Import UX Fix**: Updated [ImportExcelDialog.tsx](../src/components/ImportExcelDialog.tsx) so large previews scroll correctly and the import confirmation footer remains reachable.
+* **Test Case Pagination UX**: Updated [use-testcases.ts](../src/hooks/use-testcases.ts) and [TestCaseTable.tsx](../src/components/TestCaseTable.tsx) so test cases default to 10 rows per page with a 10/25/50/100 dropdown.
 
 ---
 
@@ -535,7 +596,13 @@ A major refactoring of the codebase was completed in **Phases 1-11** to improve 
 # Install dependencies
 npm install
 
+# Create local env file when cloning for the first time
+Copy-Item .env.example .env.local
+# or manually set:
+# DATABASE_URL="file:./dev.db"
+
 # Initialize database
+npx prisma generate
 npx prisma db push
 
 # Start Next.js development server

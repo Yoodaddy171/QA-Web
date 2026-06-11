@@ -39,6 +39,7 @@ export function useTestCases(selectedProject: string) {
   const [sortBy, setSortBy] = useState<string>('testCaseId');
   const [sortOrder, setSortOrder] = useState<string>('asc');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
@@ -47,7 +48,6 @@ export function useTestCases(selectedProject: string) {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const testCaseAbortRef = useRef<AbortController | null>(null);
   const selectedProjectRef = useRef(selectedProject);
-  const limit = 50;
   const debouncedSearch = useDebouncedValue(search, 300);
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export function useTestCases(selectedProject: string) {
     } finally {
       setIsLoadingTestCases(false);
     }
-  }, [debouncedSearch, filterModule, filterPriority, filterStatus, filterSubMenu, filterTestType, page, sortBy, sortOrder, toast]);
+  }, [debouncedSearch, filterModule, filterPriority, filterStatus, filterSubMenu, filterTestType, limit, page, sortBy, sortOrder, toast]);
 
   const loadStats = useCallback(async (projId: string) => {
     if (!projId) return;
@@ -114,7 +114,7 @@ export function useTestCases(selectedProject: string) {
       setSelectedIds(new Set());
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [debouncedSearch, filterModule, filterPriority, filterStatus, filterSubMenu, filterTestType, loadTestCases, page, sortBy, sortOrder]);
+  }, [debouncedSearch, filterModule, filterPriority, filterStatus, filterSubMenu, filterTestType, limit, loadTestCases, page, sortBy, sortOrder]);
 
   const handleQuickStatusChange = useCallback(async (testCaseId: string, newStatus: string) => {
     try {
@@ -261,6 +261,7 @@ export function useTestCases(selectedProject: string) {
     totalPages,
     total,
     limit,
+    setLimit,
     isLoadingTestCases,
     isLoadingStats,
     selectedIds,

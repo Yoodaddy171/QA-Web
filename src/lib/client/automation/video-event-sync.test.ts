@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_VIDEO_EVENT_FILTERS,
   buildVideoEventMarkers,
   buildSyncedVideoEvents,
   classifyVideoEvent,
+  filterVideoEventsByCategory,
   formatVideoOffset,
+  formatVideoEventDetail,
   getEventMarkerPosition,
   getNearestVideoEvent,
+  groupVideoEventMarkers,
   getVideoEventDedupKey,
+  getVideoEventFilterKey,
   parseAutomationTimestamp,
 } from './video-event-sync';
 
@@ -168,5 +173,74 @@ describe('video event sync', () => {
   it('formats video offsets for overlay display', () => {
     expect(formatVideoOffset(65000)).toBe('1:05');
     expect(formatVideoOffset(undefined)).toBe('-');
+  });
+
+  it('filters events by marker category groups', () => {
+    const events = buildSyncedVideoEvents([
+      { eventId: 'net', eventType: 'network.request', timestamp: '2026-06-05T00:00:03.000Z', network: { event: 'Request', url: '/api', method: 'GET' } },
+      { eventId: 'console', eventType: 'console', timestamp: '2026-06-05T00:00:04.000Z', log: 'hello' },
+      { eventId: 'error', eventType: 'error', timestamp: '2026-06-05T00:00:05.000Z', log: 'boom' },
+      { eventId: 'warning', eventType: 'warning', timestamp: '2026-06-05T00:00:06.000Z', log: 'careful' },
+      { eventId: 'step', eventType: 'step', timestamp: '2026-06-05T00:00:07.000Z', log: 'click' },
+      { eventId: 'evidence', eventType: 'evidence', timestamp: '2026-06-05T00:00:08.000Z', log: 'shot' },
+      { eventId: 'unknown', eventType: 'custom', timestamp: '2026-06-05T00:00:09.000Z', log: 'custom' },
+    ], recording);
+
+    expect(getVideoEventFilterKey(events[0])).toBe('network');
+    expect(filterVideoEventsByCategory(events, { ...DEFAULT_VIDEO_EVENT_FILTERS, console: false }).map(event => event.eventId)).not.toContain('console');
+    expect(filterVideoEventsByCategory(events, { network: false, console: false, errors: false, warnings: false, steps: false, evidence: false, unknown: false })).toHaveLength(0);
+  });
+
+  it('groups dense markers and exposes grouped counts', () => {
+    const events = buildSyncedVideoEvents([
+      { eventId: 'a', eventType: 'console', timestamp: '2026-06-05T00:00:03.000Z', log: 'a' },
+      { eventId: 'b', eventType: 'console', timestamp: '2026-06-05T00:00:03.100Z', log: 'b' },
+      { eventId: 'c', eventType: 'console', timestamp: '2026-06-05T00:00:09.000Z', log: 'c' },
+    ], recording);
+    const groups = groupVideoEventMarkers(buildVideoEventMarkers(events, 10000), 2.5);
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].count).toBe(2);
+    expect(groups[0].events.map(event => event.eventId)).toEqual(['a', 'b']);
+    expect(groups[1].count).toBe(1);
+  });
+
+  it('nearest event respects the filtered event set', () => {
+    const events = buildSyncedVideoEvents([
+      { eventId: 'console', eventType: 'console', timestamp: '2026-06-05T00:00:05.000Z', log: 'hello' },
+      { eventId: 'step', eventType: 'step', timestamp: '2026-06-05T00:00:05.100Z', log: 'step' },
+    ], recording);
+    const filtered = filterVideoEventsByCategory(events, { console: false });
+
+    expect(getNearestVideoEvent(filtered, 3050, 1500)?.eventId).toBe('step');
+  });
+
+  it('groups markers safely when invalid offsets were filtered out', () => {
+    const groups = groupVideoEventMarkers(buildVideoEventMarkers([
+      { id: 'bad', category: 'unknown', severity: 'info', label: 'Bad', summary: 'bad', isBeforeVideo: false, isAfterVideo: false, originalEvent: {} },
+    ], 10000));
+
+    expect(groups).toEqual([]);
+  });
+
+  it('formats selected event detail data for network and console events', () => {
+    const [network, consoleEvent] = buildSyncedVideoEvents([
+      { eventId: 'net', eventType: 'network.response', timestamp: '2026-06-05T00:00:04.000Z', network: { event: 'Response', method: 'POST', url: 'https://example.test/api', status: 201 } },
+      { eventId: 'console', eventType: 'console', timestamp: '2026-06-05T00:00:05.000Z', log: 'done' },
+    ], recording);
+
+    expect(formatVideoEventDetail(network)).toMatchObject({
+      category: 'api.response.success',
+      severity: 'success',
+      offset: '0:02',
+      method: 'POST',
+      url: 'https://example.test/api',
+      responseStatus: '201',
+    });
+    expect(formatVideoEventDetail(consoleEvent)).toMatchObject({
+      category: 'console.log',
+      severity: 'info',
+      summary: 'done',
+    });
   });
 });

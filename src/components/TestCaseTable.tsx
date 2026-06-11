@@ -43,6 +43,7 @@ const DEFAULT_TESTCASE_COLUMNS = TESTCASE_COLUMN_OPTIONS.reduce<Record<TestCaseC
 }, {} as Record<TestCaseColumnKey, boolean>);
 
 const TESTCASE_COLUMN_STORAGE_KEY = 'qaDesk.testcaseTable.columns.v1';
+const TESTCASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const getInitialTestCaseColumns = () => {
   if (typeof window === 'undefined') return DEFAULT_TESTCASE_COLUMNS;
@@ -137,6 +138,7 @@ interface TestCaseTableProps {
   setFilterModule: (value: string) => void;
   setFilterSubMenu: (value: string) => void;
   setPage: (value: number) => void;
+  setLimit: (value: number) => void;
   setShowBulkAction: (value: boolean) => void;
   setShowDeleteConfirm: (value: boolean) => void;
   openCreateDialog: () => void;
@@ -188,6 +190,7 @@ export function TestCaseTable({
   setFilterModule,
   setFilterSubMenu,
   setPage,
+  setLimit,
   setShowBulkAction,
   setShowDeleteConfirm,
   openCreateDialog,
@@ -251,6 +254,10 @@ export function TestCaseTable({
     setVisibleColumns((current) => ({ ...current, [key]: checked }));
   };
   const resetColumns = () => setVisibleColumns(DEFAULT_TESTCASE_COLUMNS);
+  const handleLimitChange = (value: string) => {
+    setLimit(Number(value));
+    setPage(1);
+  };
 
   useEffect(() => {
     window.localStorage.setItem(TESTCASE_COLUMN_STORAGE_KEY, JSON.stringify(visibleColumns));
@@ -624,16 +631,33 @@ export function TestCaseTable({
             </TableBody>
           </Table>
       </div>
-      {totalPages > 1 && (
+      {total > 0 && (
         <div className="flex flex-col gap-3 rounded-lg border border-white/5 bg-secondary/50 px-3 py-2 shadow-xl backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-            Vault Page {page} of {totalPages} <span className="mx-2 opacity-20">|</span> {total} Total Units
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              Vault Page {page} of {totalPages} <span className="mx-2 opacity-20">|</span> {total} Total Units
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Rows</span>
+              <Select value={String(limit)} onValueChange={handleLimitChange}>
+                <SelectTrigger className="h-8 w-[82px] rounded-md border-border/60 bg-secondary/50 text-xs font-bold text-foreground shadow-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card elevation-3 border-border/60 text-foreground">
+                  {TESTCASE_PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)} className="text-xs font-bold">
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)} className="h-8 border-border/60 bg-secondary/50 text-muted-foreground">
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            {totalPages > 1 && Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageNum: number;
               if (totalPages <= 5) pageNum = i + 1;
               else if (page <= 3) pageNum = i + 1;

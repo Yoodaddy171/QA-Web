@@ -132,6 +132,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   const logEndRef = useRef<HTMLDivElement>(null);
   const currentViewIdRef = useRef<string | null>(null);
   const eventCursorRef = useRef('0');
+  const persistedRunIdRef = useRef<string | null>(null);
   const seenLogKeysRef = useRef<Set<string>>(new Set());
   const seenLogKeyOrderRef = useRef<string[]>([]);
   const [socketReady, setSocketReady] = useState(false);
@@ -230,6 +231,21 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     const logText = typeof logEntry.log === 'string' ? logEntry.log : JSON.stringify(logEntry.log);
     if (/Manual Capture Stopped/i.test(logText)) setManualCaptureSessionId(null);
     if (currentViewIdRef.current !== testCaseId) return;
+    if (
+      isNormalizedEnvelope
+      && message.persistedRunId
+      && logEntry.eventType === 'run.started'
+      && persistedRunIdRef.current
+      && persistedRunIdRef.current !== message.persistedRunId
+    ) {
+      seenLogKeysRef.current.clear();
+      seenLogKeyOrderRef.current = [];
+      eventCursorRef.current = '0';
+      setLiveLogs([]);
+    }
+    if (isNormalizedEnvelope && message.persistedRunId) {
+      persistedRunIdRef.current = message.persistedRunId;
+    }
 
     const dedupKeys = getAutomationLogDedupKeys(logEntry);
     if (dedupKeys.some(key => seenLogKeysRef.current.has(key))) {
@@ -261,19 +277,51 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     }
   };
 
-  const loadPersistedEvents = async (testCaseId: string, after = '0') => {
+  const loadPersistedEvents = async (
+    testCaseId: string,
+    after = '0',
+    runId = persistedRunIdRef.current,
+    replace = false
+  ): Promise<AutomationLogEntry[] | null> => {
     try {
+      const runParam = runId ? `&runId=${encodeURIComponent(runId)}` : '';
       const response = await fetch(buildDevlogRelayUrl(
-        `/events/${encodeURIComponent(testCaseId)}?after=${encodeURIComponent(after)}&limit=500`
+        `/events/${encodeURIComponent(testCaseId)}?after=${encodeURIComponent(after)}&limit=500${runParam}`
       ));
-      if (!response.ok) return false;
+      if (!response.ok) return null;
       const data = await response.json();
-      if (!Array.isArray(data.events)) return false;
+      if (!Array.isArray(data.events)) return null;
+      if (replace) {
+        seenLogKeysRef.current.clear();
+        seenLogKeyOrderRef.current = [];
+        eventCursorRef.current = '0';
+        setLiveLogs([]);
+      }
       data.events.forEach(applyAutomationMessage);
       if (data.cursor) eventCursorRef.current = data.cursor;
-      return true;
+      return data.events.map((event: unknown) => (
+        isAutomationEventEnvelope(event) ? adaptAutomationEventToLogEntry(event) : adaptLegacyLogToLogEntry(event as AutomationLogEntry)
+      ));
     } catch {
-      return false;
+      return null;
+    }
+  };
+
+  const loadPersistedRun = async (testCaseId: string, position: 0 | 1) => {
+    try {
+      const response = await fetch(buildDevlogRelayUrl(`/runs/${encodeURIComponent(testCaseId)}?limit=2`));
+      if (!response.ok) return null;
+      const data = await response.json();
+      const run = Array.isArray(data.runs) ? data.runs[position] : null;
+      if (!run?.id) return null;
+      persistedRunIdRef.current = run.id;
+      const logs = await loadPersistedEvents(testCaseId, '0', run.id, true);
+      if (!logs) return null;
+      setLoadedRunLabel(position === 0 ? 'current' : 'previous');
+      await loadRecordingForRun(testCaseId, logs);
+      return logs;
+    } catch {
+      return null;
     }
   };
 
@@ -287,13 +335,14 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       seenLogKeysRef.current.clear();
       seenLogKeyOrderRef.current = [];
       eventCursorRef.current = '0';
+      persistedRunIdRef.current = null;
       setLiveLogs([]);
       setExpandedLogId(null);
       setAiSummary(null);
       setManualRecording(null);
       setActiveDevLogTab('execution');
-      void loadPersistedEvents(targetId).then(loaded => {
-        if (!loaded) void loadCurrentRun(targetId);
+      void loadPersistedRun(targetId, 0).then(logs => {
+        if (!logs) void loadCurrentRun(targetId);
       });
       loadLatestRecording(targetId);
     }, 0);
@@ -344,8 +393,8 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
         const testCaseId = currentViewIdRef.current;
         if (testCaseId) {
           void loadPersistedEvents(testCaseId, eventCursorRef.current)
-            .then(loaded => {
-              if (!loaded) void loadCurrentRun(testCaseId);
+            .then(logs => {
+              if (!logs) void loadCurrentRun(testCaseId);
             });
         }
       };
@@ -381,7 +430,8 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     if (!viewTestCase?.id) return;
     setIsLoadingHistory(true);
     try {
-      const logs = await loadCurrentRun(viewTestCase.id);
+      const logs = await loadPersistedRun(viewTestCase.id, 0)
+        || await loadCurrentRun(viewTestCase.id);
       await loadRecordingForRun(viewTestCase.id, logs || []);
       if (!logs) throw new Error('Run terbaru belum ditemukan.');
       toast({
@@ -405,6 +455,14 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
 
     setIsLoadingHistory(true);
     try {
+      const persistedLogs = await loadPersistedRun(targetId, 1);
+      if (persistedLogs) {
+        toast({
+          title: 'History Run Sebelumnya Dimuat',
+          description: `Berhasil memuat ${persistedLogs.length} entri log dari PostgreSQL.`,
+        });
+        return;
+      }
       const response = await fetch(buildDevlogRelayUrl(`/logs/${encodeURIComponent(viewTestCase.id)}?run=previous`));
       if (!response.ok) throw new Error('Riwayat run sebelumnya belum ada. Run terbaru sudah dimuat otomatis jika tersedia.');
 
@@ -462,6 +520,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     seenLogKeysRef.current.clear();
     seenLogKeyOrderRef.current = [];
     eventCursorRef.current = '0';
+    persistedRunIdRef.current = null;
     setLiveLogs([]);
     setViewTestCase(prev => prev ? { ...prev, stepLogs: '' } : null);
   };

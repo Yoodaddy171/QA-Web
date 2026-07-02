@@ -640,14 +640,23 @@ function writeRecordingMetadata(recording, notify = false) {
   } catch (error) {
     console.error('Failed to write recording metadata:', error.message);
   }
-  devlogStore?.persistRecording(payload, recording.paths.baseDir)
-    .catch(error => console.error(`[DEVLOG DB] Recording persistence failed: ${error.message}`));
-  if (notify) {
+  const notifyClients = () => {
+    if (!notify) return;
     broadcast({
       type: 'recording.updated',
       testCaseId: recording.testCaseId,
       recording: payload,
     });
+  };
+  if (devlogStore) {
+    devlogStore.persistRecording(payload, recording.paths.baseDir)
+      .then(notifyClients)
+      .catch(error => {
+        console.error(`[DEVLOG DB] Recording persistence failed: ${error.message}`);
+        notifyClients();
+      });
+  } else {
+    notifyClients();
   }
 }
 
@@ -1439,6 +1448,22 @@ const server = http.createServer((req, res) => {
     const session = getManualSession(sessionId);
     if (!session) return sendJson(res, 404, { success: false, active: false });
     sendJson(res, 200, { success: true, ...session });
+  } else if (req.method === 'GET' && requestUrl.pathname.startsWith('/runs/')) {
+    const testCaseId = decodeURIComponent(requestUrl.pathname.split('/').pop());
+    if (!devlogStore) {
+      return sendJson(res, 503, { success: false, error: 'PostgreSQL DevLog store is unavailable' });
+    }
+    const limit = Number(requestUrl.searchParams.get('limit') || 2);
+    devlogStore.getRuns(testCaseId, limit)
+      .then(runs => sendJson(res, 200, {
+        success: true,
+        runs: runs.map(run => ({
+          ...run,
+          startedAt: run.startedAt.toISOString(),
+          endedAt: run.endedAt?.toISOString() || null,
+        })),
+      }))
+      .catch(error => sendJson(res, 500, { success: false, error: error.message }));
   } else if (req.method === 'GET' && requestUrl.pathname.startsWith('/events/')) {
     const testCaseId = decodeURIComponent(requestUrl.pathname.split('/').pop());
     if (!devlogStore) {
@@ -1451,7 +1476,15 @@ const server = http.createServer((req, res) => {
       return sendJson(res, 400, { success: false, error: 'after must be an integer cursor' });
     }
     const limit = Number(requestUrl.searchParams.get('limit') || 500);
-    devlogStore.getEvents(testCaseId, after, limit)
+    const runId = requestUrl.searchParams.get('runId') || undefined;
+    let before;
+    try {
+      const beforeValue = requestUrl.searchParams.get('before');
+      before = beforeValue ? BigInt(beforeValue) : undefined;
+    } catch {
+      return sendJson(res, 400, { success: false, error: 'before must be an integer cursor' });
+    }
+    devlogStore.getEvents(testCaseId, after, limit, runId, before)
       .then(result => sendJson(res, 200, { success: true, ...result }))
       .catch(error => sendJson(res, 500, { success: false, error: error.message }));
   } else if (req.method === 'GET' && requestUrl.pathname.startsWith('/recordings/')) {
@@ -1459,12 +1492,32 @@ const server = http.createServer((req, res) => {
     const [, testCaseId, sessionId, type, file] = parts;
 
     if (testCaseId && sessionId === 'latest') {
+      if (devlogStore) {
+        devlogStore.getLatestRecording(testCaseId)
+          .then(metadata => {
+            const recording = metadata || getLatestRecordingMetadata(testCaseId);
+            if (!recording) return sendJson(res, 404, { success: false, error: 'Recording not found' });
+            sendJson(res, 200, { success: true, recording });
+          })
+          .catch(error => sendJson(res, 500, { success: false, error: error.message }));
+        return;
+      }
       const metadata = getLatestRecordingMetadata(testCaseId);
       if (!metadata) return sendJson(res, 404, { success: false, error: 'Recording not found' });
       return sendJson(res, 200, { success: true, recording: metadata });
     }
 
     if (testCaseId && sessionId && type === 'metadata') {
+      if (devlogStore) {
+        devlogStore.getRecording(testCaseId, sessionId)
+          .then(metadata => {
+            const recording = metadata || readRecordingMetadata(testCaseId, sessionId);
+            if (!recording) return sendJson(res, 404, { success: false, error: 'Recording not found' });
+            sendJson(res, 200, { success: true, recording });
+          })
+          .catch(error => sendJson(res, 500, { success: false, error: error.message }));
+        return;
+      }
       const metadata = readRecordingMetadata(testCaseId, sessionId);
       if (!metadata) return sendJson(res, 404, { success: false, error: 'Recording not found' });
       return sendJson(res, 200, { success: true, recording: metadata });

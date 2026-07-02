@@ -135,14 +135,18 @@ function createDevlogStore(db, options = {}) {
     });
   }
 
-  async function getEvents(testCaseId, after = 0n, limit = 500) {
-    const newestFirst = after === 0n;
+  async function getEvents(testCaseId, after = 0n, limit = 500, runId, before) {
+    const pageSize = Math.min(500, Math.max(1, limit));
+    const newestFirst = after === 0n || before !== undefined;
+    const sequence = before !== undefined ? { lt: before } : { gt: after };
     const rows = await db.automationEvent.findMany({
-      where: { testCaseId, sequence: { gt: after } },
+      where: { testCaseId, runId, sequence },
       orderBy: { sequence: newestFirst ? 'desc' : 'asc' },
-      take: Math.min(500, Math.max(1, limit)),
+      take: pageSize + 1,
       select: { sequence: true, runId: true, payload: true },
     });
+    const hasMore = rows.length > pageSize;
+    if (hasMore) rows.pop();
     if (newestFirst) rows.reverse();
     return {
       events: rows.map(row => ({
@@ -153,7 +157,42 @@ function createDevlogStore(db, options = {}) {
         persistedRunId: row.runId,
       })),
       cursor: rows.at(-1)?.sequence.toString() || after.toString(),
+      before: rows[0]?.sequence.toString() || null,
+      hasMore,
     };
+  }
+
+  async function getRuns(testCaseId, limit = 2) {
+    return db.automationRun.findMany({
+      where: { testCaseId },
+      orderBy: { startedAt: 'desc' },
+      take: Math.min(20, Math.max(1, limit)),
+      select: {
+        id: true,
+        externalRunId: true,
+        status: true,
+        startedAt: true,
+        endedAt: true,
+      },
+    });
+  }
+
+  async function getLatestRecording(testCaseId) {
+    const recording = await db.recording.findFirst({
+      where: { testCaseId },
+      orderBy: { startedAt: 'desc' },
+      select: { metadata: true },
+    });
+    return recording?.metadata || null;
+  }
+
+  async function getRecording(testCaseId, sessionId) {
+    const recording = await db.recording.findFirst({
+      where: { testCaseId, sessionId },
+      orderBy: { startedAt: 'desc' },
+      select: { metadata: true },
+    });
+    return recording?.metadata || null;
   }
 
   async function cleanup(retentionDays = 90) {
@@ -180,7 +219,15 @@ function createDevlogStore(db, options = {}) {
     return result;
   }
 
-  return { cleanup, getEvents, persistEvent, persistRecording };
+  return {
+    cleanup,
+    getEvents,
+    getLatestRecording,
+    getRecording,
+    getRuns,
+    persistEvent,
+    persistRecording,
+  };
 }
 
 function connectDevlogStore() {

@@ -35,14 +35,36 @@ describe('devlog PostgreSQL store', () => {
     const db = {
       automationEvent: { findMany: vi.fn().mockResolvedValue(rows) },
     };
-    const result = await createDevlogStore(db).getEvents('tc-1', 0n, 500);
+    const result = await createDevlogStore(db).getEvents('tc-1', 0n, 500, 'run-db-1');
 
     expect(db.automationEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { testCaseId: 'tc-1', runId: 'run-db-1', sequence: { gt: 0n } },
       orderBy: { sequence: 'desc' },
-      take: 500,
+      take: 501,
     }));
     expect(result.events.map(event => event.cursor)).toEqual(['11', '12']);
     expect(result.cursor).toBe('12');
+  });
+
+  it('paginates older events with a before cursor', async () => {
+    const db = {
+      automationEvent: {
+        findMany: vi.fn().mockResolvedValue([
+          { sequence: 9n, runId: 'run-db-1', payload: { eventId: 'event-9' } },
+          { sequence: 8n, runId: 'run-db-1', payload: { eventId: 'event-8' } },
+          { sequence: 7n, runId: 'run-db-1', payload: { eventId: 'event-7' } },
+        ]),
+      },
+    };
+    const result = await createDevlogStore(db).getEvents('tc-1', 0n, 2, 'run-db-1', 10n);
+
+    expect(db.automationEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { testCaseId: 'tc-1', runId: 'run-db-1', sequence: { lt: 10n } },
+      take: 3,
+    }));
+    expect(result.events.map(event => event.cursor)).toEqual(['8', '9']);
+    expect(result.hasMore).toBe(true);
+    expect(result.before).toBe('8');
   });
 
   it('marks the run finished when recording metadata is finalized', async () => {

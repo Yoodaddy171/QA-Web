@@ -1,4 +1,9 @@
 import { db } from '@/lib/db';
+import { devlogDb } from '@/lib/devlog-db';
+import {
+  adaptAutomationEventToLogEntry,
+  type AutomationEventV1,
+} from '@/lib/client/automation/automation-event-client';
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
@@ -225,14 +230,7 @@ function getNetworkMeta(network: { method?: string; event?: string; url?: string
   return { category: 'other' as const, host: parsed.host };
 }
 
-function readRunLogs(candidateIds: string[]) {
-  const logPath = candidateIds
-    .map(id => path.join(LOGS_DIR, `${id}.current.jsonl`))
-    .find(candidate => fs.existsSync(candidate));
-
-  if (!logPath) return { raw: '', path: null as string | null, selected: [] as string[], logs: [] as EvidenceLog[] };
-
-  const raw = fs.readFileSync(logPath, 'utf8');
+function buildRunLogs(raw: string, logPath: string | null) {
   const lines = raw.split('\n').filter(line => line.trim());
   const important = lines.filter(line => IMPORTANT_LOG_PATTERN.test(line)).slice(-35);
   const tail = lines.slice(-35);
@@ -252,6 +250,37 @@ function readRunLogs(candidateIds: string[]) {
     .slice(0, 300);
 
   return { raw, path: logPath, selected, logs };
+}
+
+function readRunLogs(candidateIds: string[]) {
+  const logPath = candidateIds
+    .map(id => path.join(LOGS_DIR, `${id}.current.jsonl`))
+    .find(candidate => fs.existsSync(candidate));
+  return logPath
+    ? buildRunLogs(fs.readFileSync(logPath, 'utf8'), logPath)
+    : buildRunLogs('', null);
+}
+
+async function readRunLogsFromDatabase(candidateIds: string[]) {
+  if (!devlogDb) return null;
+  const run = await devlogDb.automationRun.findFirst({
+    where: { testCaseId: { in: candidateIds } },
+    orderBy: { startedAt: 'desc' },
+    select: {
+      events: {
+        orderBy: { sequence: 'asc' },
+        take: 500,
+        select: { payload: true },
+      },
+    },
+  });
+  if (!run) return null;
+  const raw = run.events.map(row => JSON.stringify(adaptAutomationEventToLogEntry({
+    type: 'automation.event',
+    schemaVersion: 1,
+    event: row.payload as unknown as AutomationEventV1,
+  }))).join('\n');
+  return buildRunLogs(raw, null);
 }
 
 function getRecordingMetadataCandidates(testCaseIds: string[]) {
@@ -291,6 +320,22 @@ function readLatestRecording(testCaseIds: string[]) {
   }
 
   return null;
+}
+
+async function readLatestRecordingFromDatabase(testCaseIds: string[]) {
+  if (!devlogDb) return null;
+  const recording = await devlogDb.recording.findFirst({
+    where: { testCaseId: { in: testCaseIds } },
+    orderBy: { startedAt: 'desc' },
+    select: { metadata: true, mediaRoot: true },
+  });
+  if (!recording) return null;
+  const metadata = recording.metadata as unknown as RecordingMetadata;
+  return {
+    metadata,
+    framesDir: path.join(recording.mediaRoot, 'frames'),
+    videoDir: path.join(recording.mediaRoot, 'video'),
+  };
 }
 
 function extractImportantRelativeTimes(rawLogs: string) {
@@ -779,8 +824,8 @@ export async function GET(req: NextRequest) {
       record.testCaseId,
       record.sourceTestCaseId || '',
     ].filter(Boolean)));
-    const { raw, logs } = readRunLogs(candidateIds);
-    const recording = readLatestRecording(candidateIds);
+    const { raw, logs } = await readRunLogsFromDatabase(candidateIds) || readRunLogs(candidateIds);
+    const recording = await readLatestRecordingFromDatabase(candidateIds) || readLatestRecording(candidateIds);
     const pickedFrames = recording ? pickFrames(recording.metadata.frames, extractImportantRelativeTimes(raw)) : [];
     const frames = recording ? pickedFrames.map(frame => ({
       time: formatRelativeTime(frame.relativeMs),

@@ -48,6 +48,8 @@ export interface AutomationEventEnvelope {
   type: 'automation.event';
   schemaVersion: 1;
   event: AutomationEventV1;
+  cursor?: string;
+  persistedRunId?: string;
 }
 
 export interface AutomationLogEntry {

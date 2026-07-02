@@ -1,76 +1,88 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/postgresql-client"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Project {
-  id                String      @id @default(cuid())
+  id                String             @id @default(cuid())
   name              String
   description       String?
-  automationContext String?     // Object Repository info for AI
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  automationContext String? // Object Repository info for AI
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   testCases         TestCase[]
   bugFixItems       BugFix[]
   modules           Module[]
   knowledgeItems    ProjectKnowledge[]
+  automationRuns    AutomationRun[]
+
+  @@index([updatedAt])
 }
 
 model ProjectKnowledge {
   id        String   @id @default(cuid())
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  type      String   // API_DOCS, FEATURE_MAP, QA_RULES, DOMAIN_DICTIONARY, TEST_STRATEGY, CHANGELOG, KNOWN_ISSUE, ENV_NOTE
+  type      String // API_DOCS, FEATURE_MAP, QA_RULES, DOMAIN_DICTIONARY, TEST_STRATEGY, CHANGELOG, KNOWN_ISSUE, ENV_NOTE
   title     String
   content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([projectId, type])
 }
 
 model Module {
-  id          String      @id @default(cuid())
+  id          String     @id @default(cuid())
   name        String
   projectId   String
-  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   testCases   TestCase[]
   bugFixItems BugFix[]
+
+  @@index([projectId, updatedAt])
 }
 
 model TestCase {
-  id             String    @id @default(cuid())
-  testCaseId     String    // e.g. A-001, B-002
-  page           String    // e.g. CMS Login, Dashboard
-  subMenu        String?   // e.g. Order List, Product
-  weight         String?   // e.g. 16.60%, 6.25%
-  testType       String    // Positive / Negative
-  testAction     String    // Description of the test action
-  steps          String    // Test steps (multiline)
-  stepLogs       String?   // Console logs per step (multiline)
-  expectedResult String    // Expected result
-  actualResult   String?   // "As Expected" / "Not As Expected"
-  status         String    @default("NOT DONE") // DONE, NOT DONE, IN PROGRESS, BLOCKED, FAILED, READY TO RETEST, TBA
-  progress       Int       @default(0) // 0-100
-  remarks        String?   // Remarks / notes
-  priority       String    @default("Medium") // Low, Medium, High, Critical
+  id             String   @id @default(cuid())
+  testCaseId     String // e.g. A-001, B-002
+  page           String // e.g. CMS Login, Dashboard
+  subMenu        String? // e.g. Order List, Product
+  weight         String? // e.g. 16.60%, 6.25%
+  testType       String // Positive / Negative
+  testAction     String // Description of the test action
+  steps          String // Test steps (multiline)
+  stepLogs       String? // Console logs per step (multiline)
+  expectedResult String // Expected result
+  actualResult   String? // "As Expected" / "Not As Expected"
+  status         String   @default("NOT DONE") // DONE, NOT DONE, IN PROGRESS, BLOCKED, FAILED, READY TO RETEST, TBA
+  progress       Int      @default(0) // 0-100
+  remarks        String? // Remarks / notes
+  priority       String   @default("Medium") // Low, Medium, High, Critical
   projectId      String
-  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   moduleId       String?
-  module         Module?   @relation(fields: [moduleId], references: [id], onDelete: SetNull)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  module         Module?  @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   bugFixItems    BugFix[]
+
+  @@unique([projectId, testCaseId])
+  @@index([projectId, moduleId, status])
+  @@index([projectId, updatedAt])
 }
 
 model BugFix {
   id               String    @id @default(cuid())
-  sourceTestCaseId String    // ID of original TestCase
-  testCaseId       String    // TC-ID of original test case
+  sourceTestCaseId String // ID of original TestCase
+  testCaseId       String // TC-ID of original test case
   projectId        String
   page             String
   subMenu          String?
@@ -79,7 +91,7 @@ model BugFix {
   steps            String
   stepLogs         String?
   expectedResult   String
-  actualResult     String    // Always "Not As Expected" for bug fix items
+  actualResult     String // Always "Not As Expected" for bug fix items
   priority         String
   moduleId         String?
   status           String    @default("SUDAH DILAPORKAN") // SUDAH DILAPORKAN, SEDANG DI FIX, READY TO RETEST, VERIFIED & FIXED
@@ -90,7 +102,71 @@ model BugFix {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  module           Module?   @relation(fields: [moduleId], references: [id], onDelete: SetNull)
-  sourceTestCase   TestCase  @relation(fields: [sourceTestCaseId], references: [id], onDelete: Cascade)
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  module         Module?  @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  sourceTestCase TestCase @relation(fields: [sourceTestCaseId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, moduleId, status])
+  @@index([projectId, updatedAt])
+}
+
+model AutomationRun {
+  id            String            @id @default(cuid())
+  runKey        String            @unique
+  externalRunId String?
+  sessionId     String?
+  projectId     String
+  project       Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCaseId    String
+  source        String            @default("testcase")
+  mode          String            @default("unknown")
+  status        String            @default("running")
+  startedAt     DateTime
+  endedAt       DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  events        AutomationEvent[]
+  recording     Recording?
+
+  @@index([projectId, startedAt])
+  @@index([testCaseId, startedAt])
+  @@index([status, updatedAt])
+}
+
+model AutomationEvent {
+  sequence   BigInt        @id @default(autoincrement())
+  eventId    String        @unique
+  runId      String
+  run        AutomationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  testCaseId String
+  eventType  String
+  timestamp  DateTime
+  relativeMs Int?
+  payload    Json
+  createdAt  DateTime      @default(now())
+
+  @@index([runId, sequence])
+  @@index([testCaseId, sequence])
+  @@index([timestamp])
+}
+
+model Recording {
+  id          String        @id @default(cuid())
+  recordingId String        @unique
+  runId       String        @unique
+  run         AutomationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  testCaseId  String
+  sessionId   String
+  mode        String
+  status      String
+  targetUrl   String?
+  mediaRoot   String
+  metadata    Json
+  startedAt   DateTime
+  stoppedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([testCaseId, startedAt])
+  @@index([status, updatedAt])
 }

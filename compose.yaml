@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: qa_web
+      POSTGRES_USER: qa_web
+      POSTGRES_PASSWORD: qa_web
+    ports:
+      - "5432:5432"
+    volumes:
+      - qa-web-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qa_web -d qa_web"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  qa-web-postgres:

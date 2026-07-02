@@ -8,10 +8,14 @@
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "test": "vitest run",
+    "postinstall": "npm run db:generate",
     "db:push": "prisma db push",
-    "db:generate": "prisma generate",
+    "db:generate": "prisma generate --schema prisma/sqlite.prisma && prisma generate --schema prisma/schema.prisma",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "db:export-sqlite": "python scripts/export-sqlite.py",
+    "db:import-postgres": "node scripts/import-postgres.mjs",
+    "db:import-devlog": "node scripts/import-devlog.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

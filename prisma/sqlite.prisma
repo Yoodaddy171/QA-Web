@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id                String             @id @default(cuid())
+  name              String
+  description       String?
+  automationContext String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  testCases         TestCase[]
+  bugFixItems       BugFix[]
+  modules           Module[]
+  knowledgeItems    ProjectKnowledge[]
+}
+
+model ProjectKnowledge {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Module {
+  id          String      @id @default(cuid())
+  name        String
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  testCases   TestCase[]
+  bugFixItems BugFix[]
+}
+
+model TestCase {
+  id             String   @id @default(cuid())
+  testCaseId     String
+  page           String
+  subMenu        String?
+  weight         String?
+  testType       String
+  testAction     String
+  steps          String
+  stepLogs       String?
+  expectedResult String
+  actualResult   String?
+  status         String   @default("NOT DONE")
+  progress       Int      @default(0)
+  remarks        String?
+  priority       String   @default("Medium")
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  moduleId       String?
+  module         Module?  @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  bugFixItems    BugFix[]
+}
+
+model BugFix {
+  id               String    @id @default(cuid())
+  sourceTestCaseId String
+  testCaseId       String
+  projectId        String
+  page             String
+  subMenu          String?
+  testType         String
+  testAction       String
+  steps            String
+  stepLogs         String?
+  expectedResult   String
+  actualResult     String
+  priority         String
+  moduleId         String?
+  status           String    @default("SUDAH DILAPORKAN")
+  reportedAt       DateTime?
+  fixingAt         DateTime?
+  readyAt          DateTime?
+  fixedAt          DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  module           Module?   @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  sourceTestCase   TestCase  @relation(fields: [sourceTestCaseId], references: [id], onDelete: Cascade)
+}

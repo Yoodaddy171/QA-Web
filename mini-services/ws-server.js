@@ -10,6 +10,7 @@ const {
   normalizeAutomationEvent,
   validateAutomationEvent,
 } = require('./automation-event');
+const { connectDevlogStore } = require('./devlog-store');
 let sharp = null;
 try {
   sharp = require('sharp');
@@ -21,6 +22,7 @@ try {
 
 const wss = new WebSocketServer({ noServer: true });
 const clients = new Set();
+const devlogStore = connectDevlogStore();
 const activeManualSessions = new Map();
 const cdpSessions = new Map();
 
@@ -151,16 +153,29 @@ function emitLog(logData) {
   };
 
   saveLog(persistedLog);
-  broadcast(logData);
-  if (validation.valid) {
+  const send = (persisted) => {
+    if (!validation.valid) {
+      broadcast({ ...logData, cursor: persisted?.cursor });
+      return;
+    }
     broadcast({
       type: 'automation.event',
       schemaVersion: 1,
       event: automationEvent,
+      cursor: persisted?.cursor,
+      persistedRunId: persisted?.runId,
     });
-  } else {
+  };
+  if (!validation.valid) {
     console.warn('[AUTOMATION EVENT] Legacy log preserved without normalized broadcast:', validation.errors.join(', '));
   }
+  if (!devlogStore || !validation.valid) return send(null);
+  devlogStore.persistEvent(automationEvent)
+    .then(send)
+    .catch(error => {
+      console.error(`[DEVLOG DB] Event persistence failed: ${error.message}`);
+      send(null);
+    });
 }
 
 function getManualSession(sessionId) {
@@ -593,7 +608,7 @@ async function drawClickMarkers(imageBuffer, markers) {
   }
 }
 
-function writeRecordingMetadata(recording) {
+function writeRecordingMetadata(recording, notify = false) {
   if (!recording) return;
   const payload = {
     recordingId: recording.recordingId,
@@ -624,6 +639,15 @@ function writeRecordingMetadata(recording) {
     fs.writeFileSync(recording.paths.metadata, JSON.stringify(payload, null, 2));
   } catch (error) {
     console.error('Failed to write recording metadata:', error.message);
+  }
+  devlogStore?.persistRecording(payload, recording.paths.baseDir)
+    .catch(error => console.error(`[DEVLOG DB] Recording persistence failed: ${error.message}`));
+  if (notify) {
+    broadcast({
+      type: 'recording.updated',
+      testCaseId: recording.testCaseId,
+      recording: payload,
+    });
   }
 }
 
@@ -762,7 +786,7 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
           recording.video.status = 'failed';
           ensureKeyframeFallback();
         }
-        writeRecordingMetadata(recording);
+        writeRecordingMetadata(recording, true);
       });
     } catch (error) {
       recording.video.status = 'failed';
@@ -945,7 +969,7 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
     }, videoMaxDurationMs);
   }
   setTimeout(() => captureFrame('initial'), 100);
-  writeRecordingMetadata(recording);
+  writeRecordingMetadata(recording, true);
   return recording;
 }
 
@@ -1415,6 +1439,21 @@ const server = http.createServer((req, res) => {
     const session = getManualSession(sessionId);
     if (!session) return sendJson(res, 404, { success: false, active: false });
     sendJson(res, 200, { success: true, ...session });
+  } else if (req.method === 'GET' && requestUrl.pathname.startsWith('/events/')) {
+    const testCaseId = decodeURIComponent(requestUrl.pathname.split('/').pop());
+    if (!devlogStore) {
+      return sendJson(res, 503, { success: false, error: 'PostgreSQL DevLog store is unavailable' });
+    }
+    let after = 0n;
+    try {
+      after = BigInt(requestUrl.searchParams.get('after') || '0');
+    } catch {
+      return sendJson(res, 400, { success: false, error: 'after must be an integer cursor' });
+    }
+    const limit = Number(requestUrl.searchParams.get('limit') || 500);
+    devlogStore.getEvents(testCaseId, after, limit)
+      .then(result => sendJson(res, 200, { success: true, ...result }))
+      .catch(error => sendJson(res, 500, { success: false, error: error.message }));
   } else if (req.method === 'GET' && requestUrl.pathname.startsWith('/recordings/')) {
     const parts = requestUrl.pathname.split('/').filter(Boolean).map(decodeURIComponent);
     const [, testCaseId, sessionId, type, file] = parts;
@@ -1537,3 +1576,10 @@ server.on('upgrade', (request, socket, head) => {
 server.listen(3001, () => {
   console.log('Log Relay Server (HTTP + WS) started on http://localhost:3001');
 });
+
+if (devlogStore) {
+  const cleanup = () => devlogStore.cleanup(90)
+    .catch(error => console.error(`[DEVLOG DB] Retention cleanup failed: ${error.message}`));
+  cleanup();
+  setInterval(cleanup, 24 * 60 * 60 * 1000).unref();
+}

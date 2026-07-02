@@ -57,6 +57,7 @@ db/*.db-wal
 prisma/db/*.db
 prisma/db/*.db-journal
 prisma/db/*.db-wal
+/data-migration/
 
 # Transient data
 mini-services/logs/

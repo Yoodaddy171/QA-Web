@@ -1,0 +1,1 @@
+ALTER TABLE "AutomationRun" ALTER COLUMN "projectId" DROP NOT NULL;

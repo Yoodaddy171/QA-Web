@@ -17,9 +17,23 @@ function createRunKey(testCaseId, runId) {
   return `${testCaseId}:${runId}`;
 }
 
+function safeDate(value, fallback = new Date()) {
+  const date = new Date(value);
+  const year = date.getUTCFullYear();
+  return Number.isNaN(date.getTime()) || year < 2000 || year > 2100 ? fallback : date;
+}
+
+function safeRelativeMs(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 && number <= 7 * 24 * 60 * 60 * 1000
+    ? Math.round(number)
+    : null;
+}
+
 function createDevlogStore(db, options = {}) {
   const projectCache = new Map();
   const mediaRoots = (options.mediaRoots || []).map(root => path.resolve(root));
+  const allowOrphans = options.allowOrphans === true;
 
   async function resolveEntity(testCaseId) {
     if (projectCache.has(testCaseId)) return projectCache.get(testCaseId);
@@ -33,49 +47,60 @@ function createDevlogStore(db, options = {}) {
         where: { id: testCaseId },
         select: { projectId: true },
       }).then(item => item ? { projectId: item.projectId, source: 'bugfix' } : null);
-    if (entity) projectCache.set(testCaseId, entity);
-    return entity;
+    const resolved = entity || (allowOrphans ? { projectId: null, source: 'orphan' } : null);
+    if (resolved) projectCache.set(testCaseId, resolved);
+    return resolved;
   }
 
-  async function ensureRun(event) {
+  async function ensureRun(event, retry = true) {
     const entity = await resolveEntity(event.testCaseId);
     if (!entity) return null;
     const runKey = createRunKey(event.testCaseId, event.runId);
-    const timestamp = new Date(event.timestamp);
+    const timestamp = safeDate(event.timestamp);
     const finished = event.eventType === 'run.finished';
-    return db.automationRun.upsert({
-      where: { runKey },
-      create: {
-        runKey,
-        externalRunId: event.runId,
-        sessionId: event.browserSessionId || null,
-        projectId: event.projectId || entity.projectId,
-        testCaseId: event.testCaseId,
-        source: entity.source,
-        mode: event.mode || 'unknown',
-        status: finished ? 'finished' : 'running',
-        startedAt: timestamp,
-        endedAt: finished ? timestamp : null,
-      },
-      update: finished
-        ? { status: 'finished', endedAt: timestamp }
-        : {},
-    });
+    try {
+      return await db.automationRun.upsert({
+        where: { runKey },
+        create: {
+          runKey,
+          externalRunId: event.runId,
+          sessionId: event.browserSessionId || null,
+          projectId: entity.projectId,
+          testCaseId: event.testCaseId,
+          source: entity.source,
+          mode: event.mode || 'unknown',
+          status: finished ? 'finished' : 'running',
+          startedAt: timestamp,
+          endedAt: finished ? timestamp : null,
+        },
+        update: finished
+          ? { status: 'finished', endedAt: timestamp }
+          : {},
+      });
+    } catch (error) {
+      if (error?.code === 'P2003' && retry) {
+        projectCache.delete(event.testCaseId);
+        return ensureRun(event, false);
+      }
+      if (error?.code !== 'P2002') throw error;
+      return db.automationRun.findUnique({ where: { runKey } });
+    }
   }
 
   async function persistEvent(event) {
     const run = await ensureRun(event);
     if (!run) return null;
+    const payload = jsonValue(event);
+    const relativeMs = safeRelativeMs(payload.metadata?.legacy?.relativeMs);
+    if (payload.metadata?.legacy && relativeMs === null) delete payload.metadata.legacy.relativeMs;
     const data = {
       eventId: event.eventId,
       runId: run.id,
       testCaseId: event.testCaseId,
       eventType: event.eventType || 'log',
-      timestamp: new Date(event.timestamp),
-      relativeMs: Number.isFinite(Number(event.metadata?.legacy?.relativeMs))
-        ? Math.round(Number(event.metadata.legacy.relativeMs))
-        : null,
-      payload: jsonValue(event),
+      timestamp: safeDate(event.timestamp),
+      relativeMs,
+      payload,
     };
     try {
       const saved = await db.automationEvent.create({ data, select: { sequence: true } });
@@ -108,7 +133,7 @@ function createDevlogStore(db, options = {}) {
         where: { id: run.id },
         data: {
           status: 'finished',
-          endedAt: new Date(metadata.stoppedAt || metadata.recordingEndedAt || Date.now()),
+          endedAt: safeDate(metadata.stoppedAt || metadata.recordingEndedAt || Date.now()),
         },
       });
     }
@@ -124,13 +149,13 @@ function createDevlogStore(db, options = {}) {
         targetUrl: metadata.targetUrl || null,
         mediaRoot,
         metadata: jsonValue(metadata),
-        startedAt: new Date(metadata.startedAt),
-        stoppedAt: metadata.stoppedAt ? new Date(metadata.stoppedAt) : null,
+        startedAt: safeDate(metadata.startedAt),
+        stoppedAt: metadata.stoppedAt ? safeDate(metadata.stoppedAt) : null,
       },
       update: {
         status: metadata.video?.status || metadata.status,
         metadata: jsonValue(metadata),
-        stoppedAt: metadata.stoppedAt ? new Date(metadata.stoppedAt) : null,
+        stoppedAt: metadata.stoppedAt ? safeDate(metadata.stoppedAt) : null,
       },
     });
   }
@@ -250,4 +275,10 @@ function connectDevlogStore() {
   }
 }
 
-module.exports = { connectDevlogStore, createDevlogStore, createRunKey };
+module.exports = {
+  connectDevlogStore,
+  createDevlogStore,
+  createRunKey,
+  safeDate,
+  safeRelativeMs,
+};

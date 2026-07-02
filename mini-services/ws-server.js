@@ -169,8 +169,11 @@ function emitLog(logData) {
   if (!validation.valid) {
     console.warn('[AUTOMATION EVENT] Legacy log preserved without normalized broadcast:', validation.errors.join(', '));
   }
-  if (!devlogStore || !validation.valid) return send(null);
-  devlogStore.persistEvent(automationEvent)
+  if (!devlogStore || !validation.valid) {
+    send(null);
+    return Promise.resolve();
+  }
+  return devlogStore.persistEvent(automationEvent)
     .then(send)
     .catch(error => {
       console.error(`[DEVLOG DB] Event persistence failed: ${error.message}`);
@@ -1007,7 +1010,7 @@ function stopManualRecorder(recording, stopStatus = 'stopped') {
       recording.ffmpeg.stdin.end();
     } catch (_) {}
   }
-  writeRecordingMetadata(recording);
+  writeRecordingMetadata(recording, true);
   return {
     recordingId: recording.recordingId,
     runId: recording.runId,
@@ -1092,8 +1095,8 @@ async function startCdpCapture(session, targetUrl, options = {}) {
     try {
       if (!browser.killed) browser.kill();
     } catch (_) {}
+    cleanupProfileBrowserProcesses(userDataDir);
     if (browserMode === 'profiled') {
-      cleanupProfileBrowserProcesses(userDataDir);
       cleanupProfileLockFiles(userDataDir);
     }
     throw new Error(`${error.message}. Jika memakai Profiled Browser, coba start ulang; profile QA lama sudah dibersihkan.`);
@@ -1256,12 +1259,17 @@ async function startCdpCapture(session, targetUrl, options = {}) {
     cdpSessions.delete(session.sessionId);
   });
 
-  await cdp.send('Runtime.enable');
-  await cdp.send('Network.enable');
-  await cdp.send('Page.enable');
-  await installCdpClickTracker(cdp, session);
-  await focusCdpPage(cdp, target);
-  sessionInfo.recording = startManualRecorder(session, cdp, targetUrl, { captureMode: session.captureMode });
+  try {
+    await cdp.send('Runtime.enable');
+    await cdp.send('Network.enable');
+    await cdp.send('Page.enable');
+    await installCdpClickTracker(cdp, session);
+    await focusCdpPage(cdp, target);
+    sessionInfo.recording = startManualRecorder(session, cdp, targetUrl, { captureMode: session.captureMode });
+  } catch (error) {
+    await stopCdpCapture(session.sessionId);
+    throw error;
+  }
   return {
     port,
     mode: 'cdp',
@@ -1296,6 +1304,7 @@ async function stopCdpCapture(sessionId) {
   } catch (error) {
     result.errors.push(`Browser kill failed: ${error.message}`);
   }
+  cleanupProfileBrowserProcesses(session.userDataDir);
   cdpSessions.delete(sessionId);
   if (session.userDataDir && session.cleanupUserDataDir !== false) {
     setTimeout(() => {
@@ -1321,7 +1330,7 @@ const server = http.createServer((req, res) => {
   const requestUrl = new URL(req.url, 'http://localhost:3001');
 
   if (req.method === 'POST' && requestUrl.pathname === '/log') {
-    readJsonBody(req, (error, logData) => {
+    readJsonBody(req, async (error, logData) => {
       try {
         if (error) throw error;
         if (isStoppedManualLog(logData)) {
@@ -1334,7 +1343,7 @@ const server = http.createServer((req, res) => {
         }
 
         console.log(`[HTTP IN] Received log #${logData.type} for TC: ${logData.testCaseId}`);
-        emitLog(logData);
+        await emitLog(logData);
 
         sendJson(res, 200, { success: true });
       } catch (e) {

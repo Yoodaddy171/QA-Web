@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const { normalizeAutomationEvent } = require('../mini-services/automation-event');
 const { createDevlogStore } = require('../mini-services/devlog-store');
 const db = new PrismaClient({ datasourceUrl: process.env.POSTGRES_DATABASE_URL || process.env.DATABASE_URL });
-const store = createDevlogStore(db);
+const store = createDevlogStore(db, { allowOrphans: true });
 const root = path.resolve('.');
 const logsDir = path.join(root, 'mini-services', 'logs');
 const recordingRoots = [
@@ -18,6 +18,11 @@ const recordingRoots = [
 ];
 
 const stableId = value => crypto.createHash('sha256').update(value).digest('hex');
+const validTimestamp = value => {
+  const date = new Date(value);
+  const year = date.getUTCFullYear();
+  return !Number.isNaN(date.getTime()) && year >= 2000 && year <= 2100;
+};
 
 async function importLogs() {
   let names = [];
@@ -26,10 +31,12 @@ async function importLogs() {
   } catch {
     return 0;
   }
-  let imported = 0;
+  let processed = 0;
+  const skipped = [];
   for (const name of names.filter(item => item.endsWith('.jsonl'))) {
     const filePath = path.join(logsDir, name);
     const lines = (await fs.readFile(filePath, 'utf8')).split('\n').filter(Boolean);
+    const fileTime = (await fs.stat(filePath)).mtimeMs;
     for (let index = 0; index < lines.length; index++) {
       try {
         const parsed = JSON.parse(lines[index]);
@@ -37,13 +44,18 @@ async function importLogs() {
           ...parsed,
           eventId: `legacy-${stableId(`${name}:${index}:${lines[index]}`)}`,
         });
-        if (await store.persistEvent(event)) imported++;
+        if (!validTimestamp(event.timestamp)) {
+          event.timestamp = new Date(fileTime - (lines.length - index) * 1000).toISOString();
+        }
+        if (await store.persistEvent(event)) processed++;
+        else skipped.push(`${name}:${index + 1}: entity not found`);
       } catch (error) {
-        console.warn(`Skipped ${name}:${index + 1}: ${error.message}`);
+        skipped.push(`${name}:${index + 1}: ${error.message}`);
       }
     }
   }
-  return imported;
+  if (skipped.length) throw new Error(`DevLog import skipped ${skipped.length} rows:\n${skipped.join('\n')}`);
+  return processed;
 }
 
 async function findMetadataFiles(dir) {
@@ -80,7 +92,8 @@ async function importRecordings() {
 }
 
 try {
-  const [events, recordings] = await Promise.all([importLogs(), importRecordings()]);
+  const events = await importLogs();
+  const recordings = await importRecordings();
   const counts = {
     runs: await db.automationRun.count(),
     events: await db.automationEvent.count(),

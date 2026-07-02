@@ -1,6 +1,20 @@
-const { createDevlogStore, createRunKey } = require('./devlog-store');
+const { createDevlogStore, createRunKey, safeDate, safeRelativeMs } = require('./devlog-store');
+const fs = require('fs/promises');
+const os = require('os');
+const path = require('path');
 
 describe('devlog PostgreSQL store', () => {
+  it('rejects browser clock timestamps outside the PostgreSQL range', () => {
+    const fallback = new Date('2026-07-02T00:00:00.000Z');
+    expect(safeDate('+058524-05-30T06:36:08.426Z', fallback)).toEqual(fallback);
+    expect(safeDate('2026-07-02T00:00:00.000Z', fallback)).toEqual(fallback);
+  });
+
+  it('drops relative timestamps that cannot represent a run offset', () => {
+    expect(safeRelativeMs(25_000)).toBe(25_000);
+    expect(safeRelativeMs(1_782_901_915_261_923)).toBeNull();
+  });
+
   it('persists an event once and returns its sequence cursor', async () => {
     const db = {
       testCase: { findUnique: vi.fn().mockResolvedValue({ projectId: 'project-1' }) },
@@ -25,6 +39,32 @@ describe('devlog PostgreSQL store', () => {
     expect(createRunKey('tc-1', 'run-1')).toBe('tc-1:run-1');
     expect(result).toEqual({ cursor: '42', runId: 'run-db-1' });
     expect(db.automationEvent.create).toHaveBeenCalledOnce();
+  });
+
+  it('evicts a stale project cache after the test case is deleted', async () => {
+    const db = {
+      testCase: {
+        findUnique: vi.fn()
+          .mockResolvedValueOnce({ projectId: 'deleted-project' })
+          .mockResolvedValueOnce(null),
+      },
+      bugFix: { findUnique: vi.fn().mockResolvedValue(null) },
+      automationRun: {
+        upsert: vi.fn().mockRejectedValue(Object.assign(new Error('foreign key'), { code: 'P2003' })),
+      },
+      automationEvent: { create: vi.fn() },
+    };
+    const store = createDevlogStore(db);
+
+    expect(await store.persistEvent({
+      eventId: 'event-after-delete',
+      runId: 'run-1',
+      testCaseId: 'tc-1',
+      eventType: 'run.finished',
+      timestamp: '2026-07-02T00:00:00.000Z',
+    })).toBeNull();
+    expect(db.automationRun.upsert).toHaveBeenCalledOnce();
+    expect(db.automationEvent.create).not.toHaveBeenCalled();
   });
 
   it('returns the newest event window in chronological order', async () => {
@@ -98,5 +138,31 @@ describe('devlog PostgreSQL store', () => {
       },
     });
     expect(db.recording.upsert).toHaveBeenCalledOnce();
+  });
+
+  it('deletes expired runs and their recording media inside the configured root', async () => {
+    const mediaRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'devlog-retention-'));
+    const recordingDir = path.join(mediaRoot, 'tc-1', 'session-1');
+    await fs.mkdir(recordingDir, { recursive: true });
+    await fs.writeFile(path.join(recordingDir, 'frame.jpg'), 'frame');
+    const db = {
+      automationRun: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'expired-run', recording: { mediaRoot: recordingDir } },
+        ]),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+
+    try {
+      const result = await createDevlogStore(db, { mediaRoots: [mediaRoot] }).cleanup(90);
+      expect(result).toEqual({ count: 1 });
+      expect(db.automationRun.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ status: { not: 'running' } }),
+      }));
+      await expect(fs.stat(recordingDir)).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      await fs.rm(mediaRoot, { recursive: true, force: true });
+    }
   });
 });

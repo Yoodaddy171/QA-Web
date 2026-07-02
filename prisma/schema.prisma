@@ -115,8 +115,8 @@ model AutomationRun {
   runKey        String            @unique
   externalRunId String?
   sessionId     String?
-  projectId     String
-  project       Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String?
+  project       Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   testCaseId    String
   source        String            @default("testcase")
   mode          String            @default("unknown")

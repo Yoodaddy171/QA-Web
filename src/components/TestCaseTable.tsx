@@ -21,8 +21,6 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
-const MotionTableRow = motion(TableRow);
-
 type TestCaseColumnKey = 'subMenu' | 'weight' | 'type' | 'priority' | 'action' | 'status' | 'result' | 'record' | 'progress';
 
 const TESTCASE_COLUMN_OPTIONS: Array<{ key: TestCaseColumnKey; label: string; responsiveClass?: string }> = [
@@ -496,11 +494,8 @@ export function TestCaseTable({
                   const record = testRecordById[tc.id];
 
                   return (
-                  <MotionTableRow 
-                    key={tc.id} 
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: Math.min(index * 0.015, 0.4), duration: 0.2 }}
+                  <TableRow
+                    key={tc.id}
                     className="group border-border/30 hover:bg-secondary/40 transition-colors"
                   >
                     <TableCell className="pl-4">
@@ -624,7 +619,7 @@ export function TestCaseTable({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                  </MotionTableRow>
+                  </TableRow>
                   );
                 })
               )}

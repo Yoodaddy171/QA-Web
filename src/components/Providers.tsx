@@ -1,6 +1,5 @@
 'use client';
 
-import { ReactLenis } from 'lenis/react';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -69,9 +68,7 @@ export function useAppTheme() {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AppThemeProvider>
-      <ReactLenis root>
-        {children}
-      </ReactLenis>
+      {children}
     </AppThemeProvider>
   );
 }

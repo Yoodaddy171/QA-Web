@@ -57,11 +57,13 @@ export const EMPTY_TEST_CASE = {
   moduleId: '',
 };
 
+export type TestCaseDraftInput = Partial<typeof EMPTY_TEST_CASE>;
+
 interface TestCaseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingTestCase: TestCase | null;
-  initialTestCase?: Partial<typeof EMPTY_TEST_CASE> | null;
+  initialTestCase?: TestCaseDraftInput | null;
   selectedProject: string;
   modules: Module[];
   onSaveSuccess: () => void;

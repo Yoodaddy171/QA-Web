@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import {
   AlertTriangle, Bug, CheckCircle2, Clock, HelpCircle, RefreshCw, XCircle
 } from 'lucide-react';
@@ -12,18 +13,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { AppShell } from '@/components/AppShell';
-import { BugFixPanel, type BugFixItem } from '@/components/BugFixPanel';
-import { AutomatedPanel } from '@/components/AutomatedPanel';
-import { TestCaseTable } from '@/components/TestCaseTable';
-import { TestCaseDialog, EMPTY_TEST_CASE } from '@/components/TestCaseDialog';
-import { TestCaseDetailDialog } from '@/components/TestCaseDetailDialog';
-import { DashboardPanel } from '@/components/DashboardPanel';
-import { ImportExcelDialog } from '@/components/ImportExcelDialog';
-import { AIGenerateDialog } from '@/components/AIGenerateDialog';
-import { AIRefineDialog } from '@/components/AIRefineDialog';
-import { BulkStatusDialog } from '@/components/BulkStatusDialog';
-import { ProjectModuleDialogs } from '@/components/ProjectModuleDialogs';
-import { SettingsPanel } from '@/components/SettingsPanel';
+import type { BugFixItem } from '@/components/BugFixPanel';
+import type { TestCaseDraftInput } from '@/components/TestCaseDialog';
 import { FloatingAIChat, type TestCaseDraft } from '@/components/FloatingAIChat';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAiTestcaseFlows } from '@/hooks/use-ai-testcase-flows';
@@ -37,6 +28,23 @@ import type { Stats, TestCase } from '@/lib/client/api/types';
 import { BUGFIX_STATUS } from '@/lib/domain/bugfix';
 import { TESTCASE_STATUS } from '@/lib/domain/testcase';
 import { FEATURES } from '@/lib/features';
+
+function PanelFallback() {
+  return <div className="h-48 animate-pulse rounded-xl border border-border/40 bg-card/50" aria-label="Loading view" />;
+}
+
+const DashboardPanel = dynamic(() => import('@/components/DashboardPanel').then(module => module.DashboardPanel), { loading: PanelFallback });
+const TestCaseTable = dynamic(() => import('@/components/TestCaseTable').then(module => module.TestCaseTable), { loading: PanelFallback });
+const BugFixPanel = dynamic(() => import('@/components/BugFixPanel').then(module => module.BugFixPanel), { loading: PanelFallback });
+const AutomatedPanel = dynamic(() => import('@/components/AutomatedPanel').then(module => module.AutomatedPanel), { loading: PanelFallback });
+const SettingsPanel = dynamic(() => import('@/components/SettingsPanel').then(module => module.SettingsPanel), { loading: PanelFallback });
+const ProjectModuleDialogs = dynamic(() => import('@/components/ProjectModuleDialogs').then(module => module.ProjectModuleDialogs));
+const TestCaseDialog = dynamic(() => import('@/components/TestCaseDialog').then(module => module.TestCaseDialog));
+const TestCaseDetailDialog = dynamic(() => import('@/components/TestCaseDetailDialog').then(module => module.TestCaseDetailDialog));
+const AIRefineDialog = dynamic(() => import('@/components/AIRefineDialog').then(module => module.AIRefineDialog));
+const BulkStatusDialog = dynamic(() => import('@/components/BulkStatusDialog').then(module => module.BulkStatusDialog));
+const ImportExcelDialog = dynamic(() => import('@/components/ImportExcelDialog').then(module => module.ImportExcelDialog));
+const AIGenerateDialog = dynamic(() => import('@/components/AIGenerateDialog').then(module => module.AIGenerateDialog));
 
 type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
 
@@ -207,7 +215,7 @@ export default function TestCaseManager() {
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
   const [viewTestCase, setViewTestCase] = useState<TestCase | null>(null);
   const [navigationContextList, setNavigationContextList] = useState<TestCase[] | null>(null);
-  const [draftTestCase, setDraftTestCase] = useState<Partial<typeof EMPTY_TEST_CASE> | null>(null);
+  const [draftTestCase, setDraftTestCase] = useState<TestCaseDraftInput | null>(null);
 
   // Bulk action
   const [bulkStatus, setBulkStatus] = useState<string>(TESTCASE_STATUS.DONE);
@@ -352,12 +360,27 @@ export default function TestCaseManager() {
     }
     window.localStorage.setItem(LAST_ACTIVE_TAB_STORAGE_KEY, activeTab);
   }, [activeTab]);
-  // Reload when project changes
+  // Load shared project data first, then fetch tab-specific data on demand.
   useEffect(() => {
     if (!selectedProject) return;
-    const timer = window.setTimeout(() => loadAll(selectedProject), 0);
+    const timer = window.setTimeout(() => {
+      void Promise.all([loadModules(selectedProject), loadStats(selectedProject)]);
+    }, 0);
     return () => window.clearTimeout(timer);
   }, [selectedProject]);
+  useEffect(() => {
+    if (!selectedProject) return;
+    const timer = window.setTimeout(() => {
+      if (activeTab === 'testcases') {
+        void Promise.all([loadTestCases(selectedProject), loadAutomated(selectedProject)]);
+      } else if (activeTab === 'bugfix') {
+        void loadBugFix(selectedProject);
+      } else if (activeTab === 'automated') {
+        void loadAutomated(selectedProject);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, selectedProject]);
   // Auto-refresh dashboard every 60s when on dashboard tab
   useEffect(() => {
     if (activeTab !== 'dashboard' || !selectedProject) return;
@@ -780,7 +803,7 @@ export default function TestCaseManager() {
       </AppShell>
       {/* ============== DIALOGS ============== */}
 
-      <ProjectModuleDialogs
+      {(showCreateProject || showCreateModule) && <ProjectModuleDialogs
         showCreateProject={showCreateProject}
         showCreateModule={showCreateModule}
         newProjectName={newProjectName}
@@ -793,10 +816,10 @@ export default function TestCaseManager() {
         setNewModuleName={setNewModuleName}
         onCreateProject={handleCreateProject}
         onCreateModule={handleCreateModule}
-      />
+      />}
 
       {/* Create/Edit Test Case Dialog */}
-      <TestCaseDialog
+      {showTestCaseDialog && <TestCaseDialog
         open={showTestCaseDialog}
         onOpenChange={(open) => {
           setShowTestCaseDialog(open);
@@ -807,10 +830,10 @@ export default function TestCaseManager() {
         selectedProject={selectedProject}
         modules={modules}
         onSaveSuccess={() => loadAll(selectedProject)}
-      />
+      />}
 
       {/* Detail View Dialog */}
-      <TestCaseDetailDialog
+      {showDetailDialog && <TestCaseDetailDialog
         open={showDetailDialog}
         onOpenChange={setShowDetailDialog}
         viewTestCase={viewTestCase}
@@ -854,9 +877,9 @@ export default function TestCaseManager() {
         }}
         testCaseList={navigationContextList ?? []}
         onNavigate={handleNavigate}
-      />
+      />}
 
-      {FEATURES.aiTestcaseFlows && (
+      {FEATURES.aiTestcaseFlows && showAIRefineDialog && (
         <AIRefineDialog
           open={showAIRefineDialog}
           onOpenChange={(open) => {
@@ -903,17 +926,17 @@ export default function TestCaseManager() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <BulkStatusDialog
+      {showBulkAction && <BulkStatusDialog
         open={showBulkAction}
         selectedCount={selectedIds.size}
         bulkStatus={bulkStatus}
         onOpenChange={setShowBulkAction}
         setBulkStatus={setBulkStatus}
         onSubmit={handleBulkStatusUpdate}
-      />
+      />}
 
       {/* Import Excel Dialog */}
-      <ImportExcelDialog
+      {showImportDialog && <ImportExcelDialog
         open={showImportDialog}
         onOpenChange={(open) => {
           setShowImportDialog(open);
@@ -929,12 +952,12 @@ export default function TestCaseManager() {
         onChooseFile={() => fileInputRef.current?.click()}
         onConfirmImport={handleConfirmImportExcel}
         onClearPreview={resetImportPreview}
-      />
+      />}
 
       {/* AI Generate Dialog */}
       {FEATURES.aiTestcaseFlows && (
         <>
-          <AIGenerateDialog
+          {showAIDialog && <AIGenerateDialog
             open={showAIDialog}
             onOpenChange={(open) => {
               setShowAIDialog(open);
@@ -959,7 +982,7 @@ export default function TestCaseManager() {
             }}
             getTestTypeColor={getTestTypeColor}
             getPriorityColor={getPriorityColor}
-          />
+          />}
 
           <FloatingAIChat
             projectId={selectedProject}

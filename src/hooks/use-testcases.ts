@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { EMPTY_TEST_CASE } from '@/components/TestCaseDialog';
 import { useToast } from '@/hooks/use-toast';
 import {
   createTestCase,
@@ -190,7 +189,6 @@ export function useTestCases(selectedProject: string) {
   const handleDuplicate = useCallback(async (tc: TestCase) => {
     try {
       await createTestCase({
-        ...EMPTY_TEST_CASE,
         testCaseId: `${tc.testCaseId}-COPY-${Date.now().toString().slice(-5)}`,
         page: tc.page,
         subMenu: tc.subMenu,

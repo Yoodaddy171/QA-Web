@@ -273,7 +273,7 @@ function MessageContent({
               li: ({ children }) => <li className="pl-1">{children}</li>,
               strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
               code: ({ children }) => (
-                <code className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[0.85em] font-medium text-primary">
+                <code className="rounded-lg bg-secondary/50 border border-border/40 px-1.5 py-0.5 font-mono text-xs font-medium text-primary">
                   {children}
                 </code>
               ),
@@ -646,7 +646,7 @@ export function FloatingAIChat({
               setMinimized(false);
               setChatFrame((current) => current || getDefaultFrame());
             }}
-            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground elevation-3 focus:outline-none focus:ring-4 focus:ring-primary/30"
+            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-primary to-cyan-500 text-white shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 elevation-3 focus:outline-none focus:ring-4 focus:ring-primary/30"
             aria-label="Open QA AI chat"
           >
             <MessageCircle className="h-6 w-6" />
@@ -670,7 +670,7 @@ export function FloatingAIChat({
             }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200, mass: 1 }}
-            className="fixed z-50 flex overflow-hidden rounded-2xl border border-border/60 bg-card/95 elevation-4 backdrop-blur-2xl overscroll-contain"
+            className="fixed z-50 flex overflow-hidden rounded-2xl border border-border/60 bg-card/95 backdrop-blur-md elevation-3 overscroll-contain"
             onPointerMove={moveChatFrame}
             onPointerUp={stopChatFrameDrag}
             onPointerCancel={stopChatFrameDrag}
@@ -687,7 +687,7 @@ export function FloatingAIChat({
             </button>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <div
-                className="flex cursor-move touch-none select-none items-start justify-between border-b border-border/50 bg-secondary/30 px-4 py-3.5 pl-8"
+                className="flex cursor-move touch-none select-none items-start justify-between border-b border-border/40 bg-gradient-to-r from-primary/10 via-indigo-500/10 to-cyan-500/10 backdrop-blur-md px-4 py-3.5 pl-8"
                 onPointerDown={startMove}
               >
                 <div className="min-w-0">
@@ -697,7 +697,7 @@ export function FloatingAIChat({
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-bold tracking-tight text-foreground">QA Copilot</p>
+                        <p className="truncate text-sm font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">QA Copilot</p>
                         <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[9px] font-semibold text-primary uppercase">Active</Badge>
                       </div>
                       <p className="truncate text-[10px] font-medium text-muted-foreground">{contextLabel}</p>
@@ -747,7 +747,7 @@ export function FloatingAIChat({
                     exit={{ opacity: 0, height: 0 }}
                     className="flex min-h-0 flex-1 flex-col overflow-hidden"
                   >
-                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-transparent px-4 py-4">
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-transparent px-4 py-4 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
                       <div className="space-y-4">
                         {messages.map(message => (
                           <motion.div
@@ -757,10 +757,10 @@ export function FloatingAIChat({
                             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                           >
                             <div
-                              className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                              className={`max-w-[90%] px-4 py-3 text-sm leading-relaxed ${
                                 message.role === 'user'
-                                  ? 'bg-primary text-primary-foreground elevation-1'
-                                  : 'border border-border/50 bg-secondary/50 text-foreground'
+                                  ? 'rounded-xl bg-primary/20 border border-primary/30 text-foreground'
+                                  : 'rounded-xl bg-secondary/40 border border-border/40 text-foreground'
                               }`}
                             >
                               <MessageContent
@@ -812,7 +812,7 @@ export function FloatingAIChat({
                             animate={{ opacity: 1, y: 0 }}
                             className="flex justify-start"
                           >
-                            <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-secondary/50 px-4 py-2.5 text-sm text-muted-foreground italic">
+                            <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-secondary/40 px-4 py-2.5 text-sm text-muted-foreground italic">
                               <Loader2 className="h-4 w-4 animate-spin text-primary" />
                               Thinking...
                             </div>
@@ -822,7 +822,7 @@ export function FloatingAIChat({
                     </div>
 
                     {messages.length <= 1 && (
-                      <div className="border-t border-border/30 bg-transparent px-4 py-4">
+                      <div className="border-t border-border/40 bg-transparent px-4 py-4">
                         <div className="grid grid-cols-1 gap-2">
                           {SUGGESTIONS.map((suggestion, idx) => (
                             <motion.button
@@ -833,7 +833,7 @@ export function FloatingAIChat({
                               type="button"
                               onClick={() => askAI(suggestion)}
                               disabled={loading || !projectId}
-                              className="group flex items-center gap-3 rounded-xl border border-border/50 bg-secondary/30 px-4 py-2.5 text-left text-xs font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                              className="group flex items-center gap-3 rounded-xl border border-border/60 bg-secondary/30 px-4 py-2.5 text-left text-xs font-medium text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <Sparkles className="h-3.5 w-3.5 text-primary group-hover:scale-110 transition-transform" />
                               {suggestion}
@@ -843,7 +843,7 @@ export function FloatingAIChat({
                       </div>
                     )}
 
-                    <div className="border-t border-border/30 bg-secondary/20 p-4">
+                    <div className="border-t border-border/40 bg-secondary/20 p-4">
                       <div className="flex gap-2">
                         <Textarea
                           value={input}
@@ -856,14 +856,14 @@ export function FloatingAIChat({
                           }}
                           placeholder={projectId ? 'Ask about your test cases...' : 'Select a project first...'}
                           disabled={loading || !projectId}
-                          className="max-h-32 min-h-[44px] resize-none text-sm bg-card border-border/60 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/30 rounded-xl"
+                          className="max-h-32 min-h-[44px] resize-none text-sm rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200"
                         />
                         <Button
                           type="button"
                           size="icon"
                           onClick={loading ? stopRequest : () => askAI()}
                           disabled={!loading && (!input.trim() || !projectId)}
-                          className={`h-11 w-11 rounded-xl elevation-1 transition-all ${loading ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
+                          className={`h-11 w-11 rounded-xl elevation-1 transition-all duration-200 ${loading ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-white shadow-md hover:shadow-cyan-500/10'}`}
                           aria-label={loading ? 'Stop AI response' : 'Send message'}
                         >
                           {loading ? <X className="h-5 w-5" /> : <Send className="h-5 w-5" />}

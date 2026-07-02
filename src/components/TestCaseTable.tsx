@@ -269,73 +269,73 @@ export function TestCaseTable({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
       className="min-w-0 space-y-4"
-    >      <div className="rounded-lg border border-white/5 bg-secondary/50 p-3 shadow-xl backdrop-blur-sm">
+    >      <div className="rounded-2xl border border-border/40 bg-card/65 p-4 shadow-sm backdrop-blur-md">
         <div className="flex min-w-0 flex-col gap-3 lg:flex-row">
         <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
           <Input
             data-search-input
-            placeholder="Cari test case... (ID, Page, Action, Steps)  [/]"
+            placeholder="Search test cases... (ID, Page, Action, Steps)  [/]"
             value={search}
             onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-            className="h-9 rounded-md border-border/60 bg-secondary/50 text-foreground placeholder:text-muted-foreground pl-9 shadow-inner focus-visible:ring-teal-500/50"
+            className="h-9.5 rounded-xl border border-border/50 bg-secondary/35 text-foreground placeholder:text-muted-foreground pl-9 shadow-xs hover:border-border transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/20 text-xs font-medium"
           />
         </div>
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); resetPage(); }}>
-            <SelectTrigger className={`h-9 w-full border-border/60 bg-secondary/50 text-foreground rounded-md text-sm shadow-sm sm:w-[145px]`}><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent className="bg-card elevation-3 border-border/60 text-foreground">
-              <SelectItem value="all">Semua Status</SelectItem>
-              <SelectItem value="DONE">Done</SelectItem>
-              <SelectItem value="NOT DONE">Not Done</SelectItem>
-              <SelectItem value="IN PROGRESS">In Progress</SelectItem>
-              <SelectItem value="BLOCKED">Blocked</SelectItem>
-              <SelectItem value="FAILED">Failed</SelectItem>
-              <SelectItem value="READY TO RETEST">Ready to Retest</SelectItem>
-              <SelectItem value="TBA">TBA (To Be Announced)</SelectItem>
+            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition-all duration-200 sm:w-[145px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent className="bg-card/95 backdrop-blur-xl border border-border/50 text-foreground rounded-xl shadow-lg">
+              <SelectItem value="all" className="rounded-lg text-xs font-medium">All Status</SelectItem>
+              <SelectItem value="DONE" className="rounded-lg text-xs font-medium">Done</SelectItem>
+              <SelectItem value="NOT DONE" className="rounded-lg text-xs font-medium">Not Done</SelectItem>
+              <SelectItem value="IN PROGRESS" className="rounded-lg text-xs font-medium">In Progress</SelectItem>
+              <SelectItem value="BLOCKED" className="rounded-lg text-xs font-medium">Blocked</SelectItem>
+              <SelectItem value="FAILED" className="rounded-lg text-xs font-medium">Failed</SelectItem>
+              <SelectItem value="READY TO RETEST" className="rounded-lg text-xs font-medium">Ready to Retest</SelectItem>
+              <SelectItem value="TBA" className="rounded-lg text-xs font-medium">TBA (To Be Announced)</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filterTestType} onValueChange={(v) => { setFilterTestType(v); resetPage(); }}>
-            <SelectTrigger className={`h-9 w-full border-border/60 bg-secondary/50 text-foreground rounded-md text-sm shadow-sm sm:w-[135px]`}><SelectValue placeholder="Tipe Test" /></SelectTrigger>
-            <SelectContent className="bg-card elevation-3 border-border/60 text-foreground">
-              <SelectItem value="all">Semua Tipe</SelectItem>
-              <SelectItem value="Positive">Positive</SelectItem>
-              <SelectItem value="Negative">Negative</SelectItem>
+            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition-all duration-200 sm:w-[135px]"><SelectValue placeholder="Test Type" /></SelectTrigger>
+            <SelectContent className="bg-card/95 backdrop-blur-xl border border-border/50 text-foreground rounded-xl shadow-lg">
+              <SelectItem value="all" className="rounded-lg text-xs font-medium">All Types</SelectItem>
+              <SelectItem value="Positive" className="rounded-lg text-xs font-medium">Positive</SelectItem>
+              <SelectItem value="Negative" className="rounded-lg text-xs font-medium">Negative</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filterPriority} onValueChange={(v) => { setFilterPriority(v); resetPage(); }}>
-            <SelectTrigger className={`h-9 w-full border-border/60 bg-secondary/50 text-foreground rounded-md text-sm shadow-sm sm:w-[145px]`}><SelectValue placeholder="Prioritas" /></SelectTrigger>
-            <SelectContent className="bg-card elevation-3 border-border/60 text-foreground">
-              <SelectItem value="all">Semua Prioritas</SelectItem>
-              <SelectItem value="Critical">Critical</SelectItem>
-              <SelectItem value="High">High</SelectItem>
-              <SelectItem value="Medium">Medium</SelectItem>
-              <SelectItem value="Low">Low</SelectItem>
+            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition-all duration-200 sm:w-[145px]"><SelectValue placeholder="Priority" /></SelectTrigger>
+            <SelectContent className="bg-card/95 backdrop-blur-xl border border-border/50 text-foreground rounded-xl shadow-lg">
+              <SelectItem value="all" className="rounded-lg text-xs font-medium">All Priorities</SelectItem>
+              <SelectItem value="Critical" className="rounded-lg text-xs font-medium">Critical</SelectItem>
+              <SelectItem value="High" className="rounded-lg text-xs font-medium">High</SelectItem>
+              <SelectItem value="Medium" className="rounded-lg text-xs font-medium">Medium</SelectItem>
+              <SelectItem value="Low" className="rounded-lg text-xs font-medium">Low</SelectItem>
             </SelectContent>
           </Select>
           {(modules.length > 0 || hasUnassignedModule || filterModule === 'unassigned') && (
             <Select value={filterModule} onValueChange={(v) => { setFilterModule(v); resetPage(); }}>
-              <SelectTrigger className={`h-9 w-full border-border/60 bg-secondary/50 text-foreground rounded-md text-sm shadow-sm sm:w-[165px]`}><SelectValue placeholder="Module" /></SelectTrigger>
-              <SelectContent className="bg-card elevation-3 border-border/60 text-foreground">
-                <SelectItem value="all">Semua Module</SelectItem>
+              <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition-all duration-200 sm:w-[165px]"><SelectValue placeholder="Module" /></SelectTrigger>
+              <SelectContent className="bg-card/95 backdrop-blur-xl border border-border/50 text-foreground rounded-xl shadow-lg">
+                <SelectItem value="all" className="rounded-lg text-xs font-medium">All Modules</SelectItem>
                 {modules.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  <SelectItem key={m.id} value={m.id} className="rounded-lg text-xs font-medium">{m.name}</SelectItem>
                 ))}
                 {(hasUnassignedModule || filterModule === 'unassigned') && (
-                  <SelectItem value="unassigned">Tanpa Module</SelectItem>
+                  <SelectItem value="unassigned" className="rounded-lg text-xs font-medium">No Module</SelectItem>
                 )}
               </SelectContent>
             </Select>
           )}
           <Select value={filterSubMenu} onValueChange={(v) => { setFilterSubMenu(v); resetPage(); }}>
-            <SelectTrigger className="h-9 w-full rounded-md border-border/60 bg-secondary/50 text-sm text-foreground shadow-sm sm:w-[165px]">
+            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition-all duration-200 sm:w-[165px]">
               <SelectValue placeholder="Sub Menu" />
             </SelectTrigger>
-            <SelectContent className="bg-card elevation-3 border-border/60 text-foreground">
-              <SelectItem value="all">Semua Sub Menu</SelectItem>
+            <SelectContent className="bg-card/95 backdrop-blur-xl border border-border/50 text-foreground rounded-xl shadow-lg">
+              <SelectItem value="all" className="rounded-lg text-xs font-medium">All Sub Menus</SelectItem>
               {subMenuOptions.map((subMenu) => (
-                <SelectItem key={subMenu || '__empty__'} value={subMenu || '__empty__'}>
-                  {subMenu || 'Tanpa Sub Menu'}
+                <SelectItem key={subMenu || '__empty__'} value={subMenu || '__empty__'} className="rounded-lg text-xs font-medium">
+                  {subMenu || 'No Sub Menu'}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -346,57 +346,57 @@ export function TestCaseTable({
             size="sm"
             onClick={resetFilters}
             disabled={!hasActiveFilters}
-            className="h-9 rounded-md gap-1.5 border-border/60 bg-secondary/50 text-sm font-semibold text-foreground shadow-sm disabled:opacity-40"
+            className="h-9.5 rounded-xl gap-1.5 border border-border/50 bg-secondary/35 text-xs font-bold text-foreground shadow-xs hover:bg-secondary disabled:opacity-40 transition-all duration-200"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
             Reset
           </Button>
         </div>
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-white/5 bg-secondary/50 p-2 shadow-xl backdrop-blur-sm lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/40 bg-card/65 p-3 shadow-sm backdrop-blur-md lg:flex-row lg:items-center lg:justify-between">
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <Button onClick={openCreateDialog} size="sm" variant="majestic" className={toolbarButtonClass}>
-            <Plus className="w-4 h-4" /> Tambah Test Case
+          <Button onClick={openCreateDialog} size="sm" variant="majestic" className="h-9 rounded-xl gap-1.5 font-bold shadow-sm hover:scale-102 transition-all duration-200">
+            <Plus className="w-4 h-4" /> Add Test Case
           </Button>
           {aiEnabled && (
-            <Button onClick={openAIDialog} size="sm" className={`${toolbarButtonClass} bg-teal-500/10 text-teal-400 border border-teal-500/20 hover:bg-teal-500/20`}>
+            <Button onClick={openAIDialog} size="sm" className="h-9 rounded-xl gap-1.5 font-bold bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 hover:bg-cyan-500/20 hover:scale-102 transition-all duration-200">
               <Sparkles className="w-4 h-4" /> Generate AI
             </Button>
           )}
           {selectedIds.size > 0 && (
             <>
-              <Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-9 rounded-md gap-1.5 font-bold border-border/60 bg-secondary/50 text-foreground">
+              <Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition-all">
                 <Settings2 className="w-4 h-4" /> Update Status ({selectedIds.size})
               </Button>
-              <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-9 rounded-md gap-1.5 font-bold shadow-lg shadow-red-900/20">
-                <Trash2 className="w-4 h-4" /> Hapus ({selectedIds.size})
+              <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-9 rounded-xl gap-1.5 font-bold shadow-md shadow-red-900/10 hover:scale-102 transition-all duration-200">
+                <Trash2 className="w-4 h-4" /> Delete ({selectedIds.size})
               </Button>
             </>
           )}
         </div>
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
-          <Badge variant="outline" className="col-span-2 h-9 justify-center rounded-md border-border/60 bg-muted px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground sm:col-span-1">
+          <Badge variant="outline" className="col-span-2 h-9 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground sm:col-span-1">
             {showingLabel}
           </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 rounded-md gap-1.5 font-bold border-border/60 bg-secondary/50 text-foreground">
+              <Button variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition-all">
                 <Settings2 className="w-4 h-4" /> Columns
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 bg-card elevation-3 border-border/60 text-foreground">
-              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            <DropdownMenuContent align="end" className="w-52 bg-card/95 backdrop-blur-xl border border-border/50 text-foreground rounded-2xl shadow-xl">
+              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">
                 Table Columns
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-border/40" />
               {TESTCASE_COLUMN_OPTIONS.map((column) => (
                 <DropdownMenuCheckboxItem
                   key={column.key}
                   checked={visibleColumns[column.key]}
                   onCheckedChange={(checked) => setColumnVisible(column.key, Boolean(checked))}
-                  className="text-xs font-semibold"
+                  className="text-xs font-semibold rounded-lg mx-1 my-0.5"
                 >
                   {column.label}
                 </DropdownMenuCheckboxItem>
@@ -414,78 +414,78 @@ export function TestCaseTable({
             className="hidden"
             onChange={handleImportExcel}
           />
-          <Button onClick={openImportDialog} variant="outline" size="sm" className="h-9 rounded-md gap-1.5 font-bold border-border/60 bg-secondary/50 text-foreground">
-            <Upload className="w-4 h-4" /> Import Excel
+          <Button onClick={openImportDialog} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition-all">
+            <Upload className="w-4 h-4 text-primary" /> Import Excel
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 rounded-md gap-1.5 font-bold border-border/60 bg-secondary/50 text-foreground">
-                <FileSpreadsheet className="w-4 h-4" /> Export
+              <Button variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition-all">
+                <FileSpreadsheet className="w-4 h-4 text-primary" /> Export
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-card elevation-3 border-border/60 text-foreground">
-              <DropdownMenuItem onClick={() => handleExportExcel('xlsx')}>
-                <FileDown className="w-4 h-4 mr-2" /> Export XLSX (1 Sheet)
+            <DropdownMenuContent className="bg-card/95 backdrop-blur-xl border border-border/50 text-foreground rounded-2xl shadow-xl">
+              <DropdownMenuItem onClick={() => handleExportExcel('xlsx')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
+                <FileDown className="w-4 h-4 mr-2 text-primary" /> Export XLSX (1 Sheet)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { if (!selectedProject) return; window.open(`/api/excel?projectId=${selectedProject}&format=xlsx&multiSheet=true`, '_blank'); }}>
-                <FileDown className="w-4 h-4 mr-2" /> Export XLSX (Per Module)
+              <DropdownMenuItem onClick={() => { if (!selectedProject) return; window.open(`/api/excel?projectId=${selectedProject}&format=xlsx&multiSheet=true`, '_blank'); }} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
+                <FileDown className="w-4 h-4 mr-2 text-primary" /> Export XLSX (Per Module)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExportExcel('csv')}>
-                <FileDown className="w-4 h-4 mr-2" /> Export CSV
+              <DropdownMenuItem onClick={() => handleExportExcel('csv')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
+                <FileDown className="w-4 h-4 mr-2 text-primary" /> Export CSV
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={refreshList} variant="ghost" size="sm" className="h-9 w-9 rounded-md border border-white/5 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+          <Button aria-label="Refresh test cases" title="Refresh test cases" onClick={refreshList} variant="ghost" size="sm" className="h-9 w-9 rounded-xl border border-border/50 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/65 transition-all">
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      <div className="relative rounded-xl border border-border/60 bg-card elevation-1">
+      <div className="relative rounded-2xl border border-border/40 bg-card/65 backdrop-blur-md overflow-hidden shadow-sm">
       {isLoading && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/50 backdrop-blur-[1px]">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />  
         </div>
       )}
       <Table className="w-full table-auto">
-        <TableHeader className="sticky top-0 z-10">
-          <TableRow className="border-white/5 bg-white/[0.03] hover:bg-white/[0.03]">
+        <TableHeader className="sticky top-0 z-10 bg-secondary/95 backdrop-blur-sm">
+          <TableRow className="border-border/30 hover:bg-transparent">
             <TableHead className="w-10 pl-4">
               <Checkbox
                 checked={testCases.length > 0 && selectedIds.size === testCases.length}
                 onCheckedChange={toggleSelectAll}
-                className="border-white/20 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
+                className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
               />
             </TableHead>
             <TableHead className="w-10 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">No</TableHead>
             <TableHead className="w-[80px] cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
-              <div className="flex items-center gap-1">ID <ArrowUpDown className="w-3 h-3" /></div>
+              <div className="flex items-center gap-1">ID <ArrowUpDown className="w-3 h-3 text-primary" /></div>
             </TableHead>
             <TableHead className="w-[110px] cursor-pointer select-none text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => toggleSort('page')}>
-              <div className="flex items-center gap-1">Page <ArrowUpDown className="w-3 h-3" /></div>
+              <div className="flex items-center gap-1">Page <ArrowUpDown className="w-3 h-3 text-primary" /></div>
             </TableHead>
             <TableHead className={getColumnClass('subMenu', 'w-[100px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Sub Menu</TableHead>
-            <TableHead className={getColumnClass('weight', 'w-[68px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Bobot</TableHead>
-            <TableHead className={getColumnClass('type', 'w-[80px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Tipe</TableHead>
-            <TableHead className={getColumnClass('priority', 'w-[84px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Prioritas</TableHead>
+            <TableHead className={getColumnClass('weight', 'w-[68px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Weight</TableHead>
+            <TableHead className={getColumnClass('type', 'w-[80px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Type</TableHead>
+            <TableHead className={getColumnClass('priority', 'w-[84px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Priority</TableHead>
             <TableHead className={getColumnClass('action', 'text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Test Action</TableHead>
             <TableHead className={getColumnClass('status', 'w-[140px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Status</TableHead>
-            <TableHead className={getColumnClass('result', 'w-[120px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Hasil</TableHead>
+            <TableHead className={getColumnClass('result', 'w-[120px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Result</TableHead>
             <TableHead className={getColumnClass('record', 'w-[140px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Test Record</TableHead>
             <TableHead className={getColumnClass('progress', 'w-[88px] text-[10px] font-black uppercase tracking-widest text-muted-foreground')}>Progress</TableHead>
-            <TableHead className="w-[52px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Aksi</TableHead>
+            <TableHead className="w-[52px] text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
               {testCases.length === 0 ? (
-                <TableRow className="border-white/5">
+                <TableRow className="border-border/30 hover:bg-transparent">
                   <TableCell colSpan={tableColSpan} className="h-44 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <FileSpreadsheet className="h-9 w-9 opacity-20" />
-                      <p className="text-sm font-bold uppercase tracking-tight">
+                      <FileSpreadsheet className="h-9 w-9 opacity-25" />
+                      <p className="text-sm font-bold uppercase tracking-widest">
                         {selectedProject ? 'Empty Test Vault' : 'Selection Required'}
                       </p>
-                      <p className="max-w-md text-[11px] font-medium opacity-60">
+                      <p className="max-w-md text-[11px] font-semibold opacity-65">
                         {selectedProject ? 'Click Add Test Case or import Excel to populate your testing matrix.' : 'Select a project from the top console to view data.'}
                       </p>
                     </div>
@@ -501,13 +501,13 @@ export function TestCaseTable({
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(index * 0.015, 0.4), duration: 0.2 }}
-                    className="group border-white/5 hover:bg-white/[0.02] transition-colors"
+                    className="group border-border/30 hover:bg-secondary/40 transition-colors"
                   >
                     <TableCell className="pl-4">
                       <Checkbox
                         checked={selectedIds.has(tc.id)}
                         onCheckedChange={() => toggleSelect(tc.id)}
-                        className="border-white/20 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
+                        className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
                       />
                     </TableCell>
                     <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">
@@ -526,12 +526,12 @@ export function TestCaseTable({
                       )}
                     </TableCell>
                     <TableCell className={getColumnClass('type')}>
-                      <Badge variant="outline" className={`rounded-md text-[10px] font-bold border-white/5 bg-secondary/50 ${tc.testType === 'Negative' ? 'text-rose-400' : 'text-sky-400'}`}>
+                      <Badge variant="outline" className={cn("rounded-md text-[10px] font-bold", getTestTypeColor(tc.testType))}>
                         {tc.testType}
                       </Badge>
                     </TableCell>
                     <TableCell className={getColumnClass('priority')}>
-                      <Badge variant={tc.priority === 'Critical' ? 'failed' : tc.priority === 'High' ? 'warning' : 'outline'} className={`rounded-md text-[10px] font-bold ${tc.priority === 'Medium' ? 'text-amber-400/70 border-amber-400/20' : tc.priority === 'Low' ? 'text-emerald-400/70 border-emerald-400/20' : ''}`}>
+                      <Badge variant="outline" className={cn("rounded-md text-[10px] font-bold", getPriorityColor(tc.priority))}>
                         {tc.priority}
                       </Badge>
                     </TableCell>
@@ -604,7 +604,7 @@ export function TestCaseTable({
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 rounded-md p-0 text-muted-foreground hover:text-foreground hover:bg-secondary">
+                          <Button aria-label={`Actions for ${tc.testCaseId}`} title={`Actions for ${tc.testCaseId}`} variant="ghost" size="sm" className="h-7 w-7 rounded-md p-0 text-muted-foreground hover:text-foreground hover:bg-secondary">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>

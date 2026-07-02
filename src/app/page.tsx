@@ -44,18 +44,27 @@ const LAST_ACTIVE_TAB_STORAGE_KEY = 'web-qa:last-active-tab';
 const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'settings'] as const;
 type AppTab = typeof APP_TABS[number];
 
-// ============== PURE UTILITY FUNCTIONS (outside component to avoid re-creation) ==============
+// ============== PURE UTILITY FUNCTIONS (upgraded colors) ==============
 const getStatusColor = (status: string) => {
   switch (status) {
-    case TESTCASE_STATUS.DONE: return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-100 dark:text-emerald-800 dark:border-emerald-200';
-    case TESTCASE_STATUS.NOT_DONE: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-100 dark:text-gray-800 dark:border-gray-200';
-    case TESTCASE_STATUS.IN_PROGRESS: return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-100 dark:text-amber-800 dark:border-amber-200';
-    case TESTCASE_STATUS.BLOCKED: return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-100 dark:text-red-800 dark:border-red-200';
-    case TESTCASE_STATUS.FAILED: return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-100 dark:text-red-800 dark:border-red-200';
-    case TESTCASE_STATUS.READY_TO_RETEST: return 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-100 dark:text-cyan-800 dark:border-cyan-200';
-    case BUGFIX_STATUS.VERIFIED_FIXED: return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-100 dark:text-emerald-800 dark:border-emerald-200';
-    case TESTCASE_STATUS.TBA: return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-100 dark:text-purple-800 dark:border-purple-200';
-    default: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-100 dark:text-gray-800 dark:border-gray-200';
+    case TESTCASE_STATUS.DONE:
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
+    case TESTCASE_STATUS.NOT_DONE:
+      return 'bg-slate-50 text-slate-600 border border-slate-200/60 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20';
+    case TESTCASE_STATUS.IN_PROGRESS:
+      return 'bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
+    case TESTCASE_STATUS.BLOCKED:
+      return 'bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20';
+    case TESTCASE_STATUS.FAILED:
+      return 'bg-red-50 text-red-700 border border-red-200/60 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20';
+    case TESTCASE_STATUS.READY_TO_RETEST:
+      return 'bg-cyan-50 text-cyan-700 border border-cyan-200/60 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20';
+    case BUGFIX_STATUS.VERIFIED_FIXED:
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
+    case TESTCASE_STATUS.TBA:
+      return 'bg-purple-50 text-purple-700 border border-purple-200/60 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20';
+    default:
+      return 'bg-slate-50 text-slate-600 border border-slate-200/60 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20';
   }
 };
 
@@ -89,18 +98,18 @@ const getStatusIcon = (status: string) => {
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'Critical': return 'bg-red-100 text-red-800';
-    case 'High': return 'bg-orange-100 text-orange-800';
-    case 'Medium': return 'bg-yellow-100 text-yellow-800';
-    case 'Low': return 'bg-green-100 text-green-800';
-    default: return 'bg-gray-100 text-gray-800';
+    case 'Critical': return 'bg-red-50 text-red-700 border border-red-200/60 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/20';
+    case 'High': return 'bg-orange-50 text-orange-700 border border-orange-200/60 dark:bg-orange-500/15 dark:text-orange-400 dark:border-orange-500/20';
+    case 'Medium': return 'bg-blue-50 text-blue-700 border border-blue-200/60 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/20';
+    case 'Low': return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20';
+    default: return 'bg-slate-50 text-slate-700 border border-slate-200/60 dark:bg-slate-500/15 dark:text-slate-400 dark:border-slate-500/20';
   }
 };
 
 const getTestTypeColor = (type: string) => {
   return type === 'Positive'
-    ? 'bg-blue-50 text-blue-700 border-blue-200'
-    : 'bg-rose-50 text-rose-700 border-rose-200';
+    ? 'bg-sky-50 text-sky-700 border border-sky-200/60 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20'
+    : 'bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20';
 };
 
 // ============== MAIN APP ==============
@@ -378,7 +387,7 @@ export default function TestCaseManager() {
         case '/':
           if (!e.ctrlKey && !e.metaKey && activeTab === 'testcases') {
             e.preventDefault();
-            // Focus search input
+            // Focus search inpu
             const searchInput = document.querySelector<HTMLInputElement>('[data-search-input]');
             searchInput?.focus();
           }
@@ -550,13 +559,13 @@ export default function TestCaseManager() {
     } else {
       setViewTestCase(tc);
     }
-    
+
     setNavigationContextList(contextList);
     setShowDetailDialog(true);
   };
 
   const handleNavigate = async (tc: any) => {
-    // Re-use logic from handleOpenDetail but without resetting contextList
+    // Re-use logic from handleOpenDetail but without resetting contextLis
     if (!tc.steps || !tc.expectedResult) {
       try {
         const params = new URLSearchParams({

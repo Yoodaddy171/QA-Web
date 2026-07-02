@@ -19,9 +19,30 @@ export function useExcelImportExport(selectedProject: string, onImportSuccess: (
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const notifyProjectRequired = () => {
+    toast({
+      title: 'Project belum dipilih',
+      description: 'Buat atau pilih project terlebih dahulu sebelum import Excel.',
+      variant: 'destructive',
+    });
+  };
+
+  const openImportDialog = () => {
+    if (!selectedProject) {
+      notifyProjectRequired();
+      return;
+    }
+    setShowImportDialog(true);
+  };
+
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedProject) return;
+    if (!file) return;
+    if (!selectedProject) {
+      resetImportPreview();
+      notifyProjectRequired();
+      return;
+    }
 
     setPreviewingImport(true);
     setImportPreview(null);
@@ -47,7 +68,11 @@ export function useExcelImportExport(selectedProject: string, onImportSuccess: (
   };
 
   const handleConfirmImportExcel = async () => {
-    if (!selectedImportFile || !selectedProject) return;
+    if (!selectedImportFile) return;
+    if (!selectedProject) {
+      notifyProjectRequired();
+      return;
+    }
 
     setImporting(true);
     try {
@@ -73,7 +98,10 @@ export function useExcelImportExport(selectedProject: string, onImportSuccess: (
   };
 
   const handleExportExcel = (format: string = 'xlsx') => {
-    if (!selectedProject) return;
+    if (!selectedProject) {
+      notifyProjectRequired();
+      return;
+    }
     openExcelExport(selectedProject, format);
   };
 
@@ -88,6 +116,7 @@ export function useExcelImportExport(selectedProject: string, onImportSuccess: (
     selectedImportFile,
     fileInputRef,
     resetImportPreview,
+    openImportDialog,
     handleImportExcel,
     handleConfirmImportExcel,
     handleExportExcel,

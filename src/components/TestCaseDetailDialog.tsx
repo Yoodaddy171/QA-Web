@@ -2,8 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
-  FileDown, Filter, Globe2, Layers, Loader2, Maximize2, Minus, Play, Plus, RefreshCw, Search, Sparkles, Square, Trash2, UserRound, Wrench, X
+  AlertTriangle, Bot, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
+  FileDown, Filter, Globe2, Layers, Loader2, Maximize2, Minus, MonitorDot, Play, Plus, RefreshCw, Search, Sparkles, Square, Trash2, UserRound, Wrench, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
@@ -1120,19 +1120,19 @@ export function TestCaseDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background text-foreground",
+          "max-h-[90vh] flex flex-col p-0 overflow-hidden bg-card/95 backdrop-blur-md text-foreground border-border/60 elevation-3",
           isSystemDevLogFullscreen
             ? "h-screen max-h-screen w-screen max-w-none translate-x-[-50%] translate-y-[-50%] rounded-none border-0 sm:max-w-none"
             : isRecordingFullscreen
               ? "w-[96vw] sm:max-w-[96vw]"
-              : "sm:max-w-4xl"
+              : "sm:max-w-4xl rounded-2xl"
         )}
       >
-        <DialogHeader className="p-6 pb-2 shrink-0">
+        <DialogHeader className="p-6 pb-2 shrink-0 border-b border-border/30">
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <ClipboardList className="w-5 h-5 text-indigo-600" />
-              Detail Test Case
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
+              <ClipboardList className="w-5 h-5 text-cyan-500" />
+              <span className="bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Detail Test Case</span>
               {viewTestCase && (
                 <Badge variant={getStatusBadgeVariant(viewTestCase.status)} className={cn("gap-1 ml-2")}>
                   {getStatusIcon(viewTestCase.status)} {viewTestCase.status}
@@ -1144,7 +1144,7 @@ export function TestCaseDetailDialog({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 rounded-xl p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
                   disabled={navigationIndex <= 0}
                   onClick={() => {
                     if (navigationIndex > 0) onNavigate(testCaseList[navigationIndex - 1]);
@@ -1159,7 +1159,7 @@ export function TestCaseDetailDialog({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 rounded-xl p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
                   disabled={navigationIndex >= testCaseList.length - 1}
                   onClick={() => {
                     if (navigationIndex < testCaseList.length - 1) onNavigate(testCaseList[navigationIndex + 1]);
@@ -1177,8 +1177,8 @@ export function TestCaseDetailDialog({
         </DialogHeader>
 
         {viewTestCase && (
-          <div className="flex-1 overflow-y-auto outline-none">
-            <div className="p-6 pt-2">
+          <div className="flex-1 overflow-y-auto outline-none scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
+            <div className="p-6 pt-4">
               <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
                 <TabsList className={cn("grid w-full mb-6 border border-border/60 bg-secondary/50 p-1 rounded-xl", isBugFixDetail ? 'grid-cols-3' : 'grid-cols-2')}>
                   <TabsTrigger value="details" className="gap-2">
@@ -1465,25 +1465,25 @@ export function TestCaseDetailDialog({
                         className="h-full flex flex-col"
                       >
                         <div className="flex flex-col flex-1 min-h-0">
-                          <div className="mb-4 space-y-3 rounded-2xl border border-teal-500/20 bg-teal-500/5 p-4 shadow-sm">
+                          <div className="mb-4 space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
                             <div className="flex flex-wrap items-center gap-2.5">
-                              <div className="p-1.5 rounded-lg bg-teal-500/10">
-                                <Wrench className="h-4 w-4 text-teal-400" />
+                              <div className="p-1.5 rounded-lg bg-primary/10">
+                                <MonitorDot className="h-4 w-4 text-primary" />
                               </div>
-                              <p className="text-xs font-black uppercase tracking-widest text-teal-700 dark:text-teal-200">Intelligence Guide</p>
-                              <Badge variant="outline" className="rounded-md border-teal-500/20 bg-teal-500/10 text-[10px] font-bold text-teal-700 uppercase tracking-tighter dark:bg-black/40 dark:text-teal-400">
+                              <p className="text-xs font-black uppercase tracking-widest text-primary dark:text-cyan-400">Intelligence Guide</p>
+                              <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/10 text-[10px] font-bold text-primary uppercase tracking-tighter dark:bg-black/40 dark:text-cyan-300">
                                 Automation & Manual Capture
                               </Badge>
                             </div>
 
-                            <div className="rounded-xl border border-border bg-card dark:border-border dark:bg-card overflow-hidden">
+                            <div className="rounded-xl border border-border/60 bg-card overflow-hidden shadow-sm">
                               <button
                                 type="button"
                                 onClick={() => setExpandedGuide(expandedGuide === 'automation' ? null : 'automation')}
-                                className="w-full flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[11px] font-bold text-foreground uppercase tracking-widest dark:text-slate-300 hover:bg-secondary/20 transition-colors"
+                                className="w-full flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[11px] font-black text-foreground uppercase tracking-widest hover:bg-secondary/40 transition-colors"
                               >
-                                <span>Automation Capture</span>
-                                <ChevronDown className={cn("h-4 w-4 text-slate-500 transition-transform duration-300", expandedGuide === 'automation' && "rotate-180")} />
+                                <span>Automation Capture Instructions</span>
+                                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-300", expandedGuide === 'automation' && "rotate-180")} />
                               </button>
                               <AnimatePresence>
                                 {expandedGuide === 'automation' && (
@@ -1494,48 +1494,412 @@ export function TestCaseDetailDialog({
                                     transition={{ duration: 0.3, ease: 'easeInOut' }}
                                     className="overflow-hidden"
                                   >
-                                    <div className="border-t border-border px-4 pb-4 pt-3 text-[11px] leading-relaxed text-muted-foreground font-medium dark:border-border/50 dark:text-muted-foreground">
+                                    <div className="border-t border-border/40 px-4 pb-4 pt-3 text-[11px] leading-relaxed text-muted-foreground font-medium bg-secondary/10">
                                       <ol className="ml-4 list-decimal space-y-2">
-                                        <li>Jalankan relay dengan <span className="font-mono text-[11px] text-teal-700 bg-teal-50 px-1 rounded dark:text-teal-400 dark:bg-white/5">node mini-services/ws-server.js</span>.</li>
+                                        <li>Jalankan relay dengan <span className="font-mono text-[11px] text-primary bg-primary/10 px-1 rounded">node mini-services/ws-server.js</span>.</li>
                                         <li>Salin UUID test case dari tab Informasi Utama, bukan display ID seperti E-124.</li>
-                                        <li>Pastikan Katalon script mengirim log ke <span className="font-mono text-[11px] text-teal-700 bg-teal-50 px-1 rounded dark:text-teal-400 dark:bg-white/5">http://127.0.0.1:3001/log</span>.</li>
-                                        <li>Review hasil dari tab Execution, Console, Network, atau AI Summary.</li>
+                                        <li>Tempel UUID ke kolom **Test Case ID** pada browser Automation Capture.</li>
+                                        <li>Aktifkan **Event Sync** agar log browser masuk ke aplikasi ini secara real-time.</li>
                                       </ol>
-                                      <div className="mt-4 flex flex-wrap gap-2">
-                                        <a
-                                          href="/docs/devlog-katalon-semi-auto-guide.html"
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-teal-500/30 bg-teal-50 px-4 text-[10px] font-black uppercase tracking-widest text-teal-700 shadow-sm transition hover:bg-teal-100 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300 dark:shadow-lg dark:hover:bg-teal-500/20"
-                                        >
-                                          <Code2 className="h-4 w-4" />
-                                          Template Semi Otomatis
-                                        </a>
-                                        <a
-                                          href="/docs/devlog-automation-capture-guide.pdf"
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 text-[10px] font-black uppercase tracking-widest text-foreground shadow-sm transition hover:bg-secondary dark:text-slate-300 dark:shadow-lg dark:hover:bg-white/10 dark:hover:text-white"
-                                        >
-                                          <FileDown className="h-4 w-4" />
-                                          Panduan PDF
-                                        </a>
-                                        <a
-                                          href="/docs/devlog-katalon-semi-auto-guide.pdf"
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 text-[10px] font-black uppercase tracking-widest text-foreground shadow-sm transition hover:bg-secondary dark:text-slate-300 dark:shadow-lg dark:hover:bg-white/10 dark:hover:text-white"
-                                        >
-                                          <FileDown className="h-4 w-4" />
-                                          Template PDF
-                                        </a>
-                                      </div>
                                     </div>
                                   </motion.div>
                                 )}
                               </AnimatePresence>
                             </div>
+                          </div>
 
+                          <div className="!hidden flex-1 flex-col overflow-hidden rounded-2xl border border-border/60 bg-secondary/20 shadow-inner" aria-hidden="true">
+                            <div className="flex h-11 shrink-0 items-center justify-between border-b border-border/40 bg-secondary/40 px-4">
+                              <div className="flex rounded-lg bg-background/50 p-1 border border-border/40">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className={cn(
+                                    "h-7 px-3 text-[10px] font-bold uppercase tracking-wider",
+                                    activeDevLogTab === 'console'
+                                      ? 'bg-primary text-white shadow-sm'
+                                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                                  )}
+                                  onClick={() => setActiveDevLogTab('console')}
+                                >
+                                  Console
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className={cn(
+                                    "h-7 px-3 text-[10px] font-bold uppercase tracking-wider",
+                                    activeDevLogTab === 'network'
+                                      ? 'bg-primary text-white shadow-sm'
+                                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+                                  )}
+                                  onClick={() => setActiveDevLogTab('network')}
+                                >
+                                  Network
+                                </Button>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {activeDevLogTab === 'network' && (
+                                  <Badge variant="outline" className="h-6 border-indigo-200 bg-indigo-50 text-[10px] font-bold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-300">
+                                    {networkLogItems.length} Requests
+                                  </Badge>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 gap-1.5 rounded-xl border-border/60 bg-background/80 text-[10px] font-bold text-muted-foreground hover:text-foreground shadow-sm"
+                                  onClick={openSystemDevLogFullscreen}
+                                >
+                                  <Maximize2 className="h-3.5 w-3.5" />
+                                  Fullscreen
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="min-h-0 flex-1 overflow-hidden bg-background/40">
+                              {activeDevLogTab === 'console' ? (
+                                <div className="h-full overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
+                                  {groupedConsoleLogs.length === 0 ? (
+                                    <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
+                                      <Bot className="mb-4 h-10 w-10 opacity-20" />
+                                      <p className="text-[11px] font-black uppercase tracking-widest">Waiting for Browser Logs...</p>
+                                      <p className="mt-2 text-[10px] font-medium opacity-60">Pastikan Automation Capture sudah terhubung.</p>
+                                    </div>
+                                  ) : (
+                                    groupedConsoleLogs.map((group) => {
+                                      const { log, entries, count } = group;
+                                      const logId = group.id;
+                                      const isError = entries.some((entry) => entry.level === 'SEVERE' || entry.log?.toString().toLowerCase().includes('error'));
+                                      const isWarning = entries.some((entry) => entry.level === 'WARNING' || entry.log?.toString().toLowerCase().includes('warn'));
+                                      const canExpand = typeof log.log === 'object' || count > 1;
+
+                                      return (
+                                        <div
+                                          key={logId}
+                                          className={cn(
+                                            "mb-1.5 rounded-xl border border-border/40 bg-card/60 transition-all duration-200",
+                                            isError ? 'border-red-200 bg-red-50/50 dark:border-red-500/20 dark:bg-red-950/20' : isWarning ? 'border-amber-200 bg-amber-50/50 dark:border-amber-500/20 dark:bg-amber-950/20' : 'hover:border-border hover:bg-card'
+                                          )}
+                                        >
+                                          <div
+                                            className={cn(
+                                              "flex w-full cursor-pointer items-start gap-3 p-2.5 text-left text-[11px] font-medium leading-relaxed",
+                                              !canExpand && "cursor-default"
+                                            )}
+                                            onClick={() => {
+                                              if (canExpand) {
+                                                setExpandedLogId(expandedLogId === logId ? null : logId);
+                                              }
+                                              seekRecordingFromLog(log);
+                                            }}
+                                          >
+                                            <span className="text-muted-foreground text-[10px] min-w-[64px] font-bold opacity-60">
+                                              {log.timestamp ? new Date(log.timestamp).toLocaleTimeString('id-ID', { hour12: false }) : '-'}
+                                            </span>
+                                            {typeof log.relativeMs === 'number' && (
+                                              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                                                {formatRelativeTime(log.relativeMs)}
+                                              </span>
+                                            )}
+                                            <div className="flex-1 break-all">
+                                              <span className={cn(isError ? 'text-rose-700 dark:text-rose-400 font-bold' : isWarning ? 'text-amber-700 dark:text-amber-400 font-bold' : 'text-foreground/90')}>
+                                                {getConsoleLogText(log)}
+                                              </span>
+                                            </div>
+                                            {count > 1 && (
+                                              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                                x{count}
+                                              </span>
+                                            )}
+                                            {canExpand && (
+                                              <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0 mt-0.5", expandedLogId === logId && "rotate-180")} />
+                                            )}
+                                          </div>
+                                          <AnimatePresence>
+                                            {expandedLogId === logId && canExpand && (
+                                              <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden"
+                                              >
+                                                <div className="space-y-3 px-10 pb-4">
+                                                  {count > 1 && (
+                                                    <div className="rounded-xl border border-border/60 bg-background/50 p-2.5 shadow-inner">
+                                                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Repeated {count} times</p>
+                                                      <div className="max-h-48 space-y-1 overflow-y-auto pr-1 scrollbar-thin">
+                                                        {entries.map((entry, entryIndex) => (
+                                                          <button
+                                                            key={entry.id ?? `${logId}-repeat-${entryIndex}`}
+                                                            type="button"
+                                                            className="grid w-full grid-cols-[48px_72px_1fr] gap-3 rounded-lg border border-border/40 bg-secondary/20 px-3 py-1.5 text-left text-[10px] hover:bg-secondary/40 transition-colors"
+                                                            onClick={() => seekRecordingFromLog(entry)}
+                                                          >
+                                                            <span className="font-black text-muted-foreground opacity-40">#{entryIndex + 1}</span>
+                                                            <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{formatRelativeTime(entry.relativeMs)}</span>
+                                                            <span className="truncate text-foreground font-medium">{getConsoleLogText(entry)}</span>
+                                                          </button>
+                                                        ))}
+                                                      </div>
+                                                    </div>
+                                                  )}
+                                                  <div className="bg-secondary/30 rounded-xl p-4 border border-border/40 shadow-inner">
+                                                    <pre className="text-foreground/80 text-[11px] whitespace-pre-wrap overflow-x-auto font-mono leading-relaxed">
+                                                      {formatPrettyValue(log.log)}
+                                                    </pre>
+                                                  </div>
+                                                </div>
+                                              </motion.div>
+                                            )}
+                                          </AnimatePresence>
+                                        </div>
+                                      );
+                                    })
+                                  )}
+                                  <div ref={logEndRef} className="h-4" />
+                                </div>
+                              ) : (
+                                <div className="h-full flex flex-col">
+                                  <div className="space-y-2.5 border-b border-border/40 bg-secondary/40 p-3 shadow-sm">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <div className="relative min-w-[240px] flex-1">
+                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                                        <Input
+                                          value={networkFilters.search}
+                                          onChange={(event) => updateNetworkFilters({ search: event.target.value })}
+                                          placeholder="Search URL, method, status..."
+                                          className="h-9 border-border/60 bg-background/80 pl-9 text-[11px] font-medium text-foreground placeholder:text-muted-foreground/50 rounded-xl focus-visible:ring-primary/20 transition-all duration-200"
+                                        />
+                                      </div>
+                                      <select
+                                        value={networkFilters.host}
+                                        onChange={(event) => updateNetworkFilters({ host: event.target.value })}
+                                        className="h-9 min-w-[160px] rounded-xl border border-border/60 bg-background/80 px-3 text-[11px] font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/10 transition-all duration-200"
+                                      >
+                                        <option value="all">All hosts ({networkLogItems.length})</option>
+                                        {networkHosts.map((host) => (
+                                          <option key={host} value={host}>{host}</option>
+                                        ))}
+                                      </select>
+                                      <select
+                                        value={networkFilters.method}
+                                        onChange={(event) => updateNetworkFilters({ method: event.target.value })}
+                                        className="h-9 rounded-xl border border-border/60 bg-background/80 px-3 text-[11px] font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/10 transition-all duration-200"
+                                      >
+                                        <option value="all">Methods</option>
+                                        {networkMethods.map((method) => (
+                                          <option key={method} value={method}>{method}</option>
+                                        ))}
+                                      </select>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 gap-1.5 px-3 rounded-xl border-border/60 bg-background/80 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground shadow-sm"
+                                        onClick={() => setNetworkFilters(DEFAULT_NETWORK_FILTERS)}
+                                      >
+                                        <RefreshCw className="h-3.5 w-3.5" />
+                                        Reset
+                                      </Button>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                                      {[
+                                        { key: 'showPreflight' as const, label: `Preflight ${networkCategoryCounts.preflight}` },
+                                        { key: 'showDocument' as const, label: `Docs ${networkCategoryCounts.document}` },
+                                        { key: 'showScript' as const, label: `JS ${networkCategoryCounts.script}` },
+                                        { key: 'showImage' as const, label: `Img ${networkCategoryCounts.image}` },
+                                        { key: 'showStatic' as const, label: `Static ${networkCategoryCounts.static}` },
+                                        { key: 'showTelemetry' as const, label: `Log ${networkCategoryCounts.telemetry}` },
+                                        { key: 'showOther' as const, label: `Other ${networkCategoryCounts.other}` },
+                                      ].map((filter) => (
+                                        <Button
+                                          key={filter.key}
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className={cn(
+                                            "h-7 rounded-lg border px-3 text-[10px] font-bold transition-all duration-200",
+                                            networkFilters[filter.key]
+                                              ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
+                                              : 'border-border/40 bg-secondary/30 text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
+                                          )}
+                                          onClick={() => toggleNetworkFilter(filter.key)}
+                                        >
+                                          {filter.label}
+                                        </Button>
+                                      ))}
+                                      <span className="ml-auto rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-tighter text-primary">
+                                        API {networkCategoryCounts.business}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-12 gap-2 p-2.5 bg-secondary/40 border-b border-border/40 text-[9px] font-black text-muted-foreground uppercase tracking-widest shrink-0">
+                                    <div className="col-span-1">Method</div>
+                                    <div className="col-span-1">Type</div>
+                                    <div className="col-span-5 pl-1">Name / Path</div>
+                                    <div className="col-span-2 text-center">Status</div>
+                                    <div className="col-span-2 text-right">Time</div>
+                                    <div className="col-span-1"></div>
+                                  </div>
+
+                                  <div className="flex-1 overflow-y-auto divide-y divide-border/30 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
+                                    {groupedNetworkLogs.length === 0 ? (
+                                      <div className="h-full flex flex-col items-center justify-center py-24 text-muted-foreground">
+                                        <RefreshCw className="w-10 h-10 mb-4 opacity-10 animate-spin" />
+                                        <p className="font-black tracking-[0.2em] text-[10px] uppercase opacity-40">Listening for traffic...</p>
+                                      </div>
+                                    ) : (
+                                      groupedNetworkLogs.map((group) => {
+                                        const { log: net, meta, entries, count } = group;
+                                        const logId = group.id;
+
+                                        return (
+                                          <div key={logId} className="group hover:bg-secondary/20 transition-colors">
+                                            <div
+                                              className="grid grid-cols-12 gap-2 p-2.5 cursor-pointer items-center text-[11px]"
+                                              onClick={() => {
+                                                seekRecordingFromLog(net);
+                                                setExpandedLogId(expandedLogId === logId ? null : logId);
+                                              }}
+                                            >
+                                              <div className="col-span-1 font-black text-primary truncate">{getNetworkMethod(net.network)}</div>
+                                              <div className="col-span-1 truncate">
+                                                <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
+                                                  {meta.label}
+                                                </span>
+                                              </div>
+                                              <div className="col-span-5 min-w-0 pl-1">
+                                                <div className="truncate font-semibold text-foreground">{meta.pathname.split('/').pop() || meta.pathname || net.network.url}</div>
+                                                <div className="truncate text-[9px] text-muted-foreground font-medium opacity-60">{meta.host}</div>
+                                              </div>
+                                              <div className="col-span-2 text-center">
+                                                <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-black", getNetworkStatusClass(net.network))}>
+                                                  {getNetworkStatus(net.network)}
+                                                </span>
+                                              </div>
+                                              <div className="col-span-2 text-right">
+                                                <div className="font-bold text-muted-foreground">{getNetworkDuration(net.network)}</div>
+                                                {typeof net.relativeMs === 'number' && (
+                                                  <div className="text-[9px] font-black text-primary uppercase tracking-tighter">{formatRelativeTime(net.relativeMs)}</div>
+                                                )}
+                                              </div>
+                                              <div className="col-span-1 flex items-center justify-end gap-1.5">
+                                                {count > 1 && (
+                                                  <span className="rounded-full border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[9px] font-black text-primary">
+                                                    {count}
+                                                  </span>
+                                                )}
+                                                <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground/40 transition-transform group-hover:text-muted-foreground", expandedLogId === logId && "rotate-180")} />
+                                              </div>
+                                            </div>
+                                            <AnimatePresence>
+                                              {expandedLogId === logId && (
+                                                <motion.div
+                                                  initial={{ height: 0, opacity: 0 }}
+                                                  animate={{ height: 'auto', opacity: 1 }}
+                                                  exit={{ height: 0, opacity: 0 }}
+                                                  transition={{ duration: 0.2 }}
+                                                  className="overflow-hidden"
+                                                >
+                                                  <div className="p-5 bg-secondary/10 border-t border-border/30 space-y-4">
+                                                    {count > 1 && (
+                                                      <div className="rounded-xl border border-border/40 bg-background/60 p-3 shadow-inner">
+                                                        <p className="mb-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Repeated Request History ({count})</p>
+                                                        <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
+                                                          {entries.map((entry, entryIndex) => (
+                                                            <button
+                                                              key={entry.log.id ?? `${logId}-repeat-${entryIndex}`}
+                                                              type="button"
+                                                              className="grid w-full grid-cols-[40px_72px_64px_1fr] gap-3 rounded-lg border border-border/40 bg-secondary/30 px-3 py-2 text-left text-[10px] hover:bg-secondary/50 transition-colors"
+                                                              onClick={() => seekRecordingFromLog(entry.log)}
+                                                            >
+                                                              <span className="font-black text-muted-foreground opacity-30">#{entryIndex + 1}</span>
+                                                              <span className="font-mono font-bold text-primary">{formatRelativeTime(entry.log.relativeMs)}</span>
+                                                              <span className={cn("rounded-md px-1.5 py-0.5 text-center font-black", getNetworkStatusClass(entry.log.network))}>
+                                                                {getNetworkStatus(entry.log.network)}
+                                                              </span>
+                                                              <span className="truncate text-foreground font-medium">{getNetworkDuration(entry.log.network)}</span>
+                                                            </button>
+                                                          ))}
+                                                        </div>
+                                                      </div>
+                                                    )}
+
+                                                    <div className="rounded-xl border border-border/40 bg-background/60 p-4 shadow-inner space-y-4">
+                                                      <div>
+                                                        <p className="mb-1.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Full Destination URL</p>
+                                                        <pre className="overflow-auto rounded-lg border border-border/30 bg-secondary/20 p-2.5 font-mono text-[10px] leading-relaxed text-foreground/80 break-all whitespace-pre-wrap">
+                                                          {net.network.url}
+                                                        </pre>
+                                                      </div>
+
+                                                      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                                                        <div className="space-y-2">
+                                                          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Request Headers</p>
+                                                          <pre className={cn(networkCodePanelClass, "h-[240px] border-border/30 bg-secondary/20 text-foreground/70")}>
+                                                            {formatPrettyValue(net.network.headers)}
+                                                          </pre>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                          <p className="text-[9px] font-black uppercase tracking-widest text-primary/60 opacity-80">Request Body</p>
+                                                          <pre className={cn(networkCodePanelClass, "h-[240px] border-primary/20 bg-primary/5 text-primary/80")}>
+                                                            {formatPrettyValue(getRequestPayload(net.network.data))}
+                                                          </pre>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                          <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600/60 opacity-80">Response Body</p>
+                                                          <pre className={cn(networkCodePanelClass, "h-[240px] border-emerald-500/20 bg-emerald-500/5 text-emerald-600/80 font-semibold")}>
+                                                            {formatPrettyValue(getResponsePayload(net.network.data))}
+                                                          </pre>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                </motion.div>
+                                              )}
+                                            </AnimatePresence>
+                                          </div>
+                                        );
+                                      })
+                                    )}
+                                    <div ref={logEndRef} className="h-4" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="bg-secondary/60 px-4 py-2 border-t border-border/40 flex items-center justify-between shrink-0 shadow-inner">
+                              <div className="flex items-center gap-5 text-[9px] font-black uppercase tracking-[0.15em]">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                                  <span className="text-emerald-700 dark:text-emerald-400">{okLogCount} Succesful</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"></div>
+                                  <span className="text-rose-700 dark:text-rose-400">{errorLogCount} Critical Errors</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter italic">
+                                <RefreshCw className="h-3 w-3 animate-spin-slow" />
+                                Live Telemetry Stream
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="hidden shrink-0 mt-4 items-start gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm" aria-hidden="true">
+                            <div className="mt-0.5 rounded-xl border border-primary/20 bg-background/80 p-2 text-primary shadow-sm">
+                              <Sparkles className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[11px] text-foreground font-semibold leading-relaxed">
+                                <span className="text-primary font-black uppercase tracking-tight mr-1.5">DevTools Intelligence:</span>
+                                Tab **Console** memantau eksekusi runtime browser, sementara **Network** melacak pertukaran data API. Gunakan detail payload untuk validasi integrasi yang mendalam.
+                              </p>
+                            </div>
+                          </div>
                             <div className="rounded-xl border border-border bg-card dark:border-border dark:bg-card overflow-hidden">
                               <button
                                 type="button"
@@ -1567,7 +1931,6 @@ export function TestCaseDetailDialog({
                                 )}
                               </AnimatePresence>
                             </div>
-                          </div>
 
                           <div className="mb-4 rounded-2xl border border-border/60 bg-secondary/20 p-4 shadow-sm">
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-center">

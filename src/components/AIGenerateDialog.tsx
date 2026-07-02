@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Loader2, RefreshCw, Save, Sparkles, Target, Wand2 } from 'lucide-react';
+import { AlertTriangle, Bot, Loader2, RefreshCw, Save, Sparkles, Target, Wand2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 interface Module {
   id: string;
@@ -138,30 +140,32 @@ export function AIGenerateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-border bg-card text-foreground elevation-3 rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-foreground">
-            <div className="p-1.5 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500">
-              <Wand2 className="w-4 h-4 text-white" />
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-border/60 bg-card/95 backdrop-blur-md text-foreground elevation-3 rounded-2xl p-0">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
+
+        <DialogHeader className="px-6 py-5 border-b border-border/40 bg-gradient-to-r from-primary/5 via-indigo-500/5 to-cyan-500/5">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/15 text-primary">
+              <Sparkles className="h-5 w-5" />
             </div>
-            AI Test Case Generator
-          </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            AI akan menganalisis test case yang sudah ada di project ini dan menghasilkan test case baru berdasarkan konteks serta instruksi Anda.
-          </DialogDescription>
+            <div>
+              <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">AI Test Case Generator</DialogTitle>
+              <DialogDescription className="text-muted-foreground text-[11px] font-medium leading-relaxed">AI akan menganalisis project patterns dan menghasilkan test case baru yang akurat.</DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
           {!aiGeneratedCases.length && !aiGenerating && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Apa yang ingin Anda test?</Label>
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="space-y-2.5">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Apa yang ingin Anda test?</Label>
                 <Textarea
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
                   placeholder="Contoh: Buatkan test case untuk fitur register akun baru, termasuk validasi email, password strength, dan konfirmasi password. Sertakan positive dan negative test case."
                   rows={4}
-                  className="resize-none rounded-xl border-border/60 bg-secondary/50 text-foreground placeholder:text-muted-foreground focus-visible:ring-violet-500/40"
+                  className="resize-none rounded-2xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground placeholder:text-muted-foreground/40 focus-visible:ring-primary/20 transition-all duration-300 p-4"
                 />
                 <div className="flex flex-wrap gap-1.5">
                   {(insights?.suggestions?.length ? insights.suggestions : PROMPT_SUGGESTIONS).map((suggestion) => (
@@ -169,7 +173,7 @@ export function AIGenerateDialog({
                       key={suggestion}
                       variant="outline"
                       size="sm"
-                      className="h-7 rounded-lg text-xs text-muted-foreground hover:bg-violet-50 hover:text-violet-700 hover:border-violet-200 dark:hover:bg-violet-500/10 dark:hover:text-violet-300 dark:hover:border-violet-500/30"
+                      className="h-8 rounded-xl text-[10px] font-bold text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all"
                       onClick={() => setPrompt(suggestion)}
                     >
                       {suggestion}
@@ -177,205 +181,254 @@ export function AIGenerateDialog({
                   ))}
                 </div>
               </div>
-              <div className="rounded-xl border border-border/60 bg-secondary/25 p-4">
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2">
+
+              <div className="rounded-2xl border border-border/60 bg-secondary/20 p-5 shadow-inner overflow-hidden relative group">
+                <div className="absolute top-0 right-0 h-32 w-32 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="mb-4 flex items-start justify-between gap-3 relative z-10">
+                  <div className="flex items-center gap-2.5">
                     <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
                       <Target className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-foreground">Rekomendasi Dinamis</p>
-                      <p className="text-[10px] text-muted-foreground">{moduleFilter === 'all' ? 'Semua module' : modules.find(module => module.id === moduleFilter)?.name || 'Module terpilih'}</p>
+                      <p className="text-xs font-black uppercase tracking-widest text-foreground">Rekomendasi Dinamis</p>
+                      <p className="text-[10px] text-muted-foreground font-medium">{moduleFilter === 'all' ? 'Semua module' : modules.find(module => module.id === moduleFilter)?.name || 'Module terpilih'}</p>
                     </div>
                   </div>
-                  {insightsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  {insightsLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                 </div>
 
                 {insights ? (
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold leading-relaxed text-foreground">{insights.recommendation}</p>
-                    <div className="grid gap-2 sm:grid-cols-4">
-                      <div className="rounded-lg border border-border/50 bg-card/60 p-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Coverage</p>
-                        <p className="text-sm font-bold text-foreground">{insights.summary.total} TC</p>
+                  <div className="space-y-4 relative z-10">
+                    <p className="text-sm font-bold leading-relaxed text-foreground/90">{insights.recommendation}</p>
+                    <div className="grid gap-3 sm:grid-cols-4">
+                      <div className="rounded-xl border border-border/50 bg-card/60 p-2.5 shadow-sm">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Coverage</p>
+                        <p className="text-sm font-black text-foreground mt-0.5">{insights.summary.total} TC</p>
                       </div>
-                      <div className="rounded-lg border border-border/50 bg-card/60 p-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Negative</p>
-                        <p className="text-sm font-bold text-foreground">{insights.summary.negative} ({Math.round(insights.summary.negativeRatio * 100)}%)</p>
+                      <div className="rounded-xl border border-border/50 bg-card/60 p-2.5 shadow-sm">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Negative</p>
+                        <p className="text-sm font-black text-foreground mt-0.5">{insights.summary.negative} ({Math.round(insights.summary.negativeRatio * 100)}%)</p>
                       </div>
-                      <div className="rounded-lg border border-border/50 bg-card/60 p-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Open High</p>
-                        <p className="text-sm font-bold text-foreground">{insights.summary.highPriorityOpen}</p>
+                      <div className="rounded-xl border border-border/50 bg-card/60 p-2.5 shadow-sm">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Open High</p>
+                        <p className="text-sm font-black text-rose-500 mt-0.5">{insights.summary.highPriorityOpen}</p>
                       </div>
-                      <div className="rounded-lg border border-border/50 bg-card/60 p-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Weak Steps</p>
-                        <p className="text-sm font-bold text-foreground">{insights.summary.weakSteps}</p>
+                      <div className="rounded-xl border border-border/50 bg-card/60 p-2.5 shadow-sm">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Weak Steps</p>
+                        <p className="text-sm font-black text-amber-500 mt-0.5">{insights.summary.weakSteps}</p>
                       </div>
                     </div>
                     {insights.gapAreas.length > 0 && (
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         {insights.gapAreas.slice(0, 3).map((area) => (
                           <button
                             key={`${area.moduleName}-${area.label}`}
                             type="button"
                             onClick={() => setPrompt(`Buat missing negative cases untuk ${area.moduleName} - ${area.label}`)}
-                            className="flex w-full items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left text-xs text-amber-900 transition hover:bg-amber-100 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/15"
+                            className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 text-left text-xs text-amber-600 transition hover:bg-amber-500/10 dark:text-amber-300"
                           >
-                            <span className="flex min-w-0 items-center gap-2">
-                              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                              <span className="truncate">{area.moduleName} - {area.label}</span>
+                            <span className="flex min-w-0 items-center gap-2.5 font-bold">
+                              <AlertTriangle className="h-4 w-4 shrink-0" />
+                              <span className="truncate">{area.moduleName} <span className="text-muted-foreground font-medium mx-1">/</span> {area.label}</span>
                             </span>
-                            <span className="shrink-0 font-semibold">{area.negative}/{area.total} negative</span>
+                            <span className="shrink-0 font-black uppercase tracking-tighter text-[10px]">{area.negative} / {area.total} Neg</span>
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Rekomendasi akan muncul setelah data project terbaca.</p>
+                  <div className="py-6 flex flex-col items-center justify-center text-muted-foreground/40">
+                    <Bot className="h-10 w-10 mb-2 opacity-20" />
+                    <p className="text-[11px] font-medium">Analyzing project knowledge base...</p>
+                  </div>
                 )}
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+
+              <div className="grid gap-5 sm:grid-cols-2">
                 {modules.length > 0 && (
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs">Fokus pada Module (opsional)</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fokus pada Module</Label>
                     <Select value={moduleFilter} onValueChange={setModuleFilter}>
-                      <SelectTrigger className="w-full rounded-xl border-border/60 bg-secondary/50"><SelectValue placeholder="Semua Module" /></SelectTrigger>
-                      <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
-                        <SelectItem value="all" className="rounded-lg">Semua Module</SelectItem>
+                      <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition-all duration-300">
+                        <SelectValue placeholder="Semua Module" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl bg-card border-border/60 elevation-3 backdrop-blur-xl">
+                        <SelectItem value="all" className="rounded-lg font-medium">Semua Module</SelectItem>
                         {modules.map((module) => (
-                          <SelectItem key={module.id} value={module.id} className="rounded-lg">{module.name}</SelectItem>
+                          <SelectItem key={module.id} value={module.id} className="rounded-lg font-medium">{module.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground text-xs">Jumlah test case</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Jumlah Output</Label>
                   <Select value={String(generateCount)} onValueChange={(value) => setGenerateCount(Number(value))}>
-                    <SelectTrigger className="w-full rounded-xl border-border/60 bg-secondary/50"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
-                      <SelectItem value="3" className="rounded-lg">3 test case</SelectItem>
-                      <SelectItem value="4" className="rounded-lg">4 test case</SelectItem>
-                      <SelectItem value="6" className="rounded-lg">6 test case</SelectItem>
-                      <SelectItem value="8" className="rounded-lg">8 test case</SelectItem>
+                    <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition-all duration-300">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl bg-card border-border/60 elevation-3 backdrop-blur-xl">
+                      <SelectItem value="3" className="rounded-lg font-medium">3 Test Case</SelectItem>
+                      <SelectItem value="4" className="rounded-lg font-medium">4 Test Case</SelectItem>
+                      <SelectItem value="6" className="rounded-lg font-medium">6 Test Case</SelectItem>
+                      <SelectItem value="8" className="rounded-lg font-medium">8 Test Case</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="bg-violet-50 border border-violet-200 dark:bg-violet-500/10 dark:border-violet-500/20 rounded-xl p-4">
-                <p className="text-[11px] text-violet-700 dark:text-violet-300 font-medium leading-relaxed">
-                  <strong className="text-violet-800 dark:text-violet-200 uppercase tracking-wide mr-1.5">Tips:</strong> Semakin spesifik instruksi Anda, semakin relevan test case yang dihasilkan AI. AI akan meniru format, gaya penulisan, dan konvensi penamaan dari data yang ada di project ini.
+
+              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex gap-4 items-start shadow-inner">
+                <div className="mt-1 p-1.5 rounded-lg bg-primary/10 text-primary">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                  <strong className="text-primary font-black uppercase tracking-tight mr-1.5">Pro Tip:</strong> AI mempelajari format dan terminologi yang Anda gunakan. Instruksi yang spesifik akan menghasilkan skenario yang lebih akurat dan siap pakai.
                 </p>
               </div>
             </div>
           )}
 
           {aiGenerating && (
-            <div className="flex flex-col items-center justify-center py-20 space-y-6">
+            <div className="flex flex-col items-center justify-center py-24 space-y-6">
               <div className="relative">
-                <div className="w-20 h-20 rounded-full border-4 border-border border-t-violet-500 animate-spin" />
-                <Sparkles className="w-8 h-8 text-violet-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                <div className="w-24 h-24 rounded-full border-4 border-primary/10 border-t-primary animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Bot className="h-10 w-10 text-primary animate-pulse" />
+                </div>
+                <div className="absolute -top-1 -right-1">
+                  <Sparkles className="h-6 w-6 text-cyan-400 animate-bounce" />
+                </div>
               </div>
-              <div className="text-center">
-                <p className="font-bold text-foreground uppercase tracking-wider text-xs">Generating...</p>
-                <p className="text-[10px] text-muted-foreground font-medium mt-2 animate-pulse">Analyzing project patterns...</p>
+              <div className="text-center space-y-2">
+                <p className="font-black text-foreground uppercase tracking-[0.2em] text-[10px]">Generating Scenarios</p>
+                <p className="text-[11px] text-muted-foreground font-medium animate-pulse">Consulting project knowledge & best practices...</p>
               </div>
             </div>
           )}
 
           {aiGeneratedCases.length > 0 && !aiGenerating && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-1">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-3">
-                  <Checkbox
-                    checked={aiSelectedCases.size === aiGeneratedCases.length}
-                    onCheckedChange={toggleAISelectAll}
-                    className="border-border data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
-                  />
-                  <span className="text-xs font-semibold text-foreground">Select All ({aiGeneratedCases.length} results)</span>
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Generated Result: {aiGeneratedCases.length} Scenarios</p>
                 </div>
-                <Badge variant="outline" className="text-[10px] font-medium">{aiSelectedCases.size} Selected</Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleAISelectAll}
+                  className="h-8 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-lg"
+                >
+                  {aiSelectedCases.size === aiGeneratedCases.length ? 'Deselect All' : 'Select All'}
+                </Button>
               </div>
-              <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-2">
+              <div className="space-y-3 pr-2 overflow-y-auto max-h-[480px] scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
                 {aiGeneratedCases.map((testCase, index) => (
-                  <div
+                  <motion.div
                     key={`${testCase.testCaseId}-${index}`}
-                    className={`cursor-pointer rounded-2xl border p-4 transition-all duration-200 ${
-                      aiSelectedCases.has(index) 
-                        ? 'border-violet-300 bg-violet-50 dark:border-violet-500/50 dark:bg-violet-500/10' 
-                        : 'border-border/60 bg-secondary/30 hover:bg-secondary/60 hover:border-border'
-                    }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={cn(
+                      "group cursor-pointer rounded-2xl border p-5 transition-all duration-300 relative overflow-hidden",
+                      aiSelectedCases.has(index)
+                        ? 'border-primary bg-primary/5 shadow-md shadow-primary/5'
+                        : 'border-border/60 bg-secondary/20 hover:bg-secondary/30 hover:border-primary/40'
+                    )}
                     onClick={() => toggleAISelect(index)}
                   >
-                    <div className="flex items-start gap-4">
-                      <Checkbox
-                        checked={aiSelectedCases.has(index)}
-                        onCheckedChange={() => toggleAISelect(index)}
-                        className="mt-1 border-border data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
-                      />
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="font-mono text-xs font-bold text-violet-600 dark:text-violet-400">{testCase.testCaseId}</span>
-                          <Badge variant="outline" className={`text-[9px] font-semibold uppercase ${getTestTypeColor(testCase.testType)}`}>
-                            {testCase.testType}
-                          </Badge>
-                          <Badge className={`text-[9px] font-semibold uppercase ${getPriorityColor(testCase.priority)}`}>{testCase.priority}</Badge>
-                          <span className="text-[10px] font-semibold text-muted-foreground">{testCase.page}</span>
-                          {testCase.subMenu && <span className="text-[10px] text-muted-foreground">› {testCase.subMenu}</span>}
-                        </div>
-                        <p className="text-sm font-semibold text-foreground">{testCase.testAction}</p>
-                        <div className="text-[11px] text-muted-foreground whitespace-pre-line line-clamp-3 leading-relaxed border-l-2 border-border pl-3">{testCase.steps}</div>
-                        <div className="flex gap-4 text-[10px] font-medium pt-1">
-                          <span className="text-emerald-600 dark:text-emerald-400">Expected: {testCase.expectedResult}</span>
-                        </div>
+                    <div className="absolute top-5 right-5 h-6 w-6 rounded-full border border-border/60 flex items-center justify-center bg-card transition-colors group-hover:border-primary/40">
+                      {aiSelectedCases.has(index) && (
+                        <div className="h-3.5 w-3.5 rounded-full bg-primary animate-in zoom-in-50 duration-200 shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2.5 mb-4 pr-10">
+                      <span className="font-mono text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg">{testCase.testCaseId}</span>
+                      <Badge variant="outline" className={cn("rounded-lg border-border/40 text-[9px] font-black uppercase tracking-tight py-0.5 shadow-sm", getTestTypeColor(testCase.testType))}>
+                        {testCase.testType}
+                      </Badge>
+                      <Badge className={cn("rounded-lg text-[9px] font-black uppercase tracking-tight py-0.5 shadow-sm", getPriorityColor(testCase.priority))}>
+                        {testCase.priority}
+                      </Badge>
+                      <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">{testCase.page} {testCase.subMenu && `› ${testCase.subMenu}`}</span>
+                    </div>
+
+                    <p className="text-[13px] font-black text-foreground group-hover:text-primary transition-colors leading-tight mb-3">{testCase.testAction}</p>
+
+                    <div className="space-y-3">
+                      <div className="rounded-xl bg-card/60 border border-border/40 p-3.5 shadow-inner">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50 mb-2">Execution Steps</p>
+                        <div className="text-[11px] text-foreground/80 font-medium whitespace-pre-line leading-relaxed">{testCase.steps}</div>
+                      </div>
+                      <div className="flex items-center gap-2 rounded-xl bg-emerald-500/5 border border-emerald-500/20 px-3.5 py-2">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 opacity-60 shrink-0">Expected Result</p>
+                        <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 truncate">{testCase.expectedResult}</p>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        <DialogFooter className="flex-shrink-0 border-t border-border/50 pt-3">
-          {aiGeneratedCases.length > 0 && !aiGenerating ? (
-            <div className="flex items-center gap-2 w-full">
-              <Button variant="outline" onClick={resetGeneratedCases} className="gap-1.5 rounded-xl">
-                <RefreshCw className="w-4 h-4" /> Coba Lagi
-              </Button>
-              <div className="flex-1" />
-              <Button variant="outline" onClick={closeDialog} className="rounded-xl">Batal</Button>
-              <Button
-                onClick={handleAISaveSelected}
-                disabled={aiSelectedCases.size === 0 || aiSaving}
-                className="gap-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0"
-              >
-                {aiSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Simpan {aiSelectedCases.size} Test Case
-              </Button>
+        <DialogFooter className="px-6 py-5 border-t border-border/40 bg-secondary/10 shrink-0">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-3">
+              {aiGeneratedCases.length > 0 && !aiGenerating && (
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <span className="text-primary font-black">{aiSelectedCases.size}</span> / {aiGeneratedCases.length} Selected
+                </p>
+              )}
             </div>
-          ) : (
-            <div className="flex items-center gap-2 w-full">
-              <Button variant="outline" onClick={closeDialog} className="rounded-xl">Batal</Button>
-              <div className="flex-1" />
+            <div className="flex items-center gap-2.5">
               <Button
-                onClick={() => handleAIGenerate({ prompt, moduleFilter, count: generateCount })}
-                disabled={!prompt.trim() || aiGenerating}
-                className="gap-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0"
+                variant="outline"
+                onClick={closeDialog}
+                className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition-all hover:bg-secondary"
               >
-                {aiGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" /> Generate Test Case
-                  </>
-                )}
+                Close
               </Button>
+
+              {aiGeneratedCases.length > 0 && !aiGenerating ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={resetGeneratedCases}
+                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-primary font-bold text-xs px-5 hover:bg-primary/5 transition-all"
+                  >
+                    <RefreshCw className="w-4 h-4" /> Rese
+                  </Button>
+                  <Button
+                    onClick={handleAISaveSelected}
+                    disabled={aiSelectedCases.size === 0 || aiSaving}
+                    className="h-10 gap-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-7 shadow-lg hover:shadow-emerald-500/20 transition-all duration-300"
+                  >
+                    {aiSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save Scenarios
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => handleAIGenerate({ prompt, moduleFilter, count: generateCount })}
+                  disabled={!prompt.trim() || aiGenerating}
+                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-black text-xs px-8 shadow-lg hover:shadow-primary/30 transition-all duration-300 uppercase tracking-wider"
+                >
+                  {aiGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" /> Generate Scenarios
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
-          )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

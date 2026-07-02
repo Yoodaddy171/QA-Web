@@ -53,133 +53,133 @@
   --color-outline-variant: var(--outline-variant);
 }
 
-/* ===== LIGHT MODE - Material Design 3 Teal ===== */
+/* ===== LIGHT MODE - Premium Electric Cyan & Indigo ===== */
 :root {
-  --radius: 0.875rem;
+  --radius: 1rem;
 
   /* Core surfaces */
-  --background: #f8fafb;
-  --foreground: #1a1c1e;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #1a1c1e;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #1a1c1e;
+  --popover-foreground: #0f172a;
 
-  /* Primary - Teal */
-  --primary: #006b5e;
+  /* Primary - Vibrant Cyan */
+  --primary: #0891b2;
   --primary-foreground: #ffffff;
 
   /* Secondary */
-  --secondary: #f0f5f3;
-  --secondary-foreground: #1a1c1e;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
 
   /* Muted */
-  --muted: #f2f4f6;
-  --muted-foreground: #5f6368;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
 
   /* Accent */
-  --accent: #e8f5f2;
-  --accent-foreground: #004d43;
+  --accent: #ecfeff;
+  --accent-foreground: #0891b2;
 
   /* Destructive */
-  --destructive: #ba1a1a;
+  --destructive: #ef4444;
 
   /* Borders & inputs */
-  --border: #dfe3e6;
-  --input: #dfe3e6;
-  --ring: #006b5e;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #0891b2;
 
   /* Charts */
-  --chart-1: #006b5e;
-  --chart-2: #5856d6;
-  --chart-3: #f5a623;
-  --chart-4: #e91e63;
-  --chart-5: #9c27b0;
+  --chart-1: #0891b2;
+  --chart-2: #6366f1;
+  --chart-3: #f59e0b;
+  --chart-4: #ec4899;
+  --chart-5: #10b981;
 
   /* Sidebar */
   --sidebar: #ffffff;
-  --sidebar-foreground: #1a1c1e;
-  --sidebar-primary: #006b5e;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #0891b2;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e8f5f2;
-  --sidebar-accent-foreground: #004d43;
-  --sidebar-border: #e8eaed;
-  --sidebar-ring: #006b5e;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0891b2;
+  --sidebar-border: #f1f5f9;
+  --sidebar-ring: #0891b2;
 
   /* Material surfaces */
   --surface: #ffffff;
-  --surface-variant: #f2f4f6;
-  --on-surface: #1a1c1e;
-  --on-surface-variant: #44474a;
-  --surface-container: #f2f4f6;
-  --surface-container-low: #f8fafb;
-  --surface-container-high: #eceef0;
-  --surface-container-highest: #e3e5e8;
-  --outline: #74777a;
-  --outline-variant: #c4c7ca;
+  --surface-variant: #f8fafc;
+  --on-surface: #0f172a;
+  --on-surface-variant: #475569;
+  --surface-container: #f1f5f9;
+  --surface-container-low: #f8fafc;
+  --surface-container-high: #e2e8f0;
+  --surface-container-highest: #cbd5e1;
+  --outline: #64748b;
+  --outline-variant: #cbd5e1;
 }
 
-/* ===== DARK MODE - Material Design 3 Teal ===== */
+/* ===== DARK MODE - Obsidian & Neon Cyan ===== */
 .dark {
-  --background: #111318;
-  --foreground: #e2e3e8;
-  --card: #1b1d23;
-  --card-foreground: #e2e3e8;
-  --popover: #1b1d23;
-  --popover-foreground: #e2e3e8;
+  --background: #030712;
+  --foreground: #f3f4f6;
+  --card: #0b0f19;
+  --card-foreground: #f3f4f6;
+  --popover: #0b0f19;
+  --popover-foreground: #f3f4f6;
 
-  /* Primary - Teal (lighter for dark) */
-  --primary: #5ddbbe;
-  --primary-foreground: #003730;
+  /* Primary - Neon Cyan */
+  --primary: #06b6d4;
+  --primary-foreground: #083344;
 
   /* Secondary */
-  --secondary: #1e2a27;
-  --secondary-foreground: #e2e3e8;
+  --secondary: #111827;
+  --secondary-foreground: #f3f4f6;
 
   /* Muted */
-  --muted: #1e2024;
-  --muted-foreground: #9ca0a5;
+  --muted: #111827;
+  --muted-foreground: #9ca3af;
 
   /* Accent */
-  --accent: #1a2e2a;
-  --accent-foreground: #5ddbbe;
+  --accent: #0e303c;
+  --accent-foreground: #22d3ee;
 
   /* Destructive */
-  --destructive: #ffb4ab;
+  --destructive: #f87171;
 
   /* Borders & inputs */
-  --border: #2c2e33;
-  --input: #2c2e33;
-  --ring: #5ddbbe;
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #06b6d4;
 
   /* Charts */
-  --chart-1: #5ddbbe;
-  --chart-2: #a5a4f4;
-  --chart-3: #ffd166;
-  --chart-4: #f48fb1;
-  --chart-5: #ce93d8;
+  --chart-1: #22d3ee;
+  --chart-2: #818cf8;
+  --chart-3: #fbbf24;
+  --chart-4: #f472b6;
+  --chart-5: #34d399;
 
   /* Sidebar */
-  --sidebar: #111318;
-  --sidebar-foreground: #e2e3e8;
-  --sidebar-primary: #5ddbbe;
-  --sidebar-primary-foreground: #003730;
-  --sidebar-accent: #1a2e2a;
-  --sidebar-accent-foreground: #5ddbbe;
-  --sidebar-border: #2c2e33;
-  --sidebar-ring: #5ddbbe;
+  --sidebar: #030712;
+  --sidebar-foreground: #f3f4f6;
+  --sidebar-primary: #06b6d4;
+  --sidebar-primary-foreground: #083344;
+  --sidebar-accent: #111827;
+  --sidebar-accent-foreground: #22d3ee;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #06b6d4;
 
   /* Material surfaces */
-  --surface: #1b1d23;
-  --surface-variant: #242629;
-  --on-surface: #e2e3e8;
-  --on-surface-variant: #c4c7ca;
-  --surface-container: #1e2024;
-  --surface-container-low: #191b1f;
-  --surface-container-high: #272a2e;
-  --surface-container-highest: #313438;
-  --outline: #8e9194;
-  --outline-variant: #44474a;
+  --surface: #0b0f19;
+  --surface-variant: #111827;
+  --on-surface: #f3f4f6;
+  --on-surface-variant: #9ca3af;
+  --surface-container: #111827;
+  --surface-container-low: #080c14;
+  --surface-container-high: #1f2937;
+  --surface-container-highest: #374151;
+  --outline: #9ca3af;
+  --outline-variant: #4b5563;
 }
 
 @layer base {
@@ -215,6 +215,21 @@
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover { background: var(--outline); background-clip: content-box; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ===== Material Design Utility Classes ===== */

@@ -110,11 +110,11 @@ const formatDate = (dateStr: string | null) => {
 
 const getBugFixStatusColor = (status: string) => {
   switch (status) {
-    case 'SUDAH DILAPORKAN': return 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300';
-    case 'SEDANG DI FIX': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300';
-    case 'READY TO RETEST': return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/25 dark:bg-cyan-500/10 dark:text-cyan-300';
-    case 'VERIFIED & FIXED': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300';
-    default: return 'border-border bg-muted text-muted-foreground';
+    case 'SUDAH DILAPORKAN': return 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-400 font-semibold';
+    case 'SEDANG DI FIX': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400 font-semibold';
+    case 'READY TO RETEST': return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-400 font-semibold';
+    case 'VERIFIED & FIXED': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 font-semibold';
+    default: return 'border-border/60 bg-muted text-muted-foreground font-semibold';
   }
 };
 
@@ -149,10 +149,10 @@ export function BugFixPanel({
 
   if (!selectedProject) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border bg-card elevation-1">
+      <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border/50 bg-card/65 backdrop-blur-md shadow-sm">
         <div className="text-center">
-          <Bug className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-          <p className="text-sm font-medium text-muted-foreground">Select a project to view bugs</p>
+          <Bug className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30 animate-pulse" />
+          <p className="text-sm font-semibold text-muted-foreground">Select a project to view bug tracking</p>
         </div>
       </div>
     );
@@ -168,54 +168,54 @@ export function BugFixPanel({
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Card variant="filled" padding="none" className="group hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-colors">
+          <Card variant="glass" padding="none" className="group border-l-4 border-l-orange-500 hover:bg-orange-500/[0.03] transition-all duration-300">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-orange-100 p-2.5 dark:bg-orange-500/15 group-hover:scale-105 transition-transform">
+                <div className="rounded-xl bg-orange-500/10 p-2.5 dark:bg-orange-500/15 group-hover:scale-105 transition-transform duration-300">
                   <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.bugFixReported}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">Reported</p>
+                  <p className="text-2xl font-bold text-foreground font-mono">{stats.bugFixReported}</p>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-orange-650 dark:text-orange-400">Reported</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card variant="filled" padding="none" className="group hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
+          <Card variant="glass" padding="none" className="group border-l-4 border-l-amber-500 hover:bg-amber-500/[0.03] transition-all duration-300">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-amber-100 p-2.5 dark:bg-amber-500/15 group-hover:scale-105 transition-transform">
+                <div className="rounded-xl bg-amber-500/10 p-2.5 dark:bg-amber-500/15 group-hover:scale-105 transition-transform duration-300">
                   <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.bugFixFixing}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Fixing</p>
+                  <p className="text-2xl font-bold text-foreground font-mono">{stats.bugFixFixing}</p>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-amber-650 dark:text-amber-400">Fixing</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card variant="filled" padding="none" className="group hover:bg-cyan-50 dark:hover:bg-cyan-500/10 transition-colors">
+          <Card variant="glass" padding="none" className="group border-l-4 border-l-cyan-500 hover:bg-cyan-500/[0.03] transition-all duration-300">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-cyan-100 p-2.5 dark:bg-cyan-500/15 group-hover:scale-105 transition-transform">
+                <div className="rounded-xl bg-cyan-500/10 p-2.5 dark:bg-cyan-500/15 group-hover:scale-105 transition-transform duration-300">
                   <RefreshCw className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.bugFixReadyRetest}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Ready</p>
+                  <p className="text-2xl font-bold text-foreground font-mono">{stats.bugFixReadyRetest}</p>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-cyan-650 dark:text-cyan-400">Ready</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card variant="filled" padding="none" className="group hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors">
+          <Card variant="glass" padding="none" className="group border-l-4 border-l-emerald-500 hover:bg-emerald-500/[0.03] transition-all duration-300">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-emerald-100 p-2.5 dark:bg-emerald-500/15 group-hover:scale-105 transition-transform">
+                <div className="rounded-xl bg-emerald-500/10 p-2.5 dark:bg-emerald-500/15 group-hover:scale-105 transition-transform duration-300">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.bugFixFixed}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Fixed</p>
+                  <p className="text-2xl font-bold text-foreground font-mono">{stats.bugFixFixed}</p>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-emerald-650 dark:text-emerald-400">Fixed</p>
                 </div>
               </div>
             </CardContent>
@@ -224,83 +224,83 @@ export function BugFixPanel({
       )}
 
       {/* Toolbar */}
-      <div className="flex min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border border-border/60 bg-card p-3 elevation-1 lg:flex-row lg:items-center">
+      <div className="flex min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border border-border/40 bg-card/65 p-4 shadow-sm backdrop-blur-md lg:flex-row lg:items-center">
         <Tabs
           value={bugFixTab}
           onValueChange={(v) => setBugFixTab(v as 'active' | 'resolved')}
           className="w-full sm:w-auto"
         >
-          <TabsList className="h-10 rounded-xl border border-border/60 bg-secondary/50 p-1">
-            <TabsTrigger value="active" className="gap-2 rounded-lg px-4 text-[11px] font-semibold uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:elevation-1">
+          <TabsList className="h-10 rounded-xl border border-border/50 bg-secondary/35 p-1 shadow-inner">
+            <TabsTrigger value="active" className="gap-2 rounded-lg px-4 text-[11px] font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Bug className="w-3.5 h-3.5" /> Active Bugs
             </TabsTrigger>
-            <TabsTrigger value="resolved" className="gap-2 rounded-lg px-4 text-[11px] font-semibold uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:elevation-1">
+            <TabsTrigger value="resolved" className="gap-2 rounded-lg px-4 text-[11px] font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <CheckCircle2 className="w-3.5 h-3.5" /> Fixed History
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
         <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto xl:grid-cols-5">
-          <Badge variant="outline" className="h-9 justify-center rounded-xl border-border/60 bg-muted px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <Badge variant="outline" className="h-9.5 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
             Showing {visibleBugFixItems.length} data
           </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 justify-center rounded-xl border-border/60 bg-secondary/50 text-[10px] font-black uppercase tracking-widest text-foreground">
-                <Settings2 className="h-3.5 w-3.5" />
+              <Button variant="outline" size="sm" className="h-9.5 justify-center rounded-xl border border-border/50 bg-secondary/35 text-[10px] font-black uppercase tracking-widest text-foreground hover:bg-secondary/65 transition-all">
+                <Settings2 className="h-3.5 w-3.5 text-primary" />
                 Columns
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 rounded-xl bg-card border-border/60 elevation-3">
-              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Table Columns</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+            <DropdownMenuContent align="end" className="w-52 rounded-xl bg-card/95 backdrop-blur-xl border border-border/50 shadow-lg text-foreground">
+              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Table Columns</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-border/40" />
               {BUGFIX_COLUMN_OPTIONS.map((column) => (
                 <DropdownMenuCheckboxItem
                   key={column.key}
                   checked={visibleColumns[column.key]}
                   onCheckedChange={(checked) => setVisibleColumns((current) => ({ ...current, [column.key]: Boolean(checked) }))}
-                  className="text-xs font-semibold"
+                  className="text-xs font-semibold rounded-lg mx-1 my-0.5"
                 >
                   {column.label}
                 </DropdownMenuCheckboxItem>
               ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setVisibleColumns(DEFAULT_BUGFIX_COLUMNS)} className="text-xs font-bold">
+              <DropdownMenuSeparator className="bg-border/40" />
+              <DropdownMenuItem onClick={() => setVisibleColumns(DEFAULT_BUGFIX_COLUMNS)} className="text-xs font-bold rounded-lg mx-1 my-0.5">
                 Reset columns
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
             <Input
-              placeholder="Cari bug fix..."
+              placeholder="Search bugs..."
               value={bugFixSearch}
               onChange={(e) => setBugFixSearch(e.target.value)}
-              className="h-9 rounded-xl border-border/60 bg-secondary/50 pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/30"
+              className="h-9.5 rounded-xl border border-border/50 bg-secondary/35 pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 text-xs font-medium"
             />
           </div>
           <Select value={bugFixFilterModule} onValueChange={setBugFixFilterModule}>
-            <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-secondary/50 text-foreground sm:w-[180px]">
+            <SelectTrigger className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-foreground sm:w-[180px] text-xs font-semibold hover:bg-secondary/65 transition-all duration-200">
               <SelectValue placeholder="Filter module" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
-              <SelectItem value="all" className="rounded-lg">Semua Module</SelectItem>
+            <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border border-border/50 shadow-lg">
+              <SelectItem value="all" className="rounded-lg text-xs font-medium">All Modules</SelectItem>
               {modules.map((module) => (
-                <SelectItem key={module.id} value={module.id} className="rounded-lg">{module.name}</SelectItem>
+                <SelectItem key={module.id} value={module.id} className="rounded-lg text-xs font-medium">{module.name}</SelectItem>
               ))}
               {hasUnassignedModule && (
-                <SelectItem value="unassigned" className="rounded-lg">Tanpa Module</SelectItem>
+                <SelectItem value="unassigned" className="rounded-lg text-xs font-medium">No Module</SelectItem>
               )}
             </SelectContent>
           </Select>
           {bugFixTab === 'active' && (
             <Select value={bugFixFilterStatus} onValueChange={setBugFixFilterStatus}>
-              <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-secondary/50 text-foreground sm:w-[180px]"><SelectValue placeholder="Filter status" /></SelectTrigger>
-              <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
-                <SelectItem value="all" className="rounded-lg">Semua Status</SelectItem>
-                <SelectItem value="SUDAH DILAPORKAN" className="rounded-lg">Dilaporkan</SelectItem>
-                <SelectItem value="SEDANG DI FIX" className="rounded-lg">Sedang Di Fix</SelectItem>
-                <SelectItem value="READY TO RETEST" className="rounded-lg">Ready to Retest</SelectItem>
+              <SelectTrigger className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-foreground sm:w-[180px] text-xs font-semibold hover:bg-secondary/65 transition-all duration-200"><SelectValue placeholder="Filter status" /></SelectTrigger>
+              <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border border-border/50 shadow-lg">
+                <SelectItem value="all" className="rounded-lg text-xs font-medium">All Status</SelectItem>
+                <SelectItem value="SUDAH DILAPORKAN" className="rounded-lg text-xs font-medium">Reported</SelectItem>
+                <SelectItem value="SEDANG DI FIX" className="rounded-lg text-xs font-medium">Fixing</SelectItem>
+                <SelectItem value="READY TO RETEST" className="rounded-lg text-xs font-medium">Ready to Retest</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -309,17 +309,17 @@ export function BugFixPanel({
 
       {/* Table or Empty State */}
       {visibleBugFixItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center space-y-2 rounded-2xl border border-dashed border-border bg-card py-20 elevation-1">
-          <Bug className="w-12 h-12 text-muted-foreground/20" />
-          <p className="text-sm font-semibold text-foreground">No Defects Found</p>
-          <p className="text-xs text-muted-foreground">No {bugFixTab === 'resolved' ? 'resolved defects' : 'active defects'} in this project.</p>
+        <div className="flex flex-col items-center justify-center space-y-2 rounded-2xl border border-dashed border-border/60 bg-card/65 p-20 shadow-sm backdrop-blur-md text-center">
+          <Bug className="w-12 h-12 text-muted-foreground/25 animate-pulse" />
+          <p className="text-sm font-bold uppercase tracking-widest text-foreground">No Defects Found</p>
+          <p className="text-xs text-muted-foreground/80 font-medium">No {bugFixTab === 'resolved' ? 'resolved defects' : 'active defects'} in this project.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card elevation-1">
+        <div className="overflow-hidden rounded-2xl border border-border/40 bg-card/65 backdrop-blur-md shadow-sm">
           <div className="overflow-hidden">
             <Table>
-              <TableHeader className="sticky top-0 z-10">
-                <TableRow className="border-border/50 bg-secondary/30 hover:bg-secondary/30">
+              <TableHeader className="sticky top-0 z-10 bg-secondary/95 backdrop-blur-sm">
+                <TableRow className="border-border/30 hover:bg-transparent">
                   <TableHead className="w-[52px] text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
                   <TableHead className="w-[90px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
                   <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
@@ -338,33 +338,37 @@ export function BugFixPanel({
               </TableHeader>
               <TableBody>
                 {visibleBugFixItems.map((bf, index) => (
-                  <TableRow key={bf.id} className="border-border/30 hover:bg-secondary/30 transition-colors group">
+                  <TableRow key={bf.id} className="border-border/30 hover:bg-secondary/40 transition-colors group">
                     <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="font-mono text-sm font-bold text-foreground">{bf.testCaseId}</TableCell>
                     <TableCell className="text-sm font-medium text-foreground">{bf.page}</TableCell>
-                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px]')}>{bf.subMenu || '-'}</TableCell>
+                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-semibold')}>{bf.subMenu || '-'}</TableCell>
                     <TableCell className={getColumnClass('action', 'text-muted-foreground text-sm max-w-[200px] truncate group-hover:text-foreground transition-colors')}>{bf.testAction}</TableCell>
-                    <TableCell className={getColumnClass('priority')}><Badge variant={bf.priority === 'Critical' ? 'failed' : bf.priority === 'High' ? 'warning' : 'outline'} className="text-[10px] font-semibold">{bf.priority}</Badge></TableCell>
+                    <TableCell className={getColumnClass('priority')}>
+                      <Badge variant="outline" className={cn("text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 shadow-xs", getPriorityColor(bf.priority))}>
+                        {bf.priority}
+                      </Badge>
+                    </TableCell>
                     <TableCell className={getColumnClass('status')}>
                       {bugFixTab === 'resolved' ? (
-                        <Badge variant="success" className="text-[9px] font-semibold uppercase">
+                        <Badge variant="success" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5">
                           {bf.status}
                         </Badge>
                       ) : (
                         <Select value={bf.status} onValueChange={(val) => onStatusChange(bf.id, val)}>
-                          <SelectTrigger className="h-8 rounded-lg text-[9px] font-semibold uppercase border-border/60 bg-secondary/50 text-foreground shadow-none">
+                          <SelectTrigger className={cn("h-8 rounded-xl text-[9px] font-bold uppercase tracking-wider shadow-xs border transition-all", getBugFixStatusColor(bf.status))}>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
-                            <SelectItem value="SUDAH DILAPORKAN" className="text-[9px] font-semibold rounded-lg">DILAPORKAN</SelectItem>
-                            <SelectItem value="SEDANG DI FIX" className="text-[9px] font-semibold rounded-lg">SEDANG DI FIX</SelectItem>
-                            <SelectItem value="READY TO RETEST" className="text-[9px] font-semibold rounded-lg">READY TO RETEST</SelectItem>
+                          <SelectContent className="rounded-2xl bg-card/95 backdrop-blur-xl border border-border/50 shadow-lg text-foreground">
+                            <SelectItem value="SUDAH DILAPORKAN" className="text-[9px] font-bold rounded-lg my-0.5 mx-1">DILAPORKAN</SelectItem>
+                            <SelectItem value="SEDANG DI FIX" className="text-[9px] font-bold rounded-lg my-0.5 mx-1">SEDANG DI FIX</SelectItem>
+                            <SelectItem value="READY TO RETEST" className="text-[9px] font-bold rounded-lg my-0.5 mx-1">READY TO RETEST</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
                     </TableCell>
-                    <TableCell className={getColumnClass('reportedAt', 'text-[11px] font-medium text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
-                    <TableCell className={getColumnClass('timing', 'text-[11px] font-medium text-muted-foreground')}>
+                    <TableCell className={getColumnClass('reportedAt', 'text-[11px] font-semibold text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
+                    <TableCell className={getColumnClass('reportedAt', 'text-[11px] font-semibold text-muted-foreground')}>
                       {bugFixTab === 'resolved'
                         ? formatDate(bf.fixedAt)
                         : bf.status === 'READY TO RETEST'
@@ -373,12 +377,14 @@ export function BugFixPanel({
                     </TableCell>
                     <TableCell>
                       <Button
+                        aria-label={`View bug ${bf.testCaseId}`}
+                        title={`View bug ${bf.testCaseId}`}
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/65 transition-all"
                         onClick={() => onOpenDetail(bf)}
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-4 h-4 text-primary" />
                       </Button>
                     </TableCell>
                   </TableRow>

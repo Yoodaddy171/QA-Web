@@ -15,7 +15,7 @@ const THEME_STORAGE_KEY = 'web-qa:theme';
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getSystemTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light';
+  if (typeof window === 'undefined') return 'dark';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
@@ -26,13 +26,13 @@ function applyTheme(theme: Theme) {
 }
 
 function AppThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('system');
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setThemeState] = useState<Theme>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-      const nextTheme: Theme = savedTheme && ['light', 'dark', 'system'].includes(savedTheme) ? savedTheme : 'system';
+      const nextTheme: Theme = savedTheme && ['light', 'dark', 'system'].includes(savedTheme) ? savedTheme : 'dark';
       setThemeState(nextTheme);
       setResolvedTheme(applyTheme(nextTheme));
     }, 0);

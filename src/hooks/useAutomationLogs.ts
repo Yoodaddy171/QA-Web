@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { buildDevlogRelayUrl, DEVLOG_RELAY_URL } from '@/lib/client/api/devlog-client';
+import {
+  buildDevlogRelayUrl,
+  DEVLOG_RELAY_URL,
+  normalizeManualCaptureUrl,
+} from '@/lib/client/api/devlog-client';
 import {
   adaptAutomationEventToLogEntry,
   adaptLegacyLogToLogEntry,
@@ -544,8 +548,9 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     const browserMode: ManualCaptureBrowserMode = options.browserMode === 'profiled' ? 'profiled' : 'clean';
 
     try {
-      const targetUrl = manualCaptureTargetUrl.trim();
-      if (!targetUrl) throw new Error('Isi URL target terlebih dahulu.');
+      const inputUrl = manualCaptureTargetUrl.trim();
+      if (!inputUrl) throw new Error('Isi URL target terlebih dahulu.');
+      const targetUrl = normalizeManualCaptureUrl(inputUrl);
 
       const captureUrl = buildManualCaptureUrl(targetUrl, sessionId, viewTestCase.id);
       const response = await fetch(buildDevlogRelayUrl('/manual/start'), {

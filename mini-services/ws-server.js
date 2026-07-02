@@ -1243,19 +1243,19 @@ async function startCdpCapture(session, targetUrl, options = {}) {
         active: false,
         stoppedAt: new Date().toISOString(),
       });
+      stopManualRecorder(sessionInfo.recording, 'interrupted');
+      stopCdpCapture(session.sessionId).catch(() => {});
+      emitLog({
+        type: 'log',
+        source: 'manual-capture',
+        sessionId: session.sessionId,
+        testCaseId: session.testCaseId,
+        level: 'INFO',
+        log: 'Manual Capture Stopped',
+        timestamp: new Date().toISOString(),
+        relativeMs: getRelativeMs(currentSession),
+      });
     }
-    stopManualRecorder(sessionInfo.recording, 'interrupted');
-    stopCdpCapture(session.sessionId).catch(() => {});
-    emitLog({
-      type: 'log',
-      source: 'manual-capture',
-      sessionId: session.sessionId,
-      testCaseId: session.testCaseId,
-      level: 'INFO',
-      log: 'Manual Capture Stopped',
-      timestamp: new Date().toISOString(),
-      relativeMs: getRelativeMs(currentSession || session),
-    });
     cdpSessions.delete(session.sessionId);
   });
 

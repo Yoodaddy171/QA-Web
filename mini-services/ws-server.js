@@ -11,6 +11,7 @@ const {
   validateAutomationEvent,
 } = require('./automation-event');
 const { connectDevlogStore } = require('./devlog-store');
+const { createVideoFrameWriter, getVideoFrameCopies } = require('./video-frame-writer');
 let sharp = null;
 try {
   sharp = require('sharp');
@@ -708,7 +709,7 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
     ffmpeg: null,
     videoFrameIndex: 0,
     videoMaxDurationTimer: null,
-    videoBackpressured: false,
+    videoWriter: null,
     warnings: [],
     capturing: false,
     pendingCapture: false,
@@ -717,6 +718,7 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
     lastCaptureStartedAt: 0,
     lastKeyframeSavedAt: 0,
     lastVideoFrameRelativeMs: null,
+    lastVideoFrameBuffer: null,
     lastNetworkActivityAt: Date.now(),
   };
 
@@ -769,6 +771,10 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
       const ffmpegBinary = process.env.FFMPEG_PATH || bundledFfmpegPath || 'ffmpeg';
       const ffmpeg = spawn(ffmpegBinary, args, { stdio: ['pipe', 'ignore', 'pipe'] });
       recording.ffmpeg = ffmpeg;
+      recording.videoWriter = createVideoFrameWriter(ffmpeg.stdin, () => {
+        recording.videoFrameIndex += 1;
+        recording.video.durationMs = getEncodedVideoDurationMs(recording);
+      });
       recording.video.status = 'recording';
       ffmpeg.stderr.on('data', data => {
         const text = data.toString();
@@ -785,9 +791,6 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
         recording.video.status = 'failed';
         recording.warnings.push(`Video pipe failed: ${error.message}`);
         ensureKeyframeFallback();
-      });
-      ffmpeg.stdin.on('drain', () => {
-        recording.videoBackpressured = false;
       });
       ffmpeg.on('close', () => {
         if (fs.existsSync(filePath)) {
@@ -869,25 +872,14 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
         .filter(marker => Math.abs(relativeMs - marker.relativeMs) <= markerWindowMs)
         .slice(-3);
 
-      if (recording.video?.status === 'recording' && recording.ffmpeg?.stdin?.writable && !recording.videoBackpressured) {
+      if (recording.video?.status === 'recording' && recording.videoWriter) {
         const elapsedSinceLastVideoFrame = recording.lastVideoFrameRelativeMs === null
-          ? Math.round(1000 / videoFps)
+          ? Math.max(0, relativeMs - recording.video.startedAtRelativeMs)
           : Math.max(0, relativeMs - recording.lastVideoFrameRelativeMs);
-        const videoFrameCopies = Math.max(1, Math.min(videoFps * 3, Math.round(elapsedSinceLastVideoFrame * videoFps / 1000)));
-        let writtenFrameCopies = 0;
-        for (let copyIndex = 0; copyIndex < videoFrameCopies; copyIndex += 1) {
-          const canContinue = recording.ffmpeg.stdin.write(imageBuffer);
-          writtenFrameCopies += 1;
-          if (!canContinue) {
-            recording.videoBackpressured = true;
-            break;
-          }
-        }
-        if (writtenFrameCopies > 0) {
-          recording.videoFrameIndex += writtenFrameCopies;
-          recording.lastVideoFrameRelativeMs = relativeMs;
-          recording.video.durationMs = getEncodedVideoDurationMs(recording);
-        }
+        const videoFrameCopies = getVideoFrameCopies(elapsedSinceLastVideoFrame, videoFps);
+        recording.videoWriter.enqueue(imageBuffer, videoFrameCopies);
+        recording.lastVideoFrameRelativeMs = relativeMs;
+        recording.lastVideoFrameBuffer = imageBuffer;
       }
 
       if (shouldSaveKeyframe(recording, reason)) {
@@ -1004,10 +996,15 @@ function stopManualRecorder(recording, stopStatus = 'stopped') {
       || Math.max(0, getRelativeMs({ startedAt: recording.startedAt, startedAtMs: new Date(recording.startedAt).getTime() }) - (recording.video.startedAtRelativeMs || 0));
     if (recording.video.status === 'recording' || recording.video.status === 'starting') recording.video.status = 'finalizing';
   }
+  if (recording.videoWriter && recording.lastVideoFrameBuffer && recording.lastVideoFrameRelativeMs !== null) {
+    const stoppedRelativeMs = Math.max(0, Date.now() - new Date(recording.startedAt).getTime());
+    const tailCopies = getVideoFrameCopies(stoppedRelativeMs - recording.lastVideoFrameRelativeMs, recording.video.fps);
+    recording.videoWriter.enqueue(recording.lastVideoFrameBuffer, tailCopies);
+  }
   recording.captureNow?.('final');
-  if (recording.ffmpeg?.stdin?.writable) {
+  if (recording.videoWriter) {
     try {
-      recording.ffmpeg.stdin.end();
+      recording.videoWriter.end();
     } catch (_) {}
   }
   writeRecordingMetadata(recording, true);

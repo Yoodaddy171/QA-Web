@@ -206,7 +206,7 @@ export function AutomatedPanel({
               <MonitorDot className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground font-mono">{filteredItems.length}</p>
+              <p className="font-display text-2xl font-medium text-foreground">{filteredItems.length}</p>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Recorded Scenarios</p>
             </div>
           </CardContent>
@@ -217,7 +217,7 @@ export function AutomatedPanel({
               <FileClock className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground font-mono">
+              <p className="font-display text-2xl font-medium text-foreground">
                 {filteredItems.filter((item) => item.automation.hasManualCapture).length}
               </p>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Manual Artifacts</p>

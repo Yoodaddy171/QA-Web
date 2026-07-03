@@ -252,7 +252,7 @@ export function DashboardPanel({
                   Project readiness
                 </p>
                 <div className="flex items-baseline gap-3">
-                  <span className="text-5xl font-semibold tracking-tight text-foreground tabular-nums">{stats.overallProgress}%</span>
+                  <span className="font-display text-6xl font-medium tracking-tight text-foreground tabular-nums">{stats.overallProgress}%</span>
                   <span className="text-muted-foreground text-sm">verified</span>
                 </div>
                 <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
@@ -290,7 +290,7 @@ export function DashboardPanel({
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.doneCount}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.doneCount}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Done</p>
                 </div>
               </div>
@@ -304,7 +304,7 @@ export function DashboardPanel({
                   <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.inProgressCount}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.inProgressCount}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Active</p>
                 </div>
               </div>
@@ -318,7 +318,7 @@ export function DashboardPanel({
                   <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.blockedCount}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.blockedCount}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Blocked</p>
                 </div>
               </div>
@@ -332,7 +332,7 @@ export function DashboardPanel({
                   <XCircle className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.notDoneCount}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.notDoneCount}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Backlog</p>
                 </div>
               </div>
@@ -346,7 +346,7 @@ export function DashboardPanel({
                   <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.failedCount}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.failedCount}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">Failed</p>
                 </div>
               </div>
@@ -360,7 +360,7 @@ export function DashboardPanel({
                   <RefreshCw className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.readyToRetestCount}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.readyToRetestCount}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Retest</p>
                 </div>
               </div>
@@ -374,7 +374,7 @@ export function DashboardPanel({
                   <HelpCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.tbaCount || 0}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.tbaCount || 0}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">TBA</p>
                 </div>
               </div>
@@ -429,7 +429,7 @@ export function DashboardPanel({
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-3xl font-extrabold tracking-tight text-foreground font-mono">{stats.totalTestCases}</span>
+                    <span className="font-display text-3xl font-medium tracking-tight text-foreground">{stats.totalTestCases}</span>
                     <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total</span>
                   </div>
                 </div>

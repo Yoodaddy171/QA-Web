@@ -175,7 +175,7 @@ export function BugFixPanel({
                   <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.bugFixReported}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.bugFixReported}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-650 dark:text-orange-400">Reported</p>
                 </div>
               </div>
@@ -188,7 +188,7 @@ export function BugFixPanel({
                   <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.bugFixFixing}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.bugFixFixing}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-650 dark:text-amber-400">Fixing</p>
                 </div>
               </div>
@@ -201,7 +201,7 @@ export function BugFixPanel({
                   <RefreshCw className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.bugFixReadyRetest}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.bugFixReadyRetest}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-650 dark:text-cyan-400">Ready</p>
                 </div>
               </div>
@@ -214,7 +214,7 @@ export function BugFixPanel({
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground font-mono">{stats.bugFixFixed}</p>
+                  <p className="font-display text-2xl font-medium text-foreground">{stats.bugFixFixed}</p>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-650 dark:text-emerald-400">Fixed</p>
                 </div>
               </div>

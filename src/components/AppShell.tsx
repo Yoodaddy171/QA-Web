@@ -83,7 +83,7 @@ function WorkspaceSidebar({
       <SidebarHeader className="gap-4 border-b border-sidebar-border/70 px-3 py-4">
         <div className={cn('flex min-h-10 items-center', expanded ? 'justify-between' : 'justify-center')}>
           <BrandMark compact={!expanded} />
-          {expanded && <SidebarTrigger className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />}
+          {expanded && <SidebarTrigger className="h-8 w-8 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />}
         </div>
 
         {projects.length > 0 && expanded && (
@@ -212,7 +212,7 @@ export function AppShell({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <ActiveIcon className="h-4 w-4 shrink-0 text-primary" />
-                  <h1 className="truncate text-sm font-bold text-foreground sm:text-base">{activeItem.label}</h1>
+                  <h1 className="truncate font-display text-base font-semibold tracking-tight text-foreground sm:text-lg">{activeItem.label}</h1>
                 </div>
                 <p className="hidden truncate text-[11px] font-medium text-muted-foreground sm:block">{activeItem.description}</p>
               </div>

@@ -179,6 +179,35 @@ const getAgeClass = (days: number) => {
   return 'border-border bg-muted text-muted-foreground';
 };
 
+const CONFETTI_COLORS = ['#818cf8', '#34d399', '#fbbf24', '#f472b6', '#38bdf8'];
+
+// One-shot confetti burst shown when readiness hits 100%.
+function CelebrationBurst() {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+      {Array.from({ length: 18 }, (_, i) => {
+        const angle = (i / 18) * Math.PI * 2;
+        return (
+          <motion.span
+            key={i}
+            className="absolute h-2 w-2 rounded-sm"
+            style={{ backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length] }}
+            initial={{ x: 0, y: 0, scale: 1, opacity: 1, rotate: 0 }}
+            animate={{
+              x: Math.cos(angle) * (70 + (i % 3) * 24),
+              y: Math.sin(angle) * (70 + (i % 3) * 24),
+              scale: 0,
+              opacity: 0,
+              rotate: 180 + i * 24,
+            }}
+            transition={{ duration: 0.9 + (i % 4) * 0.12, ease: 'easeOut' }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export function DashboardPanel({
   stats,
   modules,
@@ -233,7 +262,7 @@ export function DashboardPanel({
           <div className="flex items-center justify-end gap-3 bg-secondary/20 p-2 rounded-xl border border-border/30 max-w-fit ml-auto">
             {lastRefreshed && (
               <span className="text-[11px] font-semibold text-muted-foreground">
-                Last updated: {lastRefreshed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                Terakhir diperbarui: {lastRefreshed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             )}
             {onRefresh && (
@@ -250,6 +279,7 @@ export function DashboardPanel({
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-10">
               {/* Animated readiness ring */}
               <div className="relative h-36 w-36 shrink-0">
+                {stats.overallProgress === 100 && <CelebrationBurst />}
                 <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
                   <circle cx="60" cy="60" r="52" fill="none" strokeWidth="10" className="stroke-secondary" />
                   <motion.circle
@@ -493,7 +523,7 @@ export function DashboardPanel({
             </CardHeader>
             <CardContent
               className="group/scroll relative h-[330px] space-y-3 overflow-y-auto pt-4"
-              data-lenis-prevent
+             
               onScroll={(event) => handleScroll(event, setRetestAtBottom)}
             >
               {(stats.retestQueue || []).length === 0 ? (
@@ -537,7 +567,7 @@ export function DashboardPanel({
             </CardHeader>
             <CardContent
               className="group/scroll relative h-[330px] space-y-3 overflow-y-auto pt-4"
-              data-lenis-prevent
+             
               onScroll={(event) => handleScroll(event, setBugAgingAtBottom)}
             >
               {(stats.bugAging || []).length === 0 ? (
@@ -581,7 +611,7 @@ export function DashboardPanel({
             </CardHeader>
             <CardContent
               className="group/scroll relative h-[330px] space-y-3 overflow-y-auto pt-4"
-              data-lenis-prevent
+             
               onScroll={(event) => handleScroll(event, setModuleRiskAtBottom)}
             >
               {(stats.moduleRisks || []).length === 0 ? (

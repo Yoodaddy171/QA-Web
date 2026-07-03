@@ -491,7 +491,7 @@ export function SettingsPanel({
                             </div>
                             <p className="line-clamp-3 text-[11px] text-muted-foreground font-medium leading-relaxed group-hover:text-foreground/80 transition-colors">{item.content}</p>
                             <p className="mt-3 text-[9px] font-bold text-muted-foreground/50 uppercase tracking-tighter">
-                              Last updated: {new Date(item.updatedAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                              Terakhir diperbarui: {new Date(item.updatedAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">

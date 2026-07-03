@@ -1,4 +1,6 @@
 import { db } from '@/lib/db';
+import { getProgressFromStatus } from '@/lib/domain/progress';
+import { resolveTestCaseStatusTransition, TESTCASE_ACTUAL_RESULT, TESTCASE_STATUS } from '@/lib/domain/testcase';
 import { syncBugFixForTestCaseStatus, type BugFixSourceSnapshot } from '@/lib/services/bugfix-sync-service';
 import type { WeightRecalculationTarget } from '@/lib/services/weight-service';
 import type { Prisma } from '@prisma/client';
@@ -62,6 +64,52 @@ export async function updateTestCaseRecordWithBugFixSync(input: UpdateTestCaseIn
     });
 
     return testCase;
+  });
+}
+
+// Bulk status change in one transaction, reusing the same transition and
+// bug-fix sync rules as the single-case PUT path.
+export async function bulkUpdateTestCaseStatus(ids: string[], nextStatus: string) {
+  return db.$transaction(async tx => {
+    const cases = await tx.testCase.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true, status: true, actualResult: true, testCaseId: true, projectId: true,
+        page: true, subMenu: true, testType: true, testAction: true, steps: true,
+        expectedResult: true, priority: true, moduleId: true,
+      },
+    });
+
+    for (const current of cases) {
+      const { finalStatus, finalActualResult } = resolveTestCaseStatusTransition({
+        currentStatus: current.status,
+        currentActualResult: current.actualResult,
+        nextStatus,
+        nextActualResult: undefined,
+      });
+      const finalActualResultForDb = finalActualResult === '' ? null : finalActualResult;
+      const shouldWriteActualResult = finalStatus === TESTCASE_STATUS.DONE
+        && finalActualResultForDb === TESTCASE_ACTUAL_RESULT.AS_EXPECTED
+        && current.actualResult !== TESTCASE_ACTUAL_RESULT.AS_EXPECTED;
+
+      await tx.testCase.update({
+        where: { id: current.id },
+        data: {
+          status: finalStatus,
+          progress: getProgressFromStatus(finalStatus || current.status),
+          ...(shouldWriteActualResult && { actualResult: finalActualResultForDb }),
+        },
+      });
+      await syncBugFixForTestCaseStatus({
+        client: tx,
+        sourceTestCaseId: current.id,
+        source: current,
+        finalStatus,
+        finalActualResult: finalActualResultForDb,
+      });
+    }
+
+    return { updated: cases.length };
   });
 }
 

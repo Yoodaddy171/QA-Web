@@ -30,7 +30,20 @@ import { TESTCASE_STATUS } from '@/lib/domain/testcase';
 import { FEATURES } from '@/lib/features';
 
 function PanelFallback() {
-  return <div className="h-48 animate-pulse rounded-xl border border-border/40 bg-card/50" aria-label="Loading view" />;
+  return (
+    <div className="animate-pulse space-y-4" aria-label="Loading view">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="h-20 rounded-xl border border-border/40 bg-card/60" />
+        ))}
+      </div>
+      <div className="space-y-2 rounded-xl border border-border/40 bg-card/60 p-4">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="h-9 rounded-md bg-secondary/60" style={{ opacity: 1 - i * 0.13 }} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const DashboardPanel = dynamic(() => import('@/components/DashboardPanel').then(module => module.DashboardPanel), { loading: PanelFallback });
@@ -386,7 +399,7 @@ export default function TestCaseManager() {
   useEffect(() => {
     if (activeTab !== 'dashboard' || !selectedProject) return;
     const interval = window.setInterval(() => {
-      loadStats(selectedProject);
+      if (document.visibilityState === 'visible') loadStats(selectedProject);
     }, 60000);
     return () => window.clearInterval(interval);
   }, [activeTab, selectedProject]);
@@ -874,7 +887,7 @@ export default function TestCaseManager() {
         onRefine={FEATURES.aiTestcaseFlows ? openAIRefineDialog : undefined}
         onCopyId={(id) => {
           navigator.clipboard.writeText(id);
-          toast({ title: 'ID Disalin', description: 'Internal ID berhasil disalin untuk Katalon.' });
+          toast({ variant: 'success', title: 'ID Disalin', description: 'Internal ID berhasil disalin untuk Katalon.' });
         }}
         testCaseList={navigationContextList ?? []}
         onNavigate={handleNavigate}

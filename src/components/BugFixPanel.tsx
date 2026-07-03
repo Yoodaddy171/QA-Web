@@ -153,7 +153,7 @@ export function BugFixPanel({
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border/50 bg-card shadow-sm">
         <div className="text-center">
           <Bug className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30 animate-pulse" />
-          <p className="text-sm font-semibold text-muted-foreground">Select a project to view bug tracking</p>
+          <p className="text-sm font-semibold text-muted-foreground">Pilih project untuk melihat bug tracking</p>
         </div>
       </div>
     );
@@ -243,7 +243,7 @@ export function BugFixPanel({
 
         <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto xl:grid-cols-5">
           <Badge variant="outline" className="h-9.5 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Showing {visibleBugFixItems.length} data
+            Menampilkan {visibleBugFixItems.length} data
           </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -274,7 +274,7 @@ export function BugFixPanel({
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
             <Input
-              placeholder="Search bugs..."
+              placeholder="Cari bug..."
               value={bugFixSearch}
               onChange={(e) => setBugFixSearch(e.target.value)}
               className="h-9.5 rounded-xl border border-border/50 bg-secondary/35 pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 text-xs font-medium"

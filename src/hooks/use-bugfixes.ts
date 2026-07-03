@@ -96,7 +96,7 @@ export function useBugFixes(
       const updatedItem = await updateBugFix({ id: bfId, status: newStatus });
       setBugFixItems(prev => prev.map(item => item.id === bfId ? updatedItem : item));
       refreshRelatedData();
-      toast({ title: 'Berhasil', description: `Status bug fix diubah ke ${newStatus}` });
+      toast({ variant: 'success', title: 'Berhasil', description: `Status bug fix diubah ke ${newStatus}` });
     } catch (error: any) {
       toast({
         title: 'Gagal mengubah status',

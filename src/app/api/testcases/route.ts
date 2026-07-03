@@ -9,6 +9,7 @@ import {
   TESTCASE_STATUS,
 } from '@/lib/domain/testcase';
 import {
+  bulkUpdateTestCaseStatus,
   createTestCaseRecord,
   deleteTestCaseById,
   deleteTestCasesByIds,
@@ -289,6 +290,23 @@ export async function PUT(req: NextRequest) {
   } catch (error) {
     console.error('PUT /api/testcases error:', error);
     return NextResponse.json({ error: 'Failed to update test case' }, { status: 500 });
+  }
+}
+
+// Bulk status update: { ids: string[], status: string }
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const ids = Array.isArray(body.ids) ? body.ids.filter((id: unknown) => typeof id === 'string' && id) : [];
+    if (ids.length === 0) return validationError('IDs wajib diisi.');
+    if (ids.length > 500) return validationError('Maksimal 500 test case per operasi bulk.');
+    if (!isTestCaseStatus(body.status)) return validationError('Status testcase tidak valid.');
+
+    const result = await bulkUpdateTestCaseStatus(ids, body.status);
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('PATCH /api/testcases error:', error);
+    return NextResponse.json({ error: 'Failed to bulk update test cases' }, { status: 500 });
   }
 }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
+  bulkUpdateTestCaseStatus,
   createTestCase,
   deleteTestCase,
   deleteTestCases,
@@ -120,7 +121,7 @@ export function useTestCases(selectedProject: string) {
       await updateTestCase({ id: testCaseId, status: newStatus });
       setTestCases(prev => prev.map(tc => tc.id === testCaseId ? { ...tc, status: newStatus } : tc));
       loadStats(selectedProject);
-      toast({ title: 'Status updated', description: `Status diubah ke ${newStatus}` });
+      toast({ variant: 'success', title: 'Status updated', description: `Status diubah ke ${newStatus}` });
     } catch {
       toast({ title: 'Gagal', description: 'Status gagal diubah', variant: 'destructive' });
     }
@@ -129,7 +130,7 @@ export function useTestCases(selectedProject: string) {
   const handleDeleteTestCase = useCallback(async (id: string, refreshAll: RefreshCallback) => {
     try {
       await deleteTestCase(id);
-      toast({ title: 'Berhasil', description: 'Test case berhasil dihapus' });
+      toast({ variant: 'success', title: 'Berhasil', description: 'Test case berhasil dihapus' });
       refreshAll();
       return true;
     } catch (error: any) {
@@ -142,7 +143,7 @@ export function useTestCases(selectedProject: string) {
     const ids = Array.from(selectedIds);
     try {
       await deleteTestCases(ids);
-      toast({ title: 'Berhasil', description: `${selectedIds.size} test case berhasil dihapus` });
+      toast({ variant: 'success', title: 'Berhasil', description: `${selectedIds.size} test case berhasil dihapus` });
       setSelectedIds(new Set());
       refreshAll();
       return true;
@@ -155,35 +156,20 @@ export function useTestCases(selectedProject: string) {
   const handleBulkStatusUpdate = useCallback(async (bulkStatus: string, refreshAll: RefreshCallback) => {
     if (selectedIds.size === 0) return false;
 
-    const updates = await Promise.all(Array.from(selectedIds).map(async (id) => {
-      try {
-        await updateTestCase({ id, status: bulkStatus });
-        return { ok: true, error: 'Update gagal' };
-      } catch (error: any) {
-        return { ok: false, error: error.message || 'Update gagal' };
-      }
-    }));
-
-    const successCount = updates.filter(result => result.ok).length;
-    const errorCount = updates.length - successCount;
-
-    if (successCount > 0) {
-      toast({
-        title: errorCount > 0 ? 'Sebagian Berhasil' : 'Berhasil',
-        description: `${successCount} test case berhasil diupdate${errorCount > 0 ? `, ${errorCount} gagal` : ''}`,
-        variant: errorCount > 0 ? 'default' : undefined,
-      });
+    try {
+      const result = await bulkUpdateTestCaseStatus(Array.from(selectedIds), bulkStatus);
+      toast({ variant: 'success', title: 'Berhasil', description: `${result.updated} test case berhasil diupdate` });
       setSelectedIds(new Set());
       refreshAll();
       return true;
+    } catch (error: any) {
+      toast({
+        title: 'Gagal update status',
+        description: error.message || 'Tidak ada test case yang berhasil diupdate',
+        variant: 'destructive',
+      });
+      return false;
     }
-
-    toast({
-      title: 'Gagal update status',
-      description: updates[0]?.error || 'Tidak ada test case yang berhasil diupdate',
-      variant: 'destructive',
-    });
-    return false;
   }, [selectedIds, toast]);
 
   const handleDuplicate = useCallback(async (tc: TestCase) => {
@@ -203,7 +189,7 @@ export function useTestCases(selectedProject: string) {
         moduleId: tc.moduleId,
       });
 
-      toast({ title: 'Berhasil', description: 'Test case berhasil diduplikasi' });
+      toast({ variant: 'success', title: 'Berhasil', description: 'Test case berhasil diduplikasi' });
       loadTestCases(selectedProject);
     } catch (error: any) {
       toast({ title: 'Gagal duplikasi', description: error.message, variant: 'destructive' });

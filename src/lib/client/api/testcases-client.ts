@@ -37,6 +37,17 @@ export async function updateTestCase(input: Record<string, unknown>) {
   return data;
 }
 
+export async function bulkUpdateTestCaseStatus(ids: string[], status: string) {
+  const res = await fetch('/api/testcases', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, status }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Bulk update gagal');
+  return data as { updated: number };
+}
+
 export async function deleteTestCase(id: string) {
   const res = await fetch(`/api/testcases?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
   const data = await res.json().catch(() => ({}));

@@ -46,6 +46,24 @@ if (!fs.existsSync(RECORDINGS_DIR)) {
   fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
 }
 
+// Retensi log: hapus file .previous.jsonl yang tidak tersentuh > 30 hari saat startup.
+// File .current dan .jsonl legacy tidak pernah dihapus otomatis.
+const PREVIOUS_LOG_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+try {
+  const cutoff = Date.now() - PREVIOUS_LOG_MAX_AGE_MS;
+  for (const name of fs.readdirSync(LOGS_DIR)) {
+    if (!name.endsWith('.previous.jsonl')) continue;
+    const filePath = path.join(LOGS_DIR, name);
+    const stat = fs.statSync(filePath);
+    if (stat.mtimeMs < cutoff) {
+      fs.unlinkSync(filePath);
+      console.log(`[LOG RETENTION] Removed stale previous run: ${name}`);
+    }
+  }
+} catch (err) {
+  console.error('Log retention sweep failed:', err.message);
+}
+
 // WebSocket connection handling
 wss.on('connection', (ws) => {
   console.log('Web UI Client connected');

@@ -63,7 +63,7 @@ export function useProjects() {
     if (!newProjectName.trim()) return false;
     try {
       await createProject({ name: newProjectName.trim(), description: newProjectDesc.trim() });
-      toast({ title: 'Berhasil', description: 'Project berhasil dibuat' });
+      toast({ variant: 'success', title: 'Berhasil', description: 'Project berhasil dibuat' });
       setNewProjectName('');
       setNewProjectDesc('');
       loadProjects();
@@ -77,7 +77,7 @@ export function useProjects() {
   const handleDeleteProject = useCallback(async (id: string) => {
     try {
       await deleteProject(id);
-      toast({ title: 'Berhasil', description: 'Project berhasil dihapus' });
+      toast({ variant: 'success', title: 'Berhasil', description: 'Project berhasil dihapus' });
       setSelectedProject(current => {
         if (current === id) {
           window.localStorage.removeItem(LAST_PROJECT_STORAGE_KEY);
@@ -95,7 +95,7 @@ export function useProjects() {
     if (!newModuleName.trim() || !selectedProject) return false;
     try {
       await createModule({ name: newModuleName.trim(), projectId: selectedProject });
-      toast({ title: 'Berhasil', description: 'Module berhasil dibuat' });
+      toast({ variant: 'success', title: 'Berhasil', description: 'Module berhasil dibuat' });
       setNewModuleName('');
       loadModules(selectedProject);
       return true;
@@ -108,7 +108,7 @@ export function useProjects() {
   const handleDeleteModule = useCallback(async (id: string) => {
     try {
       await deleteModule(id);
-      toast({ title: 'Berhasil', description: 'Module berhasil dihapus' });
+      toast({ variant: 'success', title: 'Berhasil', description: 'Module berhasil dihapus' });
       loadModules(selectedProject);
     } catch (error: any) {
       toast({ title: 'Gagal menghapus module', description: error.message, variant: 'destructive' });

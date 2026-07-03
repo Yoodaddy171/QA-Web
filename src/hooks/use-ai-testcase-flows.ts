@@ -57,7 +57,7 @@ export function useAiTestcaseFlows(input: {
       } else {
         setAiGeneratedCases(generated);
         setAiSelectedCases(new Set(generated.map((_: unknown, i: number) => i)));
-        toast({ title: 'Berhasil', description: `AI menghasilkan ${generated.length} test case` });
+        toast({ variant: 'success', title: 'Berhasil', description: `AI menghasilkan ${generated.length} test case` });
       }
     } catch (err: unknown) {
       console.error('AI generate error:', err);
@@ -102,7 +102,7 @@ export function useAiTestcaseFlows(input: {
         toast({
           title: 'Berhasil',
           description: `${savedCount} test case berhasil disimpan${errorCount > 0 ? ` (${errorCount} gagal)` : ''}`,
-          variant: errorCount > 0 ? 'default' : undefined,
+          variant: errorCount > 0 ? 'default' : 'success',
         });
         setShowAIDialog(false);
         setAiGeneratedCases([]);
@@ -168,7 +168,7 @@ export function useAiTestcaseFlows(input: {
       setAiRefinedCase(null);
       setRefiningTestCase(null);
       loadAll(selectedProject);
-      toast({ title: 'Berhasil', description: 'AI refinement berhasil diterapkan ke testcase.' });
+      toast({ variant: 'success', title: 'Berhasil', description: 'AI refinement berhasil diterapkan ke testcase.' });
     } catch (error: any) {
       toast({ title: 'Gagal Apply', description: error.message || 'Refinement tidak tersimpan', variant: 'destructive' });
     } finally {

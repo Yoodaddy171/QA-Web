@@ -174,8 +174,8 @@ export function AutomatedPanel({
     ].some((value) => value.toLowerCase().includes(keyword));
   });
   const showingLabel = filteredItems.length !== items.length
-    ? `Showing ${filteredItems.length} of ${items.length} data`
-    : `Showing ${filteredItems.length} data`;
+    ? `Menampilkan ${filteredItems.length} dari ${items.length} data`
+    : `Menampilkan ${filteredItems.length} data`;
   const isColumnVisible = (key: AutomatedColumnKey) => visibleColumns[key];
   const getColumnClass = (key: AutomatedColumnKey, baseClass = '') => {
     const option = AUTOMATED_COLUMN_OPTIONS.find((column) => column.key === key);
@@ -191,7 +191,7 @@ export function AutomatedPanel({
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border/50 bg-card shadow-sm">
         <div className="text-center">
           <Bot className="mx-auto mb-2 h-9 w-9 text-muted-foreground opacity-30 animate-pulse" />
-          <p className="text-sm font-semibold text-muted-foreground">Select a project to view automation logs</p>
+          <p className="text-sm font-semibold text-muted-foreground">Pilih project untuk melihat test record</p>
         </div>
       </div>
     );
@@ -247,7 +247,7 @@ export function AutomatedPanel({
           <div className="relative min-w-0 flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
             <Input
-              placeholder="Search test intelligence..."
+              placeholder="Cari test record..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="h-9.5 rounded-xl border border-border/50 bg-secondary/35 pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 text-xs font-medium"
@@ -300,7 +300,7 @@ export function AutomatedPanel({
           </DropdownMenu>
           <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9.5 rounded-xl gap-2 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition-all">
             <RefreshCw className={`h-3.5 w-3.5 text-primary ${loading ? 'animate-spin' : ''}`} />
-            Synchronize
+            Sinkronkan
           </Button>
         </div>
       </div>
@@ -309,7 +309,7 @@ export function AutomatedPanel({
         <div className="flex flex-col items-center justify-center space-y-2 rounded-2xl border border-dashed border-border/60 bg-card py-20 shadow-sm text-center">
           <TerminalSquare className="h-12 w-12 text-muted-foreground/25 animate-pulse" />
           <p className="text-sm font-bold uppercase tracking-wider text-foreground">
-            {items.length === 0 ? 'Belum ada test record' : 'No Matching Results'}
+            {items.length === 0 ? 'Belum ada test record' : 'Tidak ada hasil yang cocok'}
           </p>
           <p className="max-w-md text-center text-[11px] font-medium text-muted-foreground/80">
             {items.length === 0
@@ -326,7 +326,7 @@ export function AutomatedPanel({
               className="mt-3 h-9 gap-2 rounded-xl border-primary/30 bg-primary/10 px-4 text-[10px] font-semibold uppercase tracking-wider text-primary hover:bg-primary/15"
             >
               <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-              {loading ? 'Synchronizing' : 'Synchronize now'}
+              {loading ? 'Menyinkronkan...' : 'Sinkronkan sekarang'}
             </Button>
           )}
         </div>

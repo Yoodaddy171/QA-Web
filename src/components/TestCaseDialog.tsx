@@ -152,7 +152,7 @@ export function TestCaseDialog({
           const error = await response.json().catch(() => ({}));
           throw new Error(error.error || 'Gagal update test case');
         }
-        toast({ title: 'Berhasil', description: 'Test case berhasil diupdate' });
+        toast({ variant: 'success', title: 'Berhasil', description: 'Test case berhasil diupdate' });
       } else {
         const response = await fetch('/api/testcases', {
           method: 'POST',
@@ -163,7 +163,7 @@ export function TestCaseDialog({
           const error = await response.json().catch(() => ({}));
           throw new Error(error.error || 'Gagal membuat test case');
         }
-        toast({ title: 'Berhasil', description: 'Test case berhasil dibuat' });
+        toast({ variant: 'success', title: 'Berhasil', description: 'Test case berhasil dibuat' });
       }
       onOpenChange(false);
       onSaveSuccess();

@@ -236,8 +236,8 @@ export function TestCaseTable({
     return new Date(dateStr).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
   };
   const showingLabel = total !== testCases.length
-    ? `Showing ${testCases.length} of ${total} data`
-    : `Showing ${testCases.length} data`;
+    ? `Menampilkan ${testCases.length} dari ${total} data`
+    : `Menampilkan ${testCases.length} data`;
   const shownOptionalColumnCount = useMemo(
     () => TESTCASE_COLUMN_OPTIONS.filter((column) => visibleColumns[column.key]).length,
     [visibleColumns]
@@ -273,7 +273,7 @@ export function TestCaseTable({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
           <Input
             data-search-input
-            placeholder="Search test cases... (ID, Page, Action, Steps)  [/]"
+            placeholder="Cari test case... (ID, Page, Action, Steps)  [/]"
             value={search}
             onChange={(e) => { setSearch(e.target.value); resetPage(); }}
             className="h-9.5 rounded-xl border border-border/50 bg-secondary/35 text-foreground placeholder:text-muted-foreground pl-9 shadow-xs hover:border-border transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/20 text-xs font-medium"
@@ -355,8 +355,9 @@ export function TestCaseTable({
 
       <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/40 bg-card p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <Button onClick={openCreateDialog} size="sm" variant="majestic" className="h-9 rounded-xl gap-1.5 font-bold shadow-sm transition-all duration-200">
+          <Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="h-9 rounded-xl gap-1.5 font-bold shadow-sm transition-all duration-200">
             <Plus className="w-4 h-4" /> Add Test Case
+            <kbd className="ml-0.5 hidden rounded border border-primary-foreground/30 px-1 font-mono text-[9px] leading-4 opacity-70 lg:inline-block">N</kbd>
           </Button>
           {aiEnabled && (
             <Button onClick={openAIDialog} size="sm" className="h-9 rounded-xl gap-1.5 font-bold bg-violet-500/10 text-violet-500 border border-violet-500/20 hover:bg-violet-500/20 dark:text-violet-400 transition-all duration-200">
@@ -433,7 +434,7 @@ export function TestCaseTable({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button aria-label="Refresh test cases" title="Refresh test cases" onClick={refreshList} variant="ghost" size="sm" className="h-9 w-9 rounded-xl border border-border/50 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/65 transition-all">
+          <Button aria-label="Refresh test cases" title="Refresh test cases (shortcut: R)" onClick={refreshList} variant="ghost" size="sm" className="h-9 w-9 rounded-xl border border-border/50 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/65 transition-all">
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
@@ -537,7 +538,7 @@ export function TestCaseTable({
                     <TableCell className={getColumnClass('status')}>
                       {onQuickStatusChange ? (
                         <Select value={tc.status} onValueChange={(val) => onQuickStatusChange(tc.id, val)}>
-                          <SelectTrigger className={cn("h-7 w-[130px] rounded-lg text-[10px] font-bold shadow-none gap-1 px-2", getStatusColor(tc.status))}>
+                          <SelectTrigger key={tc.status} className={cn("h-7 w-[130px] rounded-lg text-[10px] font-bold shadow-none gap-1 px-2 animate-in zoom-in-90 duration-200", getStatusColor(tc.status))}>
                             {getStatusIcon(tc.status)} <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
@@ -631,7 +632,7 @@ export function TestCaseTable({
         <div className="flex flex-col gap-3 rounded-lg border border-white/5 bg-secondary/50 px-3 py-2 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground tabular-nums">
-              Page {page} of {totalPages} <span className="mx-2 opacity-20">|</span> {total} test cases
+              Halaman {page} dari {totalPages} <span className="mx-2 opacity-20">|</span> {total} test cases
             </p>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rows</span>

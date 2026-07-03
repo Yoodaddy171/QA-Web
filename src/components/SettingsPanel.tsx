@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Edit3, FolderOpen, FolderPlus, Layers, Link, Loader2, Plus, RefreshCw, Save, Trash, Upload, X } from 'lucide-react';
+import { BookOpen, Bot, Edit3, Eye, EyeOff, FolderOpen, FolderPlus, Layers, Link, Loader2, Plus, RefreshCw, Save, Trash, Upload, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -96,6 +96,50 @@ export function SettingsPanel({
   const [figmaDepth, setFigmaDepth] = useState('3');
   const [figmaSyncing, setFigmaSyncing] = useState(false);
   const [figmaSyncMessage, setFigmaSyncMessage] = useState('');
+  const [aiProvider, setAiProvider] = useState('auto');
+  const [groqApiKey, setGroqApiKey] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [groqStatus, setGroqStatus] = useState('Not configured');
+  const [geminiStatus, setGeminiStatus] = useState('Not configured');
+  const [ollamaBaseUrl, setOllamaBaseUrl] = useState('');
+  const [showAiKeys, setShowAiKeys] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiMessage, setAiMessage] = useState('');
+
+  useEffect(() => {
+    fetch('/api/settings/ai')
+      .then(response => response.json())
+      .then(data => {
+        setAiProvider(data.provider || 'auto');
+        setGroqStatus(data.groq || 'Not configured');
+        setGeminiStatus(data.gemini || 'Not configured');
+        setOllamaBaseUrl(data.ollamaBaseUrl || '');
+      })
+      .catch(() => setAiMessage('Gagal membaca konfigurasi AI.'));
+  }, []);
+
+  const saveAiSettings = async () => {
+    setAiSaving(true);
+    setAiMessage('');
+    try {
+      const response = await fetch('/api/settings/ai', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: aiProvider, groqApiKey, geminiApiKey, ollamaBaseUrl }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Gagal menyimpan konfigurasi AI.');
+      setGroqStatus(data.groq);
+      setGeminiStatus(data.gemini);
+      setGroqApiKey('');
+      setGeminiApiKey('');
+      setAiMessage('Konfigurasi AI tersimpan dan langsung aktif.');
+    } catch (error) {
+      setAiMessage(error instanceof Error ? error.message : 'Gagal menyimpan konfigurasi AI.');
+    } finally {
+      setAiSaving(false);
+    }
+  };
 
   const loadKnowledge = async () => {
     if (!selectedProject) {
@@ -219,6 +263,55 @@ export function SettingsPanel({
       transition={{ duration: 0.4 }}
       className="space-y-6 pb-8"
     >
+      <Card variant="majestic">
+        <CardHeader className="border-b border-border/40 pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold tracking-tight">
+              <Bot className="h-5 w-5 text-primary" />
+              AI Configuration
+            </CardTitle>
+            <Button type="button" variant="ghost" size="icon" onClick={() => setShowAiKeys(value => !value)} title={showAiKeys ? 'Sembunyikan API key' : 'Tampilkan API key'}>
+              {showAiKeys ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4 pt-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Provider utama</Label>
+            <Select value={aiProvider} onValueChange={setAiProvider}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto fallback</SelectItem>
+                <SelectItem value="groq">Groq</SelectItem>
+                <SelectItem value="gemini">Gemini</SelectItem>
+                <SelectItem value="ollama">Ollama</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Ollama Base URL</Label>
+            <Input value={ollamaBaseUrl} onChange={event => setOllamaBaseUrl(event.target.value)} placeholder="http://127.0.0.1:11434" />
+          </div>
+          <div className="space-y-2">
+            <Label>Groq API Key</Label>
+            <Input type={showAiKeys ? 'text' : 'password'} value={groqApiKey} onChange={event => setGroqApiKey(event.target.value)} placeholder={groqStatus} autoComplete="off" />
+            <p className="text-xs text-muted-foreground">{groqStatus}</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Gemini API Key</Label>
+            <Input type={showAiKeys ? 'text' : 'password'} value={geminiApiKey} onChange={event => setGeminiApiKey(event.target.value)} placeholder={geminiStatus} autoComplete="off" />
+            <p className="text-xs text-muted-foreground">{geminiStatus}</p>
+          </div>
+          <div className="flex items-center gap-3 md:col-span-2">
+            <Button type="button" onClick={saveAiSettings} disabled={aiSaving} className="gap-2">
+              {aiSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Simpan AI
+            </Button>
+            {aiMessage ? <p className="text-sm text-muted-foreground">{aiMessage}</p> : null}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Projects Card */}
       <Card variant="majestic">
         <CardHeader className="pb-3 border-b border-border/40 mb-4">

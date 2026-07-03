@@ -2,16 +2,12 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
-
 export const maxDuration = 60;
 
 const AI_MODEL = process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
-const MAX_OUTPUT_TOKENS = 1100;
-const MAX_HISTORY_MESSAGES = 4;
-const MAX_HISTORY_CHARS = 2000;
+const MAX_OUTPUT_TOKENS = 1600;
+const MAX_HISTORY_MESSAGES = 8;
+const MAX_HISTORY_CHARS = 3000;
 const MAX_CONTEXT_CHARS = 4000;
 const MAX_DRAFT_TEST_CASES = 5;
 const TESTCASE_ID_PATTERN = /\b[A-Z]{1,4}-\d{2,4}\b/g;
@@ -58,6 +54,10 @@ const GENERIC_KEYWORDS = new Set([
   'validation',
   'yang',
 ]);
+
+function getGroq() {
+  return new Groq({ apiKey: process.env.GROQ_API_KEY });
+}
 
 type ChatMessage = {
   role: 'user' | 'assistant';
@@ -967,7 +967,7 @@ JSON schema:
   ]
 }`;
 
-  const completion = await groq.chat.completions.create({
+  const completion = await getGroq().chat.completions.create({
     model: AI_MODEL,
     temperature: 0.25,
     max_tokens: 1600,
@@ -1299,6 +1299,12 @@ You are a thinking partner — intelligent, opinionated, and helpful. You have c
 
 PERSONALITY & BEHAVIOR:
 - Be conversational, natural, and direct. Not robotic.
+- Treat the conversation as a continuing thread: connect the current question to prior conclusions, corrections, and preferences instead of restarting from zero.
+- Do not give a single-path answer when multiple plausible interpretations, causes, or strategies exist. Briefly compare the strongest alternatives and explain when each applies.
+- For decisions or recommendations, present 2-3 viable options with a concrete upside and downside for each, then state your preferred option and why.
+- Challenge weak assumptions politely. Surface trade-offs, dependencies, and second-order risks the user may not have considered.
+- Adapt the shape of the answer to the question. Do not force every response into the same checklist, fixed headings, or repetitive closing.
+- Ask at most one focused follow-up question, and only when the missing answer would materially change the recommendation. Otherwise make a reasonable assumption and continue.
 - You can discuss anything related to QA, software development, testing strategy, bug analysis, release readiness, risk assessment, and general software engineering topics.
 - When asked general questions (greetings, opinions, advice), respond naturally like a knowledgeable colleague would.
 - When asked about the project, use the PROJECT CONTEXT data to give informed, specific answers.
@@ -1349,13 +1355,14 @@ ${modules.map(m => `- ${m.name}: ${m.id}`).join('\n')}
 STRICT DATA RULES:
 - Never hallucinate Testcase IDs. Use ONLY the provided IDs above when creating new drafts.
 - Refer to existing IDs (e.g., A-001) only if they appear in the PROJECT CONTEXT.
+- Do not invent project features, payment methods, screens, integrations, or bugs. If the context is insufficient, compare testing strategies and label any possible scenario explicitly as a hypothesis that needs confirmation.
 - If asked to create after a coverage answer, create drafts only from "Actionable QA tasks eligible for testcase drafts".
 - When you don't know something, say so honestly. Don't make up data.`;
 
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroq().chat.completions.create({
       model: AI_MODEL,
-      temperature: 0.4,
-      max_tokens: 1000,
+      temperature: 0.55,
+      max_tokens: MAX_OUTPUT_TOKENS,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },

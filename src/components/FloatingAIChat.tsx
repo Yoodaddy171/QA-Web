@@ -324,7 +324,7 @@ function CitationChips({
             onClick={() => clickableId && onOpenTestCaseId?.(clickableId)}
             title={citation.description || citation.type}
             className={cn(
-              "rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-widest transition",
+              "rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition",
               clickableId
                 ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/15'
                 : 'border-border/60 bg-secondary/50 text-muted-foreground'
@@ -383,7 +383,7 @@ function ActionDraftCards({
         <div key={action.id} className="rounded-xl border border-border/50 bg-card/50 p-3 transition-colors hover:bg-card">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <Badge variant="outline" className="mb-2 border-primary/30 bg-primary/10 text-[9px] font-black uppercase tracking-widest text-primary">
+              <Badge variant="outline" className="mb-2 border-primary/30 bg-primary/10 text-[9px] font-semibold uppercase tracking-wider text-primary">
                 {action.type.replace(/_/g, ' ')}
               </Badge>
               <p className="text-sm font-semibold text-foreground">{action.title}</p>
@@ -646,7 +646,7 @@ export function FloatingAIChat({
               setMinimized(false);
               setChatFrame((current) => current || getDefaultFrame());
             }}
-            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-primary to-cyan-500 text-white shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 elevation-3 focus:outline-none focus:ring-4 focus:ring-primary/30"
+            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-300 elevation-3 focus:outline-none focus:ring-4 focus:ring-primary/30"
             aria-label="Open QA AI chat"
           >
             <MessageCircle className="h-6 w-6" />
@@ -670,7 +670,7 @@ export function FloatingAIChat({
             }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200, mass: 1 }}
-            className="fixed z-50 flex overflow-hidden rounded-2xl border border-border/60 bg-card/95 backdrop-blur-md elevation-3 overscroll-contain"
+            className="fixed z-50 flex overflow-hidden rounded-2xl border border-border/60 bg-card elevation-3 overscroll-contain"
             onPointerMove={moveChatFrame}
             onPointerUp={stopChatFrameDrag}
             onPointerCancel={stopChatFrameDrag}
@@ -687,7 +687,7 @@ export function FloatingAIChat({
             </button>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <div
-                className="flex cursor-move touch-none select-none items-start justify-between border-b border-border/40 bg-gradient-to-r from-primary/10 via-indigo-500/10 to-cyan-500/10 backdrop-blur-md px-4 py-3.5 pl-8"
+                className="flex cursor-move touch-none select-none items-start justify-between border-b border-border/40 bg-secondary/60 px-4 py-3.5 pl-8"
                 onPointerDown={startMove}
               >
                 <div className="min-w-0">
@@ -863,7 +863,7 @@ export function FloatingAIChat({
                           size="icon"
                           onClick={loading ? stopRequest : () => askAI()}
                           disabled={!loading && (!input.trim() || !projectId)}
-                          className={`h-11 w-11 rounded-xl elevation-1 transition-all duration-200 ${loading ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-white shadow-md hover:shadow-cyan-500/10'}`}
+                          className={`h-11 w-11 rounded-xl elevation-1 transition-all duration-200 ${loading ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm'}`}
                           aria-label={loading ? 'Stop AI response' : 'Send message'}
                         >
                           {loading ? <X className="h-5 w-5" /> : <Send className="h-5 w-5" />}

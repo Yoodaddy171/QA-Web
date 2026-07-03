@@ -140,7 +140,7 @@ export function AIGenerateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-border/60 bg-card/95 backdrop-blur-md text-foreground elevation-3 rounded-2xl p-0">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-border/60 bg-card text-foreground elevation-3 rounded-2xl p-0">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
 
         <DialogHeader className="px-6 py-5 border-b border-border/40 bg-gradient-to-r from-primary/5 via-indigo-500/5 to-cyan-500/5">
@@ -159,7 +159,7 @@ export function AIGenerateDialog({
           {!aiGeneratedCases.length && !aiGenerating && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="space-y-2.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Apa yang ingin Anda test?</Label>
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Apa yang ingin Anda test?</Label>
                 <Textarea
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
@@ -190,7 +190,7 @@ export function AIGenerateDialog({
                       <Target className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-black uppercase tracking-widest text-foreground">Rekomendasi Dinamis</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-foreground">Rekomendasi Dinamis</p>
                       <p className="text-[10px] text-muted-foreground font-medium">{moduleFilter === 'all' ? 'Semua module' : modules.find(module => module.id === moduleFilter)?.name || 'Module terpilih'}</p>
                     </div>
                   </div>
@@ -202,20 +202,20 @@ export function AIGenerateDialog({
                     <p className="text-sm font-bold leading-relaxed text-foreground/90">{insights.recommendation}</p>
                     <div className="grid gap-3 sm:grid-cols-4">
                       <div className="rounded-xl border border-border/50 bg-card/60 p-2.5 shadow-sm">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Coverage</p>
-                        <p className="text-sm font-black text-foreground mt-0.5">{insights.summary.total} TC</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Coverage</p>
+                        <p className="text-sm font-semibold text-foreground mt-0.5">{insights.summary.total} TC</p>
                       </div>
                       <div className="rounded-xl border border-border/50 bg-card/60 p-2.5 shadow-sm">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Negative</p>
-                        <p className="text-sm font-black text-foreground mt-0.5">{insights.summary.negative} ({Math.round(insights.summary.negativeRatio * 100)}%)</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Negative</p>
+                        <p className="text-sm font-semibold text-foreground mt-0.5">{insights.summary.negative} ({Math.round(insights.summary.negativeRatio * 100)}%)</p>
                       </div>
                       <div className="rounded-xl border border-border/50 bg-card/60 p-2.5 shadow-sm">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Open High</p>
-                        <p className="text-sm font-black text-rose-500 mt-0.5">{insights.summary.highPriorityOpen}</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Open High</p>
+                        <p className="text-sm font-semibold text-rose-500 mt-0.5">{insights.summary.highPriorityOpen}</p>
                       </div>
                       <div className="rounded-xl border border-border/50 bg-card/60 p-2.5 shadow-sm">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Weak Steps</p>
-                        <p className="text-sm font-black text-amber-500 mt-0.5">{insights.summary.weakSteps}</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Weak Steps</p>
+                        <p className="text-sm font-semibold text-amber-500 mt-0.5">{insights.summary.weakSteps}</p>
                       </div>
                     </div>
                     {insights.gapAreas.length > 0 && (
@@ -231,7 +231,7 @@ export function AIGenerateDialog({
                               <AlertTriangle className="h-4 w-4 shrink-0" />
                               <span className="truncate">{area.moduleName} <span className="text-muted-foreground font-medium mx-1">/</span> {area.label}</span>
                             </span>
-                            <span className="shrink-0 font-black uppercase tracking-tighter text-[10px]">{area.negative} / {area.total} Neg</span>
+                            <span className="shrink-0 font-semibold uppercase tracking-tighter text-[10px]">{area.negative} / {area.total} Neg</span>
                           </button>
                         ))}
                       </div>
@@ -248,12 +248,12 @@ export function AIGenerateDialog({
               <div className="grid gap-5 sm:grid-cols-2">
                 {modules.length > 0 && (
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fokus pada Module</Label>
+                    <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Fokus pada Module</Label>
                     <Select value={moduleFilter} onValueChange={setModuleFilter}>
                       <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition-all duration-300">
                         <SelectValue placeholder="Semua Module" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl bg-card border-border/60 elevation-3 backdrop-blur-xl">
+                      <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
                         <SelectItem value="all" className="rounded-lg font-medium">Semua Module</SelectItem>
                         {modules.map((module) => (
                           <SelectItem key={module.id} value={module.id} className="rounded-lg font-medium">{module.name}</SelectItem>
@@ -263,12 +263,12 @@ export function AIGenerateDialog({
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Jumlah Output</Label>
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Jumlah Output</Label>
                   <Select value={String(generateCount)} onValueChange={(value) => setGenerateCount(Number(value))}>
                     <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition-all duration-300">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl bg-card border-border/60 elevation-3 backdrop-blur-xl">
+                    <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
                       <SelectItem value="3" className="rounded-lg font-medium">3 Test Case</SelectItem>
                       <SelectItem value="4" className="rounded-lg font-medium">4 Test Case</SelectItem>
                       <SelectItem value="6" className="rounded-lg font-medium">6 Test Case</SelectItem>
@@ -283,7 +283,7 @@ export function AIGenerateDialog({
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
-                  <strong className="text-primary font-black uppercase tracking-tight mr-1.5">Pro Tip:</strong> AI mempelajari format dan terminologi yang Anda gunakan. Instruksi yang spesifik akan menghasilkan skenario yang lebih akurat dan siap pakai.
+                  <strong className="text-primary font-semibold uppercase tracking-tight mr-1.5">Pro Tip:</strong> AI mempelajari format dan terminologi yang Anda gunakan. Instruksi yang spesifik akan menghasilkan skenario yang lebih akurat dan siap pakai.
                 </p>
               </div>
             </div>
@@ -301,7 +301,7 @@ export function AIGenerateDialog({
                 </div>
               </div>
               <div className="text-center space-y-2">
-                <p className="font-black text-foreground uppercase tracking-[0.2em] text-[10px]">Generating Scenarios</p>
+                <p className="font-semibold text-foreground uppercase tracking-[0.2em] text-[10px]">Generating Scenarios</p>
                 <p className="text-[11px] text-muted-foreground font-medium animate-pulse">Consulting project knowledge & best practices...</p>
               </div>
             </div>
@@ -312,13 +312,13 @@ export function AIGenerateDialog({
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-3">
                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Generated Result: {aiGeneratedCases.length} Scenarios</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Generated Result: {aiGeneratedCases.length} Scenarios</p>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={toggleAISelectAll}
-                  className="h-8 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-lg"
+                  className="h-8 text-[10px] font-semibold uppercase tracking-wider text-primary hover:bg-primary/5 rounded-lg"
                 >
                   {aiSelectedCases.size === aiGeneratedCases.length ? 'Deselect All' : 'Select All'}
                 </Button>
@@ -345,25 +345,25 @@ export function AIGenerateDialog({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5 mb-4 pr-10">
-                      <span className="font-mono text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg">{testCase.testCaseId}</span>
-                      <Badge variant="outline" className={cn("rounded-lg border-border/40 text-[9px] font-black uppercase tracking-tight py-0.5 shadow-sm", getTestTypeColor(testCase.testType))}>
+                      <span className="font-mono text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg">{testCase.testCaseId}</span>
+                      <Badge variant="outline" className={cn("rounded-lg border-border/40 text-[9px] font-semibold uppercase tracking-tight py-0.5 shadow-sm", getTestTypeColor(testCase.testType))}>
                         {testCase.testType}
                       </Badge>
-                      <Badge className={cn("rounded-lg text-[9px] font-black uppercase tracking-tight py-0.5 shadow-sm", getPriorityColor(testCase.priority))}>
+                      <Badge className={cn("rounded-lg text-[9px] font-semibold uppercase tracking-tight py-0.5 shadow-sm", getPriorityColor(testCase.priority))}>
                         {testCase.priority}
                       </Badge>
                       <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">{testCase.page} {testCase.subMenu && `› ${testCase.subMenu}`}</span>
                     </div>
 
-                    <p className="text-[13px] font-black text-foreground group-hover:text-primary transition-colors leading-tight mb-3">{testCase.testAction}</p>
+                    <p className="text-[13px] font-semibold text-foreground group-hover:text-primary transition-colors leading-tight mb-3">{testCase.testAction}</p>
 
                     <div className="space-y-3">
                       <div className="rounded-xl bg-card/60 border border-border/40 p-3.5 shadow-inner">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50 mb-2">Execution Steps</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-50 mb-2">Execution Steps</p>
                         <div className="text-[11px] text-foreground/80 font-medium whitespace-pre-line leading-relaxed">{testCase.steps}</div>
                       </div>
                       <div className="flex items-center gap-2 rounded-xl bg-emerald-500/5 border border-emerald-500/20 px-3.5 py-2">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 opacity-60 shrink-0">Expected Result</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 opacity-60 shrink-0">Expected Result</p>
                         <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 truncate">{testCase.expectedResult}</p>
                       </div>
                     </div>
@@ -378,8 +378,8 @@ export function AIGenerateDialog({
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
               {aiGeneratedCases.length > 0 && !aiGenerating && (
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  <span className="text-primary font-black">{aiSelectedCases.size}</span> / {aiGeneratedCases.length} Selected
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-primary font-semibold">{aiSelectedCases.size}</span> / {aiGeneratedCases.length} Selected
                 </p>
               )}
             </div>
@@ -414,7 +414,7 @@ export function AIGenerateDialog({
                 <Button
                   onClick={() => handleAIGenerate({ prompt, moduleFilter, count: generateCount })}
                   disabled={!prompt.trim() || aiGenerating}
-                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-black text-xs px-8 shadow-lg hover:shadow-primary/30 transition-all duration-300 uppercase tracking-wider"
+                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-semibold text-xs px-8 shadow-lg hover:shadow-primary/30 transition-all duration-300 uppercase tracking-wider"
                 >
                   {aiGenerating ? (
                     <>

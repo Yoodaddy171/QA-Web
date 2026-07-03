@@ -244,38 +244,34 @@ export function DashboardPanel({
         )}
 
         {/* Overall Progress - Hero Card */}
-        <Card variant="glass" className="relative overflow-hidden border border-primary/20 shadow-md shadow-primary/5 bg-gradient-to-br from-card/90 via-card/70 to-secondary/30">
-          <div className="absolute top-0 right-0 p-8 opacity-[0.04]">
-            <BarChart3 className="w-56 h-56 text-primary" />
-          </div>
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-cyan-400 to-indigo-500 rounded-t-2xl" />
-          <CardContent className="p-8 relative z-10">
+        <Card>
+          <CardContent className="p-6 sm:p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-primary">
-                  Project Readiness Rate
-                </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Project readiness
+                </p>
                 <div className="flex items-baseline gap-3">
-                  <span className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-foreground to-foreground/85 bg-clip-text text-transparent">{stats.overallProgress}%</span>
-                  <span className="text-muted-foreground text-sm font-semibold">Verified</span>
+                  <span className="text-5xl font-semibold tracking-tight text-foreground tabular-nums">{stats.overallProgress}%</span>
+                  <span className="text-muted-foreground text-sm">verified</span>
                 </div>
-                <p className="text-muted-foreground text-sm max-w-md leading-relaxed font-medium">
-                  Done verifying <span className="text-primary font-bold">{stats.doneCount}</span> out of <span className="text-foreground font-semibold">{stats.totalTestCases}</span> total test scenarios.
+                <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
+                  <span className="text-foreground font-medium">{stats.doneCount}</span> dari <span className="text-foreground font-medium">{stats.totalTestCases}</span> test scenario selesai diverifikasi.
                 </p>
               </div>
-              <div className="flex-1 max-w-md w-full space-y-3">
-                <div className="relative h-3 w-full bg-secondary/80 rounded-full overflow-hidden shadow-inner">
+              <div className="flex-1 max-w-md w-full space-y-2">
+                <div className="relative h-2 w-full bg-secondary rounded-full overflow-hidden">
                   <motion.div
-                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-cyan-500 rounded-full"
+                    className="absolute inset-y-0 left-0 bg-primary rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${stats.overallProgress}%` }}
-                    transition={{ duration: 1, ease: 'easeOut' }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
                   />
                 </div>
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  <span>Start</span>
-                  <span>50% Milestone</span>
-                  <span>100% Ready</span>
+                <div className="flex justify-between text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
                 </div>
               </div>
             </div>
@@ -295,7 +291,7 @@ export function DashboardPanel({
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground font-mono">{stats.doneCount}</p>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Done</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Done</p>
                 </div>
               </div>
             </CardContent>
@@ -309,7 +305,7 @@ export function DashboardPanel({
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground font-mono">{stats.inProgressCount}</p>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Active</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Active</p>
                 </div>
               </div>
             </CardContent>
@@ -323,7 +319,7 @@ export function DashboardPanel({
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground font-mono">{stats.blockedCount}</p>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400">Blocked</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Blocked</p>
                 </div>
               </div>
             </CardContent>
@@ -337,7 +333,7 @@ export function DashboardPanel({
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground font-mono">{stats.notDoneCount}</p>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Backlog</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Backlog</p>
                 </div>
               </div>
             </CardContent>
@@ -351,7 +347,7 @@ export function DashboardPanel({
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground font-mono">{stats.failedCount}</p>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400">Failed</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">Failed</p>
                 </div>
               </div>
             </CardContent>
@@ -365,7 +361,7 @@ export function DashboardPanel({
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground font-mono">{stats.readyToRetestCount}</p>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Retest</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Retest</p>
                 </div>
               </div>
             </CardContent>
@@ -379,7 +375,7 @@ export function DashboardPanel({
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground font-mono">{stats.tbaCount || 0}</p>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">TBA</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">TBA</p>
                 </div>
               </div>
             </CardContent>
@@ -389,11 +385,11 @@ export function DashboardPanel({
         {/* Visual Analytics Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Status Distribution */}
-          <Card variant="majestic" className="border-border/40 hover:border-primary/20 shadow-sm transition-all duration-300 bg-card/65 backdrop-blur-md">
+          <Card variant="majestic" className="border-border/40 hover:border-primary/20 shadow-sm transition-all duration-300 bg-card">
             <CardHeader className="pb-3 border-b border-border/40">
               <div className="flex items-center gap-2">
                 <Percent className="w-4 h-4 text-primary" />
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Scenario Distribution</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Scenario Distribution</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="pt-6 h-[250px] flex items-center justify-center">
@@ -419,7 +415,7 @@ export function DashboardPanel({
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
-                              <div className="bg-card/95 border border-border/80 p-2.5 rounded-xl shadow-xl backdrop-blur-md text-xs font-semibold text-foreground">
+                              <div className="bg-card border border-border/80 p-2.5 rounded-xl shadow-xl text-xs font-semibold text-foreground">
                                 <span className="flex items-center gap-1.5">
                                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: data.color }} />
                                   {data.name}: {data.value} cases
@@ -434,7 +430,7 @@ export function DashboardPanel({
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-3xl font-extrabold tracking-tight text-foreground font-mono">{stats.totalTestCases}</span>
-                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Total</span>
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total</span>
                   </div>
                 </div>
                 {/* Custom Legend */}
@@ -454,11 +450,11 @@ export function DashboardPanel({
           </Card>
 
           {/* Priority Distribution */}
-          <Card variant="majestic" className="border-border/40 hover:border-primary/20 shadow-sm transition-all duration-300 bg-card/65 backdrop-blur-md">
+          <Card variant="majestic" className="border-border/40 hover:border-primary/20 shadow-sm transition-all duration-300 bg-card">
             <CardHeader className="pb-3 border-b border-border/40">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-primary" />
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Cases by Priority</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cases by Priority</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="pt-6 h-[250px] flex items-center justify-center">
@@ -481,7 +477,7 @@ export function DashboardPanel({
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
                           return (
-                            <div className="bg-card/95 border border-border/80 p-2.5 rounded-xl shadow-xl backdrop-blur-md text-xs font-semibold text-foreground">
+                            <div className="bg-card border border-border/80 p-2.5 rounded-xl shadow-xl text-xs font-semibold text-foreground">
                               <span className="flex items-center gap-1.5">
                                 <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: data.fill }} />
                                 {data.name}: {data.count} cases
@@ -510,11 +506,11 @@ export function DashboardPanel({
         </div>
 
         {stats.bugFixTotal > 0 && (
-          <Card variant="majestic" className="border-border/40 bg-card/65 shadow-sm backdrop-blur-md">
+          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
             <CardHeader className="border-b border-border/40 pb-3">
               <div className="flex items-center gap-2">
                 <Bug className="h-4 w-4 text-orange-500" />
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Bug Fix Overview</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bug Fix Overview</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3 pt-5 sm:grid-cols-4">
@@ -525,8 +521,8 @@ export function DashboardPanel({
                 { label: 'Resolved', value: stats.bugFixFixed, color: 'text-emerald-500', surface: 'bg-emerald-500/10' },
               ].map((item) => (
                 <div key={item.label} className={cn('rounded-xl border border-border/40 p-4', item.surface)}>
-                  <p className={cn('font-mono text-2xl font-black', item.color)}>{item.value}</p>
-                  <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">{item.label}</p>
+                  <p className={cn('font-mono text-2xl font-semibold', item.color)}>{item.value}</p>
+                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
                 </div>
               ))}
             </CardContent>
@@ -534,11 +530,11 @@ export function DashboardPanel({
         )}
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-          <Card variant="majestic" className="border-border/40 bg-card/65 shadow-sm backdrop-blur-md">
+          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
             <CardHeader className="border-b border-border/40 pb-3">
               <div className="flex items-center gap-2">
                 <RefreshCw className="h-4 w-4 text-cyan-500" />
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Verification Pipeline</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verification Pipeline</CardTitle>
               </div>
             </CardHeader>
             <CardContent
@@ -562,7 +558,7 @@ export function DashboardPanel({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="font-mono text-xs font-black text-foreground">{item.testCaseId}</p>
+                          <p className="font-mono text-xs font-semibold text-foreground">{item.testCaseId}</p>
                           <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">{item.moduleName || item.page}</p>
                         </div>
                         <Badge variant="outline" className={getPriorityBadgeClass(item.priority)}>{item.priority}</Badge>
@@ -571,18 +567,18 @@ export function DashboardPanel({
                     </button>
                   ))}
                   {(stats.retestQueue || []).length > 4 && !retestAtBottom && (
-                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-widest text-primary">Scroll for more</p>
+                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll for more</p>
                   )}
                 </>
               )}
             </CardContent>
           </Card>
 
-          <Card variant="majestic" className="border-border/40 bg-card/65 shadow-sm backdrop-blur-md">
+          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
             <CardHeader className="border-b border-border/40 pb-3">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-amber-500" />
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Defect Longevity</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Defect Longevity</CardTitle>
               </div>
             </CardHeader>
             <CardContent
@@ -606,7 +602,7 @@ export function DashboardPanel({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="font-mono text-xs font-black text-foreground">{item.testCaseId}</p>
+                          <p className="font-mono text-xs font-semibold text-foreground">{item.testCaseId}</p>
                           <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">{item.testAction}</p>
                         </div>
                         <Badge variant="outline" className={getAgeClass(item.ageDays)}>{item.ageDays} days</Badge>
@@ -615,18 +611,18 @@ export function DashboardPanel({
                     </button>
                   ))}
                   {(stats.bugAging || []).length > 4 && !bugAgingAtBottom && (
-                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-widest text-primary">Scroll for more</p>
+                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll for more</p>
                   )}
                 </>
               )}
             </CardContent>
           </Card>
 
-          <Card variant="majestic" className="border-border/40 bg-card/65 shadow-sm backdrop-blur-md">
+          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
             <CardHeader className="border-b border-border/40 pb-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-rose-500" />
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Module Risk</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Module Risk</CardTitle>
               </div>
             </CardHeader>
             <CardContent
@@ -650,7 +646,7 @@ export function DashboardPanel({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-xs font-black text-foreground">{item.moduleName}</p>
+                          <p className="truncate text-xs font-semibold text-foreground">{item.moduleName}</p>
                           <p className="mt-1 text-[10px] font-medium text-muted-foreground">{item.total} cases</p>
                         </div>
                         <Badge variant="outline" className={getPriorityBadgeClass(item.riskScore >= 70 ? 'Critical' : item.riskScore >= 40 ? 'High' : item.riskScore >= 20 ? 'Medium' : 'Low')}>
@@ -665,7 +661,7 @@ export function DashboardPanel({
                     </button>
                   ))}
                   {(stats.moduleRisks || []).length > 4 && !moduleRiskAtBottom && (
-                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-widest text-primary">Scroll for more</p>
+                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll for more</p>
                   )}
                 </>
               )}
@@ -675,18 +671,18 @@ export function DashboardPanel({
 
         {/* Module Progress */}
         {stats.moduleProgress.length > 0 && (
-          <Card variant="majestic" className="border-border/40 shadow-sm bg-card/65 backdrop-blur-md">
+          <Card variant="majestic" className="border-border/40 shadow-sm bg-card">
             <CardHeader className="pb-3 border-b border-border/40">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-primary" />
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Module Progress</CardTitle>
+                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Module Progress</CardTitle>
                 </div>
                 <Select value={selectedModuleFilter} onValueChange={setSelectedModuleFilter}>
                   <SelectTrigger className="h-8 w-[160px] rounded-xl border border-border/50 bg-secondary/40 text-xs font-semibold">
                     <SelectValue placeholder="All Modules" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border border-border/50 shadow-lg">
+                  <SelectContent className="rounded-xl bg-card border border-border/50 shadow-lg">
                     <SelectItem value="all" className="rounded-lg text-xs font-medium">All Modules</SelectItem>
                     {modules.map((m) => (
                       <SelectItem key={m.id} value={m.id} className="rounded-lg text-xs font-medium">{m.name}</SelectItem>

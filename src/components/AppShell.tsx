@@ -79,7 +79,7 @@ function WorkspaceSidebar({
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-sidebar-border/80 bg-sidebar/95 backdrop-blur-xl">
+    <Sidebar collapsible="icon" className="border-sidebar-border/80 bg-sidebar">
       <SidebarHeader className="gap-4 border-b border-sidebar-border/70 px-3 py-4">
         <div className={cn('flex min-h-10 items-center', expanded ? 'justify-between' : 'justify-center')}>
           <BrandMark compact={!expanded} />
@@ -92,7 +92,7 @@ function WorkspaceSidebar({
               <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-sidebar-primary" />
               <SelectValue placeholder="Select project" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-border/70 bg-popover/95 shadow-xl backdrop-blur-xl">
+            <SelectContent className="rounded-xl border-border/70 bg-popover shadow-xl">
               {projects.map((project) => (
                 <SelectItem key={project.id} value={project.id} className="rounded-lg text-sm font-medium">
                   {project.name}
@@ -206,7 +206,7 @@ export function AppShell({
         />
 
         <SidebarInset className="min-w-0 overflow-x-hidden bg-background">
-          <header className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-4 border-b border-border/55 bg-background/80 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-4 border-b border-border bg-background px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <SidebarTrigger className="h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-card text-muted-foreground shadow-sm hover:bg-secondary hover:text-foreground" />
               <div className="min-w-0">
@@ -218,9 +218,9 @@ export function AppShell({
               </div>
             </div>
             {typeof projectHealth === 'number' && (
-              <div className="hidden items-center gap-2 rounded-lg border border-border/60 bg-card/75 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground shadow-sm sm:flex">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                Readiness <span className="font-mono text-foreground">{projectHealth}%</span>
+              <div className="hidden items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground sm:flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Readiness <span className="font-medium text-foreground tabular-nums">{projectHealth}%</span>
               </div>
             )}
           </header>

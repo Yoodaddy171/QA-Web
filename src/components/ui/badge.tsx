@@ -18,13 +18,13 @@ const badgeVariants = cva(
         outline:
           "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         success:
-          "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 shadow-[0_0_10px_rgba(16,185,129,0.12)] dark:text-emerald-400",
+          "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         warning:
-          "border-amber-500/30 bg-amber-500/10 text-amber-700 shadow-[0_0_10px_rgba(245,158,11,0.12)] dark:text-amber-400",
+          "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
         failed:
-          "border-rose-500/30 bg-rose-500/10 text-rose-700 shadow-[0_0_10px_rgba(244,63,94,0.12)] dark:text-rose-400",
+          "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400",
         info:
-          "border-sky-500/30 bg-sky-500/10 text-sky-700 shadow-[0_0_10px_rgba(14,165,233,0.12)] dark:text-sky-400",
+          "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400",
         notdone:
           "border-slate-400/30 bg-slate-300/50 text-slate-600 dark:text-slate-400",
         inprogress:

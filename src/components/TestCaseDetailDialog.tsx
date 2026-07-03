@@ -1120,7 +1120,7 @@ export function TestCaseDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "max-h-[90vh] flex flex-col p-0 overflow-hidden bg-card/95 backdrop-blur-md text-foreground border-border/60 elevation-3",
+          "max-h-[90vh] flex flex-col p-0 overflow-hidden bg-card text-foreground border-border/60 elevation-3",
           isSystemDevLogFullscreen
             ? "h-screen max-h-screen w-screen max-w-none translate-x-[-50%] translate-y-[-50%] rounded-none border-0 sm:max-w-none"
             : isRecordingFullscreen
@@ -1132,7 +1132,7 @@ export function TestCaseDetailDialog({
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
               <ClipboardList className="w-5 h-5 text-cyan-500" />
-              <span className="bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Detail Test Case</span>
+              <span className="text-foreground">Detail Test Case</span>
               {viewTestCase && (
                 <Badge variant={getStatusBadgeVariant(viewTestCase.status)} className={cn("gap-1 ml-2")}>
                   {getStatusIcon(viewTestCase.status)} {viewTestCase.status}
@@ -1216,7 +1216,7 @@ export function TestCaseDetailDialog({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Identification</p>
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Identification</p>
                               <div className="space-y-3">
                                 <div>
                                   <p className="text-xs text-muted-foreground mb-1">Test Case ID (Display)</p>
@@ -1245,7 +1245,7 @@ export function TestCaseDetailDialog({
                             </div>
 
                             <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Classification</p>
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Classification</p>
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <p className="text-xs text-muted-foreground mb-1">Page / Menu</p>
@@ -1269,7 +1269,7 @@ export function TestCaseDetailDialog({
 
                           <div className="space-y-4">
                             <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Project Tracking</p>
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Project Tracking</p>
                               <div className="space-y-4">
                                 <div>
                                   <p className="text-xs text-muted-foreground mb-1">Module</p>
@@ -1297,7 +1297,7 @@ export function TestCaseDetailDialog({
                             </div>
 
                             <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Test Status</p>
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Test Status</p>
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <p className="text-xs text-muted-foreground mb-1">Actual Result</p>
@@ -1320,21 +1320,21 @@ export function TestCaseDetailDialog({
 
                         <div className="grid grid-cols-1 gap-6">
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Test Action</Label>
+                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Test Action</Label>
                             <div className="rounded-xl border border-border/60 bg-secondary/30 p-4 text-sm italic leading-relaxed text-muted-foreground">
                               "{viewTestCase.testAction}"
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Test Steps</Label>
+                              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Test Steps</Label>
                               <BulletTextView
                                 value={viewTestCase.steps}
                                 className="min-h-[120px] whitespace-pre-wrap rounded-xl border border-border/60 bg-secondary/30 p-4 text-sm font-medium leading-relaxed text-foreground shadow-inner"
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Expected Result</Label>
+                              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Expected Result</Label>
                               <BulletTextView
                                 value={viewTestCase.expectedResult}
                                 className="min-h-[120px] rounded-xl border border-emerald-500/15 bg-emerald-500/10 p-4 text-sm font-semibold leading-relaxed text-foreground shadow-inner"
@@ -1342,7 +1342,7 @@ export function TestCaseDetailDialog({
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Remarks / Catatan</Label>
+                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Remarks / Catatan</Label>
                             <div className="min-h-[72px] whitespace-pre-wrap rounded-xl border border-amber-500/15 bg-amber-500/10 p-4 text-sm italic text-foreground shadow-inner">
                               {viewTestCase.remarks?.trim() || '-'}
                             </div>
@@ -1364,7 +1364,7 @@ export function TestCaseDetailDialog({
                         <div className="rounded-xl border border-border/60 bg-secondary/30 p-5">
                           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bug Lifecycle</p>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bug Lifecycle</p>
                               <h3 className="mt-1 text-lg font-bold text-foreground">{viewTestCase.testCaseId}</h3>
                               <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
                                 Perjalanan bug dari laporan awal sampai verified fixed. Status maksimal dari halaman BugFix adalah Ready to Retest; Verified & Fixed terjadi setelah retest berhasil dari halaman Test Case.
@@ -1415,7 +1415,7 @@ export function TestCaseDetailDialog({
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                           <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bug Source</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bug Source</p>
                             <div className="mt-3 space-y-3 text-sm">
                               <div>
                                 <p className="text-xs text-muted-foreground">Original Test Case ID</p>
@@ -1429,7 +1429,7 @@ export function TestCaseDetailDialog({
                           </div>
 
                           <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status Timing</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status Timing</p>
                             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                               <div>
                                 <p className="text-xs text-muted-foreground">Reported</p>
@@ -1470,7 +1470,7 @@ export function TestCaseDetailDialog({
                               <div className="p-1.5 rounded-lg bg-primary/10">
                                 <MonitorDot className="h-4 w-4 text-primary" />
                               </div>
-                              <p className="text-xs font-black uppercase tracking-widest text-primary dark:text-cyan-400">Intelligence Guide</p>
+                              <p className="text-xs font-semibold uppercase tracking-wider text-primary dark:text-cyan-400">Panduan DevLog</p>
                               <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/10 text-[10px] font-bold text-primary uppercase tracking-tighter dark:bg-black/40 dark:text-cyan-300">
                                 Automation & Manual Capture
                               </Badge>
@@ -1480,7 +1480,7 @@ export function TestCaseDetailDialog({
                               <button
                                 type="button"
                                 onClick={() => setExpandedGuide(expandedGuide === 'automation' ? null : 'automation')}
-                                className="w-full flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[11px] font-black text-foreground uppercase tracking-widest hover:bg-secondary/40 transition-colors"
+                                className="w-full flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[11px] font-semibold text-foreground uppercase tracking-wider hover:bg-secondary/40 transition-colors"
                               >
                                 <span>Automation Capture Instructions</span>
                                 <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-300", expandedGuide === 'automation' && "rotate-180")} />
@@ -1564,7 +1564,7 @@ export function TestCaseDetailDialog({
                                   {groupedConsoleLogs.length === 0 ? (
                                     <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
                                       <Bot className="mb-4 h-10 w-10 opacity-20" />
-                                      <p className="text-[11px] font-black uppercase tracking-widest">Waiting for Browser Logs...</p>
+                                      <p className="text-[11px] font-semibold uppercase tracking-wider">Waiting for Browser Logs...</p>
                                       <p className="mt-2 text-[10px] font-medium opacity-60">Pastikan Automation Capture sudah terhubung.</p>
                                     </div>
                                   ) : (
@@ -1599,7 +1599,7 @@ export function TestCaseDetailDialog({
                                               {log.timestamp ? new Date(log.timestamp).toLocaleTimeString('id-ID', { hour12: false }) : '-'}
                                             </span>
                                             {typeof log.relativeMs === 'number' && (
-                                              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                                              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
                                                 {formatRelativeTime(log.relativeMs)}
                                               </span>
                                             )}
@@ -1609,7 +1609,7 @@ export function TestCaseDetailDialog({
                                               </span>
                                             </div>
                                             {count > 1 && (
-                                              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                                 x{count}
                                               </span>
                                             )}
@@ -1629,7 +1629,7 @@ export function TestCaseDetailDialog({
                                                 <div className="space-y-3 px-10 pb-4">
                                                   {count > 1 && (
                                                     <div className="rounded-xl border border-border/60 bg-background/50 p-2.5 shadow-inner">
-                                                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Repeated {count} times</p>
+                                                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Repeated {count} times</p>
                                                       <div className="max-h-48 space-y-1 overflow-y-auto pr-1 scrollbar-thin">
                                                         {entries.map((entry, entryIndex) => (
                                                           <button
@@ -1638,7 +1638,7 @@ export function TestCaseDetailDialog({
                                                             className="grid w-full grid-cols-[48px_72px_1fr] gap-3 rounded-lg border border-border/40 bg-secondary/20 px-3 py-1.5 text-left text-[10px] hover:bg-secondary/40 transition-colors"
                                                             onClick={() => seekRecordingFromLog(entry)}
                                                           >
-                                                            <span className="font-black text-muted-foreground opacity-40">#{entryIndex + 1}</span>
+                                                            <span className="font-semibold text-muted-foreground opacity-40">#{entryIndex + 1}</span>
                                                             <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{formatRelativeTime(entry.relativeMs)}</span>
                                                             <span className="truncate text-foreground font-medium">{getConsoleLogText(entry)}</span>
                                                           </button>
@@ -1698,7 +1698,7 @@ export function TestCaseDetailDialog({
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        className="h-9 gap-1.5 px-3 rounded-xl border-border/60 bg-background/80 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground shadow-sm"
+                                        className="h-9 gap-1.5 px-3 rounded-xl border-border/60 bg-background/80 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground shadow-sm"
                                         onClick={() => setNetworkFilters(DEFAULT_NETWORK_FILTERS)}
                                       >
                                         <RefreshCw className="h-3.5 w-3.5" />
@@ -1731,13 +1731,13 @@ export function TestCaseDetailDialog({
                                           {filter.label}
                                         </Button>
                                       ))}
-                                      <span className="ml-auto rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-tighter text-primary">
+                                      <span className="ml-auto rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-tighter text-primary">
                                         API {networkCategoryCounts.business}
                                       </span>
                                     </div>
                                   </div>
 
-                                  <div className="grid grid-cols-12 gap-2 p-2.5 bg-secondary/40 border-b border-border/40 text-[9px] font-black text-muted-foreground uppercase tracking-widest shrink-0">
+                                  <div className="grid grid-cols-12 gap-2 p-2.5 bg-secondary/40 border-b border-border/40 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
                                     <div className="col-span-1">Method</div>
                                     <div className="col-span-1">Type</div>
                                     <div className="col-span-5 pl-1">Name / Path</div>
@@ -1750,7 +1750,7 @@ export function TestCaseDetailDialog({
                                     {groupedNetworkLogs.length === 0 ? (
                                       <div className="h-full flex flex-col items-center justify-center py-24 text-muted-foreground">
                                         <RefreshCw className="w-10 h-10 mb-4 opacity-10 animate-spin" />
-                                        <p className="font-black tracking-[0.2em] text-[10px] uppercase opacity-40">Listening for traffic...</p>
+                                        <p className="font-semibold tracking-[0.2em] text-[10px] uppercase opacity-40">Listening for traffic...</p>
                                       </div>
                                     ) : (
                                       groupedNetworkLogs.map((group) => {
@@ -1766,7 +1766,7 @@ export function TestCaseDetailDialog({
                                                 setExpandedLogId(expandedLogId === logId ? null : logId);
                                               }}
                                             >
-                                              <div className="col-span-1 font-black text-primary truncate">{getNetworkMethod(net.network)}</div>
+                                              <div className="col-span-1 font-semibold text-primary truncate">{getNetworkMethod(net.network)}</div>
                                               <div className="col-span-1 truncate">
                                                 <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
                                                   {meta.label}
@@ -1777,19 +1777,19 @@ export function TestCaseDetailDialog({
                                                 <div className="truncate text-[9px] text-muted-foreground font-medium opacity-60">{meta.host}</div>
                                               </div>
                                               <div className="col-span-2 text-center">
-                                                <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-black", getNetworkStatusClass(net.network))}>
+                                                <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-semibold", getNetworkStatusClass(net.network))}>
                                                   {getNetworkStatus(net.network)}
                                                 </span>
                                               </div>
                                               <div className="col-span-2 text-right">
                                                 <div className="font-bold text-muted-foreground">{getNetworkDuration(net.network)}</div>
                                                 {typeof net.relativeMs === 'number' && (
-                                                  <div className="text-[9px] font-black text-primary uppercase tracking-tighter">{formatRelativeTime(net.relativeMs)}</div>
+                                                  <div className="text-[9px] font-semibold text-primary uppercase tracking-tighter">{formatRelativeTime(net.relativeMs)}</div>
                                                 )}
                                               </div>
                                               <div className="col-span-1 flex items-center justify-end gap-1.5">
                                                 {count > 1 && (
-                                                  <span className="rounded-full border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[9px] font-black text-primary">
+                                                  <span className="rounded-full border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
                                                     {count}
                                                   </span>
                                                 )}
@@ -1808,7 +1808,7 @@ export function TestCaseDetailDialog({
                                                   <div className="p-5 bg-secondary/10 border-t border-border/30 space-y-4">
                                                     {count > 1 && (
                                                       <div className="rounded-xl border border-border/40 bg-background/60 p-3 shadow-inner">
-                                                        <p className="mb-2.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Repeated Request History ({count})</p>
+                                                        <p className="mb-2.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-50">Repeated Request History ({count})</p>
                                                         <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
                                                           {entries.map((entry, entryIndex) => (
                                                             <button
@@ -1817,9 +1817,9 @@ export function TestCaseDetailDialog({
                                                               className="grid w-full grid-cols-[40px_72px_64px_1fr] gap-3 rounded-lg border border-border/40 bg-secondary/30 px-3 py-2 text-left text-[10px] hover:bg-secondary/50 transition-colors"
                                                               onClick={() => seekRecordingFromLog(entry.log)}
                                                             >
-                                                              <span className="font-black text-muted-foreground opacity-30">#{entryIndex + 1}</span>
+                                                              <span className="font-semibold text-muted-foreground opacity-30">#{entryIndex + 1}</span>
                                                               <span className="font-mono font-bold text-primary">{formatRelativeTime(entry.log.relativeMs)}</span>
-                                                              <span className={cn("rounded-md px-1.5 py-0.5 text-center font-black", getNetworkStatusClass(entry.log.network))}>
+                                                              <span className={cn("rounded-md px-1.5 py-0.5 text-center font-semibold", getNetworkStatusClass(entry.log.network))}>
                                                                 {getNetworkStatus(entry.log.network)}
                                                               </span>
                                                               <span className="truncate text-foreground font-medium">{getNetworkDuration(entry.log.network)}</span>
@@ -1831,7 +1831,7 @@ export function TestCaseDetailDialog({
 
                                                     <div className="rounded-xl border border-border/40 bg-background/60 p-4 shadow-inner space-y-4">
                                                       <div>
-                                                        <p className="mb-1.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Full Destination URL</p>
+                                                        <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-50">Full Destination URL</p>
                                                         <pre className="overflow-auto rounded-lg border border-border/30 bg-secondary/20 p-2.5 font-mono text-[10px] leading-relaxed text-foreground/80 break-all whitespace-pre-wrap">
                                                           {net.network.url}
                                                         </pre>
@@ -1839,19 +1839,19 @@ export function TestCaseDetailDialog({
 
                                                       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
                                                         <div className="space-y-2">
-                                                          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50">Request Headers</p>
+                                                          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-50">Request Headers</p>
                                                           <pre className={cn(networkCodePanelClass, "h-[240px] border-border/30 bg-secondary/20 text-foreground/70")}>
                                                             {formatPrettyValue(net.network.headers)}
                                                           </pre>
                                                         </div>
                                                         <div className="space-y-2">
-                                                          <p className="text-[9px] font-black uppercase tracking-widest text-primary/60 opacity-80">Request Body</p>
+                                                          <p className="text-[9px] font-semibold uppercase tracking-wider text-primary/60 opacity-80">Request Body</p>
                                                           <pre className={cn(networkCodePanelClass, "h-[240px] border-primary/20 bg-primary/5 text-primary/80")}>
                                                             {formatPrettyValue(getRequestPayload(net.network.data))}
                                                           </pre>
                                                         </div>
                                                         <div className="space-y-2">
-                                                          <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600/60 opacity-80">Response Body</p>
+                                                          <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-600/60 opacity-80">Response Body</p>
                                                           <pre className={cn(networkCodePanelClass, "h-[240px] border-emerald-500/20 bg-emerald-500/5 text-emerald-600/80 font-semibold")}>
                                                             {formatPrettyValue(getResponsePayload(net.network.data))}
                                                           </pre>
@@ -1872,7 +1872,7 @@ export function TestCaseDetailDialog({
                               )}
                             </div>
                             <div className="bg-secondary/60 px-4 py-2 border-t border-border/40 flex items-center justify-between shrink-0 shadow-inner">
-                              <div className="flex items-center gap-5 text-[9px] font-black uppercase tracking-[0.15em]">
+                              <div className="flex items-center gap-5 text-[9px] font-semibold uppercase tracking-[0.15em]">
                                 <div className="flex items-center gap-2">
                                   <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
                                   <span className="text-emerald-700 dark:text-emerald-400">{okLogCount} Succesful</span>
@@ -1895,7 +1895,7 @@ export function TestCaseDetailDialog({
                             </div>
                             <div className="min-w-0">
                               <p className="text-[11px] text-foreground font-semibold leading-relaxed">
-                                <span className="text-primary font-black uppercase tracking-tight mr-1.5">DevTools Intelligence:</span>
+                                <span className="text-primary font-semibold uppercase tracking-tight mr-1.5">DevTools:</span>
                                 Tab **Console** memantau eksekusi runtime browser, sementara **Network** melacak pertukaran data API. Gunakan detail payload untuk validasi integrasi yang mendalam.
                               </p>
                             </div>
@@ -1904,7 +1904,7 @@ export function TestCaseDetailDialog({
                               <button
                                 type="button"
                                 onClick={() => setExpandedGuide(expandedGuide === 'manual' ? null : 'manual')}
-                                className="w-full flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[11px] font-bold text-foreground uppercase tracking-widest dark:text-slate-300 hover:bg-secondary/20 transition-colors"
+                                className="w-full flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[11px] font-bold text-foreground uppercase tracking-wider dark:text-slate-300 hover:bg-secondary/20 transition-colors"
                               >
                                 <span>Manual Capture</span>
                                 <ChevronDown className={cn("h-4 w-4 text-slate-500 transition-transform duration-300", expandedGuide === 'manual' && "rotate-180")} />
@@ -1939,11 +1939,11 @@ export function TestCaseDetailDialog({
                                   <div className="p-1.5 rounded-lg bg-teal-500/10">
                                     <Play className="h-4 w-4 text-teal-400" />
                                   </div>
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Manual Capture Command</p>
+                                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Manual Capture Command</p>
                                   <Badge
                                     variant="outline"
                                     className={cn(
-                                      "rounded-md text-[10px] font-bold uppercase tracking-widest shadow-none",
+                                      "rounded-md text-[10px] font-bold uppercase tracking-wider shadow-none",
                                       socketReady
                                         ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400'
                                         : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400'
@@ -1952,7 +1952,7 @@ export function TestCaseDetailDialog({
                                     {socketReady ? 'Relay Live' : 'Relay Offline'}
                                   </Badge>
                                   {isManualCaptureActive && (
-                                    <Badge className="rounded-md border border-teal-200 bg-teal-50 text-[10px] font-black uppercase tracking-tighter text-teal-700 shadow-none dark:border-teal-500/30 dark:bg-teal-500/20 dark:text-teal-400">
+                                    <Badge className="rounded-md border border-teal-200 bg-teal-50 text-[10px] font-semibold uppercase tracking-tighter text-teal-700 shadow-none dark:border-teal-500/30 dark:bg-teal-500/20 dark:text-teal-400">
                                       {manualCaptureSessionId?.slice(0, 18)}
                                     </Badge>
                                   )}
@@ -1972,7 +1972,7 @@ export function TestCaseDetailDialog({
                                           disabled={isManualCaptureActive || isStartingManualCapture}
                                           onClick={() => setManualCaptureMode(option.value)}
                                           className={cn(
-                                            "inline-flex h-8 min-w-0 items-center justify-center rounded-lg px-3 text-[9px] font-black uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[76px]",
+                                            "inline-flex h-8 min-w-0 items-center justify-center rounded-lg px-3 text-[9px] font-semibold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[76px]",
                                             active
                                               ? 'bg-indigo-600 text-white shadow-sm dark:bg-indigo-400 dark:text-slate-950'
                                               : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
@@ -1998,7 +1998,7 @@ export function TestCaseDetailDialog({
                                           disabled={isManualCaptureActive || isStartingManualCapture}
                                           onClick={() => setManualCaptureBrowserMode(option.value)}
                                           className={cn(
-                                            "inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-black uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[92px]",
+                                            "inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[10px] font-semibold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[92px]",
                                             active
                                               ? 'bg-teal-600 text-white shadow-sm dark:bg-teal-500 dark:text-slate-950'
                                               : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
@@ -2023,7 +2023,7 @@ export function TestCaseDetailDialog({
                                       type="button"
                                       variant="outline"
                                       size="sm"
-                                      className="h-10 min-w-[150px] shrink-0 gap-2 rounded-xl border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-black uppercase tracking-widest text-[10px] dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
+                                      className="h-10 min-w-[150px] shrink-0 gap-2 rounded-xl border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-semibold uppercase tracking-wider text-[10px] dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
                                       onClick={stopManualCapture}
                                       disabled={isStoppingManualCapture}
                                     >
@@ -2034,7 +2034,7 @@ export function TestCaseDetailDialog({
                                     <Button
                                       type="button"
                                       size="sm"
-                                      className="h-10 min-w-[150px] shrink-0 gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] shadow-lg shadow-teal-900/40"
+                                      className="h-10 min-w-[150px] shrink-0 gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold uppercase tracking-wider text-[10px] shadow-lg shadow-teal-900/40"
                                       onClick={() => startManualCapture({ browserMode: manualCaptureBrowserMode, captureMode: manualCaptureMode })}
                                       disabled={!manualCaptureTargetUrl.trim() || isStartingManualCapture}
                                     >
@@ -2048,7 +2048,7 @@ export function TestCaseDetailDialog({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="h-10 shrink-0 gap-2 rounded-xl border-border/60 bg-secondary/50 text-[10px] font-black uppercase tracking-widest text-foreground transition-colors hover:bg-secondary dark:text-slate-400 dark:hover:text-white"
+                                className="h-10 shrink-0 gap-2 rounded-xl border-border/60 bg-secondary/50 text-[10px] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-secondary dark:text-slate-400 dark:hover:text-white"
                                 onClick={() => navigator.clipboard.writeText(captureScriptTag)}
                               >
                                 <Code2 className="h-4 w-4" />
@@ -2082,7 +2082,7 @@ export function TestCaseDetailDialog({
                                   />
                                 ) : null}
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-300 group-hover:bg-black/40 group-hover:opacity-100">
-                                  <span className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-teal-700 shadow-2xl dark:border-teal-500/20 dark:bg-teal-500/10 dark:text-teal-200">
+                                  <span className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-teal-700 shadow-2xl dark:border-teal-500/20 dark:bg-teal-500/10 dark:text-teal-200">
                                     <Maximize2 className="h-4 w-4" />
                                     Fullscreen
                                   </span>
@@ -2094,29 +2094,29 @@ export function TestCaseDetailDialog({
                                     <div className="p-1.5 rounded-lg bg-indigo-500/10">
                                       <Film className="h-4 w-4 text-indigo-400" />
                                     </div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Screen Analytics</p>
-                                    <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-black text-indigo-400 uppercase tracking-tighter">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Screen Analytics</p>
+                                    <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-semibold text-indigo-400 uppercase tracking-tighter">
                                       {manualRecordingMode}
                                     </Badge>
-                                    <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-black text-indigo-400 uppercase tracking-tighter">
+                                    <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-semibold text-indigo-400 uppercase tracking-tighter">
                                       {manualRecordingMode === 'video' && manualRecordingFrames.length === 0 ? 'Video only' : `${manualRecordingFrames.length} keyframes`}
                                     </Badge>
                                     {manualRecordingVideoStatus && (
-                                      <Badge variant="outline" className="rounded-md border-cyan-500/20 bg-cyan-500/10 text-[9px] font-black text-cyan-500 uppercase tracking-tighter">
+                                      <Badge variant="outline" className="rounded-md border-cyan-500/20 bg-cyan-500/10 text-[9px] font-semibold text-cyan-500 uppercase tracking-tighter">
                                         Video {manualRecordingVideoStatus}
                                       </Badge>
                                     )}
                                     {isVideoFinalizing && (
-                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-black text-amber-600 uppercase tracking-tighter dark:text-amber-300">
+                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-semibold text-amber-600 uppercase tracking-tighter dark:text-amber-300">
                                         <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                                         Processing
                                       </Badge>
                                     )}
-                                    <Badge variant="outline" className="rounded-md border-border/60 bg-muted/50 text-[9px] font-black text-foreground uppercase tracking-tighter">
+                                    <Badge variant="outline" className="rounded-md border-border/60 bg-muted/50 text-[9px] font-semibold text-foreground uppercase tracking-tighter">
                                       {formatRelativeTime(recordingDisplayMs)}
                                     </Badge>
                                     {recordingSeekApprox && (
-                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-black text-amber-600 uppercase tracking-tighter dark:text-amber-300">
+                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-semibold text-amber-600 uppercase tracking-tighter dark:text-amber-300">
                                         Approx
                                       </Badge>
                                     )}
@@ -2124,7 +2124,7 @@ export function TestCaseDetailDialog({
                                       type="button"
                                       variant="outline"
                                       size="sm"
-                                      className="ml-auto h-8 gap-2 rounded-lg border-border/60 bg-secondary/50 px-3 text-[9px] font-black uppercase tracking-widest text-foreground hover:bg-secondary dark:text-slate-400 dark:hover:text-white"
+                                      className="ml-auto h-8 gap-2 rounded-lg border-border/60 bg-secondary/50 px-3 text-[9px] font-semibold uppercase tracking-wider text-foreground hover:bg-secondary dark:text-slate-400 dark:hover:text-white"
                                       onClick={openRecordingFullscreen}
                                     >
                                       <Maximize2 className="h-3.5 w-3.5" />
@@ -2179,8 +2179,8 @@ export function TestCaseDetailDialog({
                                 <Wrench className="w-5 h-5 text-teal-400" />
                               </div>
                               <div>
-                                <h4 className="text-sm font-black text-foreground leading-tight uppercase tracking-tight dark:text-foreground">System DevLog</h4>
-                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Execution Telemetry</p>
+                                <h4 className="text-sm font-semibold text-foreground leading-tight uppercase tracking-tight dark:text-foreground">System DevLog</h4>
+                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Execution Telemetry</p>
                               </div>
                               {socketReady && (
                                 <div className="flex items-center gap-2 ml-4 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 shadow-sm">
@@ -2188,7 +2188,7 @@ export function TestCaseDetailDialog({
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                   </span>
-                                  <span className="text-[10px] font-black text-emerald-700 uppercase tracking-tighter dark:text-emerald-400">Live Relay</span>
+                                  <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-tighter dark:text-emerald-400">Live Relay</span>
                                 </div>
                               )}
                             </div>
@@ -2196,7 +2196,7 @@ export function TestCaseDetailDialog({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 rounded-lg px-2.5 text-[10px] font-black uppercase tracking-widest gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300"
+                                className="h-8 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-wider gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300"
                                 onClick={openSystemDevLogFullscreen}
                               >
                                 <Maximize2 className="h-3.5 w-3.5" />
@@ -2207,7 +2207,7 @@ export function TestCaseDetailDialog({
                                 variant="ghost"
                                 size="sm"
                                 className={cn(
-                                  "h-8 px-2.5 text-[10px] font-black uppercase tracking-widest gap-2 rounded-lg",
+                                  "h-8 px-2.5 text-[10px] font-semibold uppercase tracking-wider gap-2 rounded-lg",
                                   isSummarizing && "animate-pulse",
                                   "border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-500/30 dark:bg-gradient-to-r dark:from-violet-600/20 dark:to-indigo-600/20 dark:text-violet-300 dark:hover:from-violet-600/30 dark:hover:to-indigo-600/30"
                                 )}
@@ -2222,7 +2222,7 @@ export function TestCaseDetailDialog({
                                 variant={activeDevLogTab === 'execution' ? 'default' : 'ghost'}
                                 size="sm"
                                 className={cn(
-                                  "h-8 rounded-lg px-2.5 text-[10px] font-black uppercase tracking-widest",
+                                  "h-8 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-wider",
                                   activeDevLogTab === 'execution' ? 'bg-teal-50 text-teal-700 shadow-sm hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:shadow-xl dark:hover:bg-teal-500/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300'
                                 )}
                                 onClick={() => setActiveDevLogTab('execution')}
@@ -2233,7 +2233,7 @@ export function TestCaseDetailDialog({
                                 variant={activeDevLogTab === 'console' ? 'default' : 'ghost'}
                                 size="sm"
                                 className={cn(
-                                  "h-8 rounded-lg px-2.5 text-[10px] font-black uppercase tracking-widest",
+                                  "h-8 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-wider",
                                   activeDevLogTab === 'console' ? 'bg-teal-50 text-teal-700 shadow-sm hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:shadow-xl dark:hover:bg-teal-500/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300'
                                 )}
                                 onClick={() => setActiveDevLogTab('console')}
@@ -2244,7 +2244,7 @@ export function TestCaseDetailDialog({
                                 variant={activeDevLogTab === 'network' ? 'default' : 'ghost'}
                                 size="sm"
                                 className={cn(
-                                  "h-8 rounded-lg px-2.5 text-[10px] font-black uppercase tracking-widest",
+                                  "h-8 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-wider",
                                   activeDevLogTab === 'network' ? 'bg-teal-50 text-teal-700 shadow-sm hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:shadow-xl dark:hover:bg-teal-500/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300'
                                 )}
                                 onClick={() => setActiveDevLogTab('network')}
@@ -2256,7 +2256,7 @@ export function TestCaseDetailDialog({
                                 variant={loadedRunLabel === 'current' || loadedRunLabel === 'live' ? 'default' : 'ghost'}
                                 size="sm"
                                 className={cn(
-                                  "h-8 px-2.5 text-[9px] font-black uppercase tracking-widest rounded-lg",
+                                  "h-8 px-2.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg",
                                   (loadedRunLabel === 'current' || loadedRunLabel === 'live') ? 'bg-teal-600 text-white shadow-lg hover:bg-teal-500' : 'text-muted-foreground hover:bg-teal-50 hover:text-teal-700 dark:text-slate-500 dark:hover:bg-teal-500/10 dark:hover:text-teal-400'
                                 )}
                                 onClick={loadCurrentLogRun}
@@ -2268,7 +2268,7 @@ export function TestCaseDetailDialog({
                                 variant={loadedRunLabel === 'previous' ? 'default' : 'ghost'}
                                 size="sm"
                                 className={cn(
-                                  "h-8 px-2.5 text-[9px] font-black uppercase tracking-widest rounded-lg gap-1.5",
+                                  "h-8 px-2.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg gap-1.5",
                                   loadedRunLabel === 'previous' ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-500' : 'text-muted-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-500 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400'
                                 )}
                                 onClick={loadLogHistory}
@@ -2331,7 +2331,7 @@ export function TestCaseDetailDialog({
                                   ) : (
                                     <div className="h-full flex flex-col items-center justify-center py-20 text-muted-foreground">
                                       <Clock className="w-8 h-8 mb-3 opacity-20" />
-                                      <p className="font-bold tracking-widest text-[10px] uppercase">Awaiting Execution Trace...</p>
+                                      <p className="font-bold tracking-wider text-[10px] uppercase">Awaiting Execution Trace...</p>
                                     </div>
                                   )}
                                   <div ref={logEndRef} className="h-8" />
@@ -2341,7 +2341,7 @@ export function TestCaseDetailDialog({
                                   {groupedConsoleLogs.length === 0 ? (
                                     <div className="h-full flex flex-col items-center justify-center py-20 text-muted-foreground">
                                       <Clock className="w-8 h-8 mb-3 opacity-20" />
-                                      <p className="font-bold tracking-widest text-[10px] uppercase">Awaiting Console Output...</p>
+                                      <p className="font-bold tracking-wider text-[10px] uppercase">Awaiting Console Output...</p>
                                     </div>
                                   ) : (
                                     groupedConsoleLogs.map((group) => {
@@ -2374,7 +2374,7 @@ export function TestCaseDetailDialog({
                                               </span>
                                             </div>
                                             {count > 1 && (
-                                              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                                 x{count}
                                               </span>
                                             )}
@@ -2394,7 +2394,7 @@ export function TestCaseDetailDialog({
                                                 <div className="space-y-3 px-10 pb-3">
                                                   {count > 1 && (
                                                     <div className="rounded-lg border border-border bg-background p-2 dark:bg-card/70">
-                                                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated {count} times</p>
+                                                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Repeated {count} times</p>
                                                       <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
                                                         {entries.map((entry, entryIndex) => (
                                                           <button
@@ -2403,7 +2403,7 @@ export function TestCaseDetailDialog({
                                                             className="grid w-full grid-cols-[54px_70px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-left text-[10px] hover:bg-secondary"
                                                             onClick={() => seekRecordingFromLog(entry)}
                                                           >
-                                                            <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                                            <span className="font-semibold text-muted-foreground">#{entryIndex + 1}</span>
                                                             <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.relativeMs)}</span>
                                                             <span className="truncate text-foreground">{getConsoleLogText(entry)}</span>
                                                           </button>
@@ -2531,7 +2531,7 @@ export function TestCaseDetailDialog({
                                     {groupedNetworkLogs.length === 0 ? (
                                       <div className="h-full flex flex-col items-center justify-center py-20 text-muted-foreground">
                                         <RefreshCw className="w-8 h-8 mb-3 opacity-20 animate-spin-slow" />
-                                        <p className="font-bold tracking-widest text-[10px] uppercase">Waiting for Network Traffic...</p>
+                                        <p className="font-bold tracking-wider text-[10px] uppercase">Waiting for Network Traffic...</p>
                                       </div>
                                     ) : (
                                       groupedNetworkLogs.map((group) => {
@@ -2547,7 +2547,7 @@ export function TestCaseDetailDialog({
                                                 setExpandedLogId(expandedLogId === logId ? null : logId);
                                               }}
                                             >
-                                              <div className="col-span-1 font-black text-indigo-700 truncate dark:text-indigo-400">{getNetworkMethod(net.network)}</div>
+                                              <div className="col-span-1 font-semibold text-indigo-700 truncate dark:text-indigo-400">{getNetworkMethod(net.network)}</div>
                                               <div className="col-span-1 truncate">
                                                 <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
                                                   {meta.label}
@@ -2570,7 +2570,7 @@ export function TestCaseDetailDialog({
                                               </div>
                                               <div className="col-span-1 flex items-center justify-end gap-1.5">
                                                 {count > 1 && (
-                                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                                     x{count}
                                                   </span>
                                                 )}
@@ -2589,7 +2589,7 @@ export function TestCaseDetailDialog({
                                                   <div className="p-4 bg-muted/50 border-t border-border dark:bg-muted/50 dark:border-border">
                                                     {count > 1 && (
                                                       <div className="mb-3 rounded-lg border border-border bg-background p-3 dark:border-border dark:bg-card/70">
-                                                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated {count} times</p>
+                                                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Repeated {count} times</p>
                                                         <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
                                                           {entries.map((entry, entryIndex) => (
                                                             <button
@@ -2598,7 +2598,7 @@ export function TestCaseDetailDialog({
                                                               className="grid w-full grid-cols-[54px_72px_72px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-left text-[10px] hover:bg-secondary"
                                                               onClick={() => seekRecordingFromLog(entry.log)}
                                                             >
-                                                              <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                                              <span className="font-semibold text-muted-foreground">#{entryIndex + 1}</span>
                                                               <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
                                                               <span className={cn("rounded px-1.5 py-0.5 text-center font-bold", getNetworkStatusClass(entry.log.network))}>
                                                                 {getNetworkStatus(entry.log.network)}
@@ -2649,7 +2649,7 @@ export function TestCaseDetailDialog({
                               )}
                             </div>
                             <div className="bg-muted/80 p-2 border-t border-border flex items-center justify-between shrink-0">
-                              <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                              <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
                                 <div className="flex items-center gap-1.5">
                                   <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                                   {okLogCount} OK
@@ -2691,8 +2691,8 @@ export function TestCaseDetailDialog({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Wrench className="h-4 w-4 text-teal-500" />
-                      <p className="text-xs font-black uppercase tracking-widest text-foreground">System DevLog Fullscreen</p>
-                      <Badge variant="outline" className="rounded-md border-teal-200 bg-teal-50 text-[10px] font-black uppercase tracking-widest text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-200">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-foreground">System DevLog Fullscreen</p>
+                      <Badge variant="outline" className="rounded-md border-teal-200 bg-teal-50 text-[10px] font-semibold uppercase tracking-wider text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-200">
                         {activeDevLogTab === 'network' ? `${fullscreenNetworkGroups.length} network` : `${fullscreenConsoleGroups.length} console`}
                       </Badge>
                     </div>
@@ -2707,7 +2707,7 @@ export function TestCaseDetailDialog({
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          "h-8 px-3 text-[10px] font-black uppercase tracking-widest",
+                          "h-8 px-3 text-[10px] font-semibold uppercase tracking-wider",
                           activeDevLogTab === 'console'
                             ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-100'
                             : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
@@ -2724,7 +2724,7 @@ export function TestCaseDetailDialog({
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          "h-8 px-3 text-[10px] font-black uppercase tracking-widest",
+                          "h-8 px-3 text-[10px] font-semibold uppercase tracking-wider",
                           activeDevLogTab === 'network'
                             ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-100'
                             : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
@@ -2749,7 +2749,7 @@ export function TestCaseDetailDialog({
                           variant="ghost"
                           size="sm"
                           className={cn(
-                            "h-8 px-3 text-[10px] font-black uppercase tracking-widest",
+                            "h-8 px-3 text-[10px] font-semibold uppercase tracking-wider",
                             fullscreenLogFilter === item.value
                               ? 'bg-indigo-100 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-100'
                               : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
@@ -2768,7 +2768,7 @@ export function TestCaseDetailDialog({
                       variant="ghost"
                       size="sm"
                       className={cn(
-                        "h-8 rounded-md border px-3 text-[10px] font-black uppercase tracking-widest",
+                        "h-8 rounded-md border px-3 text-[10px] font-semibold uppercase tracking-wider",
                         networkCodeWrap
                           ? 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-200'
                           : 'border-border bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground'
@@ -2782,7 +2782,7 @@ export function TestCaseDetailDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-5 top-5 z-[90] h-10 w-10 rounded-full border border-border/70 bg-background/90 p-0 text-foreground shadow-xl backdrop-blur transition hover:scale-105 hover:bg-secondary"
+                    className="absolute right-5 top-5 z-[90] h-10 w-10 rounded-full border border-border/70 bg-background/90 p-0 text-foreground shadow-xl backdrop-blur transition hover:bg-secondary"
                     onClick={closeSystemDevLogFullscreen}
                   >
                     <X className="h-4 w-4" />
@@ -2796,7 +2796,7 @@ export function TestCaseDetailDialog({
                         {fullscreenNetworkGroups.length === 0 ? (
                           <div className="flex h-full min-h-[420px] flex-col items-center justify-center text-muted-foreground">
                             <RefreshCw className="mb-3 h-8 w-8 opacity-20" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest">No Network Rows</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider">No Network Rows</p>
                           </div>
                         ) : fullscreenNetworkGroups.map((group) => {
                           const { log: net, meta, count } = group;
@@ -2824,7 +2824,7 @@ export function TestCaseDetailDialog({
                                 }
                               }}
                             >
-                              <span className="col-span-2 truncate font-black text-indigo-700 dark:text-indigo-300">{getNetworkMethod(net.network)}</span>
+                              <span className="col-span-2 truncate font-semibold text-indigo-700 dark:text-indigo-300">{getNetworkMethod(net.network)}</span>
                               <span className="col-span-2 truncate">
                                 <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
                                   {meta.label}
@@ -2842,7 +2842,7 @@ export function TestCaseDetailDialog({
                               <span className="col-span-2 flex items-center justify-end gap-2 text-[10px] font-bold text-muted-foreground">
                                 <span>{formatRelativeTime(net.relativeMs)}</span>
                                 {count > 1 && (
-                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                     x{count}
                                   </span>
                                 )}
@@ -2856,7 +2856,7 @@ export function TestCaseDetailDialog({
                         {fullscreenConsoleGroups.length === 0 ? (
                           <div className="flex h-full min-h-[420px] flex-col items-center justify-center text-muted-foreground">
                             <Clock className="mb-3 h-8 w-8 opacity-20" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest">No Console Rows</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider">No Console Rows</p>
                           </div>
                         ) : fullscreenConsoleGroups.map((group) => {
                           const { log, entries, count } = group;
@@ -2891,9 +2891,9 @@ export function TestCaseDetailDialog({
                               <span className={cn("col-span-8 break-all text-[11px]", isError ? 'text-rose-700 dark:text-rose-300' : isWarning ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300/90')}>
                                 {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 220)}...` : String(log.log ?? '')}
                               </span>
-                              <span className="col-span-2 flex items-start justify-end gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                              <span className="col-span-2 flex items-start justify-end gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {count > 1 && (
-                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                     x{count}
                                   </span>
                                 )}
@@ -2911,22 +2911,22 @@ export function TestCaseDetailDialog({
                         <div className="space-y-4">
                           <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
                             <div className="mb-3 flex flex-wrap items-center gap-2">
-                              <Badge className="rounded-md border border-cyan-200 bg-cyan-50 text-[10px] font-black uppercase tracking-widest text-cyan-700 shadow-none dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-200">
+                              <Badge className="rounded-md border border-cyan-200 bg-cyan-50 text-[10px] font-semibold uppercase tracking-wider text-cyan-700 shadow-none dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-200">
                                 {selectedSystemNetworkGroup.meta.label}
                               </Badge>
-                              <Badge variant="outline" className="rounded-md text-[10px] font-black uppercase tracking-widest">
+                              <Badge variant="outline" className="rounded-md text-[10px] font-semibold uppercase tracking-wider">
                                 {getNetworkMethod(selectedSystemNetworkGroup.log.network)}
                               </Badge>
-                              <span className={cn("rounded px-2 py-1 text-[10px] font-black", getNetworkStatusClass(selectedSystemNetworkGroup.log.network))}>
+                              <span className={cn("rounded px-2 py-1 text-[10px] font-semibold", getNetworkStatusClass(selectedSystemNetworkGroup.log.network))}>
                                 {getNetworkStatus(selectedSystemNetworkGroup.log.network)}
                               </span>
                               {selectedSystemNetworkGroup.count > 1 && (
-                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                   Repeated x{selectedSystemNetworkGroup.count}
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Full URL</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Full URL</p>
                             <pre className={cn("mt-2 overflow-auto rounded-lg border border-border bg-muted p-3 font-mono text-[11px] leading-relaxed text-foreground", networkCodeWhitespaceClass)}>
                               {selectedSystemNetworkGroup.log.network.url}
                             </pre>
@@ -2934,7 +2934,7 @@ export function TestCaseDetailDialog({
 
                           {selectedSystemNetworkGroup.count > 1 && (
                             <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
-                              <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated Calls</p>
+                              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Repeated Calls</p>
                               <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
                                 {selectedSystemNetworkGroup.entries.map((entry, entryIndex) => (
                                   <button
@@ -2943,7 +2943,7 @@ export function TestCaseDetailDialog({
                                     className="grid w-full grid-cols-[54px_80px_90px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-left text-[10px] hover:bg-secondary"
                                     onClick={() => seekRecordingFromLog(entry.log)}
                                   >
-                                    <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                    <span className="font-semibold text-muted-foreground">#{entryIndex + 1}</span>
                                     <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
                                     <span className={cn("rounded px-1.5 py-0.5 text-center font-bold", getNetworkStatusClass(entry.log.network))}>
                                       {getNetworkStatus(entry.log.network)}
@@ -2957,19 +2957,19 @@ export function TestCaseDetailDialog({
 
                           <div className="grid grid-cols-1 items-start gap-4 overflow-x-auto xl:grid-cols-3">
                             <div className="space-y-2">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Headers</p>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Headers</p>
                               <pre className={cn(networkFullscreenCodePanelClass, networkCodeWhitespaceClass, "text-foreground")}>
                                 {formatPrettyValue(selectedSystemNetworkGroup.log.network.headers)}
                               </pre>
                             </div>
                             <div className="space-y-2">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Payload</p>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payload</p>
                               <pre className={cn(networkFullscreenCodePanelClass, networkCodeWhitespaceClass, "text-cyan-700 dark:text-cyan-200")}>
                                 {formatPrettyValue(getRequestPayload(selectedSystemNetworkGroup.log.network.data))}
                               </pre>
                             </div>
                             <div className="space-y-2">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Response</p>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Response</p>
                               <pre className={cn(networkFullscreenCodePanelClass, networkCodeWhitespaceClass, "text-emerald-700 dark:text-emerald-200")}>
                                 {formatPrettyValue(getResponsePayload(selectedSystemNetworkGroup.log.network.data))}
                               </pre>
@@ -2979,7 +2979,7 @@ export function TestCaseDetailDialog({
                       ) : (
                         <div className="flex h-full min-h-[520px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background text-muted-foreground">
                           <Layers className="mb-3 h-8 w-8 opacity-30" />
-                          <p className="text-[10px] font-black uppercase tracking-widest">Pilih network row untuk membuka drawer detail</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider">Pilih network row untuk membuka drawer detail</p>
                         </div>
                       )
                     ) : (
@@ -2987,23 +2987,23 @@ export function TestCaseDetailDialog({
                         <div className="space-y-4">
                           <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
                             <div className="mb-3 flex flex-wrap items-center gap-2">
-                              <Badge variant="outline" className="rounded-md text-[10px] font-black uppercase tracking-widest">
+                              <Badge variant="outline" className="rounded-md text-[10px] font-semibold uppercase tracking-wider">
                                 {selectedSystemConsoleGroup.log.level || 'INFO'}
                               </Badge>
                               {selectedSystemConsoleGroup.count > 1 && (
-                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                   Repeated x{selectedSystemConsoleGroup.count}
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Message</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Message</p>
                             <pre className="mt-2 min-h-[260px] max-h-[62vh] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-muted p-4 text-[11px] leading-relaxed text-foreground">
                               {formatPrettyValue(selectedSystemConsoleGroup.log.log)}
                             </pre>
                           </div>
                           {selectedSystemConsoleGroup.count > 1 && (
                             <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
-                              <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated Logs</p>
+                              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Repeated Logs</p>
                               <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
                                 {selectedSystemConsoleGroup.entries.map((entry, entryIndex) => (
                                   <button
@@ -3012,7 +3012,7 @@ export function TestCaseDetailDialog({
                                     className="grid w-full grid-cols-[54px_80px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-left text-[10px] hover:bg-secondary"
                                     onClick={() => seekRecordingFromLog(entry)}
                                   >
-                                    <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                    <span className="font-semibold text-muted-foreground">#{entryIndex + 1}</span>
                                     <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.relativeMs)}</span>
                                     <span className="truncate text-foreground">{getConsoleLogText(entry)}</span>
                                   </button>
@@ -3024,7 +3024,7 @@ export function TestCaseDetailDialog({
                       ) : (
                         <div className="flex h-full min-h-[520px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background text-muted-foreground">
                           <Clock className="mb-3 h-8 w-8 opacity-30" />
-                          <p className="text-[10px] font-black uppercase tracking-widest">Pilih console row untuk membuka drawer detail</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider">Pilih console row untuk membuka drawer detail</p>
                         </div>
                       )
                     )}
@@ -3053,7 +3053,7 @@ export function TestCaseDetailDialog({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-4 top-4 z-[90] h-10 w-10 rounded-full border border-border/70 bg-background/90 p-0 text-foreground shadow-xl backdrop-blur transition hover:scale-105 hover:bg-secondary"
+                  className="absolute right-4 top-4 z-[90] h-10 w-10 rounded-full border border-border/70 bg-background/90 p-0 text-foreground shadow-xl backdrop-blur transition hover:bg-secondary"
                   onClick={closeRecordingFullscreen}
                 >
                   <X className="h-4 w-4" />
@@ -3070,7 +3070,7 @@ export function TestCaseDetailDialog({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Film className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-                    <p className="whitespace-nowrap text-xs font-black uppercase tracking-widest text-foreground">Screen Record Review</p>
+                    <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-wider text-foreground">Screen Record Review</p>
                     <Badge variant="outline" className="rounded-md border-indigo-200 bg-indigo-50 text-[10px] font-bold text-indigo-700 dark:border-indigo-400/30 dark:bg-indigo-950 dark:text-indigo-200">
                       {formatRelativeTime(recordingDisplayMs)}
                     </Badge>
@@ -3156,18 +3156,18 @@ export function TestCaseDetailDialog({
                 {hasManualRecordingVideo && (
                   <div className="pointer-events-none absolute left-5 top-5 max-w-[360px] rounded-xl border border-white/15 bg-black/70 p-3 text-white shadow-2xl backdrop-blur">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="rounded-md border-white/20 bg-white/10 text-[10px] font-black text-white">
+                      <Badge variant="outline" className="rounded-md border-white/20 bg-white/10 text-[10px] font-semibold text-white">
                         {formatRelativeTime(recordingDisplayMs)}
                       </Badge>
                       {currentSyncedVideoEvent && (
-                        <Badge variant="outline" className={cn("rounded-md text-[9px] font-black uppercase tracking-widest", getSyncedEventSeverityClass(currentSyncedVideoEvent))}>
+                        <Badge variant="outline" className={cn("rounded-md text-[9px] font-semibold uppercase tracking-wider", getSyncedEventSeverityClass(currentSyncedVideoEvent))}>
                           {currentSyncedVideoEvent.severity}
                         </Badge>
                       )}
                     </div>
                     {currentSyncedVideoEvent && (
                       <div className="mt-2 min-w-0">
-                        <p className="truncate text-[10px] font-black uppercase tracking-widest text-white/70">
+                        <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-white/70">
                           {currentSyncedVideoEvent.label} / {currentSyncedVideoEvent.category}
                         </p>
                         <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-white">
@@ -3183,7 +3183,7 @@ export function TestCaseDetailDialog({
 
               <ResizablePanel defaultSize={18} minSize={12} maxSize={45} className="min-h-[86px]">
               <div className="h-full overflow-hidden border-t border-border bg-background p-3">
-                <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   <span>Timeline</span>
                   <div className="flex items-center gap-2">
                     <span>{manualRecordingMode === 'video' && manualRecordingFrames.length === 0 ? 'Video only' : `${manualRecordingFrames.length} keyframes`}</span>
@@ -3209,7 +3209,7 @@ export function TestCaseDetailDialog({
                 </div>
                 {hasManualRecordingVideo && (
                   <div className="mb-3 rounded-lg border border-border bg-muted/40 p-2">
-                    <div className="mb-1 flex items-center justify-between gap-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                    <div className="mb-1 flex items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
                       <span>Event Markers</span>
                       <span>{groupedSyncedVideoMarkers.length} groups</span>
                     </div>
@@ -3226,7 +3226,7 @@ export function TestCaseDetailDialog({
                             type="button"
                             title={marker.count > 1 ? `${marker.count} events near ${primaryEvent.label}` : `${primaryEvent.label} - ${primaryEvent.summary}`}
                             className={cn(
-                              "absolute top-1/2 flex h-4 min-w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 px-1 text-[8px] font-black text-white shadow-lg transition hover:scale-125",
+                              "absolute top-1/2 flex h-4 min-w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 px-1 text-[8px] font-semibold text-white shadow-lg transition hover:scale-125",
                               getSyncedMarkerClass(primaryEvent),
                               selected && "ring-2 ring-white ring-offset-2 ring-offset-background"
                             )}
@@ -3281,7 +3281,7 @@ export function TestCaseDetailDialog({
               <div className="flex min-h-[116px] shrink-0 flex-col justify-end gap-3 border-b border-border px-4 pb-3 pt-4 pr-16">
                 <div className="flex items-end justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-xs font-black uppercase tracking-widest text-foreground">DevTools</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-foreground">DevTools</p>
                     <p className="mt-0.5 truncate text-[10px] text-muted-foreground">Klik log untuk loncat ke timestamp record.</p>
                   </div>
                   <div className="flex shrink-0 rounded-md bg-muted p-1">
@@ -3365,10 +3365,10 @@ export function TestCaseDetailDialog({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className="rounded-md border-indigo-200 bg-indigo-50 text-[9px] font-black uppercase tracking-widest text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+                            <Badge variant="outline" className="rounded-md border-indigo-200 bg-indigo-50 text-[9px] font-semibold uppercase tracking-wider text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
                               Selected Evidence
                             </Badge>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               {selectedFullscreenLog.kind} · {formatRelativeTime(selectedFullscreenLog.relativeMs)}
                             </span>
                           </div>
@@ -3388,37 +3388,37 @@ export function TestCaseDetailDialog({
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-[10px]">
                         <div className="rounded-md border border-border bg-background p-2">
-                          <p className="font-black uppercase tracking-widest text-muted-foreground">Frame</p>
+                          <p className="font-semibold uppercase tracking-wider text-muted-foreground">Frame</p>
                           <p className="mt-1 truncate font-mono text-foreground">{selectedRecordingFrame?.file || '-'}</p>
                         </div>
                         <div className="rounded-md border border-border bg-background p-2">
-                          <p className="font-black uppercase tracking-widest text-muted-foreground">Target</p>
+                          <p className="font-semibold uppercase tracking-wider text-muted-foreground">Target</p>
                           <p className="mt-1 truncate text-foreground">{manualRecording?.targetUrl || '-'}</p>
                         </div>
                       </div>
                       {selectedFullscreenLog.kind === 'network' && (
                         <div className="space-y-3 rounded-lg border border-border bg-background p-3">
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Full URL</p>
+                            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Full URL</p>
                             <pre className={cn("mt-1 max-h-24 overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-foreground", networkCodeWhitespaceClass)}>
                               {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.url || '-')}
                             </pre>
                           </div>
                           <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
                             <div className="min-w-0 space-y-1">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Headers</p>
+                              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Headers</p>
                               <pre className={cn("max-h-56 resize-y overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-foreground", networkCodeWhitespaceClass)}>
                                 {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.headers)}
                               </pre>
                             </div>
                             <div className="min-w-0 space-y-1">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Payload</p>
+                              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Payload</p>
                               <pre className={cn("max-h-56 resize-y overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-cyan-700 dark:text-cyan-200", networkCodeWhitespaceClass)}>
                                 {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.request)}
                               </pre>
                             </div>
                             <div className="min-w-0 space-y-1">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Response</p>
+                              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Response</p>
                               <pre className={cn("max-h-56 resize-y overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-emerald-700 dark:text-emerald-200", networkCodeWhitespaceClass)}>
                                 {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.response)}
                               </pre>
@@ -3431,7 +3431,7 @@ export function TestCaseDetailDialog({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-8 gap-1.5 rounded-md border-border bg-background px-2 text-[10px] font-black uppercase tracking-widest text-foreground hover:bg-secondary"
+                          className="h-8 gap-1.5 rounded-md border-border bg-background px-2 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:bg-secondary"
                           onClick={copyFullscreenEvidence}
                         >
                           <Copy className="h-3.5 w-3.5" />
@@ -3449,7 +3449,7 @@ export function TestCaseDetailDialog({
               {hasManualRecordingVideo && (
                 <div className="shrink-0 border-b border-border bg-background px-3 py-2">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Synced Events</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Synced Events</p>
                     <span className="text-[10px] font-bold text-muted-foreground">{filteredSyncedVideoEvents.length}/{syncedVideoEvents.length} events</span>
                   </div>
                   <div className="mb-2 flex flex-wrap gap-1.5">
@@ -3468,7 +3468,7 @@ export function TestCaseDetailDialog({
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          "h-6 rounded-md border px-2 text-[9px] font-black uppercase tracking-widest",
+                          "h-6 rounded-md border px-2 text-[9px] font-semibold uppercase tracking-wider",
                           syncedEventFilters[item.key]
                             ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200"
                             : "border-border bg-muted text-muted-foreground hover:bg-secondary"
@@ -3501,12 +3501,12 @@ export function TestCaseDetailDialog({
                           onClick={() => seekRecordingFromSyncedEvent(event)}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-[9px] font-black uppercase tracking-widest">{event.label}</span>
-                            <span className="font-mono text-[10px] font-black">{formatRelativeTime(event.clampedOffsetMs)}</span>
+                            <span className="truncate text-[9px] font-semibold uppercase tracking-wider">{event.label}</span>
+                            <span className="font-mono text-[10px] font-semibold">{formatRelativeTime(event.clampedOffsetMs)}</span>
                           </div>
                           <p className="mt-1 line-clamp-2 text-[10px] font-semibold">{event.summary}</p>
                           {(event.isBeforeVideo || event.isAfterVideo) && (
-                            <p className="mt-1 text-[9px] font-black uppercase tracking-widest opacity-80">
+                            <p className="mt-1 text-[9px] font-semibold uppercase tracking-wider opacity-80">
                               {event.isBeforeVideo ? 'Before video' : 'After video'}
                             </p>
                           )}
@@ -3517,16 +3517,16 @@ export function TestCaseDetailDialog({
                   {selectedSyncedVideoEventDetail && (
                     <div className={cn("mt-2 rounded-lg border p-2 text-[10px]", getSyncedEventSeverityClass(selectedSyncedVideoEvent!))}>
                       <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className="font-black uppercase tracking-widest">{selectedSyncedVideoEventDetail.category}</span>
-                        <span className="rounded border border-current/20 px-1.5 py-0.5 font-black uppercase tracking-widest">{selectedSyncedVideoEventDetail.severity}</span>
-                        <span className="font-mono font-black">{selectedSyncedVideoEventDetail.offset}</span>
+                        <span className="font-semibold uppercase tracking-wider">{selectedSyncedVideoEventDetail.category}</span>
+                        <span className="rounded border border-current/20 px-1.5 py-0.5 font-semibold uppercase tracking-wider">{selectedSyncedVideoEventDetail.severity}</span>
+                        <span className="font-mono font-semibold">{selectedSyncedVideoEventDetail.offset}</span>
                         <span className="truncate font-mono opacity-75">{selectedSyncedVideoEventDetail.timestamp}</span>
                       </div>
                       {(selectedSyncedVideoEventDetail.method || selectedSyncedVideoEventDetail.url || selectedSyncedVideoEventDetail.responseStatus) && (
                         <div className="mb-1 grid grid-cols-[64px_1fr_48px] gap-2 rounded border border-current/15 bg-background/40 p-1.5">
-                          <span className="truncate font-black">{selectedSyncedVideoEventDetail.method || '-'}</span>
+                          <span className="truncate font-semibold">{selectedSyncedVideoEventDetail.method || '-'}</span>
                           <span className="truncate">{selectedSyncedVideoEventDetail.url || '-'}</span>
-                          <span className="text-right font-black">{selectedSyncedVideoEventDetail.responseStatus || '-'}</span>
+                          <span className="text-right font-semibold">{selectedSyncedVideoEventDetail.responseStatus || '-'}</span>
                         </div>
                       )}
                       <p className="line-clamp-3 font-semibold">{selectedSyncedVideoEventDetail.summary}</p>
@@ -3541,7 +3541,7 @@ export function TestCaseDetailDialog({
                     {fullscreenNetworkGroups.length === 0 ? (
                       <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
                         <RefreshCw className="mb-3 h-8 w-8 opacity-20" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest">No Network Rows</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider">No Network Rows</p>
                       </div>
                     ) : (
                       fullscreenNetworkGroups.map((group) => {
@@ -3576,7 +3576,7 @@ export function TestCaseDetailDialog({
                                 }
                               }}
                             >
-                              <span className="col-span-2 truncate font-black text-indigo-700 dark:text-indigo-300">{getNetworkMethod(net.network)}</span>
+                              <span className="col-span-2 truncate font-semibold text-indigo-700 dark:text-indigo-300">{getNetworkMethod(net.network)}</span>
                               <span className="col-span-2 truncate">
                                 <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
                                   {meta.label}
@@ -3594,12 +3594,12 @@ export function TestCaseDetailDialog({
                               <span className="col-span-2 flex items-center justify-end gap-2 text-right text-[10px] font-bold text-muted-foreground">
                                 <span>{formatLogRecordingTime(net)}</span>
                                 {isSyncedWithVideo && (
-                                  <span className="rounded-full border border-teal-200 bg-teal-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-teal-700 dark:border-teal-400/30 dark:bg-teal-500/15 dark:text-teal-200">
+                                  <span className="rounded-full border border-teal-200 bg-teal-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-teal-700 dark:border-teal-400/30 dark:bg-teal-500/15 dark:text-teal-200">
                                     Now
                                   </span>
                                 )}
                                 {count > 1 && (
-                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                     x{count}
                                   </span>
                                 )}
@@ -3607,7 +3607,7 @@ export function TestCaseDetailDialog({
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 rounded-md border border-border bg-muted px-1.5 text-[9px] font-black uppercase tracking-widest text-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
+                                  className="h-6 rounded-md border border-border bg-muted px-1.5 text-[9px] font-semibold uppercase tracking-wider text-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
                                   onClick={(event) => {
                                     event.stopPropagation();
                                     selectFullscreenNetworkLog(net, meta, logId);
@@ -3629,7 +3629,7 @@ export function TestCaseDetailDialog({
                                   <div className="space-y-2 border-t border-border bg-muted/60 p-3">
                                     {count > 1 && (
                                       <div className="rounded border border-border bg-background p-2">
-                                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Repeated {count} times</p>
+                                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Repeated {count} times</p>
                                         <div className="max-h-32 space-y-1 overflow-y-auto">
                                           {entries.map((entry, entryIndex) => (
                                             <button
@@ -3638,7 +3638,7 @@ export function TestCaseDetailDialog({
                                               className="grid w-full grid-cols-[42px_64px_1fr] gap-2 rounded border border-border bg-muted/40 px-2 py-1 text-left text-[10px] hover:bg-secondary"
                                               onClick={() => seekRecordingFromLog(entry.log)}
                                             >
-                                              <span className="font-black text-muted-foreground">#{entryIndex + 1}</span>
+                                              <span className="font-semibold text-muted-foreground">#{entryIndex + 1}</span>
                                               <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatLogRecordingTime(entry.log)}</span>
                                               <span className="truncate text-foreground">{getNetworkDuration(entry.log.network)}</span>
                                             </button>
@@ -3662,7 +3662,7 @@ export function TestCaseDetailDialog({
                     {fullscreenConsoleGroups.length === 0 ? (
                       <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
                         <Clock className="mb-3 h-8 w-8 opacity-20" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest">No Console Rows</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider">No Console Rows</p>
                       </div>
                     ) : (
                       fullscreenConsoleGroups.map((group) => {
@@ -3693,9 +3693,9 @@ export function TestCaseDetailDialog({
                             <span className={cn("col-span-8 break-all text-[11px]", isError ? 'text-rose-700 dark:text-rose-300' : isWarning ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300/90')}>
                               {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 240)}...` : String(log.log ?? '')}
                             </span>
-                            <span className="col-span-2 flex items-center justify-end gap-2 text-right text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                            <span className="col-span-2 flex items-center justify-end gap-2 text-right text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
                               {count > 1 && (
-                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-black text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                   x{count}
                                 </span>
                               )}

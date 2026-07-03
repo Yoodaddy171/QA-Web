@@ -278,7 +278,7 @@ export function SettingsPanel({
                           <Trash className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="border-border/60 bg-card/95 backdrop-blur-md text-foreground elevation-3 rounded-2xl">
+                      <AlertDialogContent className="border-border/60 bg-card text-foreground elevation-3 rounded-2xl">
                         <AlertDialogHeader>
                           <AlertDialogTitle className="text-foreground">Hapus Project?</AlertDialogTitle>
                           <AlertDialogDescription className="text-muted-foreground">
@@ -332,13 +332,13 @@ export function SettingsPanel({
             <>
               <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Kategori Tipe</Label>
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Kategori Tipe</Label>
                   <Select
                     value={knowledgeForm.type}
                     onValueChange={(value) => setKnowledgeForm(prev => ({ ...prev, type: value }))}
                   >
                     <SelectTrigger className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus:ring-primary/20 focus:border-primary transition-all duration-200"><SelectValue /></SelectTrigger>
-                    <SelectContent className="border-border/60 bg-card/95 backdrop-blur-xl rounded-xl shadow-2xl">
+                    <SelectContent className="border-border/60 bg-card rounded-xl shadow-2xl">
                       {KNOWLEDGE_TYPE_OPTIONS.map(option => (
                         <SelectItem key={option.value} value={option.value} className="rounded-lg py-2">{option.label}</SelectItem>
                       ))}
@@ -346,7 +346,7 @@ export function SettingsPanel({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Judul Knowledge</Label>
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Judul Knowledge</Label>
                   <Input
                     value={knowledgeForm.title}
                     onChange={(event) => setKnowledgeForm(prev => ({ ...prev, title: event.target.value }))}
@@ -356,7 +356,7 @@ export function SettingsPanel({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Isi Knowledge (Context)</Label>
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Isi Knowledge (Context)</Label>
                 <Textarea
                   value={knowledgeForm.content}
                   onChange={(event) => setKnowledgeForm(prev => ({ ...prev, content: event.target.value }))}
@@ -369,7 +369,7 @@ export function SettingsPanel({
                 <div className="rounded-2xl border border-border/40 bg-secondary/20 p-5 shadow-inner">
                   <div className="flex flex-col gap-4">
                     <div className="min-w-0">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Manual Upload</Label>
+                      <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Manual Upload</Label>
                       <p className="mt-1 text-[10px] text-muted-foreground font-medium">
                         Dukung format JSON, TXT, MD, CSV, DOCX, dan PDF.
                       </p>
@@ -378,7 +378,7 @@ export function SettingsPanel({
                       <Input
                         type="file"
                         accept=".json,.txt,.md,.markdown,.csv,.docx,.pdf,.log,.yaml,.yml"
-                        className="h-9 rounded-xl border-border/60 bg-secondary/40 text-[11px] font-medium text-muted-foreground file:mr-3 file:bg-primary file:rounded-lg file:border-0 file:px-3 file:py-1 file:text-[9px] file:font-black file:uppercase file:text-white transition-all duration-200"
+                        className="h-9 rounded-xl border-border/60 bg-secondary/40 text-[11px] font-medium text-muted-foreground file:mr-3 file:bg-primary file:rounded-lg file:border-0 file:px-3 file:py-1 file:text-[9px] file:font-semibold file:uppercase file:text-white transition-all duration-200"
                         onChange={(event) => setKnowledgeFile(event.target.files?.[0] || null)}
                       />
                       <Button
@@ -392,7 +392,7 @@ export function SettingsPanel({
                       </Button>
                     </div>
                     {knowledgeFile && (
-                      <p className="truncate text-[10px] font-black text-primary uppercase tracking-tight bg-primary/10 px-2 py-1 rounded-md w-fit">
+                      <p className="truncate text-[10px] font-semibold text-primary uppercase tracking-tight bg-primary/10 px-2 py-1 rounded-md w-fit">
                         Selected: {knowledgeFile.name}
                       </p>
                     )}
@@ -402,7 +402,7 @@ export function SettingsPanel({
                 <div className="rounded-2xl border border-border/40 bg-secondary/20 p-5 shadow-inner">
                   <div className="flex flex-col gap-4">
                     <div className="min-w-0 space-y-1">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Figma Synchronization</Label>
+                      <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Figma Synchronization</Label>
                       <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
                         Fetch frames & text menjadi Feature Map knowledge otomatis.
                       </p>
@@ -460,7 +460,7 @@ export function SettingsPanel({
               <div className="border-t border-border/10 pt-8 mt-4">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Stored Knowledge Base</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Stored Knowledge Base</p>
                 </div>
                 {knowledgeLoading ? (
                   <div className="flex items-center justify-center py-12">
@@ -484,7 +484,7 @@ export function SettingsPanel({
                         <div className="flex items-start justify-between gap-4 relative z-10">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2.5 mb-2.5">
-                              <Badge variant="outline" className="rounded-lg bg-background/50 border-border/40 text-primary text-[9px] font-black uppercase tracking-tight py-0.5">
+                              <Badge variant="outline" className="rounded-lg bg-background/50 border-border/40 text-primary text-[9px] font-semibold uppercase tracking-tight py-0.5">
                                 {KNOWLEDGE_TYPE_OPTIONS.find(option => option.value === item.type)?.label || item.type}
                               </Badge>
                               <p className="font-bold text-foreground text-sm truncate">{item.title}</p>
@@ -576,7 +576,7 @@ export function SettingsPanel({
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-foreground truncate">{module.name}</p>
-                      <p className="text-[9px] font-black text-muted-foreground/60 uppercase">{module._count?.testCases || 0} Cases</p>
+                      <p className="text-[9px] font-semibold text-muted-foreground/60 uppercase">{module._count?.testCases || 0} Cases</p>
                     </div>
                   </div>
                   <Button

@@ -67,7 +67,7 @@ export function AIRefineDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col border-border/60 bg-card/95 backdrop-blur-md text-foreground elevation-3 rounded-2xl p-0">
+      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col border-border/60 bg-card text-foreground elevation-3 rounded-2xl p-0">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
 
         <DialogHeader className="px-6 py-5 border-b border-border/40 bg-gradient-to-r from-primary/5 via-indigo-500/5 to-cyan-500/5">
@@ -86,23 +86,23 @@ export function AIRefineDialog({
           <div className="rounded-2xl border border-border/60 bg-secondary/20 p-5 shadow-inner relative group overflow-hidden">
             <div className="absolute top-0 right-0 h-32 w-32 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex flex-wrap items-center gap-3 relative z-10">
-              <span className="font-mono text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg">{testCase.testCaseId}</span>
-              <Badge variant="outline" className={cn("rounded-lg border-border/40 text-[9px] font-black uppercase tracking-tight py-0.5 shadow-sm", getTestTypeColor(testCase.testType))}>{testCase.testType}</Badge>
-              <Badge className={cn("rounded-lg text-[9px] font-black uppercase tracking-tight py-0.5 shadow-sm", getPriorityColor(testCase.priority))}>{testCase.priority}</Badge>
+              <span className="font-mono text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg">{testCase.testCaseId}</span>
+              <Badge variant="outline" className={cn("rounded-lg border-border/40 text-[9px] font-semibold uppercase tracking-tight py-0.5 shadow-sm", getTestTypeColor(testCase.testType))}>{testCase.testType}</Badge>
+              <Badge className={cn("rounded-lg text-[9px] font-semibold uppercase tracking-tight py-0.5 shadow-sm", getPriorityColor(testCase.priority))}>{testCase.priority}</Badge>
               <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">{testCase.page}{testCase.subMenu ? ` › ${testCase.subMenu}` : ''}</span>
             </div>
-            <p className="mt-4 text-sm font-black text-foreground/90 italic tracking-tight leading-relaxed">&quot;{testCase.testAction}&quot;</p>
+            <p className="mt-4 text-sm font-semibold text-foreground/90 italic tracking-tight leading-relaxed">&quot;{testCase.testAction}&quot;</p>
           </div>
 
           {!hasPreview && !refining && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="space-y-2.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Mode Refinement</Label>
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Mode Refinement</Label>
                 <Select value={mode} onValueChange={setMode}>
                   <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition-all duration-300">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl bg-card border-border/60 elevation-3 backdrop-blur-xl">
+                  <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
                     <SelectItem value="format" className="rounded-lg font-medium">Rapikan format</SelectItem>
                     <SelectItem value="complete" className="rounded-lg font-medium">Lengkapi field kosong/kurang jelas</SelectItem>
                     <SelectItem value="standardize" className="rounded-lg font-medium">Standarisasi bahasa QA</SelectItem>
@@ -115,7 +115,7 @@ export function AIRefineDialog({
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
-                  <strong className="text-primary font-black uppercase tracking-tight mr-1.5">Note:</strong> AI akan mempelajari pola kalimat Anda dan menyempurnakannya tanpa merubah inti dari skenario pengujian.
+                  <strong className="text-primary font-semibold uppercase tracking-tight mr-1.5">Note:</strong> AI akan mempelajari pola kalimat Anda dan menyempurnakannya tanpa merubah inti dari skenario pengujian.
                 </p>
               </div>
             </div>
@@ -133,7 +133,7 @@ export function AIRefineDialog({
                 </div>
               </div>
               <div className="text-center space-y-2">
-                <p className="font-black text-foreground uppercase tracking-[0.2em] text-[10px]">Optimizing Test Case</p>
+                <p className="font-semibold text-foreground uppercase tracking-[0.2em] text-[10px]">Optimizing Test Case</p>
                 <p className="text-[11px] text-muted-foreground font-medium animate-pulse">Consulting AI model for better clarity...</p>
               </div>
             </div>
@@ -143,12 +143,12 @@ export function AIRefineDialog({
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-border/60 bg-secondary/20 p-5 shadow-inner">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50 mb-3">Tipe Test Baru</p>
-                  <Badge variant="outline" className={cn("rounded-lg border-border/40 text-[10px] font-black uppercase tracking-tight py-1 px-3 shadow-sm", getTestTypeColor(refinedCase.testType))}>{refinedCase.testType}</Badge>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-50 mb-3">Tipe Test Baru</p>
+                  <Badge variant="outline" className={cn("rounded-lg border-border/40 text-[10px] font-semibold uppercase tracking-tight py-1 px-3 shadow-sm", getTestTypeColor(refinedCase.testType))}>{refinedCase.testType}</Badge>
                 </div>
                 <div className="rounded-2xl border border-border/60 bg-secondary/20 p-5 shadow-inner">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-50 mb-3">Prioritas Baru</p>
-                  <Badge className={cn("rounded-lg text-[10px] font-black uppercase tracking-tight py-1 px-3 shadow-sm", getPriorityColor(refinedCase.priority))}>{refinedCase.priority}</Badge>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground opacity-50 mb-3">Prioritas Baru</p>
+                  <Badge className={cn("rounded-lg text-[10px] font-semibold uppercase tracking-tight py-1 px-3 shadow-sm", getPriorityColor(refinedCase.priority))}>{refinedCase.priority}</Badge>
                 </div>
               </div>
 
@@ -158,7 +158,7 @@ export function AIRefineDialog({
                     <div className="space-y-2.5">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Before: {field.label}</Label>
+                        <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Before: {field.label}</Label>
                       </div>
                       <div className="min-h-[100px] rounded-2xl border border-border/40 bg-secondary/10 p-4 text-[11px] text-muted-foreground font-medium leading-relaxed whitespace-pre-line shadow-inner opacity-60 italic">
                         {String(testCase[field.key as keyof TestCase] || '—')}
@@ -167,11 +167,11 @@ export function AIRefineDialog({
                     <div className="space-y-2.5">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary">AI Preview: {field.label}</Label>
+                        <Label className="text-[10px] font-semibold uppercase tracking-wider text-primary">AI Preview: {field.label}</Label>
                       </div>
                       <div className={cn(
                         "min-h-[100px] rounded-2xl border p-4 text-[11px] font-bold leading-relaxed whitespace-pre-line shadow-lg transition-all",
-                        field.key === 'testAction' ? "text-[13px] font-black text-foreground" : "text-foreground/90",
+                        field.key === 'testAction' ? "text-[13px] font-semibold text-foreground" : "text-foreground/90",
                         "border-primary/30 bg-card shadow-primary/5"
                       )}>
                         {String(refinedCase[field.key] || '—')}
@@ -187,7 +187,7 @@ export function AIRefineDialog({
         <DialogFooter className="px-6 py-5 border-t border-border/40 bg-secondary/10 shrink-0">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="h-6 rounded-lg border-primary/20 bg-primary/10 text-[9px] font-black text-primary uppercase tracking-tight px-2">
+              <Badge variant="outline" className="h-6 rounded-lg border-primary/20 bg-primary/10 text-[9px] font-semibold text-primary uppercase tracking-tight px-2">
                 Copilot Refiner 2.0
               </Badge>
             </div>
@@ -222,7 +222,7 @@ export function AIRefineDialog({
                 <Button
                   onClick={() => onRefine(mode)}
                   disabled={refining}
-                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-black text-xs px-8 shadow-lg hover:shadow-primary/30 transition-all duration-300 uppercase tracking-wider"
+                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-semibold text-xs px-8 shadow-lg hover:shadow-primary/30 transition-all duration-300 uppercase tracking-wider"
                 >
                   {refining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Refine Testcase

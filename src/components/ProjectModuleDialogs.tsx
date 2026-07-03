@@ -43,7 +43,7 @@ export function ProjectModuleDialogs({
   return (
     <>
       <Dialog open={showCreateProject} onOpenChange={setShowCreateProject}>
-        <DialogContent className="border-border/60 bg-card/95 backdrop-blur-md text-foreground elevation-3 rounded-2xl sm:max-w-md overflow-hidden">
+        <DialogContent className="border-border/60 bg-card text-foreground elevation-3 rounded-2xl sm:max-w-md overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
           <DialogHeader>
             <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Buat Project Baru</DialogTitle>
@@ -51,7 +51,7 @@ export function ProjectModuleDialogs({
           </DialogHeader>
           <div className="space-y-5 py-2">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Project *</Label>
+              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Nama Project *</Label>
               <Input
                 className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition-all"
                 value={newProjectName}
@@ -60,7 +60,7 @@ export function ProjectModuleDialogs({
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Deskripsi</Label>
+              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Deskripsi</Label>
               <Textarea
                 className="min-h-[100px] rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition-all p-3"
                 value={newProjectDesc}
@@ -84,7 +84,7 @@ export function ProjectModuleDialogs({
       </Dialog>
 
       <Dialog open={showCreateModule} onOpenChange={setShowCreateModule}>
-        <DialogContent className="border-border/60 bg-card/95 backdrop-blur-md text-foreground elevation-3 rounded-2xl sm:max-w-md overflow-hidden">
+        <DialogContent className="border-border/60 bg-card text-foreground elevation-3 rounded-2xl sm:max-w-md overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
           <DialogHeader>
             <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Buat Module Baru</DialogTitle>
@@ -92,7 +92,7 @@ export function ProjectModuleDialogs({
           </DialogHeader>
           <div className="space-y-5 py-2">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Module *</Label>
+              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Nama Module *</Label>
               <Input
                 className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition-all"
                 value={newModuleName}

@@ -75,7 +75,7 @@ export function ImportExcelDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden border-border/60 bg-card/95 backdrop-blur-xl text-foreground elevation-3 rounded-2xl sm:max-w-5xl p-0">
+      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden border-border/60 bg-card text-foreground elevation-3 rounded-2xl sm:max-w-5xl p-0">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
 
         <DialogHeader className="px-6 py-5 border-b border-border/40 bg-gradient-to-r from-primary/5 via-indigo-500/5 to-cyan-500/5 shrink-0">
@@ -100,7 +100,7 @@ export function ImportExcelDialog({
               className="h-5 w-5 rounded-md border-primary/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
             />
             <div className="flex-1">
-              <Label htmlFor="createModules" className="cursor-pointer text-[10px] font-black uppercase tracking-[0.15em] text-primary">
+              <Label htmlFor="createModules" className="cursor-pointer text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
                 Auto-Generate Modules from Sheets
               </Label>
               <p className="mt-1 text-xs text-muted-foreground font-medium leading-relaxed">
@@ -113,7 +113,7 @@ export function ImportExcelDialog({
             <div className="space-y-4 rounded-2xl border border-border/60 bg-secondary/20 p-5 shadow-inner">
               <div className="flex items-center gap-2 mb-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Supported Column Mapping</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supported Column Mapping</p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
                 {[
@@ -143,7 +143,7 @@ export function ImportExcelDialog({
                   <FileSpreadsheet className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Source File</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Source File</p>
                   <p className="truncate font-bold text-foreground text-sm">{selectedFileName}</p>
                 </div>
               </div>
@@ -161,8 +161,8 @@ export function ImportExcelDialog({
                   { label: 'Issues Found', value: importPreview.errorCount + importPreview.warningCount, color: importPreview.errorCount > 0 ? 'text-rose-500' : 'text-amber-500' },
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-2xl border border-border/60 bg-secondary/30 p-4 shadow-sm hover:border-primary/30 transition-all">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 opacity-60">{stat.label}</p>
-                    <p className={cn("text-2xl font-black tracking-tight", stat.color)}>{stat.value}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 opacity-60">{stat.label}</p>
+                    <p className={cn("text-2xl font-semibold tracking-tight", stat.color)}>{stat.value}</p>
                   </div>
                 ))}
               </div>
@@ -175,7 +175,7 @@ export function ImportExcelDialog({
               )}>
                 {importPreview.canImport ? <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0" /> : <XCircle className="mt-0.5 h-6 w-6 shrink-0" />}
                 <div className="min-w-0">
-                  <p className="font-black uppercase tracking-widest text-[11px] mb-1">Validation Intelligence</p>
+                  <p className="font-semibold uppercase tracking-wider text-[11px] mb-1">Validation Intelligence</p>
                   <p className="text-[13px] font-bold leading-relaxed">
                   {importPreview.canImport
                       ? 'File divalidasi aman. Skenario yang memiliki warning tetap dapat diimport dan diperbaiki kemudian.'
@@ -208,25 +208,25 @@ export function ImportExcelDialog({
                       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/40 bg-secondary/40 px-5 py-4 group-hover:bg-secondary/60 transition-colors">
                         <div className="min-w-0">
                           <div className="flex items-center gap-3">
-                            <p className="font-black text-foreground text-sm tracking-tight">{sheet.sheet}</p>
+                            <p className="font-semibold text-foreground text-sm tracking-tight">{sheet.sheet}</p>
                             {sheet.moduleName && (
-                              <Badge variant="outline" className="rounded-lg border-primary/20 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-tighter">
+                              <Badge variant="outline" className="rounded-lg border-primary/20 bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-tighter">
                                 Module: {sheet.moduleName}
                               </Badge>
                             )}
                           </div>
-                          <p className="text-[10px] font-bold text-muted-foreground/60 mt-1 uppercase tracking-widest">
+                          <p className="text-[10px] font-bold text-muted-foreground/60 mt-1 uppercase tracking-wider">
                             Header Row {sheet.headerRow ?? '?'} <span className="mx-2 opacity-30">|</span>
                             <span className="text-emerald-600 dark:text-emerald-400">{sheet.importableRows} / {sheet.totalRows} Ready</span>
                           </p>
                         </div>
                         <div className="shrink-0">
                           {errorItems.length > 0 ? (
-                            <Badge className="bg-rose-500 text-white border-none rounded-lg px-3 py-1 font-black text-[10px] uppercase shadow-lg shadow-rose-500/20">{errorItems.length} Critical Issues</Badge>
+                            <Badge className="bg-rose-500 text-white border-none rounded-lg px-3 py-1 font-semibold text-[10px] uppercase shadow-lg shadow-rose-500/20">{errorItems.length} Critical Issues</Badge>
                           ) : warningItems.length > 0 ? (
-                            <Badge className="bg-amber-500 text-white border-none rounded-lg px-3 py-1 font-black text-[10px] uppercase shadow-lg shadow-amber-500/20">{warningItems.length} Warnings</Badge>
+                            <Badge className="bg-amber-500 text-white border-none rounded-lg px-3 py-1 font-semibold text-[10px] uppercase shadow-lg shadow-amber-500/20">{warningItems.length} Warnings</Badge>
                           ) : (
-                            <Badge className="bg-emerald-500 text-white border-none rounded-lg px-3 py-1 font-black text-[10px] uppercase shadow-lg shadow-emerald-500/20">Sheet Validated</Badge>
+                            <Badge className="bg-emerald-500 text-white border-none rounded-lg px-3 py-1 font-semibold text-[10px] uppercase shadow-lg shadow-emerald-500/20">Sheet Validated</Badge>
                           )}
                         </div>
                       </div>
@@ -253,7 +253,7 @@ export function ImportExcelDialog({
                           <TableHeader className="bg-secondary/20">
                             <TableRow className="border-border/40 hover:bg-transparent h-10">
                               {['ID', 'Page', 'Sub Menu', 'Feature', 'Status'].map((header) => (
-                                <TableHead key={header} className="text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 px-5">{header}</TableHead>
+                                <TableHead key={header} className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60 px-5">{header}</TableHead>
                               ))}
                             </TableRow>
                           </TableHeader>
@@ -283,7 +283,7 @@ export function ImportExcelDialog({
                 <Target className="h-4 w-4" />
               </div>
               <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
-                <strong className="text-amber-600 dark:text-amber-400 font-black uppercase tracking-tight mr-1.5">Auto-Detect:</strong> Header baris otomatis terdeteksi (Sheet dengan header di baris ke-2 atau ke-4 didukung). Pastikan ID unik untuk setiap test case.
+                <strong className="text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-tight mr-1.5">Auto-Detect:</strong> Header baris otomatis terdeteksi (Sheet dengan header di baris ke-2 atau ke-4 didukung). Pastikan ID unik untuk setiap test case.
               </p>
             </div>
           )}
@@ -302,7 +302,7 @@ export function ImportExcelDialog({
             onClick={hasPreview ? onConfirmImport : onChooseFile}
             disabled={busy || (hasPreview && !importPreview?.canImport)}
             className={cn(
-              "h-10 gap-2.5 rounded-xl text-white font-black text-xs px-8 shadow-lg transition-all duration-300 uppercase tracking-wider",
+              "h-10 gap-2.5 rounded-xl text-white font-semibold text-xs px-8 shadow-lg transition-all duration-300 uppercase tracking-wider",
               hasPreview && !importPreview?.canImport
                 ? "bg-muted text-muted-foreground"
                 : "bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 hover:shadow-primary/30"

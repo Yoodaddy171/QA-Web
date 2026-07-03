@@ -72,6 +72,7 @@ function WorkspaceSidebar({
 }: Omit<AppShellProps, 'children'>) {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const expanded = state === 'expanded' || isMobile;
+  const reduceMotion = useReducedMotion();
 
   const selectTab = (value: string) => {
     setActiveTab(value);
@@ -123,15 +124,23 @@ function WorkspaceSidebar({
                       aria-current={active ? 'page' : undefined}
                       onClick={() => selectTab(item.value)}
                       className={cn(
-                        'h-12 rounded-lg border border-transparent px-3 transition-colors duration-200',
-                        'hover:border-sidebar-border/70 hover:bg-sidebar-accent/70',
-                        'data-[active=true]:border-sidebar-primary/25 data-[active=true]:bg-sidebar-primary/10 data-[active=true]:text-sidebar-primary',
+                        'relative h-12 rounded-lg border border-transparent px-3 transition-colors duration-200',
+                        'hover:bg-sidebar-accent/70',
+                        'data-[active=true]:text-sidebar-primary',
                         '[&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:text-sidebar-foreground/55',
+                        '[&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:-rotate-6 motion-reduce:hover:[&>svg]:transform-none',
                         'data-[active=true]:[&>svg]:text-sidebar-primary'
                       )}
                     >
-                      <Icon />
-                      <span className="flex min-w-0 flex-col gap-0.5 leading-none">
+                      {active && (
+                        <motion.span
+                          layoutId="sidebar-active-pill"
+                          transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 450, damping: 32 }}
+                          className="absolute inset-0 rounded-lg border border-sidebar-primary/25 bg-sidebar-primary/10"
+                        />
+                      )}
+                      <Icon className="relative" />
+                      <span className="relative flex min-w-0 flex-col gap-0.5 leading-none">
                         <span className="truncate text-[13px] font-bold">{item.label}</span>
                         <span className="truncate text-[10px] font-medium text-sidebar-foreground/45 group-data-[collapsible=icon]:hidden">
                           {item.description}
@@ -212,7 +221,7 @@ export function AppShell({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <ActiveIcon className="h-4 w-4 shrink-0 text-primary" />
-                  <h1 className="truncate font-display text-base font-semibold tracking-tight text-foreground sm:text-lg">{activeItem.label}</h1>
+                  <h1 className="truncate text-sm font-bold text-foreground sm:text-base">{activeItem.label}</h1>
                 </div>
                 <p className="hidden truncate text-[11px] font-medium text-muted-foreground sm:block">{activeItem.description}</p>
               </div>

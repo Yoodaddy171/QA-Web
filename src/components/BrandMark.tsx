@@ -13,7 +13,7 @@ export function BrandMark({ compact = false }: BrandMarkProps) {
 
       {!compact && (
         <div className="flex flex-col">
-          <span className="font-display text-base font-semibold tracking-tight text-sidebar-foreground leading-none">
+          <span className="text-sm font-bold tracking-tight text-sidebar-foreground leading-none">
             QADesk
           </span>
           <span className="text-[10px] font-medium tracking-wider text-sidebar-foreground/55 uppercase mt-0.5 leading-none">

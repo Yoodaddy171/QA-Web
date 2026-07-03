@@ -496,7 +496,8 @@ export function TestCaseTable({
                   return (
                   <TableRow
                     key={tc.id}
-                    className="group border-border/30 hover:bg-secondary/40 transition-colors"
+                    className="group border-border/30 hover:bg-secondary/40 transition-colors animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
+                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                   >
                     <TableCell className="pl-4">
                       <Checkbox

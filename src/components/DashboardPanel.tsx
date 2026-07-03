@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip
 } from 'recharts';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -243,35 +244,49 @@ export function DashboardPanel({
           </div>
         )}
 
-        {/* Overall Progress - Hero Card */}
+        {/* Overall Progress - Hero Card with readiness ring */}
         <Card>
           <CardContent className="p-6 sm:p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2">
+            <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-10">
+              {/* Animated readiness ring */}
+              <div className="relative h-36 w-36 shrink-0">
+                <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+                  <circle cx="60" cy="60" r="52" fill="none" strokeWidth="10" className="stroke-secondary" />
+                  <motion.circle
+                    cx="60" cy="60" r="52" fill="none" strokeWidth="10" strokeLinecap="round"
+                    className="stroke-primary"
+                    strokeDasharray={2 * Math.PI * 52}
+                    initial={{ strokeDashoffset: 2 * Math.PI * 52 }}
+                    animate={{ strokeDashoffset: 2 * Math.PI * 52 * (1 - stats.overallProgress / 100) }}
+                    transition={{ type: 'spring', stiffness: 60, damping: 18 }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <AnimatedNumber value={stats.overallProgress} suffix="%" className="text-3xl font-bold tracking-tight text-foreground tabular-nums" />
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">verified</span>
+                </div>
+              </div>
+
+              <div className="min-w-0 flex-1 space-y-3 text-center sm:text-left">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Project readiness
                 </p>
-                <div className="flex items-baseline gap-3">
-                  <span className="font-display text-6xl font-medium tracking-tight text-foreground tabular-nums">{stats.overallProgress}%</span>
-                  <span className="text-muted-foreground text-sm">verified</span>
-                </div>
-                <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
-                  <span className="text-foreground font-medium">{stats.doneCount}</span> dari <span className="text-foreground font-medium">{stats.totalTestCases}</span> test scenario selesai diverifikasi.
+                <p className="text-2xl font-semibold tracking-tight text-foreground">
+                  <AnimatedNumber value={stats.doneCount} className="tabular-nums" /> dari {stats.totalTestCases} scenario terverifikasi
                 </p>
-              </div>
-              <div className="flex-1 max-w-md w-full space-y-2">
-                <div className="relative h-2 w-full bg-secondary rounded-full overflow-hidden">
-                  <motion.div
-                    className="absolute inset-y-0 left-0 bg-primary rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${stats.overallProgress}%` }}
-                    transition={{ duration: 0.6, ease: 'easeOut' }}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  <span>0%</span>
-                  <span>50%</span>
-                  <span>100%</span>
+                <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+                  {stats.failedCount > 0 && (
+                    <Badge variant="failed" className="gap-1 text-[11px]"><XCircle className="h-3 w-3" /> {stats.failedCount} failed</Badge>
+                  )}
+                  {stats.blockedCount > 0 && (
+                    <Badge variant="blocked" className="gap-1 text-[11px]"><AlertTriangle className="h-3 w-3" /> {stats.blockedCount} blocked</Badge>
+                  )}
+                  {stats.readyToRetestCount > 0 && (
+                    <Badge variant="readyretest" className="gap-1 text-[11px]"><RefreshCw className="h-3 w-3" /> {stats.readyToRetestCount} retest</Badge>
+                  )}
+                  {stats.failedCount === 0 && stats.blockedCount === 0 && stats.readyToRetestCount === 0 && (
+                    <Badge variant="success" className="gap-1 text-[11px]"><CheckCircle2 className="h-3 w-3" /> Tidak ada blocker</Badge>
+                  )}
                 </div>
               </div>
             </div>
@@ -280,107 +295,46 @@ export function DashboardPanel({
 
         <div className="space-y-6">
 
-            {/* Stats Cards - Modern grid with subtle neon indicator borders */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {/* Done */}
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-emerald-500 hover:bg-emerald-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-emerald-500/10 p-2.5 dark:bg-emerald-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.doneCount}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Done</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          {/* In Progress */}
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-amber-500 hover:bg-amber-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-amber-500/10 p-2.5 dark:bg-amber-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.inProgressCount}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Active</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          {/* Blocked */}
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-rose-500 hover:bg-rose-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-rose-500/10 p-2.5 dark:bg-rose-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                </div>
-                <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.blockedCount}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Blocked</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          {/* Backlog */}
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-slate-400 dark:border-l-slate-500 hover:bg-secondary/40 transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-secondary p-2.5 group-hover:scale-105 transition-transform duration-300">
-                  <XCircle className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.notDoneCount}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Backlog</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          {/* Failed */}
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-red-500 hover:bg-red-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-red-500/10 p-2.5 dark:bg-red-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                </div>
-                <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.failedCount}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">Failed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          {/* Retest */}
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-cyan-500 hover:bg-cyan-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-cyan-500/10 p-2.5 dark:bg-cyan-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <RefreshCw className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
-                </div>
-                <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.readyToRetestCount}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Retest</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          {/* TBA */}
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-purple-500 hover:bg-purple-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-purple-500/10 p-2.5 dark:bg-purple-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <HelpCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.tbaCount || 0}</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">TBA</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            {/* Stats Cards - staggered spring pop-in */}
+            <motion.div
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+              initial="hidden"
+              animate="show"
+              variants={{ show: { transition: { staggerChildren: 0.05 } } }}
+            >
+              {([
+                { key: 'done', label: 'Done', value: stats.doneCount, icon: CheckCircle2, border: 'border-l-emerald-500', iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/15', iconColor: 'text-emerald-600 dark:text-emerald-400' },
+                { key: 'active', label: 'Active', value: stats.inProgressCount, icon: Clock, border: 'border-l-amber-500', iconBg: 'bg-amber-500/10 dark:bg-amber-500/15', iconColor: 'text-amber-600 dark:text-amber-400' },
+                { key: 'blocked', label: 'Blocked', value: stats.blockedCount, icon: AlertTriangle, border: 'border-l-rose-500', iconBg: 'bg-rose-500/10 dark:bg-rose-500/15', iconColor: 'text-rose-600 dark:text-rose-400' },
+                { key: 'backlog', label: 'Backlog', value: stats.notDoneCount, icon: XCircle, border: 'border-l-slate-400 dark:border-l-slate-500', iconBg: 'bg-secondary', iconColor: 'text-muted-foreground' },
+                { key: 'failed', label: 'Failed', value: stats.failedCount, icon: XCircle, border: 'border-l-red-500', iconBg: 'bg-red-500/10 dark:bg-red-500/15', iconColor: 'text-red-600 dark:text-red-400' },
+                { key: 'retest', label: 'Retest', value: stats.readyToRetestCount, icon: RefreshCw, border: 'border-l-cyan-500', iconBg: 'bg-cyan-500/10 dark:bg-cyan-500/15', iconColor: 'text-cyan-600 dark:text-cyan-400' },
+                { key: 'tba', label: 'TBA', value: stats.tbaCount || 0, icon: HelpCircle, border: 'border-l-purple-500', iconBg: 'bg-purple-500/10 dark:bg-purple-500/15', iconColor: 'text-purple-600 dark:text-purple-400' },
+              ] as const).map(({ key, label, value, icon: StatIcon, border, iconBg, iconColor }) => (
+                <motion.div
+                  key={key}
+                  variants={{
+                    hidden: { opacity: 0, y: 14, scale: 0.96 },
+                    show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 320, damping: 24 } },
+                  }}
+                  whileHover={{ y: -3 }}
+                >
+                  <Card variant="glass" padding="none" className={cn('group h-full border-l-4 transition-colors duration-300', border)}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className={cn('rounded-xl p-2.5 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-200 motion-reduce:group-hover:transform-none', iconBg)}>
+                          <StatIcon className={cn('w-5 h-5', iconColor)} />
+                        </div>
+                        <div>
+                          <AnimatedNumber value={value} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
+                          <p className={cn('text-[10px] font-semibold uppercase tracking-wider', key === 'backlog' ? 'text-muted-foreground' : iconColor)}>{label}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
 
         {/* Visual Analytics Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -429,7 +383,7 @@ export function DashboardPanel({
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="font-display text-3xl font-medium tracking-tight text-foreground">{stats.totalTestCases}</span>
+                    <span className="text-3xl font-bold tracking-tight font-mono text-foreground">{stats.totalTestCases}</span>
                     <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total</span>
                   </div>
                 </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Bug, CheckCircle2, Clock, Eye, RefreshCw, Search, Settings2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -175,7 +176,7 @@ export function BugFixPanel({
                   <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.bugFixReported}</p>
+                  <AnimatedNumber value={stats.bugFixReported} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-650 dark:text-orange-400">Reported</p>
                 </div>
               </div>
@@ -188,7 +189,7 @@ export function BugFixPanel({
                   <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.bugFixFixing}</p>
+                  <AnimatedNumber value={stats.bugFixFixing} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-650 dark:text-amber-400">Fixing</p>
                 </div>
               </div>
@@ -201,7 +202,7 @@ export function BugFixPanel({
                   <RefreshCw className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                 </div>
                 <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.bugFixReadyRetest}</p>
+                  <AnimatedNumber value={stats.bugFixReadyRetest} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-650 dark:text-cyan-400">Ready</p>
                 </div>
               </div>
@@ -214,7 +215,7 @@ export function BugFixPanel({
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="font-display text-2xl font-medium text-foreground">{stats.bugFixFixed}</p>
+                  <AnimatedNumber value={stats.bugFixFixed} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-650 dark:text-emerald-400">Fixed</p>
                 </div>
               </div>
@@ -338,7 +339,11 @@ export function BugFixPanel({
               </TableHeader>
               <TableBody>
                 {visibleBugFixItems.map((bf, index) => (
-                  <TableRow key={bf.id} className="border-border/30 hover:bg-secondary/40 transition-colors group">
+                  <TableRow
+                    key={bf.id}
+                    className="border-border/30 hover:bg-secondary/40 transition-colors group animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
+                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                  >
                     <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="font-mono text-sm font-bold text-foreground">{bf.testCaseId}</TableCell>
                     <TableCell className="text-sm font-medium text-foreground">{bf.page}</TableCell>

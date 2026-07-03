@@ -3,6 +3,7 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { Bot, CalendarClock, Eye, FileClock, MonitorDot, RefreshCw, Search, Settings2, TerminalSquare } from 'lucide-react';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -206,7 +207,7 @@ export function AutomatedPanel({
               <MonitorDot className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-display text-2xl font-medium text-foreground">{filteredItems.length}</p>
+              <AnimatedNumber value={filteredItems.length} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
               <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Recorded Scenarios</p>
             </div>
           </CardContent>
@@ -217,9 +218,10 @@ export function AutomatedPanel({
               <FileClock className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-display text-2xl font-medium text-foreground">
-                {filteredItems.filter((item) => item.automation.hasManualCapture).length}
-              </p>
+              <AnimatedNumber
+                value={filteredItems.filter((item) => item.automation.hasManualCapture).length}
+                className="block text-2xl font-bold text-foreground font-mono tabular-nums"
+              />
               <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Manual Artifacts</p>
             </div>
           </CardContent>

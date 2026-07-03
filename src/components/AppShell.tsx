@@ -82,26 +82,41 @@ function WorkspaceSidebar({
   return (
     <Sidebar collapsible="icon" className="border-sidebar-border/80 bg-sidebar">
       <SidebarHeader className="gap-4 border-b border-sidebar-border/70 px-3 py-4">
-        <div className={cn('flex min-h-10 items-center', expanded ? 'justify-between' : 'justify-center')}>
+        <motion.div layout className={cn('flex min-h-10 items-center', expanded ? 'justify-between' : 'justify-center')}>
           <BrandMark compact={!expanded} />
-          {expanded && <SidebarTrigger className="h-8 w-8 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />}
-        </div>
+          <AnimatePresence initial={false}>
+            {expanded && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}>
+                <SidebarTrigger className="h-8 w-8 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
-        {projects.length > 0 && expanded && (
-          <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="h-10 w-full rounded-lg border-sidebar-border/80 bg-sidebar-accent/55 px-3 text-sm font-semibold text-sidebar-foreground shadow-none focus:ring-2 focus:ring-sidebar-ring/40">
-              <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-sidebar-primary" />
-              <SelectValue placeholder="Select project" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl border-border/70 bg-popover shadow-xl">
-              {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id} className="rounded-lg text-sm font-medium">
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <AnimatePresence initial={false}>
+          {projects.length > 0 && expanded && (
+            <motion.div
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -6 }}
+              transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+            >
+              <Select value={selectedProject} onValueChange={setSelectedProject}>
+                <SelectTrigger className="h-10 w-full rounded-lg border-sidebar-border/80 bg-sidebar-accent/55 px-3 text-sm font-semibold text-sidebar-foreground shadow-none focus:ring-2 focus:ring-sidebar-ring/40">
+                  <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-sidebar-primary" />
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border/70 bg-popover shadow-xl">
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id} className="rounded-lg text-sm font-medium">
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-4">
@@ -126,6 +141,7 @@ function WorkspaceSidebar({
                       className={cn(
                         'relative h-12 rounded-lg border border-transparent px-3 transition-colors duration-200',
                         'hover:bg-sidebar-accent/70',
+                        'group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0!',
                         'data-[active=true]:text-sidebar-primary',
                         '[&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:text-sidebar-foreground/55',
                         '[&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:-rotate-6 motion-reduce:hover:[&>svg]:transform-none',
@@ -140,9 +156,9 @@ function WorkspaceSidebar({
                         />
                       )}
                       <Icon className="relative" />
-                      <span className="relative flex min-w-0 flex-col gap-0.5 leading-none">
+                      <span className="relative flex min-w-0 flex-col gap-0.5 leading-none transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.2,0,0,1)] group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:translate-x-1 group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:opacity-0">
                         <span className="truncate text-[13px] font-bold">{item.label}</span>
-                        <span className="truncate text-[10px] font-medium text-sidebar-foreground/45 group-data-[collapsible=icon]:hidden">
+                        <span className="truncate text-[10px] font-medium text-sidebar-foreground/45">
                           {item.description}
                         </span>
                       </span>
@@ -156,22 +172,42 @@ function WorkspaceSidebar({
       </SidebarContent>
 
       <SidebarFooter className="gap-3 border-t border-sidebar-border/70 p-3">
-        {expanded && typeof projectHealth === 'number' && (
-          <div className="rounded-lg border border-sidebar-border/70 bg-sidebar-accent/45 p-3">
-            <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/55">
-              <span>Project readiness</span>
-              <span className="font-mono text-sidebar-primary">{projectHealth}%</span>
-            </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sidebar-border/70">
-              <div
-                className="h-full rounded-full bg-sidebar-primary transition-[width] duration-500 motion-reduce:transition-none"
-                style={{ width: `${Math.max(0, Math.min(projectHealth, 100))}%` }}
-              />
-            </div>
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {expanded && typeof projectHealth === 'number' && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+              className="rounded-lg border border-sidebar-border/70 bg-sidebar-accent/45 p-3"
+            >
+              <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/55">
+                <span>Project readiness</span>
+                <span className="font-mono text-sidebar-primary">{projectHealth}%</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sidebar-border/70">
+                <div
+                  className="h-full rounded-full bg-sidebar-primary transition-[width] duration-500 motion-reduce:transition-none"
+                  style={{ width: `${Math.max(0, Math.min(projectHealth, 100))}%` }}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className={cn('flex items-center', expanded ? 'justify-between' : 'justify-center')}>
-          {expanded && <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">Appearance</span>}
+          <AnimatePresence initial={false}>
+            {expanded && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+                className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45"
+              >
+                Appearance
+              </motion.span>
+            )}
+          </AnimatePresence>
           <ThemeToggle />
         </div>
       </SidebarFooter>
@@ -243,7 +279,7 @@ export function AppShell({
                     initial={mounted && !reduceMotion ? { opacity: 0, y: 8 } : false}
                     animate={{ opacity: 1, y: 0 }}
                     exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                    transition={{ duration: reduceMotion ? 0 : 0.18, ease: 'easeOut' }}
+                    transition={{ duration: reduceMotion ? 0 : 0.3, ease: [0.2, 0, 0, 1] }}
                   >
                     <TabsContent value="dashboard" className="m-0">{activeTab === 'dashboard' ? children.dashboard : null}</TabsContent>
                     <TabsContent value="testcases" className="m-0">{activeTab === 'testcases' ? children.testcases : null}</TabsContent>

@@ -50,9 +50,9 @@ type IntentDecision = {
   needsConfirmation: boolean;
 };
 
-const MAX_HISTORY_MESSAGES = 3;
-const MAX_HISTORY_CHARS = 450;
-const MAX_PROMPT_CHARS = 8500;
+const MAX_HISTORY_MESSAGES = 8;
+const MAX_HISTORY_CHARS = 1000;
+const MAX_PROMPT_CHARS = 16000;
 const DRAFT_INTENT_PATTERN = /\b(buat|buatkan|dibuatkan|generate|draft|tambahkan|create)\b/i;
 
 function cleanText(value: unknown) {
@@ -546,6 +546,9 @@ function buildSystemPrompt(decision: IntentDecision) {
 Answer in Indonesian, conversational but precise.
 Use ONLY the TOOL RESULTS as factual database context. Never invent testcase IDs, bugfix IDs, modules, or counts.
 If a fact is not in TOOL RESULTS, say it is not found.
+When getTestCaseDetail is present, treat it as the primary context and cite its concrete action, steps, expected result, and actual result when relevant.
+Clearly distinguish database facts from your inference or recommendation.
+If the requested testcase detail is missing or insufficient, ask one focused clarification instead of guessing.
 You may suggest draft actions, but must never claim data has been saved.
 Return ONLY valid JSON object.
 
@@ -642,7 +645,7 @@ export async function POST(req: NextRequest) {
 
     let providerMeta: { provider?: string; model?: string; error?: string } = {};
     const deterministicAnswer = buildDeterministicAnswer(toolRun.tools, intentDecision);
-    let answer = deterministicAnswer;
+    let answer = '';
     let drafts: TestCaseDraft[] = [];
     let actionDrafts: CopilotActionDraft[] = [];
     let localTestCaseDrafts = shouldReturnDrafts ? toolRun.actionDrafts.filter(action => action.testCaseDraft) : [];
@@ -668,10 +671,7 @@ export async function POST(req: NextRequest) {
         });
         providerMeta = { provider: result.provider, model: result.model };
         const providerAnswer = cleanText(result.parsed.answer);
-        answer = answer && !isLowQualityAnswer(answer) ? answer : (providerAnswer || answer);
-        if (!shouldReturnDrafts && deterministicAnswer && isLowQualityAnswer(answer)) {
-          answer = deterministicAnswer;
-        }
+        answer = providerAnswer || deterministicAnswer;
         if (!shouldReturnDrafts) {
           drafts = [];
           actionDrafts = [];
@@ -681,6 +681,7 @@ export async function POST(req: NextRequest) {
         }
       } catch (error) {
         providerMeta = { error: error instanceof Error ? error.message : 'AI provider error' };
+        answer = deterministicAnswer;
         if (isLowQualityAnswer(answer)) {
           answer = fallbackAnswer({
             question,
@@ -695,10 +696,6 @@ export async function POST(req: NextRequest) {
     if (!answer) {
       answer = fallbackAnswer({ question, citations: toolRun.citations, usedTools });
     }
-    if (!shouldReturnDrafts && deterministicAnswer && isLowQualityAnswer(answer)) {
-      answer = deterministicAnswer;
-    }
-
     if (shouldReturnDrafts && drafts.length > 0) {
       actionDrafts = [
         ...drafts.map((draft, index): CopilotActionDraft => ({

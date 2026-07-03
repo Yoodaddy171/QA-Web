@@ -314,6 +314,13 @@ export function TestCaseDetailDialog({
     if (typeof manualRecording?.video?.durationMs === 'number' && manualRecording.video.durationMs > 0) return manualRecording.video.durationMs;
     return 0;
   };
+  const measuredRecordingVideoDurationMs = recordingVideoDurationMs?.key === recordingVideoKey
+    ? recordingVideoDurationMs.durationMs
+    : 0;
+  const isVideoPlaybackReady = hasManualRecordingVideo
+    && !isVideoFinalizing
+    && measuredRecordingVideoDurationMs > 0;
+  const isVideoLoading = hasManualRecordingVideo && !isVideoPlaybackReady;
   const syncedVideoEvents = useMemo(() => (
     buildSyncedVideoEvents(liveLogs, manualRecording, {
       measuredDurationMs: recordingVideoDurationMs?.key === recordingVideoKey ? recordingVideoDurationMs.durationMs : undefined,
@@ -368,7 +375,13 @@ export function TestCaseDetailDialog({
     formatRelativeTime(hasManualRecordingVideo ? getLogVideoMs(log) : normalizedLogRelativeMs(log.relativeMs))
   );
   const handleRecordingVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
-    const durationSeconds = event.currentTarget.duration;
+    const video = event.currentTarget;
+    const seekableDuration = video.seekable.length > 0
+      ? video.seekable.end(video.seekable.length - 1)
+      : 0;
+    const durationSeconds = Number.isFinite(video.duration) && video.duration > 0
+      ? video.duration
+      : seekableDuration;
     if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
       setRecordingVideoDurationMs({
         key: recordingVideoKey,
@@ -554,6 +567,7 @@ export function TestCaseDetailDialog({
   };
 
   const openRecordingFullscreen = () => {
+    if (isVideoLoading) return;
     clearRecordingFullscreenTimer();
     setRecordingZoom(1);
     setFullscreenLogFilter('all');
@@ -802,9 +816,10 @@ export function TestCaseDetailDialog({
                                   <p className="font-mono text-base font-bold text-foreground">{viewTestCase.testCaseId}</p>
                                 </div>
                                 <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <p className="text-xs text-muted-foreground">Internal Database ID (UUID)</p>
-                                    <Badge variant="secondary" className="h-3.5 border-0 bg-indigo-50 px-1 text-[9px] text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">Required for Logs</Badge>
+                                  <div className="mb-1">
+                                    <p className="text-[11px] text-muted-foreground/70" title="ID internal ini dipakai Katalon/automation untuk menautkan log ke test case.">
+                                      ID Internal (untuk automation log)
+                                    </p>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <p className="flex-1 truncate rounded border border-border/60 bg-muted/30 px-2 py-1 font-mono text-[11px] text-muted-foreground shadow-inner">
@@ -1640,18 +1655,25 @@ export function TestCaseDetailDialog({
                             <div className="mb-4 grid gap-4 rounded-2xl border border-border/60 bg-secondary/20 p-4 shadow-xl lg:grid-cols-[320px_1fr]">
                               <button
                                 type="button"
-                                className="group relative overflow-hidden rounded-xl border border-border/60 bg-background text-left shadow-2xl"
+                                aria-busy={isVideoLoading}
+                                disabled={isVideoLoading}
+                                className="group relative overflow-hidden rounded-xl border border-border/60 bg-background text-left shadow-2xl disabled:cursor-wait"
                                 onClick={openRecordingFullscreen}
                               >
                                 {hasManualRecordingVideo ? (
                                   <video
+                                    key={recordingVideoKey}
                                     ref={recordingVideoRef}
                                     src={manualRecordingVideoUrl}
-                                    controls
+                                    controls={isVideoPlaybackReady}
                                     preload="metadata"
                                     onLoadedMetadata={handleRecordingVideoLoadedMetadata}
+                                    onDurationChange={handleRecordingVideoLoadedMetadata}
                                     onTimeUpdate={handleFullscreenVideoTimeUpdate}
-                                    className="aspect-video w-full bg-black object-contain opacity-90 group-hover:opacity-100 transition-opacity"
+                                    className={cn(
+                                      "aspect-video w-full bg-black object-contain transition-opacity",
+                                      isVideoLoading ? "opacity-0" : "opacity-90 group-hover:opacity-100"
+                                    )}
                                   />
                                 ) : selectedRecordingFrame ? (
                                   <img
@@ -1660,12 +1682,20 @@ export function TestCaseDetailDialog({
                                     className="aspect-video w-full bg-black object-contain opacity-80 group-hover:opacity-100 transition-opacity"
                                   />
                                 ) : null}
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-300 group-hover:bg-black/40 group-hover:opacity-100">
-                                  <span className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-teal-700 shadow-2xl dark:border-teal-500/20 dark:bg-teal-500/10 dark:text-teal-200">
-                                    <Maximize2 className="h-4 w-4" />
-                                    Fullscreen
-                                  </span>
-                                </div>
+                                {isVideoLoading ? (
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 text-white">
+                                    <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider">Memproses video</span>
+                                    <span className="text-[10px] text-white/55">Menyiapkan durasi dan preview...</span>
+                                  </div>
+                                ) : (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-300 group-hover:bg-black/40 group-hover:opacity-100">
+                                    <span className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-teal-700 shadow-2xl dark:border-teal-500/20 dark:bg-teal-500/10 dark:text-teal-200">
+                                      <Maximize2 className="h-4 w-4" />
+                                      Fullscreen
+                                    </span>
+                                  </div>
+                                )}
                               </button>
                               <div className="flex min-w-0 flex-col justify-between gap-4">
                                 <div>
@@ -1685,7 +1715,7 @@ export function TestCaseDetailDialog({
                                         Video {manualRecordingVideoStatus}
                                       </Badge>
                                     )}
-                                    {isVideoFinalizing && (
+                                    {isVideoLoading && (
                                       <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-semibold text-amber-600 uppercase tracking-tighter dark:text-amber-300">
                                         <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                                         Processing
@@ -1704,16 +1734,17 @@ export function TestCaseDetailDialog({
                                       variant="outline"
                                       size="sm"
                                       className="ml-auto h-8 gap-2 rounded-lg border-border/60 bg-secondary/50 px-3 text-[9px] font-semibold uppercase tracking-wider text-foreground hover:bg-secondary dark:text-slate-400 dark:hover:text-white"
+                                      disabled={isVideoLoading}
                                       onClick={openRecordingFullscreen}
                                     >
-                                      <Maximize2 className="h-3.5 w-3.5" />
-                                      Review
+                                      {isVideoLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                                      {isVideoLoading ? 'Processing' : 'Review'}
                                     </Button>
                                   </div>
                                   <p className="mt-3 truncate text-[11px] font-medium text-muted-foreground">
                                     {manualRecordingTargetUrl}
                                   </p>
-                                  {isVideoFinalizing && (
+                                  {isVideoLoading && (
                                     <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
                                       <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
                                       <span>Video sedang diproses. Viewer akan refresh otomatis setelah file siap.</span>
@@ -2702,6 +2733,7 @@ export function TestCaseDetailDialog({
               >
                 {hasManualRecordingVideo ? (
                   <video
+                    key={`${recordingVideoKey}:fullscreen`}
                     ref={fullscreenRecordingVideoRef}
                     src={manualRecordingVideoUrl}
                     controls

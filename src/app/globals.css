@@ -56,6 +56,8 @@
 /* ===== LIGHT MODE - Quiet Professional: neutral zinc + indigo ===== */
 :root {
   --radius: 0.625rem;
+  --motion-duration: 300ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
 
   /* Core surfaces */
   --background: #fafafa;
@@ -117,6 +119,18 @@
   --surface-container-highest: #d4d4d8;
   --outline: #71717a;
   --outline-variant: #d4d4d8;
+}
+
+/* Keep interaction transitions on one rhythm; keyframe loaders remain independent. */
+[class*="transition"] {
+  transition-duration: var(--motion-duration) !important;
+  transition-timing-function: var(--motion-ease) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*="transition"] {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ===== DARK MODE - Quiet Professional: near-black zinc + indigo ===== */

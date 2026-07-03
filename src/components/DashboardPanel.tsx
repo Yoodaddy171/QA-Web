@@ -373,7 +373,7 @@ export function DashboardPanel({
             <CardHeader className="pb-3 border-b border-border/40">
               <div className="flex items-center gap-2">
                 <Percent className="w-4 h-4 text-primary" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Scenario Distribution</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Distribusi Skenario</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="pt-6 h-[250px] flex items-center justify-center">
@@ -438,7 +438,7 @@ export function DashboardPanel({
             <CardHeader className="pb-3 border-b border-border/40">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-primary" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cases by Priority</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kasus per Prioritas</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="pt-6 h-[250px] flex items-center justify-center">
@@ -494,7 +494,7 @@ export function DashboardPanel({
             <CardHeader className="border-b border-border/40 pb-3">
               <div className="flex items-center gap-2">
                 <Bug className="h-4 w-4 text-orange-500" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bug Fix Overview</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ringkasan Bug Fix</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3 pt-5 sm:grid-cols-4">
@@ -518,7 +518,7 @@ export function DashboardPanel({
             <CardHeader className="border-b border-border/40 pb-3">
               <div className="flex items-center gap-2">
                 <RefreshCw className="h-4 w-4 text-cyan-500" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verification Pipeline</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Antrian Retest</CardTitle>
               </div>
             </CardHeader>
             <CardContent
@@ -529,7 +529,7 @@ export function DashboardPanel({
               {(stats.retestQueue || []).length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-border/60 px-6 text-center">
                   <CheckCircle2 className="mb-3 h-8 w-8 text-emerald-500/50" />
-                  <p className="text-xs font-semibold text-muted-foreground">Pipeline clear. No pending verifications.</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Tidak ada test case yang menunggu retest.</p>
                 </div>
               ) : (
                 <>
@@ -547,11 +547,11 @@ export function DashboardPanel({
                         </div>
                         <Badge variant="outline" className={getPriorityBadgeClass(item.priority)}>{item.priority}</Badge>
                       </div>
-                      <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Waiting {item.waitingDays} days</p>
+                      <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Menunggu {item.waitingDays} hari</p>
                     </button>
                   ))}
                   {(stats.retestQueue || []).length > 4 && !retestAtBottom && (
-                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll for more</p>
+                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll untuk lainnya</p>
                   )}
                 </>
               )}
@@ -562,7 +562,7 @@ export function DashboardPanel({
             <CardHeader className="border-b border-border/40 pb-3">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-amber-500" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Defect Longevity</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Umur Bug</CardTitle>
               </div>
             </CardHeader>
             <CardContent
@@ -573,7 +573,7 @@ export function DashboardPanel({
               {(stats.bugAging || []).length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-border/60 px-6 text-center">
                   <ShieldAlert className="mb-3 h-8 w-8 text-amber-500/45" />
-                  <p className="text-xs font-semibold text-muted-foreground">No aging defects detected.</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Tidak ada bug yang menua.</p>
                 </div>
               ) : (
                 <>
@@ -589,13 +589,13 @@ export function DashboardPanel({
                           <p className="font-mono text-xs font-semibold text-foreground">{item.testCaseId}</p>
                           <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">{item.testAction}</p>
                         </div>
-                        <Badge variant="outline" className={getAgeClass(item.ageDays)}>{item.ageDays} days</Badge>
+                        <Badge variant="outline" className={getAgeClass(item.ageDays)}>{item.ageDays} hari</Badge>
                       </div>
                       <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-amber-500">{item.status}</p>
                     </button>
                   ))}
                   {(stats.bugAging || []).length > 4 && !bugAgingAtBottom && (
-                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll for more</p>
+                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll untuk lainnya</p>
                   )}
                 </>
               )}
@@ -606,7 +606,7 @@ export function DashboardPanel({
             <CardHeader className="border-b border-border/40 pb-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-rose-500" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Module Risk</CardTitle>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Risiko per Module</CardTitle>
               </div>
             </CardHeader>
             <CardContent
@@ -617,7 +617,7 @@ export function DashboardPanel({
               {(stats.moduleRisks || []).length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-border/60 px-6 text-center">
                   <Layers className="mb-3 h-8 w-8 text-muted-foreground/40" />
-                  <p className="text-xs font-semibold text-muted-foreground">No module risk data available.</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Belum ada data risiko module.</p>
                 </div>
               ) : (
                 <>
@@ -631,10 +631,10 @@ export function DashboardPanel({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-xs font-semibold text-foreground">{item.moduleName}</p>
-                          <p className="mt-1 text-[10px] font-medium text-muted-foreground">{item.total} cases</p>
+                          <p className="mt-1 text-[10px] font-medium text-muted-foreground">{item.total} test case</p>
                         </div>
                         <Badge variant="outline" className={getPriorityBadgeClass(item.riskScore >= 70 ? 'Critical' : item.riskScore >= 40 ? 'High' : item.riskScore >= 20 ? 'Medium' : 'Low')}>
-                          Risk {item.riskScore}
+                          Risiko {item.riskScore}
                         </Badge>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold">
@@ -645,7 +645,7 @@ export function DashboardPanel({
                     </button>
                   ))}
                   {(stats.moduleRisks || []).length > 4 && !moduleRiskAtBottom && (
-                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll for more</p>
+                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll untuk lainnya</p>
                   )}
                 </>
               )}
@@ -660,7 +660,7 @@ export function DashboardPanel({
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-primary" />
-                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Module Progress</CardTitle>
+                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Progress per Module</CardTitle>
                 </div>
                 <Select value={selectedModuleFilter} onValueChange={setSelectedModuleFilter}>
                   <SelectTrigger className="h-8 w-[160px] rounded-xl border border-border/50 bg-secondary/40 text-xs font-semibold">

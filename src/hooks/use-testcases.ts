@@ -86,7 +86,11 @@ export function useTestCases(selectedProject: string) {
       const data = await fetchTestCases(params, controller.signal);
       setTestCases(data.testCases || []);
       setTotal(data.total || 0);
-      setTotalPages(data.totalPages || 1);
+      const nextTotalPages = data.totalPages || 1;
+      setTotalPages(nextTotalPages);
+      // Clamp back when the current page no longer exists (e.g. after deleting
+      // the last rows of the final page); the page effect re-fetches.
+      if ((opts?.pageVal ?? page) > nextTotalPages) setPage(nextTotalPages);
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       toast({ title: 'Error', description: 'Failed to load test cases', variant: 'destructive' });

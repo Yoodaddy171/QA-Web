@@ -84,7 +84,7 @@ export function ImportExcelDialog({
               <Upload className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Import Excel Intelligence</DialogTitle>
+              <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Import Excel</DialogTitle>
               <DialogDescription className="text-muted-foreground text-[11px] font-medium leading-relaxed">Preview dan validasi data Excel Anda sebelum diintegrasikan ke database.</DialogDescription>
             </div>
           </div>
@@ -113,7 +113,7 @@ export function ImportExcelDialog({
             <div className="space-y-4 rounded-2xl border border-border/60 bg-secondary/20 p-5 shadow-inner">
               <div className="flex items-center gap-2 mb-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supported Column Mapping</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pemetaan Kolom yang Didukung</p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
                 {[
@@ -143,7 +143,7 @@ export function ImportExcelDialog({
                   <FileSpreadsheet className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Source File</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">File Sumber</p>
                   <p className="truncate font-bold text-foreground text-sm">{selectedFileName}</p>
                 </div>
               </div>
@@ -175,7 +175,7 @@ export function ImportExcelDialog({
               )}>
                 {importPreview.canImport ? <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0" /> : <XCircle className="mt-0.5 h-6 w-6 shrink-0" />}
                 <div className="min-w-0">
-                  <p className="font-semibold uppercase tracking-wider text-[11px] mb-1">Validation Intelligence</p>
+                  <p className="font-semibold uppercase tracking-wider text-[11px] mb-1">Hasil Validasi</p>
                   <p className="text-[13px] font-bold leading-relaxed">
                   {importPreview.canImport
                       ? 'File divalidasi aman. Skenario yang memiliki warning tetap dapat diimport dan diperbaiki kemudian.'
@@ -226,7 +226,7 @@ export function ImportExcelDialog({
                           ) : warningItems.length > 0 ? (
                             <Badge className="bg-amber-500 text-white border-none rounded-lg px-3 py-1 font-semibold text-[10px] uppercase shadow-lg shadow-amber-500/20">{warningItems.length} Warnings</Badge>
                           ) : (
-                            <Badge className="bg-emerald-500 text-white border-none rounded-lg px-3 py-1 font-semibold text-[10px] uppercase shadow-lg shadow-emerald-500/20">Sheet Validated</Badge>
+                            <Badge className="bg-emerald-500 text-white border-none rounded-lg px-3 py-1 font-semibold text-[10px] uppercase shadow-lg shadow-emerald-500/20">Sheet Tervalidasi</Badge>
                           )}
                         </div>
                       </div>

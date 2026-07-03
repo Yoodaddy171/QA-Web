@@ -208,7 +208,7 @@ export function AutomatedPanel({
             </div>
             <div>
               <AnimatedNumber value={filteredItems.length} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Recorded Scenarios</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Skenario Terekam</p>
             </div>
           </CardContent>
         </Card>
@@ -222,7 +222,7 @@ export function AutomatedPanel({
                 value={filteredItems.filter((item) => item.automation.hasManualCapture).length}
                 className="block text-2xl font-bold text-foreground font-mono tabular-nums"
               />
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Manual Artifacts</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Artefak Manual</p>
             </div>
           </CardContent>
         </Card>
@@ -233,9 +233,9 @@ export function AutomatedPanel({
             </div>
             <div>
               <p className="text-sm font-bold text-foreground font-mono uppercase truncate max-w-[190px]">
-                {filteredItems[0]?.automation.lastRunAt ? new Date(filteredItems[0].automation.lastRunAt).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'No Activity'}
+                {filteredItems[0]?.automation.lastRunAt ? new Date(filteredItems[0].automation.lastRunAt).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Belum Ada'}
               </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Latest Run</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Run Terakhir</p>
             </div>
           </CardContent>
         </Card>
@@ -280,7 +280,7 @@ export function AutomatedPanel({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 border border-border/50 bg-card rounded-2xl shadow-xl">
-              <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">Table Columns</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">Kolom Tabel</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-border/40" />
               {AUTOMATED_COLUMN_OPTIONS.map((column) => (
                 <DropdownMenuCheckboxItem
@@ -331,45 +331,55 @@ export function AutomatedPanel({
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-sm">
-            <div className="overflow-hidden">
-              <Table>
+        <div className="relative max-h-[70vh] overflow-auto rounded-2xl border border-border/40 bg-card shadow-sm">
+              <Table className="w-full table-auto">
                 <TableHeader className="sticky top-0 z-10 bg-secondary/95">
                    <TableRow className="border-border/30 hover:bg-transparent">
-                    <TableHead className="w-[52px] text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
+                    <TableHead className="w-10 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
                     <TableHead className="w-[90px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
-                    <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
-                    <TableHead className={getColumnClass('module', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Module</TableHead>
+                    <TableHead className="w-[130px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
+                    <TableHead className={getColumnClass('module', 'w-[110px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Module</TableHead>
                     <TableHead className={getColumnClass('action', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
                     <TableHead className={getColumnClass('type', 'w-[86px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Type</TableHead>
                     <TableHead className={getColumnClass('priority', 'w-[94px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>
                     <TableHead className={getColumnClass('status', 'w-[112px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>
-                    <TableHead className={getColumnClass('lastRun', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Last Run</TableHead>
-                    <TableHead className={getColumnClass('source', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Source</TableHead>
-                    <TableHead className={getColumnClass('history', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>History</TableHead>
-                    <TableHead className="w-[80px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
+                    <TableHead className={getColumnClass('lastRun', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Last Run</TableHead>
+                    <TableHead className={getColumnClass('source', 'w-[100px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Source</TableHead>
+                    <TableHead className={getColumnClass('history', 'w-[160px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>History</TableHead>
+                    <TableHead className="w-[52px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredItems.map((item, index) => (
-                    <TableRow key={item.id} className="border-border/30 hover:bg-secondary/40 transition-colors group">
+                    <TableRow
+                      key={item.id}
+                      className="cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors group animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
+                      style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                      title="Klik untuk melihat detail"
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('button, a, input, select, [role="checkbox"], [role="combobox"], [role="menu"]')) return;
+                        onOpenDetail(item);
+                      }}
+                    >
                       <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
-                      <TableCell className="font-mono text-sm font-bold text-foreground">{item.testCaseId}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-foreground">{item.page}</p>
+                      <TableCell className="whitespace-nowrap font-mono text-sm font-semibold text-foreground">{item.testCaseId}</TableCell>
+                      <TableCell className="max-w-[130px]" title={`${item.page}${item.subMenu ? ` / ${item.subMenu}` : ''}`}>
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate text-sm font-bold text-foreground">{item.page}</p>
                             {item.automationSource === 'bugfix' && (
                               <Badge variant="warning" className="text-[9px] font-semibold border-orange-500/20 bg-orange-500/10">
                                 BUGFIX
                               </Badge>
                             )}
                           </div>
-                          {item.subMenu && <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-tight">{item.subMenu}</p>}
+                          {item.subMenu && <p className="truncate text-[11px] font-medium uppercase text-muted-foreground">{item.subMenu}</p>}
                         </div>
                       </TableCell>
-                      <TableCell className={getColumnClass('module', 'text-[13px] font-semibold text-muted-foreground')}>{item.module?.name || '-'}</TableCell>
-                      <TableCell className={getColumnClass('action', 'max-w-[260px] truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors')}>{item.testAction}</TableCell>
+                      <TableCell className={getColumnClass('module', 'max-w-[110px] truncate text-[13px] font-medium text-muted-foreground')} title={item.module?.name || ''}>{item.module?.name || '-'}</TableCell>
+                      <TableCell className={getColumnClass('action', 'max-w-[180px]')} title={item.testAction}>
+                        <p className="truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground">{item.testAction}</p>
+                      </TableCell>
                       <TableCell className={getColumnClass('type')}>
                         <Badge variant="outline" className={cn("rounded-xl text-[10px] font-bold px-2.5 py-0.5", getTestTypeColor(item.testType))}>
                           {item.testType}
@@ -385,7 +395,7 @@ export function AutomatedPanel({
                           {getStatusIcon(item.status)} {item.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className={getColumnClass('lastRun', 'text-[11px] font-semibold text-muted-foreground uppercase tracking-tighter')}>{formatDate(item.automation.lastRunAt)}</TableCell>
+                      <TableCell className={getColumnClass('lastRun', 'whitespace-nowrap text-[11px] font-semibold uppercase text-muted-foreground')}>{formatDate(item.automation.lastRunAt)}</TableCell>
                       <TableCell className={getColumnClass('source')}>
                         <div className="flex flex-wrap gap-1">
                           {item.automation.hasAutomationRun && <Badge className="rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5">Auto</Badge>}
@@ -403,9 +413,11 @@ export function AutomatedPanel({
                       </TableCell>
                       <TableCell>
                         <Button
+                          aria-label={`View run ${item.testCaseId}`}
+                          title={`View run ${item.testCaseId}`}
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 rounded-xl p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/65 transition-all"
+                          className="h-7 w-7 rounded-md p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
                           onClick={() => onOpenDetail(item)}
                         >
                           <Eye className="h-4 w-4 text-primary" />
@@ -415,7 +427,6 @@ export function AutomatedPanel({
                   ))}
                 </TableBody>
               </Table>
-            </div>
         </div>
       )}
     </div>

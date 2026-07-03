@@ -177,7 +177,7 @@ export function BugFixPanel({
                 </div>
                 <div>
                   <AnimatedNumber value={stats.bugFixReported} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-650 dark:text-orange-400">Reported</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">Reported</p>
                 </div>
               </div>
             </CardContent>
@@ -233,10 +233,10 @@ export function BugFixPanel({
         >
           <TabsList className="h-10 rounded-xl border border-border/50 bg-secondary/35 p-1 shadow-inner">
             <TabsTrigger value="active" className="gap-2 rounded-lg px-4 text-[11px] font-semibold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
-              <Bug className="w-3.5 h-3.5" /> Active Bugs
+              <Bug className="w-3.5 h-3.5" /> Bug Aktif
             </TabsTrigger>
             <TabsTrigger value="resolved" className="gap-2 rounded-lg px-4 text-[11px] font-semibold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Fixed History
+              <CheckCircle2 className="w-3.5 h-3.5" /> Riwayat Fixed
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -253,7 +253,7 @@ export function BugFixPanel({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 rounded-xl bg-card border border-border/50 shadow-lg text-foreground">
-              <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">Table Columns</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">Kolom Tabel</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-border/40" />
               {BUGFIX_COLUMN_OPTIONS.map((column) => (
                 <DropdownMenuCheckboxItem
@@ -312,19 +312,24 @@ export function BugFixPanel({
       {visibleBugFixItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center space-y-2 rounded-2xl border border-dashed border-border/60 bg-card p-20 shadow-sm text-center">
           <Bug className="w-12 h-12 text-muted-foreground/25 animate-pulse" />
-          <p className="text-sm font-bold uppercase tracking-wider text-foreground">No Defects Found</p>
-          <p className="text-xs text-muted-foreground/80 font-medium">No {bugFixTab === 'resolved' ? 'resolved defects' : 'active defects'} in this project.</p>
+          <p className="text-sm font-bold uppercase tracking-wider text-foreground">
+            {bugFixSearch || bugFixFilterStatus !== 'all' || bugFixFilterModule !== 'all' ? 'Tidak ada hasil' : 'Tidak ada bug'}
+          </p>
+          <p className="text-xs text-muted-foreground/80 font-medium">
+            {bugFixSearch || bugFixFilterStatus !== 'all' || bugFixFilterModule !== 'all'
+              ? 'Tidak ada bug yang cocok dengan pencarian atau filter aktif.'
+              : `Tidak ada bug ${bugFixTab === 'resolved' ? 'yang sudah selesai' : 'aktif'} di project ini.`}
+          </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-sm">
-          <div className="overflow-hidden">
-            <Table>
+        <div className="relative max-h-[70vh] overflow-auto rounded-2xl border border-border/40 bg-card shadow-sm">
+            <Table className="w-full table-auto">
               <TableHeader className="sticky top-0 z-10 bg-secondary/95">
                 <TableRow className="border-border/30 hover:bg-transparent">
-                  <TableHead className="w-[52px] text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
+                  <TableHead className="w-10 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
                   <TableHead className="w-[90px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
-                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
-                  <TableHead className={getColumnClass('subMenu', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>
+                  <TableHead className="w-[110px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
+                  <TableHead className={getColumnClass('subMenu', 'w-[100px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>
                   <TableHead className={getColumnClass('action', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
                   <TableHead className={getColumnClass('priority', 'w-[94px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>
                   <TableHead className={getColumnClass('status', 'w-[150px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>
@@ -334,21 +339,26 @@ export function BugFixPanel({
                   ) : (
                     <TableHead className={getColumnClass('timing', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Di Fix / Retest</TableHead>
                   )}
-                  <TableHead className="w-[80px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Aksi</TableHead>
+                  <TableHead className="w-[52px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleBugFixItems.map((bf, index) => (
                   <TableRow
                     key={bf.id}
-                    className="border-border/30 hover:bg-secondary/40 transition-colors group animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
+                    className="cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors group animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
                     style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                    title="Klik untuk melihat detail"
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('button, a, input, select, [role="checkbox"], [role="combobox"], [role="menu"]')) return;
+                      onOpenDetail(bf);
+                    }}
                   >
                     <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
-                    <TableCell className="font-mono text-sm font-bold text-foreground">{bf.testCaseId}</TableCell>
-                    <TableCell className="text-sm font-medium text-foreground">{bf.page}</TableCell>
-                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-semibold')}>{bf.subMenu || '-'}</TableCell>
-                    <TableCell className={getColumnClass('action', 'max-w-[200px]')} title={bf.testAction}>
+                    <TableCell className="whitespace-nowrap font-mono text-sm font-semibold text-foreground">{bf.testCaseId}</TableCell>
+                    <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={bf.page}>{bf.page}</TableCell>
+                    <TableCell className={getColumnClass('subMenu', 'max-w-[100px] truncate text-[13px] font-medium text-muted-foreground')} title={bf.subMenu || ''}>{bf.subMenu || '-'}</TableCell>
+                    <TableCell className={getColumnClass('action', 'max-w-[180px]')} title={bf.testAction}>
                       <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{bf.testAction}</p>
                     </TableCell>
                     <TableCell className={getColumnClass('priority')}>
@@ -363,7 +373,7 @@ export function BugFixPanel({
                         </Badge>
                       ) : (
                         <Select value={bf.status} onValueChange={(val) => onStatusChange(bf.id, val)}>
-                          <SelectTrigger className={cn("h-8 rounded-xl text-[9px] font-bold uppercase tracking-wider shadow-xs border transition-all", getBugFixStatusColor(bf.status))}>
+                          <SelectTrigger className={cn("h-7 w-[140px] rounded-lg border px-2 text-[9px] font-bold uppercase tracking-wider shadow-none", getBugFixStatusColor(bf.status))}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl bg-card border border-border/50 shadow-lg text-foreground">
@@ -375,7 +385,7 @@ export function BugFixPanel({
                       )}
                     </TableCell>
                     <TableCell className={getColumnClass('reportedAt', 'text-[11px] font-semibold text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
-                    <TableCell className={getColumnClass('reportedAt', 'text-[11px] font-semibold text-muted-foreground')}>
+                    <TableCell className={getColumnClass('timing', 'whitespace-nowrap text-[11px] font-semibold text-muted-foreground')}>
                       {bugFixTab === 'resolved'
                         ? formatDate(bf.fixedAt)
                         : bf.status === 'READY TO RETEST'
@@ -388,7 +398,7 @@ export function BugFixPanel({
                         title={`View bug ${bf.testCaseId}`}
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/65 transition-all"
+                        className="h-7 w-7 rounded-md p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
                         onClick={() => onOpenDetail(bf)}
                       >
                         <Eye className="w-4 h-4 text-primary" />
@@ -398,7 +408,6 @@ export function BugFixPanel({
                 ))}
               </TableBody>
             </Table>
-          </div>
         </div>
       )}
     </motion.div>

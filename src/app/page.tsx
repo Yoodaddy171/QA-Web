@@ -847,7 +847,7 @@ export default function TestCaseManager() {
       />}
 
       {/* Detail View Dialog */}
-      {showDetailDialog && <TestCaseDetailDialog
+      {viewTestCase && <TestCaseDetailDialog
         open={showDetailDialog}
         onOpenChange={setShowDetailDialog}
         viewTestCase={viewTestCase}

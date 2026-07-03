@@ -351,9 +351,8 @@ export function TestCaseTable({
           </Button>
         </div>
         </div>
-      </div>
 
-      <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/40 bg-card p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+      <div className="mt-3 flex min-w-0 flex-col gap-3 border-t border-border/40 pt-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="h-9 rounded-xl gap-1.5 font-bold shadow-sm transition-all duration-200">
             <Plus className="w-4 h-4" /> Add Test Case
@@ -387,7 +386,7 @@ export function TestCaseTable({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-card border border-border/50 text-foreground rounded-2xl shadow-xl">
               <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">
-                Table Columns
+                Kolom Tabel
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-border/40" />
               {TESTCASE_COLUMN_OPTIONS.map((column) => (
@@ -439,8 +438,9 @@ export function TestCaseTable({
           </Button>
         </div>
       </div>
+      </div>
 
-      <div className="relative rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm">
+      <div className="relative max-h-[70vh] overflow-auto rounded-2xl border border-border/40 bg-card shadow-sm">
       {isLoading && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/50 backdrop-blur-[1px]">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />  
@@ -451,9 +451,12 @@ export function TestCaseTable({
           <TableRow className="border-border/30 hover:bg-transparent">
             <TableHead className="w-10 pl-4">
               <Checkbox
-                checked={testCases.length > 0 && selectedIds.size === testCases.length}
+                aria-label="Pilih semua di halaman ini"
+                checked={testCases.length > 0 && selectedIds.size === testCases.length
+                  ? true
+                  : selectedIds.size > 0 ? 'indeterminate' : false}
                 onCheckedChange={toggleSelectAll}
-                className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary/60 data-[state=indeterminate]:border-primary rounded"
               />
             </TableHead>
             <TableHead className="w-10 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
@@ -480,13 +483,22 @@ export function TestCaseTable({
                 <TableRow className="border-border/30 hover:bg-transparent">
                   <TableCell colSpan={tableColSpan} className="h-44 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <FileSpreadsheet className="h-9 w-9 opacity-25" />
+                      {hasActiveFilters ? <Search className="h-9 w-9 opacity-25" /> : <FileSpreadsheet className="h-9 w-9 opacity-25" />}
                       <p className="text-sm font-bold uppercase tracking-wider">
-                        {selectedProject ? 'Belum ada test case' : 'Pilih project dulu'}
+                        {!selectedProject ? 'Pilih project dulu' : hasActiveFilters ? 'Tidak ada hasil' : 'Belum ada test case'}
                       </p>
                       <p className="max-w-md text-[11px] font-semibold opacity-65">
-                        {selectedProject ? 'Klik Add Test Case atau import Excel untuk mengisi daftar test case.' : 'Pilih project dari sidebar untuk melihat data.'}
+                        {!selectedProject
+                          ? 'Pilih project dari sidebar untuk melihat data.'
+                          : hasActiveFilters
+                            ? 'Tidak ada test case yang cocok dengan pencarian atau filter aktif.'
+                            : 'Klik Add Test Case atau import Excel untuk mengisi daftar test case.'}
                       </p>
+                      {selectedProject && hasActiveFilters && (
+                        <Button variant="outline" size="sm" onClick={resetFilters} className="mt-1 h-8 rounded-lg gap-1.5 text-xs font-semibold">
+                          <X className="h-3.5 w-3.5" /> Reset filter
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -497,8 +509,17 @@ export function TestCaseTable({
                   return (
                   <TableRow
                     key={tc.id}
-                    className="group border-border/30 hover:bg-secondary/40 transition-colors animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
+                    className={cn(
+                      'group cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300',
+                      selectedIds.has(tc.id) && 'bg-primary/[0.06] hover:bg-primary/10'
+                    )}
                     style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                    title="Klik untuk melihat detail"
+                    onClick={(e) => {
+                      // Ignore clicks on interactive controls inside the row.
+                      if ((e.target as HTMLElement).closest('button, a, input, select, [role="checkbox"], [role="combobox"], [role="menu"]')) return;
+                      openViewDialog(tc);
+                    }}
                   >
                     <TableCell className="pl-4">
                       <Checkbox

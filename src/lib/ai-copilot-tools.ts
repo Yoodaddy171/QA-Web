@@ -565,6 +565,8 @@ export async function searchTestCases(projectId: string, query: string, filters?
       subMenu: true,
       testType: true,
       testAction: true,
+      steps: true,
+      expectedResult: true,
       status: true,
       progress: true,
       priority: true,
@@ -581,6 +583,8 @@ export async function searchTestCases(projectId: string, query: string, filters?
     data: rows.map(row => ({
       ...row,
       testAction: compact(row.testAction, 180),
+      steps: compact(row.steps, 500),
+      expectedResult: compact(row.expectedResult, 350),
     })),
     citations: rows.map(row => ({
       id: row.id,
@@ -615,10 +619,10 @@ export async function getTestCaseDetail(projectId: string, idOrVisualId: string)
       status: row.status,
       priority: row.priority,
       progress: row.progress,
-      testAction: compact(row.testAction, 260),
-      steps: compact(row.steps, 600),
-      expectedResult: compact(row.expectedResult, 420),
-      actualResult: compact(row.actualResult, 260),
+      testAction: compact(row.testAction, 320),
+      steps: compact(row.steps, 1000),
+      expectedResult: compact(row.expectedResult, 700),
+      actualResult: compact(row.actualResult, 500),
       remarks: compact(row.remarks, 260),
       module: row.module ? { id: row.module.id, name: row.module.name } : null,
       stepLogs: compact(row.stepLogs, 700),
@@ -1733,9 +1737,11 @@ export async function runCopilotTools(input: {
   await pushTool('getProjectOverview');
   await pushTool('searchProjectKnowledge');
 
-  if (selectedTestCaseId && questionNeedsSelectedContext(question)) {
+  if (selectedTestCaseId) {
     await pushTool('getTestCaseDetail');
-    await pushTool('getDevLogSummary');
+    if (questionNeedsSelectedContext(question)) {
+      await pushTool('getDevLogSummary');
+    }
   }
 
   for (const visualId of requestedIds.slice(0, 3)) {
@@ -1839,18 +1845,18 @@ function compactToolData(tool: CopilotToolResult) {
 
   if (tool.name === 'searchTestCases' && Array.isArray(data)) {
     return formatRows(data, (row: any) => (
-      `${row.testCaseId}|${compactValue(row.module?.name || row.page, 28)}|${compactValue(row.subMenu, 24)}|${row.testType}|${row.status}|${row.priority}|${compactValue(row.testAction, 120)}`
+      `${row.testCaseId}|${compactValue(row.module?.name || row.page, 28)}|${compactValue(row.subMenu, 24)}|${row.testType}|${row.status}|${row.priority}|action:${compactValue(row.testAction, 160)}|steps:${compactValue(row.steps, 220)}|expected:${compactValue(row.expectedResult, 180)}`
     ));
   }
 
   if (tool.name === 'getTestCaseDetail' && data) {
     return [
       `id|${data.testCaseId}|${compactValue(data.module?.name || data.page, 32)}|${compactValue(data.subMenu, 32)}|${data.testType}|${data.status}|${data.priority}|progress:${data.progress ?? '-'}`,
-      `action|${compactValue(data.testAction, 180)}`,
-      `steps|${compactValue(data.steps, 220)}`,
-      `expected|${compactValue(data.expectedResult, 180)}`,
-      data.actualResult ? `actual|${compactValue(data.actualResult, 140)}` : '',
-      data.stepLogs ? `stepLogs|${compactValue(data.stepLogs, 220)}` : '',
+      `action|${compactValue(data.testAction, 320)}`,
+      `steps|${compactValue(data.steps, 1000)}`,
+      `expected|${compactValue(data.expectedResult, 700)}`,
+      data.actualResult ? `actual|${compactValue(data.actualResult, 500)}` : '',
+      data.stepLogs ? `stepLogs|${compactValue(data.stepLogs, 700)}` : '',
     ].filter(Boolean).join('\n');
   }
 

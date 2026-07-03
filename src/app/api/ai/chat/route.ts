@@ -4,7 +4,7 @@ import Groq from 'groq-sdk';
 
 export const maxDuration = 60;
 
-const AI_MODEL = process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const AI_MODEL = process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 const MAX_OUTPUT_TOKENS = 1600;
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_HISTORY_CHARS = 3000;
@@ -1355,13 +1355,17 @@ ${modules.map(m => `- ${m.name}: ${m.id}`).join('\n')}
 STRICT DATA RULES:
 - Never hallucinate Testcase IDs. Use ONLY the provided IDs above when creating new drafts.
 - Refer to existing IDs (e.g., A-001) only if they appear in the PROJECT CONTEXT.
+- Every number you state (counts, totals, percentages, per-status/per-module breakdowns) must be copied or computed ONLY from PROJECT CONTEXT. Never estimate or round-trip numbers from memory.
+- Quote testcase IDs, module names, page names, and sub-menu names VERBATIM from PROJECT CONTEXT. Do not paraphrase, translate, or "correct" them.
+- If the user asks about a specific module/sub-menu/testcase that does not appear in PROJECT CONTEXT, say explicitly that it was not found in the data — do not answer about the closest similar item without labeling it as a different item.
 - Do not invent project features, payment methods, screens, integrations, or bugs. If the context is insufficient, compare testing strategies and label any possible scenario explicitly as a hypothesis that needs confirmation.
 - If asked to create after a coverage answer, create drafts only from "Actionable QA tasks eligible for testcase drafts".
 - When you don't know something, say so honestly. Don't make up data.`;
 
     const completion = await getGroq().chat.completions.create({
       model: AI_MODEL,
-      temperature: 0.55,
+      // Low temperature: answers must stay grounded in PROJECT CONTEXT facts.
+      temperature: 0.2,
       max_tokens: MAX_OUTPUT_TOKENS,
       response_format: { type: 'json_object' },
       messages: [

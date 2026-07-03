@@ -72,7 +72,7 @@ ${raw}`,
 
 async function callGroq(request: AIJsonRequest) {
   if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY belum dikonfigurasi.');
-  const model = request.models?.groq || request.model || process.env.GROQ_COPILOT_MODEL || process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  const model = request.models?.groq || request.model || process.env.GROQ_COPILOT_MODEL || process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   const completion = await groq.chat.completions.create({
     model,

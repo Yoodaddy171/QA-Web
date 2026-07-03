@@ -201,6 +201,16 @@ export function DashboardPanel({
     setter(isAtBottom);
   };
 
+  const statusDistribution = stats ? [
+    { name: 'Done', value: stats.doneCount, color: '#10b981' },
+    { name: 'Active', value: stats.inProgressCount, color: '#f59e0b' },
+    { name: 'Blocked', value: stats.blockedCount, color: '#ec4899' },
+    { name: 'Failed', value: stats.failedCount, color: '#ef4444' },
+    { name: 'Retest', value: stats.readyToRetestCount, color: '#06b6d4' },
+    { name: 'TBA', value: stats.tbaCount || 0, color: '#8b5cf6' },
+    { name: 'Backlog', value: stats.notDoneCount, color: '#64748b' },
+  ].filter(item => item.value > 0) : [];
+
   if (!stats) return (
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border bg-card elevation-1">
         <div className="text-center">
@@ -392,15 +402,7 @@ export function DashboardPanel({
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={[
-                          { name: 'Done', value: stats.doneCount, color: '#10b981' },
-                          { name: 'Active', value: stats.inProgressCount, color: '#f59e0b' },
-                          { name: 'Blocked', value: stats.blockedCount, color: '#ec4899' },
-                          { name: 'Failed', value: stats.failedCount, color: '#ef4444' },
-                          { name: 'Retest', value: stats.readyToRetestCount, color: '#06b6d4' },
-                          { name: 'TBA', value: stats.tbaCount || 0, color: '#8b5cf6' },
-                          { name: 'Backlog', value: stats.notDoneCount, color: '#64748b' },
-                        ].filter(item => item.value > 0)}
+                        data={statusDistribution}
                         cx="50%"
                         cy="50%"
                         innerRadius={55}
@@ -408,15 +410,7 @@ export function DashboardPanel({
                         paddingAngle={3}
                         dataKey="value"
                       >
-                        {[
-                          { name: 'Done', value: stats.doneCount, color: '#10b981' },
-                          { name: 'Active', value: stats.inProgressCount, color: '#f59e0b' },
-                          { name: 'Blocked', value: stats.blockedCount, color: '#ec4899' },
-                          { name: 'Failed', value: stats.failedCount, color: '#ef4444' },
-                          { name: 'Retest', value: stats.readyToRetestCount, color: '#06b6d4' },
-                          { name: 'TBA', value: stats.tbaCount || 0, color: '#8b5cf6' },
-                          { name: 'Backlog', value: stats.notDoneCount, color: '#64748b' },
-                        ].filter(item => item.value > 0).map((entry, index) => (
+                        {statusDistribution.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -445,15 +439,7 @@ export function DashboardPanel({
                 </div>
                 {/* Custom Legend */}
                 <div className="flex flex-col gap-1.5 min-w-[120px] text-[11px] font-semibold text-muted-foreground">
-                  {[
-                    { name: 'Done', value: stats.doneCount, color: '#10b981' },
-                    { name: 'Active', value: stats.inProgressCount, color: '#f59e0b' },
-                    { name: 'Blocked', value: stats.blockedCount, color: '#ec4899' },
-                    { name: 'Failed', value: stats.failedCount, color: '#ef4444' },
-                    { name: 'Retest', value: stats.readyToRetestCount, color: '#06b6d4' },
-                    { name: 'TBA', value: stats.tbaCount || 0, color: '#8b5cf6' },
-                    { name: 'Backlog', value: stats.notDoneCount, color: '#64748b' },
-                  ].filter(item => item.value > 0).map((entry, idx) => (
+                  {statusDistribution.map((entry, idx) => (
                     <div key={idx} className="flex items-center justify-between gap-3 py-0.5 border-b border-border/10 last:border-0">
                       <span className="flex items-center gap-1.5 text-foreground/80">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />

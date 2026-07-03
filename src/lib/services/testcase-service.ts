@@ -41,7 +41,7 @@ export interface UpdateTestCaseInput {
 export async function createTestCaseRecord(input: CreateTestCaseInput) {
   return db.testCase.create({
     data: input,
-    include: { project: true, module: true },
+    include: { module: { select: { id: true, name: true } } },
   });
 }
 
@@ -50,7 +50,7 @@ export async function updateTestCaseRecordWithBugFixSync(input: UpdateTestCaseIn
     const testCase = await tx.testCase.update({
       where: { id: input.id },
       data: buildTestCaseUpdateData(input),
-      include: { project: true, module: true },
+      include: { module: { select: { id: true, name: true } } },
     });
 
     await syncBugFixForTestCaseStatus({

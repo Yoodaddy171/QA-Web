@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AppShell } from '@/components/AppShell';
 import type { BugFixItem } from '@/components/BugFixPanel';
 import type { TestCaseDraftInput } from '@/components/TestCaseDialog';
-import { FloatingAIChat, type TestCaseDraft } from '@/components/FloatingAIChat';
+import type { TestCaseDraft } from '@/components/FloatingAIChat';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAiTestcaseFlows } from '@/hooks/use-ai-testcase-flows';
 import { useAutomationDevlog } from '@/hooks/use-automation-devlog';
@@ -45,6 +45,7 @@ const AIRefineDialog = dynamic(() => import('@/components/AIRefineDialog').then(
 const BulkStatusDialog = dynamic(() => import('@/components/BulkStatusDialog').then(module => module.BulkStatusDialog));
 const ImportExcelDialog = dynamic(() => import('@/components/ImportExcelDialog').then(module => module.ImportExcelDialog));
 const AIGenerateDialog = dynamic(() => import('@/components/AIGenerateDialog').then(module => module.AIGenerateDialog));
+const FloatingAIChat = dynamic(() => import('@/components/FloatingAIChat').then(module => module.FloatingAIChat), { ssr: false });
 
 type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
 

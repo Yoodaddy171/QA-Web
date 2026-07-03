@@ -23,9 +23,20 @@ const testCaseSelect = {
   moduleId: true,
   createdAt: true,
   updatedAt: true,
-  project: true,
-  module: true,
+  module: { select: { id: true, name: true } },
 } as const;
+
+type LegacyFileMeta = {
+  id: string;
+  kind: string;
+  count: number;
+  lastRunAt: string | null;
+  hasManualCapture: boolean;
+  hasAutomationRun: boolean;
+} | null;
+
+// Cache parsed JSONL metadata per file so repeat requests skip the full-file scan.
+const legacyMetaCache = new Map<string, { mtimeMs: number; size: number; meta: LegacyFileMeta }>();
 
 async function legacyHistory(projectId: string) {
   const logsDir = path.join(process.cwd(), 'mini-services', 'logs');
@@ -39,14 +50,23 @@ async function legacyHistory(projectId: string) {
   const metadata = await Promise.all(files.map(async name => {
     const match = name.match(/^(.+?)(?:\.(current|previous))?\.jsonl$/);
     if (!match) return null;
-    const content = await fs.readFile(path.join(logsDir, name), 'utf8');
+    const filePath = path.join(logsDir, name);
+    let stat;
+    try {
+      stat = await fs.stat(filePath);
+    } catch {
+      return null;
+    }
+    const cached = legacyMetaCache.get(name);
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached.meta;
+
+    const content = await fs.readFile(filePath, 'utf8');
     const lines = content.trim().split('\n').filter(Boolean);
-    if (!lines.length) return null;
     const parsed = lines.flatMap(line => {
       try { return [JSON.parse(line)]; } catch { return []; }
     });
     const last = parsed.at(-1);
-    return {
+    const meta: LegacyFileMeta = parsed.length === 0 ? null : {
       id: match[1],
       kind: match[2] || 'legacy',
       count: parsed.length,
@@ -54,6 +74,8 @@ async function legacyHistory(projectId: string) {
       hasManualCapture: parsed.some(log => String(log.source || '').startsWith('manual-')),
       hasAutomationRun: parsed.some(log => !String(log.source || '').startsWith('manual-')),
     };
+    legacyMetaCache.set(name, { mtimeMs: stat.mtimeMs, size: stat.size, meta });
+    return meta;
   }));
   const byId = new Map<string, NonNullable<(typeof metadata)[number]>>();
   for (const item of metadata) {
@@ -65,7 +87,7 @@ async function legacyHistory(projectId: string) {
   if (!ids.length) return [];
   const [testCases, bugFixItems] = await Promise.all([
     db.testCase.findMany({ where: { id: { in: ids }, projectId }, select: testCaseSelect }),
-    db.bugFix.findMany({ where: { id: { in: ids }, projectId }, include: { project: true, module: true } }),
+    db.bugFix.findMany({ where: { id: { in: ids }, projectId }, include: { module: { select: { id: true, name: true } } } }),
   ]);
   const automationFor = (id: string) => {
     const meta = byId.get(id)!;
@@ -135,7 +157,7 @@ export async function GET(req: NextRequest) {
       db.testCase.findMany({ where: { id: { in: ids }, projectId }, select: testCaseSelect }),
       db.bugFix.findMany({
         where: { id: { in: ids }, projectId },
-        include: { project: true, module: true },
+        include: { module: { select: { id: true, name: true } } },
       }),
     ]);
     const countById = new Map(runCounts.map(row => [row.testCaseId, row._count._all]));

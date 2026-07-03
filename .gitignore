@@ -54,9 +54,11 @@ server.log
 db/*.db
 db/*.db-journal
 db/*.db-wal
+db/*.db-shm
 prisma/db/*.db
 prisma/db/*.db-journal
 prisma/db/*.db-wal
+prisma/db/*.db-shm
 /data-migration/
 
 # Transient data

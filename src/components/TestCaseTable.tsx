@@ -481,10 +481,10 @@ export function TestCaseTable({
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <FileSpreadsheet className="h-9 w-9 opacity-25" />
                       <p className="text-sm font-bold uppercase tracking-widest">
-                        {selectedProject ? 'Empty Test Vault' : 'Selection Required'}
+                        {selectedProject ? 'Belum ada test case' : 'Pilih project dulu'}
                       </p>
                       <p className="max-w-md text-[11px] font-semibold opacity-65">
-                        {selectedProject ? 'Click Add Test Case or import Excel to populate your testing matrix.' : 'Select a project from the top console to view data.'}
+                        {selectedProject ? 'Klik Add Test Case atau import Excel untuk mengisi daftar test case.' : 'Pilih project dari sidebar untuk melihat data.'}
                       </p>
                     </div>
                   </TableCell>
@@ -629,8 +629,8 @@ export function TestCaseTable({
       {total > 0 && (
         <div className="flex flex-col gap-3 rounded-lg border border-white/5 bg-secondary/50 px-3 py-2 shadow-xl backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-              Vault Page {page} of {totalPages} <span className="mx-2 opacity-20">|</span> {total} Total Units
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground tabular-nums">
+              Page {page} of {totalPages} <span className="mx-2 opacity-20">|</span> {total} test cases
             </p>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Rows</span>

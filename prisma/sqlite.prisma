@@ -29,6 +29,8 @@ model ProjectKnowledge {
   content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([projectId])
 }
 
 model Module {
@@ -40,6 +42,8 @@ model Module {
   updatedAt   DateTime    @updatedAt
   testCases   TestCase[]
   bugFixItems BugFix[]
+
+  @@index([projectId])
 }
 
 model TestCase {
@@ -65,6 +69,12 @@ model TestCase {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   bugFixItems    BugFix[]
+
+  @@index([projectId, testCaseId])
+  @@index([projectId, status])
+  @@index([projectId, moduleId])
+  @@index([projectId, page, subMenu])
+  @@index([projectId, updatedAt])
 }
 
 model BugFix {
@@ -92,4 +102,8 @@ model BugFix {
   project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   module           Module?   @relation(fields: [moduleId], references: [id], onDelete: SetNull)
   sourceTestCase   TestCase  @relation(fields: [sourceTestCaseId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
+  @@index([projectId, moduleId])
+  @@index([sourceTestCaseId])
 }

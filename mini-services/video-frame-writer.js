@@ -37,8 +37,22 @@ function createVideoFrameWriter(stream, onFrameWritten) {
   };
 }
 
-function getVideoFrameCopies(elapsedMs, fps) {
-  return Math.max(1, Math.round(Math.max(0, elapsedMs) * fps / 1000));
+// Accumulator model: copies are derived from the GLOBAL elapsed time versus
+// frames already queued, so per-interval rounding errors can never accumulate.
+// The video timeline stays locked to the session wall clock (max drift: 1/2 frame).
+function getVideoFrameCopies(totalElapsedMs, fps, framesAlreadyQueued = 0) {
+  const targetFrames = Math.round(Math.max(0, totalElapsedMs) * fps / 1000);
+  if (framesAlreadyQueued <= 0) return Math.max(1, targetFrames);
+  return Math.max(0, targetFrames - framesAlreadyQueued);
 }
 
-module.exports = { createVideoFrameWriter, getVideoFrameCopies };
+function markInterruptedVideoFailed(metadata, reason = 'Video finalization was interrupted.') {
+  if (!['starting', 'recording', 'finalizing'].includes(metadata?.video?.status)) return null;
+  return {
+    ...metadata,
+    video: { ...metadata.video, status: 'failed', processingPercent: undefined },
+    warnings: Array.from(new Set([...(metadata.warnings || []), reason])),
+  };
+}
+
+module.exports = { createVideoFrameWriter, getVideoFrameCopies, markInterruptedVideoFailed };

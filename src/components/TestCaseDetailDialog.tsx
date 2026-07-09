@@ -296,7 +296,10 @@ export function TestCaseDetailDialog({
   const manualRecordingTargetUrl = manualRecording?.targetUrl || 'Manual capture target';
   const manualRecordingVideoStatus = manualRecording?.video?.status;
   const isVideoFinalizing = isProcessingManualRecording || ['starting', 'recording', 'finalizing'].includes(manualRecordingVideoStatus || '');
-  const recordingVideoKey = `${manualRecording?.sessionId ?? 'none'}:${manualRecording?.video?.url ?? 'none'}`;
+  const videoProcessingPercent = typeof manualRecording?.video?.processingPercent === 'number'
+    ? Math.max(0, Math.min(100, manualRecording.video.processingPercent))
+    : null;
+  const recordingVideoKey = `${manualRecording?.sessionId ?? 'none'}:${manualRecording?.video?.url ?? 'none'}:${manualRecordingVideoStatus ?? 'none'}`;
   const recordingTimelineBounds = useMemo(() => {
     const values = liveLogs
       .map((log) => normalizedLogRelativeMs(log.relativeMs))
@@ -1685,8 +1688,19 @@ export function TestCaseDetailDialog({
                                 {isVideoLoading ? (
                                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 text-white">
                                     <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider">Memproses video</span>
-                                    <span className="text-[10px] text-white/55">Menyiapkan durasi dan preview...</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider">
+                                      Memproses video{videoProcessingPercent !== null && isVideoFinalizing ? ` — ${videoProcessingPercent}%` : ''}
+                                    </span>
+                                    {videoProcessingPercent !== null && isVideoFinalizing ? (
+                                      <div className="h-1.5 w-44 overflow-hidden rounded-full bg-white/15">
+                                        <div
+                                          className="h-full rounded-full bg-cyan-400 transition-[width] duration-300 motion-reduce:transition-none"
+                                          style={{ width: `${videoProcessingPercent}%` }}
+                                        />
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] text-white/55">Menyiapkan durasi dan preview...</span>
+                                    )}
                                   </div>
                                 ) : (
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-300 group-hover:bg-black/40 group-hover:opacity-100">

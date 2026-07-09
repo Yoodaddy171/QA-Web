@@ -103,6 +103,7 @@ export function SettingsPanel({
   const [geminiStatus, setGeminiStatus] = useState('Not configured');
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState('');
   const [showAiKeys, setShowAiKeys] = useState(false);
+  const [aiKeysLoading, setAiKeysLoading] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
   const [aiMessage, setAiMessage] = useState('');
 
@@ -138,6 +139,30 @@ export function SettingsPanel({
       setAiMessage(error instanceof Error ? error.message : 'Gagal menyimpan konfigurasi AI.');
     } finally {
       setAiSaving(false);
+    }
+  };
+
+  const toggleAiKeys = async () => {
+    if (showAiKeys) {
+      setShowAiKeys(false);
+      setGroqApiKey('');
+      setGeminiApiKey('');
+      return;
+    }
+
+    setAiKeysLoading(true);
+    setAiMessage('');
+    try {
+      const response = await fetch('/api/settings/ai?reveal=1', { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Gagal menampilkan API key.');
+      setGroqApiKey(data.groqApiKey || '');
+      setGeminiApiKey(data.geminiApiKey || '');
+      setShowAiKeys(true);
+    } catch (error) {
+      setAiMessage(error instanceof Error ? error.message : 'Gagal menampilkan API key.');
+    } finally {
+      setAiKeysLoading(false);
     }
   };
 
@@ -270,8 +295,8 @@ export function SettingsPanel({
               <Bot className="h-5 w-5 text-primary" />
               AI Configuration
             </CardTitle>
-            <Button type="button" variant="ghost" size="icon" onClick={() => setShowAiKeys(value => !value)} title={showAiKeys ? 'Sembunyikan API key' : 'Tampilkan API key'}>
-              {showAiKeys ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <Button type="button" variant="ghost" size="icon" onClick={toggleAiKeys} disabled={aiKeysLoading} aria-label={showAiKeys ? 'Sembunyikan API key' : 'Tampilkan API key'} title={showAiKeys ? 'Sembunyikan API key' : 'Tampilkan API key'}>
+              {aiKeysLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : showAiKeys ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </div>
         </CardHeader>

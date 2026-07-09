@@ -1,17 +1,29 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
-import { maskSecret, updateEnvText } from '@/lib/ai-settings';
+import { isLocalHostname, maskSecret, updateEnvText } from '@/lib/ai-settings';
 
 const PROVIDERS = new Set(['auto', 'groq', 'gemini', 'ollama']);
 const ENV_PATH = path.join(process.cwd(), '.env');
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const reveal = req.nextUrl.searchParams.get('reveal') === '1';
+  const requestHostname = (req.headers.get('host') || '').replace(/:\d+$/, '').replace(/^\[(.*)\]$/, '$1');
+  if (reveal && !isLocalHostname(requestHostname)) {
+    return NextResponse.json({ error: 'API key hanya dapat ditampilkan dari localhost.' }, { status: 403 });
+  }
+
   return NextResponse.json({
     provider: process.env.AI_PROVIDER || 'auto',
     groq: maskSecret(process.env.GROQ_API_KEY),
     gemini: maskSecret(process.env.GEMINI_API_KEY),
     ollamaBaseUrl: process.env.OLLAMA_BASE_URL || '',
+    ...(reveal ? {
+      groqApiKey: process.env.GROQ_API_KEY || '',
+      geminiApiKey: process.env.GEMINI_API_KEY || '',
+    } : {}),
+  }, {
+    headers: { 'Cache-Control': 'no-store' },
   });
 }
 

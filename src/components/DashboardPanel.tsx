@@ -13,6 +13,7 @@ import { AnimatedNumber } from '@/components/ui/animated-number';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfettiBurst } from '@/components/ui/confetti-burst';
 import { Progress } from '@/components/ui/progress';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -179,35 +180,6 @@ const getAgeClass = (days: number) => {
   return 'border-border bg-muted text-muted-foreground';
 };
 
-const CONFETTI_COLORS = ['#818cf8', '#34d399', '#fbbf24', '#f472b6', '#38bdf8'];
-
-// One-shot confetti burst shown when readiness hits 100%.
-function CelebrationBurst() {
-  return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
-      {Array.from({ length: 18 }, (_, i) => {
-        const angle = (i / 18) * Math.PI * 2;
-        return (
-          <motion.span
-            key={i}
-            className="absolute h-2 w-2 rounded-sm"
-            style={{ backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length] }}
-            initial={{ x: 0, y: 0, scale: 1, opacity: 1, rotate: 0 }}
-            animate={{
-              x: Math.cos(angle) * (70 + (i % 3) * 24),
-              y: Math.sin(angle) * (70 + (i % 3) * 24),
-              scale: 0,
-              opacity: 0,
-              rotate: 180 + i * 24,
-            }}
-            transition={{ duration: 0.9 + (i % 4) * 0.12, ease: 'easeOut' }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 export function DashboardPanel({
   stats,
   modules,
@@ -278,8 +250,8 @@ export function DashboardPanel({
           <CardContent className="p-6 sm:p-8">
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-10">
               {/* Animated readiness ring */}
-              <div className="relative h-36 w-36 shrink-0">
-                {stats.overallProgress === 100 && <CelebrationBurst />}
+              <div className="relative h-36 w-36 shrink-0 transition-transform duration-300 hover:scale-105 motion-reduce:hover:transform-none">
+                {stats.overallProgress === 100 && <ConfettiBurst radius={72} />}
                 <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
                   <circle cx="60" cy="60" r="52" fill="none" strokeWidth="10" className="stroke-secondary" />
                   <motion.circle
@@ -348,6 +320,7 @@ export function DashboardPanel({
                     show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 320, damping: 24 } },
                   }}
                   whileHover={{ y: -3 }}
+                  whileTap={{ scale: 0.97, rotate: -1 }}
                 >
                   <Card variant="glass" padding="none" className={cn('group h-full border-l-4 transition-colors duration-300', border)}>
                     <CardContent className="p-4">

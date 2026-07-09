@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { maskSecret, updateEnvText } from './ai-settings';
+import { isLocalHostname, maskSecret, updateEnvText } from './ai-settings';
 
 describe('AI settings', () => {
   it('masks secrets and preserves unrelated environment values', () => {
@@ -9,5 +9,11 @@ describe('AI settings', () => {
       GROQ_API_KEY: 'new-key',
       AI_PROVIDER: 'groq',
     })).toBe('DATABASE_URL="file:test.db"\nGROQ_API_KEY="new-key"\nAI_PROVIDER="groq"\n');
+  });
+
+  it('only allows API key reveal on loopback hosts', () => {
+    expect(isLocalHostname('localhost')).toBe(true);
+    expect(isLocalHostname('127.0.0.1')).toBe(true);
+    expect(isLocalHostname('example.com')).toBe(false);
   });
 });

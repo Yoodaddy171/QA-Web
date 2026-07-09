@@ -3,7 +3,7 @@ setlocal
 
 cd /d "%~dp0"
 
-echo Starting QADesk local services...
+echo Starting QADesk development services...
 echo.
 echo Web app      : http://localhost:3000
 echo Relay server : http://127.0.0.1:3001
@@ -23,7 +23,7 @@ if not exist "mini-services\ws-server.js" (
 )
 
 start "QADesk Relay - 3001" cmd /k "cd /d ""%~dp0"" && node mini-services\ws-server.js"
-start "QADesk Web - 3000" cmd /k "cd /d ""%~dp0"" && npm run dev"
+start "QADesk Web Dev - 3000" cmd /k "cd /d ""%~dp0"" && npm run dev"
 
 echo Services are starting in separate windows.
 echo Keep both windows open while using automation/manual capture.

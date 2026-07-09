@@ -11,7 +11,7 @@ const {
   validateAutomationEvent,
 } = require('./automation-event');
 const { connectDevlogStore } = require('./devlog-store');
-const { createVideoFrameWriter, getVideoFrameCopies } = require('./video-frame-writer');
+const { createVideoFrameWriter, getVideoFrameCopies, markInterruptedVideoFailed } = require('./video-frame-writer');
 let sharp = null;
 try {
   sharp = require('sharp');
@@ -227,15 +227,24 @@ function getRelativeMsFromWallTime(session, wallTimeMs) {
   return Math.max(0, Math.round(wallTimeMs - startedAtMs));
 }
 
-function getRelativeMsFromCdpTimestamp(session, cdpTimestampSeconds) {
-  const cdpTimestampMs = Number(cdpTimestampSeconds) * 1000;
+function normalizeCdpTimestampMs(value) {
+  const timestamp = Number(value);
+  if (!Number.isFinite(timestamp)) return NaN;
+  return timestamp > 100000000000 ? timestamp : timestamp * 1000;
+}
+
+function getRelativeMsFromCdpTimestamp(session, cdpTimestamp) {
+  const rawTimestamp = Number(cdpTimestamp);
+  const cdpTimestampMs = normalizeCdpTimestampMs(cdpTimestamp);
+  if (rawTimestamp > 100000000000) return getRelativeMsFromWallTime(session, cdpTimestampMs);
   const offsetMs = Number(session?.cdpTimeOffsetMs);
   if (!Number.isFinite(cdpTimestampMs) || !Number.isFinite(offsetMs)) return getRelativeMs(session);
   return getRelativeMsFromWallTime(session, cdpTimestampMs + offsetMs);
 }
 
-function syncCdpClock(session, cdpTimestampSeconds) {
-  const cdpTimestampMs = Number(cdpTimestampSeconds) * 1000;
+function syncCdpClock(session, cdpTimestamp) {
+  if (Number(cdpTimestamp) > 100000000000) return;
+  const cdpTimestampMs = normalizeCdpTimestampMs(cdpTimestamp);
   if (!Number.isFinite(cdpTimestampMs) || session.cdpTimeOffsetMs) return;
   session.cdpTimeOffsetMs = Date.now() - cdpTimestampMs;
 }
@@ -630,9 +639,19 @@ async function drawClickMarkers(imageBuffer, markers) {
   }
 }
 
-function writeRecordingMetadata(recording, notify = false) {
-  if (!recording) return;
-  const payload = {
+// Encode progress: encoded frames (from ffmpeg -progress) vs total frames queued.
+// Caps at 99 until ffmpeg closes the file; 100 only when status is ready.
+function computeProcessingPercent(recording) {
+  if (!recording.video) return undefined;
+  if (recording.video.status === 'ready') return 100;
+  if (recording.video.status === 'failed') return undefined;
+  const total = Math.max(1, Number(recording.videoFramesQueued) || 0);
+  const encoded = Math.min(total, Number(recording.videoEncodedFrames) || 0);
+  return Math.min(99, Math.floor((encoded / total) * 100));
+}
+
+function buildRecordingPayload(recording) {
+  return {
     recordingId: recording.recordingId,
     runId: recording.runId,
     mode: recording.mode || 'frame',
@@ -648,6 +667,7 @@ function writeRecordingMetadata(recording, notify = false) {
     status: recording.status,
     video: recording.video ? {
       ...recording.video,
+      processingPercent: computeProcessingPercent(recording),
       url: recording.video.file ? buildRecordingVideoUrl(recording.testCaseId, recording.sessionId, recording.video.file) : undefined,
     } : undefined,
     warnings: recording.warnings || [],
@@ -656,6 +676,11 @@ function writeRecordingMetadata(recording, notify = false) {
       url: buildRecordingFrameUrl(recording.testCaseId, recording.sessionId, frame.file),
     })),
   };
+}
+
+function writeRecordingMetadata(recording, notify = false) {
+  if (!recording) return;
+  const payload = buildRecordingPayload(recording);
 
   try {
     fs.writeFileSync(recording.paths.metadata, JSON.stringify(payload, null, 2));
@@ -692,13 +717,13 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
   const keyframeIntervalMs = getNumberEnv('QA_KEYFRAME_INTERVAL_MS', 2000, 500, 10000);
   const videoWidth = getNumberEnv('QA_VIDEO_WIDTH', 1280, 640, 3840);
   const videoHeight = getNumberEnv('QA_VIDEO_HEIGHT', 720, 360, 2160);
-  const videoFps = getNumberEnv('QA_VIDEO_FPS', 12, 1, 30);
+  const videoFps = getNumberEnv('QA_VIDEO_FPS', 30, 10, 60);
   const videoBitrateMbps = getNumberEnv('QA_VIDEO_BITRATE_MBPS', 4, 1, 20);
   const videoMaxDurationMs = getNumberEnv('QA_VIDEO_MAX_DURATION_MS', 300000, 10000, 3600000);
   const configuredQuality = Number(process.env.QA_RECORDING_JPEG_QUALITY);
   const jpegQuality = Number.isFinite(configuredQuality)
     ? Math.min(80, Math.max(35, configuredQuality))
-    : 52;
+    : 40;
   const paths = getRecordingPaths(session.testCaseId, session.sessionId);
   fs.mkdirSync(paths.framesDir, { recursive: true });
   fs.mkdirSync(paths.videoDir, { recursive: true });
@@ -727,7 +752,13 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
     ffmpeg: null,
     videoFrameIndex: 0,
     videoMaxDurationTimer: null,
+    videoFinalizeTimer: null,
     videoWriter: null,
+    videoFramesQueued: 0,
+    videoEncodedFrames: 0,
+    lastProgressBroadcastAt: 0,
+    screencastActive: false,
+    stopScreencast: null,
     warnings: [],
     capturing: false,
     pendingCapture: false,
@@ -742,6 +773,7 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
 
   const ensureKeyframeFallback = () => {
     if (recording.status !== 'recording') return;
+    recording.stopScreencast?.();
     if (recording.videoTimer) {
       clearInterval(recording.videoTimer);
       recording.videoTimer = null;
@@ -784,16 +816,38 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
         '-cpu-used', '6',
         '-threads', '2',
         '-an',
+        '-nostats',
+        '-progress', 'pipe:1',
         filePath,
       ];
       const ffmpegBinary = process.env.FFMPEG_PATH || bundledFfmpegPath || 'ffmpeg';
-      const ffmpeg = spawn(ffmpegBinary, args, { stdio: ['pipe', 'ignore', 'pipe'] });
+      const ffmpeg = spawn(ffmpegBinary, args, { stdio: ['pipe', 'pipe', 'pipe'] });
       recording.ffmpeg = ffmpeg;
       recording.videoWriter = createVideoFrameWriter(ffmpeg.stdin, () => {
         recording.videoFrameIndex += 1;
         recording.video.durationMs = getEncodedVideoDurationMs(recording);
       });
       recording.video.status = 'recording';
+      // Parse ffmpeg -progress output (key=value blocks) for encoded frame count,
+      // and broadcast percentage updates while the video is being finalized.
+      let progressBuffer = '';
+      ffmpeg.stdout.on('data', data => {
+        progressBuffer += data.toString();
+        const lines = progressBuffer.split('\n');
+        progressBuffer = lines.pop() || '';
+        for (const line of lines) {
+          const match = line.match(/^frame=\s*(\d+)/);
+          if (match) recording.videoEncodedFrames = Number(match[1]);
+        }
+        if (recording.video?.status === 'finalizing' && Date.now() - recording.lastProgressBroadcastAt >= 350) {
+          recording.lastProgressBroadcastAt = Date.now();
+          broadcast({
+            type: 'recording.updated',
+            testCaseId: recording.testCaseId,
+            recording: buildRecordingPayload(recording),
+          });
+        }
+      });
       ffmpeg.stderr.on('data', data => {
         const text = data.toString();
         if (/not recognized|not found|unknown encoder|error/i.test(text)) {
@@ -803,14 +857,18 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
       ffmpeg.on('error', error => {
         recording.video.status = 'failed';
         recording.warnings.push(`Video recorder failed: ${error.message}`);
+        writeRecordingMetadata(recording, true);
         ensureKeyframeFallback();
       });
       ffmpeg.stdin.on('error', error => {
         recording.video.status = 'failed';
         recording.warnings.push(`Video pipe failed: ${error.message}`);
+        writeRecordingMetadata(recording, true);
         ensureKeyframeFallback();
       });
       ffmpeg.on('close', () => {
+        if (recording.videoFinalizeTimer) clearTimeout(recording.videoFinalizeTimer);
+        recording.videoFinalizeTimer = null;
         if (fs.existsSync(filePath)) {
           recording.video.sizeBytes = fs.statSync(filePath).size;
           recording.video.durationMs = getEncodedVideoDurationMs(recording);
@@ -825,6 +883,82 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
       recording.video.status = 'failed';
       recording.warnings.push(`Video recorder failed: ${error.message}`);
       ensureKeyframeFallback();
+    }
+  };
+
+  // Feed one frame into the CFR video timeline. The gap since the last frame
+  // is filled with the PREVIOUS frame so visual changes land at their true
+  // time; the accumulator keeps total frames locked to the session clock.
+  const enqueueVideoFrame = (imageBuffer, relativeMs) => {
+    if (recording.video?.status !== 'recording' || !recording.videoWriter) return;
+    // Safety clamp: the video timeline can never outrun the session wall clock,
+    // whatever clock domain produced relativeMs.
+    const wallElapsedMs = Math.max(0, getRelativeMs(session) - recording.video.startedAtRelativeMs);
+    const totalElapsedMs = Math.min(wallElapsedMs, Math.max(0, relativeMs - recording.video.startedAtRelativeMs));
+    const copies = getVideoFrameCopies(totalElapsedMs, videoFps, recording.videoFramesQueued);
+    if (copies > 0) {
+      if (copies > 1 && recording.lastVideoFrameBuffer && recording.lastVideoFrameBuffer !== imageBuffer) {
+        recording.videoWriter.enqueue(recording.lastVideoFrameBuffer, copies - 1);
+        recording.videoWriter.enqueue(imageBuffer, 1);
+      } else {
+        recording.videoWriter.enqueue(imageBuffer, copies);
+      }
+      recording.videoFramesQueued += copies;
+    }
+    recording.lastVideoFrameRelativeMs = relativeMs;
+    recording.lastVideoFrameBuffer = imageBuffer;
+  };
+
+  // Real ~30fps source: Chrome pushes compositor frames only when content
+  // changes, each with a precise capture timestamp. Falls back to the
+  // captureScreenshot polling loop when screencast is unavailable.
+  const startScreencast = async () => {
+    const onMessage = (data) => {
+      let message;
+      try {
+        message = JSON.parse(data.toString());
+      } catch {
+        return;
+      }
+      if (message.method !== 'Page.screencastFrame') return;
+      const params = message.params || {};
+      cdp.send('Page.screencastFrameAck', { sessionId: params.sessionId }).catch(() => {});
+      if (recording.status !== 'recording') return;
+      try {
+        const imageBuffer = Buffer.from(params.data, 'base64');
+        // Screencast metadata.timestamp is EPOCH-based (TimeSinceEpoch), unlike
+        // Network.* monotonic timestamps. Never feed it to syncCdpClock (it would
+        // poison the monotonic offset) — convert via wall time directly.
+        const metaTimestampMs = normalizeCdpTimestampMs(params.metadata?.timestamp);
+        const relativeMs = Number.isFinite(metaTimestampMs) && metaTimestampMs > 100000000000
+          ? getRelativeMsFromWallTime(session, metaTimestampMs)
+          : getRelativeMs(session);
+        enqueueVideoFrame(imageBuffer, relativeMs);
+      } catch (error) {
+        const warning = `Screencast frame skipped: ${error.message}`;
+        if (!recording.warnings.includes(warning)) recording.warnings.push(warning);
+      }
+    };
+
+    try {
+      cdp.ws.on('message', onMessage);
+      recording.stopScreencast = () => {
+        recording.stopScreencast = null;
+        try { cdp.ws.off('message', onMessage); } catch (_) {}
+        cdp.send('Page.stopScreencast').catch(() => {});
+      };
+      await cdp.send('Page.startScreencast', {
+        format: 'jpeg',
+        quality: jpegQuality,
+        maxWidth: videoWidth,
+        maxHeight: videoHeight,
+        everyNthFrame: 1,
+      });
+      return true;
+    } catch (error) {
+      recording.stopScreencast?.();
+      recording.warnings.push(`Screencast unavailable, using polling capture: ${error.message}`);
+      return false;
     }
   };
 
@@ -890,15 +1024,7 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
         .filter(marker => Math.abs(relativeMs - marker.relativeMs) <= markerWindowMs)
         .slice(-3);
 
-      if (recording.video?.status === 'recording' && recording.videoWriter) {
-        const elapsedSinceLastVideoFrame = recording.lastVideoFrameRelativeMs === null
-          ? Math.max(0, relativeMs - recording.video.startedAtRelativeMs)
-          : Math.max(0, relativeMs - recording.lastVideoFrameRelativeMs);
-        const videoFrameCopies = getVideoFrameCopies(elapsedSinceLastVideoFrame, videoFps);
-        recording.videoWriter.enqueue(imageBuffer, videoFrameCopies);
-        recording.lastVideoFrameRelativeMs = relativeMs;
-        recording.lastVideoFrameBuffer = imageBuffer;
-      }
+      enqueueVideoFrame(imageBuffer, relativeMs);
 
       if (shouldSaveKeyframe(recording, reason)) {
         recording.frameIndex += 1;
@@ -981,8 +1107,24 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
     recording.timer = setInterval(captureFrame, frameIntervalMs);
   } else {
     startVideoWriter();
-    const videoIntervalMs = Math.max(33, Math.round(1000 / videoFps));
-    recording.videoTimer = setInterval(() => captureFrame('video-frame'), videoIntervalMs);
+    if (recording.video?.status === 'recording') {
+      startScreencast().then((screencastActive) => {
+        recording.screencastActive = screencastActive;
+        if (recording.status !== 'recording') return;
+        if (screencastActive) {
+          // Screencast only pushes on content change; this heartbeat keeps the
+          // CFR timeline advancing (with the last frame) while the page is static.
+          recording.videoTimer = setInterval(() => {
+            if (recording.lastVideoFrameBuffer) {
+              enqueueVideoFrame(recording.lastVideoFrameBuffer, getRelativeMs(session));
+            }
+          }, 500);
+        } else {
+          const videoIntervalMs = Math.max(33, Math.round(1000 / videoFps));
+          recording.videoTimer = setInterval(() => captureFrame('video-frame'), videoIntervalMs);
+        }
+      });
+    }
     if (recording.mode === 'hybrid' || recording.video?.status === 'failed') {
       recording.keyframeTimer = setInterval(() => captureFrame('periodic-keyframe'), keyframeIntervalMs);
     }
@@ -1014,16 +1156,31 @@ function stopManualRecorder(recording, stopStatus = 'stopped') {
       || Math.max(0, getRelativeMs({ startedAt: recording.startedAt, startedAtMs: new Date(recording.startedAt).getTime() }) - (recording.video.startedAtRelativeMs || 0));
     if (recording.video.status === 'recording' || recording.video.status === 'starting') recording.video.status = 'finalizing';
   }
-  if (recording.videoWriter && recording.lastVideoFrameBuffer && recording.lastVideoFrameRelativeMs !== null) {
+  recording.stopScreencast?.();
+  if (recording.videoWriter && recording.lastVideoFrameBuffer && recording.video) {
+    // Pad the tail with the last frame so total frames match the wall clock.
     const stoppedRelativeMs = Math.max(0, Date.now() - new Date(recording.startedAt).getTime());
-    const tailCopies = getVideoFrameCopies(stoppedRelativeMs - recording.lastVideoFrameRelativeMs, recording.video.fps);
-    recording.videoWriter.enqueue(recording.lastVideoFrameBuffer, tailCopies);
+    const totalElapsedMs = Math.max(0, stoppedRelativeMs - (recording.video.startedAtRelativeMs || 0));
+    const tailCopies = getVideoFrameCopies(totalElapsedMs, recording.video.fps, recording.videoFramesQueued);
+    if (tailCopies > 0) {
+      recording.videoWriter.enqueue(recording.lastVideoFrameBuffer, tailCopies);
+      recording.videoFramesQueued += tailCopies;
+    }
   }
   recording.captureNow?.('final');
   if (recording.videoWriter) {
     try {
       recording.videoWriter.end();
     } catch (_) {}
+    const finalizeTimeoutMs = getNumberEnv('QA_VIDEO_FINALIZE_TIMEOUT_MS', 120000, 10000, 600000);
+    recording.videoFinalizeTimer = setTimeout(() => {
+      const failed = markInterruptedVideoFailed(buildRecordingPayload(recording), `Video finalization exceeded ${finalizeTimeoutMs}ms.`);
+      if (!failed) return;
+      recording.video.status = 'failed';
+      recording.warnings = failed.warnings;
+      try { recording.ffmpeg?.kill(); } catch (_) {}
+      writeRecordingMetadata(recording, true);
+    }, finalizeTimeoutMs);
   }
   writeRecordingMetadata(recording, true);
   return {
@@ -1327,6 +1484,31 @@ async function stopCdpCapture(sessionId) {
     }, 1500);
   }
   return result;
+}
+
+async function failInterruptedRecordingsOnStartup() {
+  for (const root of [RECORDINGS_DIR, LEGACY_RECORDINGS_DIR]) {
+    if (!fs.existsSync(root)) continue;
+    for (const testCaseEntry of fs.readdirSync(root, { withFileTypes: true })) {
+      if (!testCaseEntry.isDirectory()) continue;
+      const testCaseDir = path.join(root, testCaseEntry.name);
+      for (const sessionEntry of fs.readdirSync(testCaseDir, { withFileTypes: true })) {
+        if (!sessionEntry.isDirectory()) continue;
+        const sessionDir = path.join(testCaseDir, sessionEntry.name);
+        const metadataPath = path.join(sessionDir, 'metadata.json');
+        if (!fs.existsSync(metadataPath)) continue;
+        try {
+          const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+          const failed = markInterruptedVideoFailed(metadata, 'Video finalization was interrupted by a relay restart.');
+          if (!failed) continue;
+          fs.writeFileSync(metadataPath, JSON.stringify(failed, null, 2));
+          await devlogStore?.persistRecording(failed, sessionDir);
+        } catch (error) {
+          console.warn(`Failed to mark interrupted recording ${metadataPath}: ${error.message}`);
+        }
+      }
+    }
+  }
 }
 
 // HTTP Server: Menerima POST /log dari Katalon
@@ -1648,6 +1830,10 @@ server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);
   });
+});
+
+failInterruptedRecordingsOnStartup().catch(error => {
+  console.error(`Interrupted recording sweep failed: ${error.message}`);
 });
 
 server.listen(3001, () => {

@@ -46,6 +46,7 @@ export interface ManualRecordingVideo {
   bitrateMbps?: number;
   sizeBytes?: number;
   status?: 'starting' | 'recording' | 'finalizing' | 'ready' | 'failed';
+  processingPercent?: number;
 }
 
 export interface ManualRecordingMeta {
@@ -89,6 +90,8 @@ function normalizeLogEntry(message: AutomationLogEntry): AutomationLogEntry {
 }
 
 export const filterConsoleLogs = (logs: AutomationLogEntry[]) => logs.filter(log => log.isConsole);
+
+const isVideoProcessingStatus = (status?: string) => ['starting', 'recording', 'finalizing'].includes(status || '');
 
 export const filterNetworkLogs = (logs: AutomationLogEntry[]) => logs.filter(log => {
   if (!log.isNetwork) return false;
@@ -166,8 +169,10 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
         setManualRecording(null);
         return null;
       }
-      setManualRecording(data.recording);
-      return data.recording as ManualRecordingMeta;
+      const recording = data.recording as ManualRecordingMeta;
+      setManualRecording(recording);
+      setIsProcessingManualRecording(isVideoProcessingStatus(recording.video?.status));
+      return recording;
     } catch {
       setManualRecording(null);
       return null;
@@ -219,7 +224,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     ) {
       const recording = message.recording as ManualRecordingMeta;
       setManualRecording(recording);
-      if (!['starting', 'recording', 'finalizing'].includes(recording.video?.status || '')) {
+      if (!isVideoProcessingStatus(recording.video?.status)) {
         setIsProcessingManualRecording(false);
         setManualCaptureSessionId(null);
       }
@@ -353,6 +358,15 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
 
     return () => window.clearTimeout(timer);
   }, [viewTestCase?.id]);
+
+  useEffect(() => {
+    const testCaseId = viewTestCase?.id;
+    if (!testCaseId || !isVideoProcessingStatus(manualRecording?.video?.status)) return;
+    const timer = window.setInterval(() => {
+      void loadLatestRecording(testCaseId);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [viewTestCase?.id, manualRecording?.video?.status]);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -621,18 +635,8 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
           ? `Browser ditutup dan ${frameCount} frame/keyframe tersimpan.${videoText}`
           : 'Browser ditutup dan log berikutnya dari session ini akan ditolak relay.',
       });
-      if (['starting', 'recording', 'finalizing'].includes(video?.status || '')) {
+      if (isVideoProcessingStatus(video?.status)) {
         setIsProcessingManualRecording(true);
-        const pollDelays = [800, 1800, 3200, 5200, 8000];
-        pollDelays.forEach((delay, index) => {
-          window.setTimeout(async () => {
-            const latest = await loadLatestRecording(viewTestCase?.id);
-            const status = latest?.video?.status;
-            if (status === 'ready' || status === 'failed' || index === pollDelays.length - 1) {
-              setIsProcessingManualRecording(false);
-            }
-          }, delay);
-        });
       }
     } catch (error: any) {
       toast({

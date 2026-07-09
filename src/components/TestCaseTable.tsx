@@ -19,6 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ConfettiBurst } from '@/components/ui/confetti-burst';
 import { cn } from '@/lib/utils';
 
 type TestCaseColumnKey = 'subMenu' | 'weight' | 'type' | 'priority' | 'action' | 'status' | 'result' | 'record' | 'progress';
@@ -213,6 +214,13 @@ export function TestCaseTable({
   onQuickStatusChange,
 }: TestCaseTableProps) {
   const [visibleColumns, setVisibleColumns] = useState<Record<TestCaseColumnKey, boolean>>(getInitialTestCaseColumns);
+  // "Quest complete": row id that just got flipped to DONE, celebrated briefly.
+  const [celebrateId, setCelebrateId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!celebrateId) return;
+    const timer = window.setTimeout(() => setCelebrateId(null), 1100);
+    return () => window.clearTimeout(timer);
+  }, [celebrateId]);
   const resetPage = () => setPage(1);
   const hasActiveFilters = Boolean(search)
     || filterStatus !== 'all'
@@ -270,7 +278,7 @@ export function TestCaseTable({
     >      <div className="rounded-2xl border border-border/40 bg-card p-4 shadow-sm">
         <div className="flex min-w-0 flex-col gap-3 lg:flex-row">
         <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+          <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary', isLoading && 'animate-bounce [animation-duration:0.7s] motion-reduce:animate-none')} />
           <Input
             data-search-input
             placeholder="Cari test case... (ID, Page, Action, Steps)  [/]"
@@ -354,13 +362,13 @@ export function TestCaseTable({
 
       <div className="mt-3 flex min-w-0 flex-col gap-3 border-t border-border/40 pt-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="h-9 rounded-xl gap-1.5 font-bold shadow-sm transition-all duration-200">
-            <Plus className="w-4 h-4" /> Add Test Case
+          <Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-9 rounded-xl gap-1.5 font-bold shadow-sm transition-all duration-200">
+            <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90 motion-reduce:group-hover:transform-none" /> Add Test Case
             <kbd className="ml-0.5 hidden rounded border border-primary-foreground/30 px-1 font-mono text-[9px] leading-4 opacity-70 lg:inline-block">N</kbd>
           </Button>
           {aiEnabled && (
-            <Button onClick={openAIDialog} size="sm" className="h-9 rounded-xl gap-1.5 font-bold bg-violet-500/10 text-violet-500 border border-violet-500/20 hover:bg-violet-500/20 dark:text-violet-400 transition-all duration-200">
-              <Sparkles className="w-4 h-4" /> Generate AI
+            <Button onClick={openAIDialog} size="sm" className="group h-9 rounded-xl gap-1.5 font-bold bg-violet-500/10 text-violet-500 border border-violet-500/20 hover:bg-violet-500/20 dark:text-violet-400 transition-all duration-200">
+              <Sparkles className="w-4 h-4 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12 motion-reduce:group-hover:transform-none" /> Generate AI
             </Button>
           )}
           {selectedIds.size > 0 && (
@@ -375,7 +383,7 @@ export function TestCaseTable({
           )}
         </div>
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
-          <Badge variant="outline" className="col-span-2 h-9 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-1">
+          <Badge key={showingLabel} variant="outline" className="col-span-2 h-9 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-1 animate-in zoom-in-95 duration-200 tabular-nums">
             {showingLabel}
           </Badge>
           <DropdownMenu>
@@ -483,7 +491,7 @@ export function TestCaseTable({
                 <TableRow className="border-border/30 hover:bg-transparent">
                   <TableCell colSpan={tableColSpan} className="h-44 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      {hasActiveFilters ? <Search className="h-9 w-9 opacity-25" /> : <FileSpreadsheet className="h-9 w-9 opacity-25" />}
+                      {hasActiveFilters ? <Search className="h-9 w-9 opacity-25 animate-bounce [animation-duration:2.2s] motion-reduce:animate-none" /> : <FileSpreadsheet className="h-9 w-9 opacity-25 animate-bounce [animation-duration:2.2s] motion-reduce:animate-none" />}
                       <p className="text-sm font-bold uppercase tracking-wider">
                         {!selectedProject ? 'Pilih project dulu' : hasActiveFilters ? 'Tidak ada hasil' : 'Belum ada test case'}
                       </p>
@@ -558,7 +566,9 @@ export function TestCaseTable({
                     </TableCell>
                     <TableCell className={getColumnClass('status')}>
                       {onQuickStatusChange ? (
-                        <Select value={tc.status} onValueChange={(val) => onQuickStatusChange(tc.id, val)}>
+                        <div className="relative">
+                          {celebrateId === tc.id && <ConfettiBurst radius={44} count={14} />}
+                        <Select value={tc.status} onValueChange={(val) => { if (val === 'DONE' && tc.status !== 'DONE') setCelebrateId(tc.id); onQuickStatusChange(tc.id, val); }}>
                           <SelectTrigger key={tc.status} className={cn("h-7 w-[130px] rounded-lg text-[10px] font-bold shadow-none gap-1 px-2 animate-in zoom-in-90 duration-200", getStatusColor(tc.status))}>
                             {getStatusIcon(tc.status)} <SelectValue />
                           </SelectTrigger>
@@ -572,6 +582,7 @@ export function TestCaseTable({
                             <SelectItem value="TBA" className="text-[10px] font-bold rounded-lg">TBA</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       ) : (
                         <Badge variant={getStatusBadgeVariant(tc.status)} className="gap-1 text-[10px] font-semibold">
                           {getStatusIcon(tc.status)} {tc.status}

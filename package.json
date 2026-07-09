@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack -p 3000",
     "build": "next build && node -e \"const fs=require('fs');fs.mkdirSync('.next/standalone/.next',{recursive:true});fs.cpSync('.next/static','.next/standalone/.next/static',{recursive:true});fs.cpSync('public','.next/standalone/public',{recursive:true});\"",
-    "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
+    "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "test": "vitest run",
     "postinstall": "npm run db:generate",

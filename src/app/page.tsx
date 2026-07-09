@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { AppShell } from '@/components/AppShell';
+import { ReportsPanel } from '@/components/ReportsPanel';
 import type { BugFixItem } from '@/components/BugFixPanel';
 import type { TestCaseDraftInput } from '@/components/TestCaseDialog';
 import type { TestCaseDraft } from '@/components/FloatingAIChat';
@@ -63,7 +64,7 @@ const FloatingAIChat = dynamic(() => import('@/components/FloatingAIChat').then(
 type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
 
 const LAST_ACTIVE_TAB_STORAGE_KEY = 'web-qa:last-active-tab';
-const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'settings'] as const;
+const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'reports', 'settings'] as const;
 type AppTab = typeof APP_TABS[number];
 
 // ============== PURE UTILITY FUNCTIONS (upgraded colors) ==============
@@ -812,6 +813,7 @@ export default function TestCaseManager() {
           testcases: renderTestCases(),
           bugfix: renderBugFix(),
           automated: renderAutomated(),
+          reports: <ReportsPanel projectId={selectedProject} />,
           settings: renderSettings(),
         }}
       </AppShell>

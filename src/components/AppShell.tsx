@@ -1,6 +1,6 @@
 'use client';
 
-import { Bug, ClipboardList, FolderOpen, LayoutDashboard, MonitorDot, Settings2 } from 'lucide-react';
+import { Bug, ClipboardList, FileText, FolderOpen, LayoutDashboard, MonitorDot, Settings2 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { BrandMark } from '@/components/BrandMark';
@@ -50,6 +50,7 @@ interface AppShellProps {
     testcases: ReactNode;
     bugfix: ReactNode;
     automated: ReactNode;
+    reports: ReactNode;
     settings: ReactNode;
   };
 }
@@ -59,6 +60,7 @@ const NAV_ITEMS = [
   { value: 'testcases', label: 'Cases', description: 'Test inventory', icon: ClipboardList },
   { value: 'bugfix', label: 'Bugs', description: 'Defect lifecycle', icon: Bug },
   { value: 'automated', label: 'Runs', description: 'Execution records', icon: MonitorDot },
+  { value: 'reports', label: 'Reports', description: 'Test reports', icon: FileText },
   { value: 'settings', label: 'Settings', description: 'Project knowledge', icon: Settings2 },
 ] as const;
 
@@ -285,6 +287,7 @@ export function AppShell({
                     <TabsContent value="testcases" className="m-0">{activeTab === 'testcases' ? children.testcases : null}</TabsContent>
                     <TabsContent value="bugfix" className="m-0">{activeTab === 'bugfix' ? children.bugfix : null}</TabsContent>
                     <TabsContent value="automated" className="m-0">{activeTab === 'automated' ? children.automated : null}</TabsContent>
+                    <TabsContent value="reports" className="m-0">{activeTab === 'reports' ? children.reports : null}</TabsContent>
                     <TabsContent value="settings" className="m-0">{activeTab === 'settings' ? children.settings : null}</TabsContent>
                   </motion.div>
                 </AnimatePresence>

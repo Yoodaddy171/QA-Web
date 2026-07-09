@@ -20,6 +20,7 @@ model Project {
   modules           Module[]
   knowledgeItems    ProjectKnowledge[]
   automationRuns    AutomationRun[]
+  reports           Report[]
 
   @@index([updatedAt])
 }
@@ -169,4 +170,38 @@ model Recording {
 
   @@index([testCaseId, startedAt])
   @@index([status, updatedAt])
+}
+
+model Report {
+  id                   String   @id @default(cuid())
+  projectId            String
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reportType           String // TEST_STATUS_REPORT, TEST_PLANNING_DOCUMENT
+  status               String   @default("DRAFT") // DRAFT, FINAL
+  documentId           String?
+  version              String
+  author               String?
+  approvedBy           String?
+  dateOfIssue          DateTime?
+  documentStatus       String?
+  reportingPeriodStart DateTime
+  reportingPeriodEnd   DateTime
+  
+  // Manual narrative sections
+  progressNarrative    String?
+  blockingFactors      String?
+  newRisks             String?
+  plannedTesting       String?
+  metadataJson         Json?
+  sectionsJson         Json?
+  
+  // Auto-generated metrics snapshot (JSON for historical accuracy)
+  metricsSnapshot      Json
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  @@index([projectId, createdAt])
+  @@index([projectId, status])
+  @@index([reportType, createdAt])
 }

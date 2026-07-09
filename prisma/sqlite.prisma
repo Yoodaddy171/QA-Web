@@ -18,6 +18,7 @@ model Project {
   bugFixItems       BugFix[]
   modules           Module[]
   knowledgeItems    ProjectKnowledge[]
+  reports           Report[]
 }
 
 model ProjectKnowledge {
@@ -106,4 +107,33 @@ model BugFix {
   @@index([projectId, status])
   @@index([projectId, moduleId])
   @@index([sourceTestCaseId])
+}
+
+model Report {
+  id                   String   @id @default(cuid())
+  projectId            String
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reportType           String
+  status               String   @default("DRAFT")
+  documentId           String?
+  version              String
+  author               String?
+  approvedBy           String?
+  dateOfIssue          DateTime?
+  documentStatus       String?
+  reportingPeriodStart DateTime
+  reportingPeriodEnd   DateTime
+  progressNarrative    String?
+  blockingFactors      String?
+  newRisks             String?
+  plannedTesting       String?
+  metadataJson         Json?
+  sectionsJson         Json?
+  metricsSnapshot      Json
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([projectId, createdAt])
+  @@index([projectId, status])
+  @@index([reportType, createdAt])
 }

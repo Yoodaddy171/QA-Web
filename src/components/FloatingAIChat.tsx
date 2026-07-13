@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Loader2, MessageCircle, Minimize2, Plus, RotateCcw, Send, Sparkles, X } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -105,8 +104,6 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     content: WELCOME_MESSAGE,
   },
 ];
-const TESTCASE_ID_PATTERN = /\b[A-Z]{1,4}-\d{2,4}\b/g;
-
 function createMessage(role: ChatRole, content: string): ChatMessage {
   return {
     id: `${role}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -135,277 +132,11 @@ function createAssistantMessage(
   };
 }
 
-function isMarkdownTable(lines: string[], index: number) {
-  const header = lines[index]?.trim();
-  const separator = lines[index + 1]?.trim();
-  return Boolean(
-    header?.startsWith('|')
-    && header.endsWith('|')
-    && separator?.startsWith('|')
-    && separator.endsWith('|')
-    && /^\|[\s:-]+\|[\s|:-]*$/.test(separator)
-  );
-}
+import { MessageContent } from '@/components/ai-chat/MessageContent';
 
-function splitTableRow(line: string) {
-  return line
-    .trim()
-    .replace(/^\|/, '')
-    .replace(/\|$/, '')
-    .split('|')
-    .map(cell => cell.trim());
-}
 
-function linkifyTestCaseIds(value: string) {
-  return value.replace(TESTCASE_ID_PATTERN, (match) => `[${match}](tc:${match})`);
-}
 
-function LinkedText({
-  value,
-  compact,
-  onOpenTestCaseId,
-}: {
-  value: string;
-  compact?: boolean;
-  onOpenTestCaseId?: (testCaseId: string) => void;
-}) {
-  const parts = value.split(TESTCASE_ID_PATTERN);
-  const matches = value.match(TESTCASE_ID_PATTERN) || [];
-
-  return (
-    <>
-      {parts.map((part, index) => (
-        <React.Fragment key={`${part}-${index}`}>
-          {part}
-          {matches[index] && (
-            <button
-              type="button"
-              onClick={() => onOpenTestCaseId?.(matches[index])}
-              className={`font-semibold underline underline-offset-2 ${compact ? 'text-cyan-100 hover:text-white' : 'text-blue-600 hover:text-blue-800'}`}
-            >
-              {matches[index]}
-            </button>
-          )}
-        </React.Fragment>
-      ))}
-    </>
-  );
-}
-
-function MessageContent({
-  content,
-  compact = false,
-  onOpenTestCaseId,
-}: {
-  content: string;
-  compact?: boolean;
-  onOpenTestCaseId?: (testCaseId: string) => void;
-}) {
-  const blocks: Array<{ type: 'markdown'; value: string } | { type: 'table'; rows: string[][] }> = [];
-  const lines = content.split('\n');
-  let buffer: string[] = [];
-
-  const flushMarkdown = () => {
-    const value = buffer.join('\n').trim();
-    if (value) blocks.push({ type: 'markdown', value });
-    buffer = [];
-  };
-
-  for (let index = 0; index < lines.length; index += 1) {
-    if (!isMarkdownTable(lines, index)) {
-      buffer.push(lines[index]);
-      continue;
-    }
-
-    flushMarkdown();
-    const tableLines = [lines[index]];
-    index += 2;
-    while (index < lines.length && lines[index].trim().startsWith('|') && lines[index].trim().endsWith('|')) {
-      tableLines.push(lines[index]);
-      index += 1;
-    }
-    index -= 1;
-    blocks.push({ type: 'table', rows: tableLines.map(splitTableRow) });
-  }
-
-  flushMarkdown();
-
-  return (
-    <div className="space-y-2">
-      {blocks.map((block, index) => {
-        if (block.type === 'table') {
-          const [header, ...rows] = block.rows;
-          return (
-            <div key={`table-${index}`} className="overflow-x-auto rounded-xl border border-border/50 bg-secondary/30 my-3">
-              <table className="min-w-full table-auto border-collapse text-left text-[11px]">
-                <thead className="bg-secondary/50 font-semibold uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    {header.map((cell, cellIndex) => (
-                      <th key={`${cell}-${cellIndex}`} className="min-w-[90px] border-b border-border/50 px-3 py-2.5 font-semibold leading-snug">
-                        {cell}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="text-foreground/80">
-                  {rows.map((row, rowIndex) => (
-                    <tr key={`row-${rowIndex}`} className="border-t border-border/30 hover:bg-secondary/30 transition-colors">
-                      {row.map((cell, cellIndex) => (
-                        <td key={`${cell}-${cellIndex}`} className="max-w-[220px] align-top px-3 py-2.5 leading-relaxed">
-                          <LinkedText value={cell} onOpenTestCaseId={onOpenTestCaseId} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        }
-
-        return (
-          <ReactMarkdown
-            key={`markdown-${index}`}
-            components={{
-              p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-              ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-1 last:mb-0 marker:text-primary/50">{children}</ul>,
-              ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal space-y-1 last:mb-0 marker:text-primary/50">{children}</ol>,
-              li: ({ children }) => <li className="pl-1">{children}</li>,
-              strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-              code: ({ children }) => (
-                <code className="rounded-lg bg-secondary/50 border border-border/40 px-1.5 py-0.5 font-mono text-xs font-medium text-primary">
-                  {children}
-                </code>
-              ),
-              a: ({ href, children }) => {
-                const target = typeof href === 'string' && href.startsWith('tc:') ? decodeURIComponent(href.slice(3)) : null;
-                if (!target) {
-                  return <span className="text-primary font-semibold hover:underline cursor-pointer">{children}</span>;
-                }
-
-                return (
-                  <button
-                    type="button"
-                    onClick={() => onOpenTestCaseId?.(target)}
-                    className="font-bold text-primary underline underline-offset-4 decoration-primary/30 transition-colors hover:decoration-primary"
-                  >
-                    {children}
-                  </button>
-                );
-              },
-            }}
-          >
-            {linkifyTestCaseIds(block.value)}
-          </ReactMarkdown>
-        );
-      })}
-    </div>
-  );
-}
-
-function CitationChips({
-  citations = [],
-  onOpenTestCaseId,
-}: {
-  citations?: CopilotCitation[];
-  onOpenTestCaseId?: (testCaseId: string) => void;
-}) {
-  if (!citations.length) return null;
-
-  return (
-    <div className="mt-3 flex flex-wrap gap-1.5">
-      {citations.slice(0, 12).map((citation) => {
-        const clickableId = citation.testCaseId || (citation.type === 'testcase' || citation.type === 'bugfix' ? citation.label : '');
-        return (
-          <button
-            key={`${citation.type}-${citation.id}`}
-            type="button"
-            disabled={!clickableId}
-            onClick={() => clickableId && onOpenTestCaseId?.(clickableId)}
-            title={citation.description || citation.type}
-            className={cn(
-              "rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition",
-              clickableId
-                ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/15'
-                : 'border-border/60 bg-secondary/50 text-muted-foreground'
-            )}
-          >
-            {citation.type}: {citation.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function ToolTrace({
-  usedTools = [],
-  provider,
-}: {
-  usedTools?: string[];
-  provider?: ChatMessage['provider'];
-}) {
-  if (!usedTools.length && !provider?.provider && !provider?.error) return null;
-
-  return (
-    <div className="mt-3 rounded-xl border border-border/50 bg-card/40 p-2 text-[10px] text-muted-foreground">
-      {usedTools.length > 0 && (
-        <p className="font-semibold">
-          AI membaca: {usedTools.join(', ')}
-        </p>
-      )}
-      {provider?.provider && (
-        <p className="mt-1">
-          Provider: {provider.provider}{provider.model ? ` · ${provider.model}` : ''}
-        </p>
-      )}
-      {provider?.error && (
-        <p className="mt-1 text-amber-600 dark:text-amber-300">
-          Provider fallback: {provider.error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function ActionDraftCards({
-  actionDrafts = [],
-  onCreateTestCaseDraft,
-}: {
-  actionDrafts?: CopilotActionDraft[];
-  onCreateTestCaseDraft?: (draft: TestCaseDraft) => void;
-}) {
-  if (!actionDrafts.length) return null;
-
-  return (
-    <div className="mt-4 space-y-2">
-      {actionDrafts.map((action) => (
-        <div key={action.id} className="rounded-xl border border-border/50 bg-card/50 p-3 transition-colors hover:bg-card">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Badge variant="outline" className="mb-2 border-primary/30 bg-primary/10 text-[9px] font-semibold uppercase tracking-wider text-primary">
-                {action.type.replace(/_/g, ' ')}
-              </Badge>
-              <p className="text-sm font-semibold text-foreground">{action.title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{action.description}</p>
-            </div>
-            {action.testCaseDraft && (
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => onCreateTestCaseDraft?.(action.testCaseDraft!)}
-                className="h-8 shrink-0 gap-1 bg-primary text-[11px] font-semibold uppercase text-primary-foreground hover:bg-primary/90"
-              >
-                <Plus className="h-3 w-3" />
-                Review
-              </Button>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { ActionDraftCards, CitationChips, ToolTrace } from '@/components/ai-chat/ChatSupplemental';
 
 export function FloatingAIChat({
   projectId,
@@ -646,7 +377,7 @@ export function FloatingAIChat({
               setMinimized(false);
               setChatFrame((current) => current || getDefaultFrame());
             }}
-            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-300 elevation-3 focus:outline-none focus:ring-4 focus:ring-primary/30"
+            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition duration-300 elevation-3 focus:outline-none focus:ring-4 focus:ring-primary/30"
             aria-label="Open QA AI chat"
           >
             <MessageCircle className="h-6 w-6" />
@@ -833,7 +564,7 @@ export function FloatingAIChat({
                               type="button"
                               onClick={() => askAI(suggestion)}
                               disabled={loading || !projectId}
-                              className="group flex items-center gap-3 rounded-xl border border-border/60 bg-secondary/30 px-4 py-2.5 text-left text-xs font-medium text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                              className="group flex items-center gap-3 rounded-xl border border-border/60 bg-secondary/30 px-4 py-2.5 text-left text-xs font-medium text-muted-foreground transition duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <Sparkles className="h-3.5 w-3.5 text-primary group-hover:scale-110 transition-transform" />
                               {suggestion}
@@ -856,14 +587,14 @@ export function FloatingAIChat({
                           }}
                           placeholder={projectId ? 'Ask about your test cases...' : 'Select a project first...'}
                           disabled={loading || !projectId}
-                          className="max-h-32 min-h-[44px] resize-none text-sm rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200"
+                          className="max-h-32 min-h-[44px] resize-none text-sm rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
                         />
                         <Button
                           type="button"
                           size="icon"
                           onClick={loading ? stopRequest : () => askAI()}
                           disabled={!loading && (!input.trim() || !projectId)}
-                          className={`h-11 w-11 rounded-xl elevation-1 transition-all duration-200 ${loading ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm'}`}
+                          className={`h-11 w-11 rounded-xl elevation-1 transition duration-200 ${loading ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm'}`}
                           aria-label={loading ? 'Stop AI response' : 'Send message'}
                         >
                           {loading ? <X className="h-5 w-5" /> : <Send className="h-5 w-5" />}

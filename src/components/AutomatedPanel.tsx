@@ -2,8 +2,7 @@
 
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { Bot, CalendarClock, Eye, FileClock, MonitorDot, RefreshCw, Search, Settings2, TerminalSquare } from 'lucide-react';
-import { AnimatedNumber } from '@/components/ui/animated-number';
+import { Bot, Eye, RefreshCw, Search, Settings2, TerminalSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { AutomationStatsCards } from '@/components/AutomationStatsCards';
 
 type AutomatedColumnKey = 'module' | 'action' | 'type' | 'priority' | 'status' | 'lastRun' | 'source' | 'history';
 
@@ -199,47 +199,13 @@ export function AutomatedPanel({
 
   return (
     <div className="min-w-0 space-y-5 overflow-x-hidden">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card variant="glass" padding="none" className="border-l-4 border-l-cyan-500 hover:bg-cyan-500/[0.03] transition-all duration-300">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-xl bg-cyan-500/10 p-2.5 text-cyan-600 dark:text-cyan-400 group-hover:scale-105 transition-transform duration-300">
-              <MonitorDot className="h-5 w-5" />
-            </div>
-            <div>
-              <AnimatedNumber value={filteredItems.length} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Skenario Terekam</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card variant="glass" padding="none" className="border-l-4 border-l-emerald-500 hover:bg-emerald-500/[0.03] transition-all duration-300">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-xl bg-emerald-500/10 p-2.5 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform duration-300">
-              <FileClock className="h-5 w-5" />
-            </div>
-            <div>
-              <AnimatedNumber
-                value={filteredItems.filter((item) => item.automation.hasManualCapture).length}
-                className="block text-2xl font-bold text-foreground font-mono tabular-nums"
-              />
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Artefak Manual</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card variant="glass" padding="none" className="border-l-4 border-l-amber-500 hover:bg-amber-500/[0.03] transition-all duration-300">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-xl bg-amber-500/10 p-2.5 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform duration-300">
-              <CalendarClock className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-foreground font-mono uppercase truncate max-w-[190px]">
-                {filteredItems[0]?.automation.lastRunAt ? new Date(filteredItems[0].automation.lastRunAt).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Belum Ada'}
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Run Terakhir</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <AutomationStatsCards
+        total={filteredItems.length}
+        manual={filteredItems.filter((item) => item.automation.hasManualCapture).length}
+        lastRunAt={filteredItems[0]?.automation.lastRunAt}
+      />
+
+
 
       {/* Filter and action toolbar */}
       <div className="flex flex-col gap-3 rounded-2xl border border-border/40 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
@@ -254,7 +220,7 @@ export function AutomatedPanel({
             />
           </div>
           <Select value={filterModule} onValueChange={setFilterModule}>
-            <SelectTrigger className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold text-foreground hover:bg-secondary/65 transition-all duration-200 sm:w-[190px]">
+            <SelectTrigger className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold text-foreground hover:bg-secondary/65 transition duration-200 sm:w-[190px]">
               <SelectValue placeholder="Module" />
             </SelectTrigger>
             <SelectContent className="border border-border/50 bg-card shadow-lg">
@@ -274,7 +240,7 @@ export function AutomatedPanel({
           </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9.5 rounded-xl gap-2 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition-all">
+              <Button variant="outline" size="sm" className="h-9.5 rounded-xl gap-2 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
                 <Settings2 className="h-3.5 w-3.5 text-primary" />
                 Columns
               </Button>
@@ -298,7 +264,7 @@ export function AutomatedPanel({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9.5 rounded-xl gap-2 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition-all">
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9.5 rounded-xl gap-2 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
             <RefreshCw className={`h-3.5 w-3.5 text-primary ${loading ? 'animate-spin' : ''}`} />
             Sinkronkan
           </Button>

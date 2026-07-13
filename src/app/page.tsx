@@ -2,10 +2,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import {
-  AlertTriangle, Bug, CheckCircle2, Clock, HelpCircle, RefreshCw, XCircle
-} from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -29,6 +25,14 @@ import type { Stats, TestCase } from '@/lib/client/api/types';
 import { BUGFIX_STATUS } from '@/lib/domain/bugfix';
 import { TESTCASE_STATUS } from '@/lib/domain/testcase';
 import { FEATURES } from '@/lib/features';
+import {
+  getPriorityColor,
+  getStatusBadgeVariant,
+  getStatusColor,
+  getStatusIcon,
+  getTestTypeColor,
+} from '@/lib/client/workspace-formatters';
+import { buildWorkspaceViews } from '@/lib/client/workspace-tab-views';
 
 function PanelFallback() {
   return (
@@ -66,74 +70,6 @@ type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
 const LAST_ACTIVE_TAB_STORAGE_KEY = 'web-qa:last-active-tab';
 const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'reports', 'settings'] as const;
 type AppTab = typeof APP_TABS[number];
-
-// ============== PURE UTILITY FUNCTIONS (upgraded colors) ==============
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case TESTCASE_STATUS.DONE:
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
-    case TESTCASE_STATUS.NOT_DONE:
-      return 'bg-slate-50 text-slate-600 border border-slate-200/60 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20';
-    case TESTCASE_STATUS.IN_PROGRESS:
-      return 'bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
-    case TESTCASE_STATUS.BLOCKED:
-      return 'bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20';
-    case TESTCASE_STATUS.FAILED:
-      return 'bg-red-50 text-red-700 border border-red-200/60 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20';
-    case TESTCASE_STATUS.READY_TO_RETEST:
-      return 'bg-cyan-50 text-cyan-700 border border-cyan-200/60 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20';
-    case BUGFIX_STATUS.VERIFIED_FIXED:
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
-    case TESTCASE_STATUS.TBA:
-      return 'bg-purple-50 text-purple-700 border border-purple-200/60 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20';
-    default:
-      return 'bg-slate-50 text-slate-600 border border-slate-200/60 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20';
-  }
-};
-
-const getStatusBadgeVariant = (status: string) => {
-  switch (status) {
-    case TESTCASE_STATUS.DONE: return 'success';
-    case TESTCASE_STATUS.NOT_DONE: return 'notdone';
-    case TESTCASE_STATUS.IN_PROGRESS: return 'inprogress';
-    case TESTCASE_STATUS.BLOCKED: return 'blocked';
-    case TESTCASE_STATUS.FAILED: return 'failed';
-    case TESTCASE_STATUS.READY_TO_RETEST: return 'readyretest';
-    case BUGFIX_STATUS.VERIFIED_FIXED: return 'verifiedfixed';
-    case TESTCASE_STATUS.TBA: return 'tba';
-    default: return 'outline';
-  }
-};
-
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case TESTCASE_STATUS.DONE: return <CheckCircle2 className="w-3.5 h-3.5" />;
-    case TESTCASE_STATUS.NOT_DONE: return <XCircle className="w-3.5 h-3.5" />;
-    case TESTCASE_STATUS.IN_PROGRESS: return <Clock className="w-3.5 h-3.5" />;
-    case TESTCASE_STATUS.BLOCKED: return <AlertTriangle className="w-3.5 h-3.5" />;
-    case TESTCASE_STATUS.FAILED: return <XCircle className="w-3.5 h-3.5" />;
-    case TESTCASE_STATUS.READY_TO_RETEST: return <RefreshCw className="w-3.5 h-3.5" />;
-    case BUGFIX_STATUS.VERIFIED_FIXED: return <CheckCircle2 className="w-3.5 h-3.5" />;
-    case TESTCASE_STATUS.TBA: return <HelpCircle className="w-3.5 h-3.5" />;
-    default: return <XCircle className="w-3.5 h-3.5" />;
-  }
-};
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'Critical': return 'bg-red-50 text-red-700 border border-red-200/60 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/20';
-    case 'High': return 'bg-orange-50 text-orange-700 border border-orange-200/60 dark:bg-orange-500/15 dark:text-orange-400 dark:border-orange-500/20';
-    case 'Medium': return 'bg-blue-50 text-blue-700 border border-blue-200/60 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/20';
-    case 'Low': return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20';
-    default: return 'bg-slate-50 text-slate-700 border border-slate-200/60 dark:bg-slate-500/15 dark:text-slate-400 dark:border-slate-500/20';
-  }
-};
-
-const getTestTypeColor = (type: string) => {
-  return type === 'Positive'
-    ? 'bg-sky-50 text-sky-700 border border-sky-200/60 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20'
-    : 'bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20';
-};
 
 // ============== MAIN APP ==============
 export default function TestCaseManager() {
@@ -662,133 +598,23 @@ export default function TestCaseManager() {
     }
   };
 
-  // ============== RENDER: DASHBOARD ==============
-  const renderDashboard = () => (
-    <DashboardPanel
-      stats={stats}
-      modules={modules}
-      expandedModules={expandedModules}
-      setExpandedModules={setExpandedModules}
-      selectedModuleFilter={selectedModuleFilter}
-      setSelectedModuleFilter={setSelectedModuleFilter}
-      onOpenDetail={handleOpenDetail}
-      onModuleRiskClick={handleModuleRiskClick}
-      isLoading={isLoadingStats}
-      lastRefreshed={lastRefreshed}
-      onRefresh={() => { loadStats(selectedProject); loadTestCases(selectedProject); }}
-    />
-  );
-  // ============== RENDER: TEST CASE TABLE ==============
-  const renderTestCases = () => (
-    <TestCaseTable
-      selectedProject={selectedProject}
-      modules={testCaseFilterModules}
-      hasUnassignedModule={hasUnassignedTestCases}
-      testCases={testCases}
-      search={search}
-      filterStatus={filterStatus}
-      filterTestType={filterTestType}
-      filterPriority={filterPriority}
-      filterModule={filterModule}
-      filterSubMenu={filterSubMenu}
-      subMenuOptions={subMenuOptions}
-      selectedIds={selectedIds}
-      page={page}
-      limit={limit}
-      total={total}
-      totalPages={totalPages}
-      testRecordById={testRecordById}
-      fileInputRef={fileInputRef}
-      aiEnabled={FEATURES.aiTestcaseFlows}
-      setSearch={setSearch}
-      setFilterStatus={setFilterStatus}
-      setFilterTestType={setFilterTestType}
-      setFilterPriority={setFilterPriority}
-      setFilterModule={setFilterModule}
-      setFilterSubMenu={setFilterSubMenu}
-      setPage={setPage}
-      setLimit={setLimit}
-      setShowBulkAction={setShowBulkAction}
-      setShowDeleteConfirm={setShowDeleteConfirm}
-      openCreateDialog={openCreateDialog}
-      openAIDialog={FEATURES.aiTestcaseFlows ? openAIDialog : () => {}}
-      openImportDialog={() => setShowImportDialog(true)}
-      handleImportExcel={handleImportExcel}
-      handleExportExcel={handleExportExcel}
-      isLoading={isLoadingTestCases}
-      onQuickStatusChange={handleQuickStatusChange}
-      refreshList={() => { if (selectedProject) { loadTestCases(selectedProject); loadStats(selectedProject); } }}
-      toggleSelectAll={toggleSelectAll}
-      toggleSelect={toggleSelect}
-      toggleSort={toggleSort}
-      openViewDialog={(tc) => handleOpenDetail(tc, testCases)}
-      openEditDialog={openEditDialog}
-      handleDuplicate={handleDuplicate}
-      requestDelete={(tc) => { setEditingTestCase(tc); setShowDeleteConfirm(true); }}
-      getStatusColor={getStatusColor}
-      getStatusIcon={getStatusIcon}
-      getStatusBadgeVariant={getStatusBadgeVariant}
-      getPriorityColor={getPriorityColor}
-      getTestTypeColor={getTestTypeColor}
-    />
-  );
-
-  // ============== RENDER: BUGFIX ==============
-  const renderBugFix = () => (
-    <BugFixPanel
-      selectedProject={selectedProject}
-      modules={bugFixFilterModules}
-      hasUnassignedModule={hasUnassignedBugFixItems}
-      stats={stats}
-      visibleBugFixItems={visibleBugFixItems}
-      bugFixSearch={bugFixSearch}
-      bugFixFilterStatus={bugFixFilterStatus}
-      bugFixFilterModule={bugFixFilterModule}
-      bugFixTab={bugFixTab}
-      setBugFixSearch={setBugFixSearch}
-      setBugFixFilterStatus={setBugFixFilterStatus}
-      setBugFixFilterModule={setBugFixFilterModule}
-      setBugFixTab={setBugFixTab}
-      getPriorityColor={getPriorityColor}
-      onStatusChange={handleBugFixStatusChange}
-      onOpenDetail={openBugFixDetail}
-    />
-  );
-
-  // ============== RENDER: TEST RECORDS ==============
-  const renderAutomated = () => (
-    <AutomatedPanel
-      selectedProject={selectedProject}
-      modules={modules}
-      items={automatedItems}
-      search={automatedSearch}
-      filterModule={automatedFilterModule}
-      loading={automatedLoading}
-      setSearch={setAutomatedSearch}
-      setFilterModule={setAutomatedFilterModule}
-      onRefresh={() => loadAutomated(selectedProject)}
-      onOpenDetail={(tc) => handleOpenDetail(tc, visibleAutomatedItems)}
-      getStatusColor={getStatusColor}
-      getStatusIcon={getStatusIcon}
-      getStatusBadgeVariant={getStatusBadgeVariant}
-      getPriorityColor={getPriorityColor}
-      getTestTypeColor={getTestTypeColor}
-    />
-  );
-
-  // ============== RENDER: PROJECT & MODULE MANAGEMENT ==============
-  const renderSettings = () => (
-    <SettingsPanel
-      projects={projects}
-      modules={modules}
-      selectedProject={selectedProject}
-      setSelectedProject={setSelectedProject}
-      onCreateProject={() => setShowCreateProject(true)}
-      onCreateModule={() => setShowCreateModule(true)}
-      onDeleteProject={handleDeleteProject}
-      onDeleteModule={handleDeleteModule}
-    />
-  );
+  const workspaceViewProps = {
+    stats, modules, expandedModules, setExpandedModules, selectedModuleFilter, setSelectedModuleFilter,
+    handleOpenDetail, handleModuleRiskClick, isLoadingStats, lastRefreshed, loadStats, loadTestCases,
+    selectedProject, testCaseFilterModules, hasUnassignedTestCases, testCases, search, filterStatus, filterTestType,
+    filterPriority, filterModule, filterSubMenu, subMenuOptions, selectedIds, page, limit, total, totalPages,
+    testRecordById, fileInputRef, setSearch, setFilterStatus, setFilterTestType, setFilterPriority, setFilterModule,
+    setFilterSubMenu, setPage, setLimit, setShowBulkAction, setShowDeleteConfirm, openCreateDialog, openAIDialog,
+    setShowImportDialog, handleImportExcel, handleExportExcel, isLoadingTestCases, handleQuickStatusChange,
+    toggleSelectAll, toggleSelect, toggleSort, openEditDialog, handleDuplicate, setEditingTestCase,
+    getStatusColor, getStatusIcon, getStatusBadgeVariant, getPriorityColor, getTestTypeColor,
+    bugFixFilterModules, hasUnassignedBugFixItems, visibleBugFixItems, bugFixSearch, bugFixFilterStatus,
+    bugFixFilterModule, bugFixTab, setBugFixSearch, setBugFixFilterStatus, setBugFixFilterModule, setBugFixTab,
+    handleBugFixStatusChange, openBugFixDetail, automatedItems, automatedSearch, automatedFilterModule,
+    automatedLoading, setAutomatedSearch, setAutomatedFilterModule, loadAutomated, visibleAutomatedItems,
+    projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleDeleteProject, handleDeleteModule,
+  };
+  const workspaceViews = buildWorkspaceViews(workspaceViewProps);
 
   const handleActiveTabChange = (value: string) => {
     if (APP_TABS.includes(value as AppTab)) {
@@ -809,12 +635,12 @@ export default function TestCaseManager() {
         setActiveTab={handleActiveTabChange}
       >
         {{
-          dashboard: renderDashboard(),
-          testcases: renderTestCases(),
-          bugfix: renderBugFix(),
-          automated: renderAutomated(),
+          dashboard: workspaceViews.dashboard,
+          testcases: workspaceViews.testcases,
+          bugfix: workspaceViews.bugfix,
+          automated: workspaceViews.automated,
           reports: <ReportsPanel projectId={selectedProject} />,
-          settings: renderSettings(),
+          settings: workspaceViews.settings,
         }}
       </AppShell>
       {/* ============== DIALOGS ============== */}

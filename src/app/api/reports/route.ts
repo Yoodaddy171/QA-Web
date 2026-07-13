@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 import { generateReport, getProjectReports } from '@/lib/services/report-generator';
 import type { CreateReportInput } from '@/lib/services/report-types';
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     if (!projectId) {
       return NextResponse.json(
-        { error: 'projectId is required' },
+        { error: 'Project wajib dipilih.' },
         { status: 400 }
       );
     }
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching reports:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch reports' },
+      { error: 'Gagal memuat report' },
       { status: 500 }
     );
   }
@@ -45,28 +46,28 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!body.projectId) {
       return NextResponse.json(
-        { error: 'projectId is required' },
+        { error: 'Project wajib dipilih.' },
         { status: 400 }
       );
     }
 
     if (!['TEST_STATUS_REPORT', 'TEST_PLANNING_DOCUMENT'].includes(body.reportType)) {
       return NextResponse.json(
-        { error: 'reportType is invalid' },
+        { error: 'Tipe report tidak valid.' },
         { status: 400 }
       );
     }
 
     if (!body.version) {
       return NextResponse.json(
-        { error: 'version is required' },
+        { error: 'Version wajib diisi.' },
         { status: 400 }
       );
     }
 
     if (!body.reportingPeriodStart || !body.reportingPeriodEnd) {
       return NextResponse.json(
-        { error: 'reportingPeriodStart and reportingPeriodEnd are required' },
+        { error: 'Periode pelaporan (mulai dan selesai) wajib diisi.' },
         { status: 400 }
       );
     }
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     if (Number.isNaN(input.reportingPeriodStart.getTime()) || Number.isNaN(input.reportingPeriodEnd.getTime())) {
       return NextResponse.json(
-        { error: 'reporting period dates are invalid' },
+        { error: 'Tanggal periode pelaporan tidak valid.' },
         { status: 400 }
       );
     }
@@ -103,9 +104,14 @@ export async function POST(request: NextRequest) {
     // Validate date range
     if (input.reportingPeriodStart > input.reportingPeriodEnd) {
       return NextResponse.json(
-        { error: 'reportingPeriodStart must be before reportingPeriodEnd' },
+        { error: 'Tanggal mulai harus sebelum tanggal selesai.' },
         { status: 400 }
       );
+    }
+
+    const project = await db.project.findUnique({ where: { id: input.projectId }, select: { id: true } });
+    if (!project) {
+      return NextResponse.json({ error: 'Project tidak ditemukan.' }, { status: 404 });
     }
 
     // Generate report
@@ -115,10 +121,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error generating report:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to generate report',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Gagal membuat report' },
       { status: 500 }
     );
   }

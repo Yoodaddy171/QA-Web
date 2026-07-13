@@ -85,51 +85,8 @@ interface StartManualCaptureOptions {
   captureMode?: ManualCaptureMode;
 }
 
-function normalizeLogEntry(message: AutomationLogEntry): AutomationLogEntry {
-  return adaptLegacyLogToLogEntry(message);
-}
+import { filterConsoleLogs, filterNetworkLogs, getManualRecordingSessionId, isVideoProcessingStatus, parseJsonlLogs } from '@/hooks/automation-log-utils';
 
-export const filterConsoleLogs = (logs: AutomationLogEntry[]) => logs.filter(log => log.isConsole);
-
-const isVideoProcessingStatus = (status?: string) => ['starting', 'recording', 'finalizing'].includes(status || '');
-
-export const filterNetworkLogs = (logs: AutomationLogEntry[]) => logs.filter(log => {
-  if (!log.isNetwork) return false;
-  const url = log.network?.url?.toLowerCase() || '';
-  const isStaticAsset = url.endsWith('.js') ||
-    url.endsWith('.css') ||
-    url.endsWith('.png') ||
-    url.endsWith('.jpg') ||
-    url.endsWith('.jpeg') ||
-    url.endsWith('.svg') ||
-    url.endsWith('.gif') ||
-    url.endsWith('.woff') ||
-    url.endsWith('.woff2') ||
-    url.includes('/assets/');
-
-  return !isStaticAsset;
-});
-
-function parseJsonlLogs(text: string) {
-  return text
-    .split('\n')
-    .filter(line => line.trim())
-    .map(line => {
-      try {
-        return normalizeLogEntry(JSON.parse(line));
-      } catch {
-        return null;
-      }
-    })
-    .filter((log): log is AutomationLogEntry => log !== null);
-}
-
-function getManualRecordingSessionId(logs: AutomationLogEntry[]) {
-  return [...logs]
-    .reverse()
-    .find(log => String(log.source || '').startsWith('manual-') && log.sessionId)
-    ?.sessionId;
-}
 
 export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   viewTestCase,

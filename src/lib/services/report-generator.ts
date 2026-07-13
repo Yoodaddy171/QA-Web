@@ -52,18 +52,19 @@ function isPassed(actualResult: string | null) {
   return (actualResult || '').toLowerCase() === 'as expected';
 }
 
-export async function calculateProjectMetrics(
-  projectId: string,
-  startDate: Date,
-  endDate: Date
-): Promise<ReportMetrics> {
+// Metrics reflect the whole project's current state (a status snapshot), not
+// just rows edited within the reporting period. The reporting period is kept
+// as document metadata / narrative context, not a filter on the headline
+// counts — otherwise a report shows all-zeros whenever nothing was touched in
+// that exact window.
+export async function calculateProjectMetrics(projectId: string): Promise<ReportMetrics> {
   const [testCases, bugFixItems] = await Promise.all([
     db.testCase.findMany({
-      where: { projectId, updatedAt: { gte: startDate, lte: endDate } },
+      where: { projectId },
       include: { module: true },
     }),
     db.bugFix.findMany({
-      where: { projectId, updatedAt: { gte: startDate, lte: endDate } },
+      where: { projectId },
       include: { module: true },
     }),
   ]);
@@ -226,9 +227,9 @@ function mapReport(report: any): ReportData {
 
 export async function generateReport(input: CreateReportInput): Promise<ReportData> {
   const project = await db.project.findUnique({ where: { id: input.projectId } });
-  if (!project) throw new Error('Project not found');
+  if (!project) throw new Error('Project tidak ditemukan.');
 
-  const metrics = await calculateProjectMetrics(input.projectId, input.reportingPeriodStart, input.reportingPeriodEnd);
+  const metrics = await calculateProjectMetrics(input.projectId);
   const parts = await defaultDocumentParts(input, project.name);
 
   const report = await db.report.create({
@@ -270,8 +271,8 @@ export async function getReportById(reportId: string): Promise<ReportData | null
 
 export async function updateReport(reportId: string, input: UpdateReportInput): Promise<ReportData> {
   const current = await db.report.findUnique({ where: { id: reportId }, include: { project: true } });
-  if (!current) throw new Error('Report not found');
-  if (current.status === 'FINAL') throw new Error('Final reports cannot be edited');
+  if (!current) throw new Error('Report tidak ditemukan.');
+  if (current.status === 'FINAL') throw new Error('Report final tidak dapat diubah.');
 
   const sections = { ...asSections(current.sectionsJson), ...(input.sections || {}) };
   const metadata = { ...asMetadata(current.metadataJson), ...(input.metadata || {}) };
@@ -300,9 +301,9 @@ export async function updateReport(reportId: string, input: UpdateReportInput): 
 
 export async function refreshReportSnapshot(reportId: string): Promise<ReportData> {
   const current = await db.report.findUnique({ where: { id: reportId } });
-  if (!current) throw new Error('Report not found');
-  if (current.status === 'FINAL') throw new Error('Final reports cannot be refreshed');
-  const metrics = await calculateProjectMetrics(current.projectId, current.reportingPeriodStart, current.reportingPeriodEnd);
+  if (!current) throw new Error('Report tidak ditemukan.');
+  if (current.status === 'FINAL') throw new Error('Report final tidak dapat di-refresh.');
+  const metrics = await calculateProjectMetrics(current.projectId);
   const report = await db.report.update({
     where: { id: reportId },
     data: { metricsSnapshot: metrics as unknown as Prisma.InputJsonValue },
@@ -318,7 +319,7 @@ export async function finalizeReport(reportId: string): Promise<ReportData> {
 
 export async function createReportVersion(reportId: string): Promise<ReportData> {
   const current = await db.report.findUnique({ where: { id: reportId }, include: { project: true } });
-  if (!current) throw new Error('Report not found');
+  if (!current) throw new Error('Report tidak ditemukan.');
   const report = await db.report.create({
     data: {
       projectId: current.projectId,

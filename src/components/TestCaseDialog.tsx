@@ -192,7 +192,7 @@ export function TestCaseDialog({
                 value={formData.testCaseId}
                 onChange={(e) => setFormData({ ...formData, testCaseId: e.target.value })}
                 placeholder="contoh: A-001"
-                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200"
+                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
               />
             </div>
             <div className="space-y-1.5">
@@ -201,7 +201,7 @@ export function TestCaseDialog({
                 value={formData.page}
                 onChange={(e) => setFormData({ ...formData, page: e.target.value })}
                 placeholder="contoh: CMS Login"
-                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200"
+                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
               />
             </div>
           </div>
@@ -213,7 +213,7 @@ export function TestCaseDialog({
                 value={formData.subMenu}
                 onChange={(e) => setFormData({ ...formData, subMenu: e.target.value })}
                 placeholder="contoh: Order List"
-                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200"
+                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
               />
             </div>
             <div className="space-y-1.5">
@@ -233,7 +233,7 @@ export function TestCaseDialog({
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tipe Test <span className="text-red-500">*</span></Label>
               <Select value={formData.testType} onValueChange={(v) => setFormData({ ...formData, testType: v })}>
-                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition-all duration-200"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                   <SelectItem value="Positive" className="rounded-lg">Positive</SelectItem>
                   <SelectItem value="Negative" className="rounded-lg">Negative</SelectItem>
@@ -243,7 +243,7 @@ export function TestCaseDialog({
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Prioritas</Label>
               <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
-                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition-all duration-200"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                   <SelectItem value="Critical" className="rounded-lg text-red-400 font-medium">Critical</SelectItem>
                   <SelectItem value="High" className="rounded-lg text-orange-400 font-medium">High</SelectItem>
@@ -256,7 +256,7 @@ export function TestCaseDialog({
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Module</Label>
                 <Select value={formData.moduleId || 'none'} onValueChange={(v) => setFormData({ ...formData, moduleId: v === 'none' ? '' : v })}>
-                  <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition-all duration-200"><SelectValue placeholder="Pilih Module" /></SelectTrigger>
+                  <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih Module" /></SelectTrigger>
                   <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                     <SelectItem value="none" className="rounded-lg">Tanpa Module</SelectItem>
                     {modules.map((m) => (
@@ -275,7 +275,7 @@ export function TestCaseDialog({
               onChange={(e) => setFormData({ ...formData, testAction: e.target.value })}
               placeholder="Deskripsi aksi test yang dilakukan"
               rows={2}
-              className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200"
+              className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
             />
           </div>
 
@@ -286,7 +286,7 @@ export function TestCaseDialog({
               onChange={(e) => setFormData({ ...formData, steps: e.target.value })}
               placeholder="- Langkah 1&#10;- Langkah 2&#10;- Langkah 3"
               rows={4}
-              className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200 font-mono text-xs"
+              className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200 font-mono text-xs"
             />
           </div>
 
@@ -298,7 +298,7 @@ export function TestCaseDialog({
                 onChange={(e) => setFormData({ ...formData, expectedResult: e.target.value })}
                 placeholder="Hasil yang diharapkan"
                 rows={2}
-                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200"
+                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
               />
             </div>
             <div className="space-y-1.5">
@@ -320,7 +320,7 @@ export function TestCaseDialog({
                   }
                 }}
               >
-                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition-all duration-200"><SelectValue placeholder="Pilih hasil..." /></SelectTrigger>
+                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih hasil..." /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                   <SelectItem value="__none__" className="rounded-lg">-</SelectItem>
                   <SelectItem value="As Expected" className="rounded-lg text-emerald-400 font-medium">As Expected</SelectItem>
@@ -342,7 +342,7 @@ export function TestCaseDialog({
                     : formData.actualResult;
                 setFormData({ ...formData, status: v, progress, actualResult });
               }}>
-                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition-all duration-200"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                   <SelectItem value="NOT DONE" className="rounded-lg">Not Done</SelectItem>
                   <SelectItem value="IN PROGRESS" className="rounded-lg">In Progress</SelectItem>
@@ -373,14 +373,14 @@ export function TestCaseDialog({
               onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
               placeholder="Catatan tambahan"
               rows={2}
-              className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition-all duration-200"
+              className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
             />
           </div>
         </div>
 
         <DialogFooter className="border-t border-border/40 pt-4 mt-6">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Batal</Button>
-          <Button onClick={handleSaveTestCase} variant="majestic" className="rounded-xl bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-white font-medium shadow-md hover:shadow-cyan-500/10 transition-all duration-200 gap-1.5">
+          <Button onClick={handleSaveTestCase} variant="majestic" className="rounded-xl bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-white font-medium shadow-md hover:shadow-cyan-500/10 transition duration-200 gap-1.5">
             <Save className="w-4 h-4" /> {editingTestCase ? 'Simpan Perubahan' : 'Buat Test Case'}
           </Button>
         </DialogFooter>

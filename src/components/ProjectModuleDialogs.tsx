@@ -53,7 +53,7 @@ export function ProjectModuleDialogs({
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Nama Project *</Label>
               <Input
-                className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition-all"
+                className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition"
                 value={newProjectName}
                 onChange={(event) => setNewProjectName(event.target.value)}
                 placeholder="contoh: Servios CMS"
@@ -62,7 +62,7 @@ export function ProjectModuleDialogs({
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Deskripsi</Label>
               <Textarea
-                className="min-h-[100px] rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition-all p-3"
+                className="min-h-[100px] rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition p-3"
                 value={newProjectDesc}
                 onChange={(event) => setNewProjectDesc(event.target.value)}
                 placeholder="Deskripsi project (opsional)"
@@ -71,11 +71,11 @@ export function ProjectModuleDialogs({
             </div>
           </div>
           <DialogFooter className="border-t border-border/40 pt-4 mt-2">
-            <Button variant="outline" onClick={() => setShowCreateProject(false)} className="h-10 rounded-xl border-border/60 bg-secondary/30 text-muted-foreground hover:text-foreground font-bold text-xs px-6 transition-all">Batal</Button>
+            <Button variant="outline" onClick={() => setShowCreateProject(false)} className="h-10 rounded-xl border-border/60 bg-secondary/30 text-muted-foreground hover:text-foreground font-bold text-xs px-6 transition">Batal</Button>
             <Button
               onClick={onCreateProject}
               disabled={!newProjectName.trim()}
-              className="h-10 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-bold text-xs px-6 shadow-lg hover:shadow-primary/20 transition-all"
+              className="h-10 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-bold text-xs px-6 shadow-lg hover:shadow-primary/20 transition"
             >
               Buat Projec
             </Button>
@@ -94,7 +94,7 @@ export function ProjectModuleDialogs({
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Nama Module *</Label>
               <Input
-                className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition-all"
+                className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition"
                 value={newModuleName}
                 onChange={(event) => setNewModuleName(event.target.value)}
                 placeholder="contoh: CMS Login, Order Management"
@@ -102,11 +102,11 @@ export function ProjectModuleDialogs({
             </div>
           </div>
           <DialogFooter className="border-t border-border/40 pt-4 mt-2">
-            <Button variant="outline" onClick={() => setShowCreateModule(false)} className="h-10 rounded-xl border-border/60 bg-secondary/30 text-muted-foreground hover:text-foreground font-bold text-xs px-6 transition-all">Batal</Button>
+            <Button variant="outline" onClick={() => setShowCreateModule(false)} className="h-10 rounded-xl border-border/60 bg-secondary/30 text-muted-foreground hover:text-foreground font-bold text-xs px-6 transition">Batal</Button>
             <Button
               onClick={onCreateModule}
               disabled={!newModuleName.trim()}
-              className="h-10 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-bold text-xs px-6 shadow-lg hover:shadow-primary/20 transition-all"
+              className="h-10 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-bold text-xs px-6 shadow-lg hover:shadow-primary/20 transition"
             >
               Buat Module
             </Button>

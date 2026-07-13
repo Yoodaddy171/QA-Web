@@ -8,6 +8,7 @@
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "postinstall": "npm run db:generate",
     "db:push": "prisma db push",
     "db:generate": "prisma generate --schema prisma/sqlite.prisma && prisma generate --schema prisma/schema.prisma",
@@ -71,6 +72,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",

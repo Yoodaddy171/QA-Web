@@ -28,29 +28,65 @@ export async function syncBugFixForTestCaseStatus(input: {
   const client = input.client ?? db;
 
   if (input.finalStatus === TESTCASE_STATUS.FAILED) {
-    const existingBugFix = await client.bugFix.findFirst({
-      where: { sourceTestCaseId: input.sourceTestCaseId },
+    // Already tracked in the active queue — nothing to do.
+    const activeBugFix = await client.bugFix.findFirst({
+      where: {
+        sourceTestCaseId: input.sourceTestCaseId,
+        status: { not: BUGFIX_STATUS.VERIFIED_FIXED },
+      },
+      select: { id: true },
     });
-    if (!existingBugFix) {
-      await client.bugFix.create({
+    if (activeBugFix) return;
+
+    // Regression: the case was previously verified & fixed but failed again.
+    // Reopen the resolved bug instead of leaving it hidden in "resolved".
+    const resolvedBugFix = await client.bugFix.findFirst({
+      where: {
+        sourceTestCaseId: input.sourceTestCaseId,
+        status: BUGFIX_STATUS.VERIFIED_FIXED,
+      },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true },
+    });
+
+    const snapshot = {
+      testCaseId: input.source.testCaseId,
+      projectId: input.source.projectId,
+      page: input.source.page,
+      subMenu: input.source.subMenu,
+      testType: input.source.testType,
+      testAction: input.source.testAction,
+      steps: input.source.steps,
+      expectedResult: input.source.expectedResult,
+      actualResult: TESTCASE_ACTUAL_RESULT.NOT_AS_EXPECTED,
+      priority: input.source.priority,
+      moduleId: input.source.moduleId,
+    };
+
+    if (resolvedBugFix) {
+      await client.bugFix.update({
+        where: { id: resolvedBugFix.id },
         data: {
-          sourceTestCaseId: input.sourceTestCaseId,
-          testCaseId: input.source.testCaseId,
-          projectId: input.source.projectId,
-          page: input.source.page,
-          subMenu: input.source.subMenu,
-          testType: input.source.testType,
-          testAction: input.source.testAction,
-          steps: input.source.steps,
-          expectedResult: input.source.expectedResult,
-          actualResult: TESTCASE_ACTUAL_RESULT.NOT_AS_EXPECTED,
-          priority: input.source.priority,
-          moduleId: input.source.moduleId,
+          ...snapshot,
           status: BUGFIX_STATUS.REPORTED,
           reportedAt: new Date(),
+          fixingAt: null,
+          readyAt: null,
+          fixedAt: null,
         },
       });
+      return;
     }
+
+    // First-time failure.
+    await client.bugFix.create({
+      data: {
+        sourceTestCaseId: input.sourceTestCaseId,
+        ...snapshot,
+        status: BUGFIX_STATUS.REPORTED,
+        reportedAt: new Date(),
+      },
+    });
     return;
   }
 

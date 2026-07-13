@@ -12,9 +12,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   /* config options here */
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
-  reactStrictMode: false,
+  reactStrictMode: true,
   serverExternalPackages: ['exceljs'],
   // @ts-ignore
   turbopack: {},

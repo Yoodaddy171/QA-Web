@@ -99,7 +99,7 @@ export function AIRefineDialog({
               <div className="space-y-2.5">
                 <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Mode Refinement</Label>
                 <Select value={mode} onValueChange={setMode}>
-                  <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition-all duration-300">
+                  <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition duration-300">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
@@ -170,7 +170,7 @@ export function AIRefineDialog({
                         <Label className="text-[10px] font-semibold uppercase tracking-wider text-primary">AI Preview: {field.label}</Label>
                       </div>
                       <div className={cn(
-                        "min-h-[100px] rounded-2xl border p-4 text-[11px] font-bold leading-relaxed whitespace-pre-line shadow-lg transition-all",
+                        "min-h-[100px] rounded-2xl border p-4 text-[11px] font-bold leading-relaxed whitespace-pre-line shadow-lg transition",
                         field.key === 'testAction' ? "text-[13px] font-semibold text-foreground" : "text-foreground/90",
                         "border-primary/30 bg-card shadow-primary/5"
                       )}>
@@ -195,7 +195,7 @@ export function AIRefineDialog({
               <Button
                 variant="outline"
                 onClick={closeDialog}
-                className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition-all hover:bg-secondary"
+                className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition hover:bg-secondary"
               >
                 Batal
               </Button>
@@ -205,14 +205,14 @@ export function AIRefineDialog({
                   <Button
                     variant="outline"
                     onClick={onReset}
-                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-primary font-bold text-xs px-5 hover:bg-primary/5 transition-all"
+                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-primary font-bold text-xs px-5 hover:bg-primary/5 transition"
                   >
                     <RefreshCw className="w-4 h-4" /> Rese
                   </Button>
                   <Button
                     onClick={onApply}
                     disabled={saving}
-                    className="h-10 gap-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-8 shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 uppercase tracking-wider"
+                    className="h-10 gap-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-8 shadow-lg hover:shadow-emerald-500/20 transition duration-300 uppercase tracking-wider"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     Apply Refinemen
@@ -222,7 +222,7 @@ export function AIRefineDialog({
                 <Button
                   onClick={() => onRefine(mode)}
                   disabled={refining}
-                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-semibold text-xs px-8 shadow-lg hover:shadow-primary/30 transition-all duration-300 uppercase tracking-wider"
+                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-semibold text-xs px-8 shadow-lg hover:shadow-primary/30 transition duration-300 uppercase tracking-wider"
                 >
                   {refining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Refine Testcase

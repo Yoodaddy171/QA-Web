@@ -3,6 +3,8 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Download, FileText, FilePlus2, Pencil, RefreshCcw, ShieldCheck } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { runReportAction, type ReportAction } from '@/lib/client/api/reports-client';
 import type { ReportData } from '@/lib/services/report-types';
 import { generateHTMLReport } from '@/lib/services/report-export';
 
@@ -12,16 +14,25 @@ interface ReportViewerProps {
   onReportChange: (report: ReportData) => void;
 }
 
+const ACTION_SUCCESS: Record<ReportAction, string> = {
+  refresh: 'Snapshot metrics berhasil diperbarui.',
+  finalize: 'Report berhasil difinalisasi.',
+  versions: 'Versi report baru berhasil dibuat.',
+};
+
 export function ReportViewer({ report, onEdit, onReportChange }: ReportViewerProps) {
+  const { toast } = useToast();
   const formatDate = (date?: Date) => date ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(date)) : '-';
   const { metrics, sections, metadata } = report;
   const isPlanning = report.reportType === 'TEST_PLANNING_DOCUMENT';
 
-  async function postAction(path: string) {
-    const response = await fetch(`/api/reports/${report.id}/${path}`, { method: 'POST' });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Action failed');
-    onReportChange(data.report);
+  async function postAction(action: ReportAction) {
+    try {
+      onReportChange(await runReportAction(report.id, action));
+      toast({ variant: 'success', title: 'Berhasil', description: ACTION_SUCCESS[action] });
+    } catch (error) {
+      toast({ title: 'Aksi gagal', description: error instanceof Error ? error.message : 'Terjadi kesalahan.', variant: 'destructive' });
+    }
   }
 
   const handleExportHTML = () => {

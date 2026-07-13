@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
-import { BUGFIX_STATUS, isBugFixStatus, isEditableBugFixStatus } from '@/lib/domain/bugfix';
+import { BUGFIX_STATUS, canTransitionBugFixStatus, isBugFixStatus, isEditableBugFixStatus } from '@/lib/domain/bugfix';
 import { getProgressFromStatus } from '@/lib/domain/progress';
-import { TESTCASE_STATUS } from '@/lib/domain/testcase';
+import { TESTCASE_ACTUAL_RESULT, TESTCASE_STATUS } from '@/lib/domain/testcase';
 import { NextRequest, NextResponse } from 'next/server';
 
 const BUGFIX_SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'testCaseId', 'page', 'status', 'priority']);
@@ -101,6 +101,14 @@ export async function PUT(req: NextRequest) {
         );
       }
 
+      // Enforce one-step-at-a-time lifecycle: no skipping stages.
+      if (!canTransitionBugFixStatus(current.status, data.status)) {
+        return NextResponse.json(
+          { error: 'Status bug fix hanya bisa berpindah satu tahap. Tidak boleh melompati tahap.' },
+          { status: 400 }
+        );
+      }
+
       updateData.status = data.status;
       const now = new Date();
 
@@ -109,6 +117,18 @@ export async function PUT(req: NextRequest) {
       }
       if (data.status === BUGFIX_STATUS.FIXING) {
         updateData.fixingAt = now;
+        // Bounce back: if a retest failed and the bug is moved back from
+        // READY TO RETEST, revert the synced test case out of READY TO RETEST.
+        if (current.status === BUGFIX_STATUS.READY_TO_RETEST) {
+          await db.testCase.updateMany({
+            where: { id: current.sourceTestCaseId, status: TESTCASE_STATUS.READY_TO_RETEST },
+            data: {
+              status: TESTCASE_STATUS.FAILED,
+              actualResult: TESTCASE_ACTUAL_RESULT.NOT_AS_EXPECTED,
+              progress: getProgressFromStatus(TESTCASE_STATUS.FAILED),
+            },
+          });
+        }
       }
       if (data.status === BUGFIX_STATUS.READY_TO_RETEST) {
         updateData.readyAt = now;

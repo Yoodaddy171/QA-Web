@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, FileText, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { fetchReports } from '@/lib/client/api/reports-client';
 import { ReportForm } from './ReportForm';
 import { ReportHistory } from './ReportHistory';
 import { ReportViewer } from './ReportViewer';
@@ -13,27 +15,25 @@ interface ReportsPanelProps {
 }
 
 export function ReportsPanel({ projectId }: ReportsPanelProps) {
+  const { toast } = useToast();
   const [reports, setReports] = useState<ReportData[]>([]);
   const [selectedReport, setSelectedReport] = useState<ReportData | null>(null);
   const [editingReport, setEditingReport] = useState<ReportData | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchReports = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/reports?projectId=${encodeURIComponent(projectId)}`);
-      if (!response.ok) throw new Error('Failed to fetch reports');
-      const data = await response.json();
-      setReports(data.reports || []);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [projectId]);
-
   useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
+    let active = true;
+    // setState happens after the await (not synchronously in the effect body),
+    // and is guarded so a project switch can't apply stale results.
+    fetchReports(projectId)
+      .then((data) => { if (active) setReports(data); })
+      .catch((error) => {
+        if (active) toast({ title: 'Gagal memuat report', description: error instanceof Error ? error.message : 'Terjadi kesalahan.', variant: 'destructive' });
+      })
+      .finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, [projectId, toast]);
 
   const closeForm = () => {
     setIsCreating(false);
@@ -81,13 +81,13 @@ export function ReportsPanel({ projectId }: ReportsPanelProps) {
         <div className="flex items-center gap-3">
           <FileText className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold text-foreground">FDS Document Generator</h1>
+            <h1 className="text-2xl font-bold text-foreground">Reports</h1>
             <p className="text-sm text-muted-foreground">Create Test Status Report and Test Planning documents</p>
           </div>
         </div>
         <Button onClick={() => setIsCreating(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Create Document
+          Create Report
         </Button>
       </div>
 

@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { saveReport } from '@/lib/client/api/reports-client';
 import type { ReportData, ReportSections, ReportType } from '@/lib/services/report-types';
 
 interface ReportFormProps {
@@ -20,6 +22,7 @@ const today = new Date().toISOString().slice(0, 10);
 const dateInput = (value?: Date) => value ? new Date(value).toISOString().slice(0, 10) : '';
 
 export function ReportForm({ projectId, report, onReportSaved, onCancel }: ReportFormProps) {
+  const { toast } = useToast();
   const [reportType, setReportType] = useState<ReportType>(report?.reportType || 'TEST_STATUS_REPORT');
   const [documentId, setDocumentId] = useState(report?.documentId || '');
   const [version, setVersion] = useState(report?.version || '1.0');
@@ -72,16 +75,11 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
         },
         sections,
       };
-      const response = await fetch(report ? `/api/reports/${report.id}` : '/api/reports', {
-        method: report ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to save report');
-      onReportSaved(data.report);
+      const saved = await saveReport(payload, report?.id);
+      toast({ variant: 'success', title: 'Berhasil', description: report ? 'Report berhasil diperbarui.' : 'Report berhasil dibuat.' });
+      onReportSaved(saved);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to save report');
+      toast({ title: 'Gagal menyimpan report', description: error instanceof Error ? error.message : 'Terjadi kesalahan.', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -92,7 +90,7 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
   return (
     <form onSubmit={handleSubmit} className="max-w-5xl space-y-5">
       <div className="rounded-lg border border-border/60 bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-foreground">{report ? 'Edit FDS Document' : 'Create FDS Document'}</h2>
+        <h2 className="text-xl font-bold text-foreground">{report ? 'Edit Report' : 'Create Report'}</h2>
         <p className="text-sm text-muted-foreground">Isi metadata dan section dokumen. Snapshot metrics akan dihitung dari database.</p>
       </div>
 

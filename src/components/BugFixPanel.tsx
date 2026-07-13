@@ -16,7 +16,9 @@ import {
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { canTransitionBugFixStatus } from '@/lib/domain/bugfix';
 import { cn } from '@/lib/utils';
+import { BugFixStatsCards } from '@/components/BugFixStatsCards';
 
 type BugFixColumnKey = 'subMenu' | 'action' | 'priority' | 'status' | 'reportedAt' | 'timing';
 
@@ -166,63 +168,9 @@ export function BugFixPanel({
       transition={{ duration: 0.4 }}
       className="min-w-0 space-y-6 overflow-x-hidden"
     >
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-orange-500 hover:bg-orange-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-orange-500/10 p-2.5 dark:bg-orange-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div>
-                  <AnimatedNumber value={stats.bugFixReported} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">Reported</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-amber-500 hover:bg-amber-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-amber-500/10 p-2.5 dark:bg-amber-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <AnimatedNumber value={stats.bugFixFixing} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-650 dark:text-amber-400">Fixing</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-cyan-500 hover:bg-cyan-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-cyan-500/10 p-2.5 dark:bg-cyan-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <RefreshCw className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
-                </div>
-                <div>
-                  <AnimatedNumber value={stats.bugFixReadyRetest} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-650 dark:text-cyan-400">Ready</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card variant="glass" padding="none" className="group border-l-4 border-l-emerald-500 hover:bg-emerald-500/[0.03] transition-all duration-300">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-emerald-500/10 p-2.5 dark:bg-emerald-500/15 group-hover:scale-105 transition-transform duration-300">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <AnimatedNumber value={stats.bugFixFixed} className="block text-2xl font-bold text-foreground font-mono tabular-nums" />
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-650 dark:text-emerald-400">Fixed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {stats && <BugFixStatsCards stats={stats} />}
+
+
 
       {/* Toolbar */}
       <div className="flex min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border border-border/40 bg-card p-4 shadow-sm lg:flex-row lg:items-center">
@@ -247,7 +195,7 @@ export function BugFixPanel({
           </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9.5 justify-center rounded-xl border border-border/50 bg-secondary/35 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:bg-secondary/65 transition-all">
+              <Button variant="outline" size="sm" className="h-9.5 justify-center rounded-xl border border-border/50 bg-secondary/35 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:bg-secondary/65 transition">
                 <Settings2 className="h-3.5 w-3.5 text-primary" />
                 Columns
               </Button>
@@ -281,7 +229,7 @@ export function BugFixPanel({
             />
           </div>
           <Select value={bugFixFilterModule} onValueChange={setBugFixFilterModule}>
-            <SelectTrigger className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-foreground sm:w-[180px] text-xs font-semibold hover:bg-secondary/65 transition-all duration-200">
+            <SelectTrigger className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-foreground sm:w-[180px] text-xs font-semibold hover:bg-secondary/65 transition duration-200">
               <SelectValue placeholder="Filter module" />
             </SelectTrigger>
             <SelectContent className="rounded-xl bg-card border border-border/50 shadow-lg">
@@ -296,7 +244,7 @@ export function BugFixPanel({
           </Select>
           {bugFixTab === 'active' && (
             <Select value={bugFixFilterStatus} onValueChange={setBugFixFilterStatus}>
-              <SelectTrigger className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-foreground sm:w-[180px] text-xs font-semibold hover:bg-secondary/65 transition-all duration-200"><SelectValue placeholder="Filter status" /></SelectTrigger>
+              <SelectTrigger className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-foreground sm:w-[180px] text-xs font-semibold hover:bg-secondary/65 transition duration-200"><SelectValue placeholder="Filter status" /></SelectTrigger>
               <SelectContent className="rounded-xl bg-card border border-border/50 shadow-lg">
                 <SelectItem value="all" className="rounded-lg text-xs font-medium">All Status</SelectItem>
                 <SelectItem value="SUDAH DILAPORKAN" className="rounded-lg text-xs font-medium">Reported</SelectItem>
@@ -377,9 +325,9 @@ export function BugFixPanel({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl bg-card border border-border/50 shadow-lg text-foreground">
-                            <SelectItem value="SUDAH DILAPORKAN" className="text-[9px] font-bold rounded-lg my-0.5 mx-1">DILAPORKAN</SelectItem>
-                            <SelectItem value="SEDANG DI FIX" className="text-[9px] font-bold rounded-lg my-0.5 mx-1">SEDANG DI FIX</SelectItem>
-                            <SelectItem value="READY TO RETEST" className="text-[9px] font-bold rounded-lg my-0.5 mx-1">READY TO RETEST</SelectItem>
+                            <SelectItem value="SUDAH DILAPORKAN" disabled={!canTransitionBugFixStatus(bf.status, 'SUDAH DILAPORKAN')} className="text-[9px] font-bold rounded-lg my-0.5 mx-1">DILAPORKAN</SelectItem>
+                            <SelectItem value="SEDANG DI FIX" disabled={!canTransitionBugFixStatus(bf.status, 'SEDANG DI FIX')} className="text-[9px] font-bold rounded-lg my-0.5 mx-1">SEDANG DI FIX</SelectItem>
+                            <SelectItem value="READY TO RETEST" disabled={!canTransitionBugFixStatus(bf.status, 'READY TO RETEST')} className="text-[9px] font-bold rounded-lg my-0.5 mx-1">READY TO RETEST</SelectItem>
                           </SelectContent>
                         </Select>
                       )}

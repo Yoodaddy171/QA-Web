@@ -91,7 +91,7 @@ export function ImportExcelDialog({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
-          <div className="flex items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-inner group transition-all duration-300 hover:bg-primary/10">
+          <div className="flex items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-inner group transition duration-300 hover:bg-primary/10">
             <Checkbox
               id="createModules"
               checked={createModules}
@@ -160,7 +160,7 @@ export function ImportExcelDialog({
                   { label: 'Ready to Import', value: importPreview.importableRows, color: 'text-emerald-600 dark:text-emerald-400' },
                   { label: 'Issues Found', value: importPreview.errorCount + importPreview.warningCount, color: importPreview.errorCount > 0 ? 'text-rose-500' : 'text-amber-500' },
                 ].map((stat) => (
-                  <div key={stat.label} className="rounded-2xl border border-border/60 bg-secondary/30 p-4 shadow-sm hover:border-primary/30 transition-all">
+                  <div key={stat.label} className="rounded-2xl border border-border/60 bg-secondary/30 p-4 shadow-sm hover:border-primary/30 transition">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 opacity-60">{stat.label}</p>
                     <p className={cn("text-2xl font-semibold tracking-tight", stat.color)}>{stat.value}</p>
                   </div>
@@ -168,7 +168,7 @@ export function ImportExcelDialog({
               </div>
 
               <div className={cn(
-                "flex items-start gap-4 rounded-2xl border p-5 shadow-inner transition-all duration-300",
+                "flex items-start gap-4 rounded-2xl border p-5 shadow-inner transition duration-300",
                 importPreview.canImport
                   ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300'
                   : 'border-rose-500/20 bg-rose-500/5 text-rose-700 dark:text-rose-300'
@@ -294,7 +294,7 @@ export function ImportExcelDialog({
             variant="outline"
             onClick={() => hasPreview ? onClearPreview() : onOpenChange(false)}
             disabled={busy}
-            className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition-all hover:bg-secondary"
+            className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition hover:bg-secondary"
           >
             {hasPreview ? 'Ganti File' : 'Batal'}
           </Button>
@@ -302,7 +302,7 @@ export function ImportExcelDialog({
             onClick={hasPreview ? onConfirmImport : onChooseFile}
             disabled={busy || (hasPreview && !importPreview?.canImport)}
             className={cn(
-              "h-10 gap-2.5 rounded-xl text-white font-semibold text-xs px-8 shadow-lg transition-all duration-300 uppercase tracking-wider",
+              "h-10 gap-2.5 rounded-xl text-white font-semibold text-xs px-8 shadow-lg transition duration-300 uppercase tracking-wider",
               hasPreview && !importPreview?.canImport
                 ? "bg-muted text-muted-foreground"
                 : "bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 hover:shadow-primary/30"

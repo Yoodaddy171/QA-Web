@@ -165,7 +165,7 @@ export function AIGenerateDialog({
                   onChange={(event) => setPrompt(event.target.value)}
                   placeholder="Contoh: Buatkan test case untuk fitur register akun baru, termasuk validasi email, password strength, dan konfirmasi password. Sertakan positive dan negative test case."
                   rows={4}
-                  className="resize-none rounded-2xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground placeholder:text-muted-foreground/40 focus-visible:ring-primary/20 transition-all duration-300 p-4"
+                  className="resize-none rounded-2xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground placeholder:text-muted-foreground/40 focus-visible:ring-primary/20 transition duration-300 p-4"
                 />
                 <div className="flex flex-wrap gap-1.5">
                   {(insights?.suggestions?.length ? insights.suggestions : PROMPT_SUGGESTIONS).map((suggestion) => (
@@ -173,7 +173,7 @@ export function AIGenerateDialog({
                       key={suggestion}
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-xl text-[10px] font-bold text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all"
+                      className="h-8 rounded-xl text-[10px] font-bold text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition"
                       onClick={() => setPrompt(suggestion)}
                     >
                       {suggestion}
@@ -250,7 +250,7 @@ export function AIGenerateDialog({
                   <div className="space-y-2">
                     <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Fokus pada Module</Label>
                     <Select value={moduleFilter} onValueChange={setModuleFilter}>
-                      <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition-all duration-300">
+                      <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition duration-300">
                         <SelectValue placeholder="Semua Module" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
@@ -265,7 +265,7 @@ export function AIGenerateDialog({
                 <div className="space-y-2">
                   <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Jumlah Output</Label>
                   <Select value={String(generateCount)} onValueChange={(value) => setGenerateCount(Number(value))}>
-                    <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition-all duration-300">
+                    <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition duration-300">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
@@ -331,7 +331,7 @@ export function AIGenerateDialog({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     className={cn(
-                      "group cursor-pointer rounded-2xl border p-5 transition-all duration-300 relative overflow-hidden",
+                      "group cursor-pointer rounded-2xl border p-5 transition duration-300 relative overflow-hidden",
                       aiSelectedCases.has(index)
                         ? 'border-primary bg-primary/5 shadow-md shadow-primary/5'
                         : 'border-border/60 bg-secondary/20 hover:bg-secondary/30 hover:border-primary/40'
@@ -387,7 +387,7 @@ export function AIGenerateDialog({
               <Button
                 variant="outline"
                 onClick={closeDialog}
-                className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition-all hover:bg-secondary"
+                className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition hover:bg-secondary"
               >
                 Close
               </Button>
@@ -397,14 +397,14 @@ export function AIGenerateDialog({
                   <Button
                     variant="outline"
                     onClick={resetGeneratedCases}
-                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-primary font-bold text-xs px-5 hover:bg-primary/5 transition-all"
+                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-primary font-bold text-xs px-5 hover:bg-primary/5 transition"
                   >
                     <RefreshCw className="w-4 h-4" /> Rese
                   </Button>
                   <Button
                     onClick={handleAISaveSelected}
                     disabled={aiSelectedCases.size === 0 || aiSaving}
-                    className="h-10 gap-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-7 shadow-lg hover:shadow-emerald-500/20 transition-all duration-300"
+                    className="h-10 gap-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-7 shadow-lg hover:shadow-emerald-500/20 transition duration-300"
                   >
                     {aiSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     Save Scenarios
@@ -414,7 +414,7 @@ export function AIGenerateDialog({
                 <Button
                   onClick={() => handleAIGenerate({ prompt, moduleFilter, count: generateCount })}
                   disabled={!prompt.trim() || aiGenerating}
-                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-semibold text-xs px-8 shadow-lg hover:shadow-primary/30 transition-all duration-300 uppercase tracking-wider"
+                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-semibold text-xs px-8 shadow-lg hover:shadow-primary/30 transition duration-300 uppercase tracking-wider"
                 >
                   {aiGenerating ? (
                     <>

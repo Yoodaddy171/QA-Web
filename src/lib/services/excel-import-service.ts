@@ -6,6 +6,9 @@ import {
   detectHeaderRowIndex,
   getColValue,
   getDetectedHeaders,
+  getDefaultImportMapping,
+  applyImportMapping,
+  type ImportColumnMapping,
   mapImportRow,
   normalizeImportStatus,
   parseSheetWithAutoHeader,
@@ -13,16 +16,19 @@ import {
   VALID_IMPORT_STATUSES,
 } from '@/lib/services/excel-normalization';
 import * as XLSX from 'xlsx';
+import { randomUUID } from 'node:crypto';
+import { recordActivity } from '@/lib/services/activity-history-service';
 
-export async function buildImportPreview(workbook: XLSX.WorkBook, projectId: string, createModules: boolean) {
+export async function buildImportPreview(workbook: XLSX.WorkBook, projectId: string, createModules: boolean, mappings?: Record<string, ImportColumnMapping>) {
   const idCounts = new Map<string, number>();
   const parsedSheets = workbook.SheetNames.map((sheetName) => {
     const sheet = workbook.Sheets[sheetName];
     const headerRow = sheet && sheet['!ref'] ? detectHeaderRowIndex(sheet) + 1 : null;
     const headers = sheet && sheet['!ref'] ? getDetectedHeaders(sheet) : [];
     const rows = sheet && sheet['!ref'] ? parseSheetWithAutoHeader(sheet) : [];
+    const mapping = mappings?.[sheetName] || getDefaultImportMapping(headers);
     rows.forEach((row) => {
-      const id = getColValue(row, 'ID', 'Test Case ID', 'testCaseId');
+      const id = getColValue(applyImportMapping(row, mapping), 'ID');
       if (id) idCounts.set(id, (idCounts.get(id) || 0) + 1);
     });
     return { sheetName, headerRow, headers, rows };
@@ -43,11 +49,8 @@ export async function buildImportPreview(workbook: XLSX.WorkBook, projectId: str
   let errorCount = 0;
 
   const sheets = parsedSheets.map(({ sheetName, headerRow, headers, rows }) => {
-    const missingHeaders = REQUIRED_IMPORT_FIELDS.filter((field) => {
-      if (field === 'ID') return !headers.some((h) => ['ID', 'Test Case ID', 'testCaseId'].includes(h));
-      if (field === 'Test') return !headers.some((h) => ['Test', 'Test Action', 'testAction'].includes(h));
-      return !headers.includes(field);
-    });
+    const mapping = mappings?.[sheetName] || getDefaultImportMapping(headers);
+    const missingHeaders = REQUIRED_IMPORT_FIELDS.filter((field) => !mapping[field]);
 
     const missingRequiredCounts = Object.fromEntries(REQUIRED_IMPORT_FIELDS.map((field) => [field, 0]));
     const invalidStatusRows: number[] = [];
@@ -55,13 +58,14 @@ export async function buildImportPreview(workbook: XLSX.WorkBook, projectId: str
     const existingIds: string[] = [];
 
     rows.forEach((row, index) => {
-      const id = getColValue(row, 'ID', 'Test Case ID', 'testCaseId');
-      const page = getColValue(row, 'Page', 'page');
-      const feature = getColValue(row, 'Feature', 'feature');
-      const test = getColValue(row, 'Test', 'Test Action', 'testAction');
-      const expectedResult = getColValue(row, 'Expected Result', 'expectedResult');
-      const statusRaw = getColValue(row, 'Status', 'status');
-      const actualResultRaw = getColValue(row, 'Actual Result', 'actualResult');
+      const mapped = applyImportMapping(row, mapping);
+      const id = getColValue(mapped, 'ID');
+      const page = getColValue(mapped, 'Page');
+      const feature = getColValue(mapped, 'Feature');
+      const test = getColValue(mapped, 'Test');
+      const expectedResult = getColValue(mapped, 'Expected Result');
+      const statusRaw = getColValue(mapped, 'Status');
+      const actualResultRaw = getColValue(mapped, 'Actual Result');
       const status = normalizeImportStatus(statusRaw, actualResultRaw);
 
       if (!id) missingRequiredCounts.ID++;
@@ -90,12 +94,12 @@ export async function buildImportPreview(workbook: XLSX.WorkBook, projectId: str
     errorCount += sheetErrors;
     warningCount += sheetWarnings;
     importableRows += rows.filter((row) => {
-      const id = getColValue(row, 'ID', 'Test Case ID', 'testCaseId');
+      const id = getColValue(applyImportMapping(row, mapping), 'ID');
       return Boolean(id) && (idCounts.get(id) || 0) === 1 && !existingIdSet.has(id);
     }).length;
 
     const importableSheetRows = rows.filter((row) => {
-      const id = getColValue(row, 'ID', 'Test Case ID', 'testCaseId');
+      const id = getColValue(applyImportMapping(row, mapping), 'ID');
       return Boolean(id) && (idCounts.get(id) || 0) === 1 && !existingIdSet.has(id);
     }).length;
 
@@ -112,7 +116,8 @@ export async function buildImportPreview(workbook: XLSX.WorkBook, projectId: str
       duplicateIdsInFile,
       existingIds,
       invalidStatusRows,
-      previewRows: rows.slice(0, 5).map(buildPreviewRow),
+      mapping,
+      previewRows: rows.slice(0, 5).map((row) => buildPreviewRow(applyImportMapping(row, mapping))),
     };
   });
 
@@ -128,7 +133,7 @@ export async function buildImportPreview(workbook: XLSX.WorkBook, projectId: str
   };
 }
 
-export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string, createModules: boolean) {
+export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string, createModules: boolean, batchId = randomUUID(), mappings?: Record<string, ImportColumnMapping>) {
   let totalImported = 0;
   const sheetResults: { sheet: string; imported: number; skipped: number; moduleId?: string }[] = [];
 
@@ -151,7 +156,7 @@ export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string,
     let skipped = 0;
 
     for (const row of rows) {
-      const mappedRow = mapImportRow(row, sheetName, projectId, moduleId);
+      const mappedRow = mapImportRow(row, sheetName, projectId, moduleId, mappings?.[sheetName]);
       if (!mappedRow.testCaseId) {
         skipped++;
         continue;
@@ -159,6 +164,7 @@ export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string,
 
       try {
         const tc = await db.testCase.create({ data: mappedRow });
+        await recordActivity({ projectId, entityType: 'TestCase', entityId: tc.id, action: 'IMPORTED', afterValue: { batchId, testCaseId: tc.id }, actor: 'local-user' });
 
         if (mappedRow.status === TESTCASE_STATUS.FAILED) {
           const existingBugFix = await db.bugFix.findFirst({
@@ -201,9 +207,21 @@ export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string,
 
   return {
     imported: totalImported,
+    batchId,
     sheets: sheetResults,
     totalSheets: workbook.SheetNames.length,
   };
+}
+
+export async function undoImportBatch(projectId: string, batchId: string) {
+  const activities = await db.activityHistory.findMany({ where: { projectId, entityType: 'TestCase', action: 'IMPORTED' }, select: { entityId: true, afterValue: true } });
+  const importedIds = activities.filter(item => Boolean(item.afterValue && typeof item.afterValue === 'object' && 'batchId' in item.afterValue && item.afterValue.batchId === batchId)).map(item => item.entityId);
+  if (!importedIds.length) return { deleted: 0, skipped: 0 };
+  const cases = await db.testCase.findMany({ where: { projectId, id: { in: importedIds } }, select: { id: true, _count: { select: { testRunCases: true, testExecutions: true, requirementLinks: true, bugFixItems: true } } } });
+  const safeIds = cases.filter(item => Object.values(item._count).every(count => count === 0)).map(item => item.id);
+  const skipped = cases.length - safeIds.length;
+  if (safeIds.length) await db.testCase.deleteMany({ where: { projectId, id: { in: safeIds } } });
+  return { deleted: safeIds.length, skipped };
 }
 
 async function resolveImportModule(projectId: string, sheetName: string, createModules: boolean) {

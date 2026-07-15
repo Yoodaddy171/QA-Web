@@ -63,7 +63,7 @@ export function DashboardModuleProgress(props: DashboardModuleProgressProps) {
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-foreground truncate">{mod.name}</p>
-                            <p className="text-[11px] text-muted-foreground">{mod.totalCases} cases Ã‚Â· {mod.totalMenus} menus</p>
+                            <p className="text-[11px] text-muted-foreground">{mod.totalCases} cases · {mod.totalMenus} menus</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -88,7 +88,7 @@ export function DashboardModuleProgress(props: DashboardModuleProgressProps) {
                                 {mod.menus.map((mp, idx) => (
                                   <TableRow key={idx} className="hover:bg-secondary/50 border-border/30">
                                     <TableCell className="text-xs font-medium text-foreground py-3">{mp.page}</TableCell>
-                                    <TableCell className="text-xs text-muted-foreground py-3">{mp.subMenu || 'Ã¢â‚¬â€'}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground py-3">{mp.subMenu || '—'}</TableCell>
                                     <TableCell className="text-xs text-center font-medium text-foreground py-3">{mp.totalCases}</TableCell>
                                     <TableCell className="py-3">
                                       <div className="flex items-center justify-center gap-2">

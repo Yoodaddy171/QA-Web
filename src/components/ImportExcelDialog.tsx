@@ -28,6 +28,7 @@ export interface ImportPreviewSheet {
   existingIds: string[];
   invalidStatusRows: number[];
   previewRows: Record<string, string>[];
+  mapping: Record<string, string>;
 }
 
 export interface ImportPreview {
@@ -53,6 +54,9 @@ interface ImportExcelDialogProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onChooseFile: () => void;
   onConfirmImport: () => void;
+  lastImportBatchId?: string | null;
+  onUndoImport?: () => void;
+  onMappingChange?: (sheet: string, field: string, header: string) => void;
   onClearPreview: () => void;
 }
 
@@ -68,6 +72,9 @@ export function ImportExcelDialog({
   fileInputRef,
   onChooseFile,
   onConfirmImport,
+  lastImportBatchId,
+  onUndoImport,
+  onMappingChange,
   onClearPreview,
 }: ImportExcelDialogProps) {
   const busy = importing || previewing;
@@ -248,6 +255,23 @@ export function ImportExcelDialog({
                         </div>
                       )}
 
+                      <div className="grid gap-3 border-b border-border/40 bg-secondary/5 p-5 sm:grid-cols-3">
+                        {['ID', 'Page', 'Feature', 'Test', 'Expected Result', 'Status'].map((field) => (
+                          <label key={field} className="space-y-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            <span>{field}</span>
+                            <select
+                              value={sheet.mapping[field] || ''}
+                              onChange={(event) => onMappingChange?.(sheet.sheet, field, event.target.value)}
+                              disabled={busy}
+                              className="h-9 w-full rounded-lg border border-border/60 bg-card px-2 text-xs font-medium normal-case tracking-normal text-foreground"
+                            >
+                              <option value="">Pilih kolom</option>
+                              {sheet.headers.map((header) => <option key={header} value={header}>{header}</option>)}
+                            </select>
+                          </label>
+                        ))}
+                      </div>
+
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader className="bg-secondary/20">
@@ -290,6 +314,7 @@ export function ImportExcelDialog({
         </div>
 
         <DialogFooter className="shrink-0 gap-3 border-t border-border/40 px-6 py-5 bg-secondary/10">
+          {lastImportBatchId && onUndoImport && <Button variant="outline" onClick={onUndoImport} disabled={busy} className="mr-auto h-10 rounded-xl border-amber-500/40 text-amber-600">Undo last import</Button>}
           <Button
             variant="outline"
             onClick={() => hasPreview ? onClearPreview() : onOpenChange(false)}

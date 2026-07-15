@@ -43,7 +43,21 @@ export interface ReportMetrics {
   byPriority: PriorityMetrics[];
   byStatus: StatusMetrics[];
   bugSummary: BugSummary;
+  testRunSummary: TestRunSummary;
   appendix: { documentName: string; description: string; location: string }[];
+}
+
+export interface TestRunSummary {
+  latestRunId?: string;
+  latestRunName?: string;
+  totalPlanned: number;
+  totalCompleted: number;
+  totalPassed: number;
+  totalFailed: number;
+  totalBlocked: number;
+  totalNotRun: number;
+  unfinishedRuns: number;
+  activeRuns: { id: string; name: string; status: string; progress: number; failed: number; blocked: number; notRun: number }[];
 }
 
 export interface ModuleMetrics {
@@ -73,6 +87,9 @@ export interface StatusMetrics {
 
 export interface BugSummary {
   total: number;
+  critical: number;
+  open: number;
+  overdue: number;
   reported: number;
   fixing: number;
   readyToRetest: number;

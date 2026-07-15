@@ -12,8 +12,9 @@ export function buildWorkspaceViews(props: WorkspaceViewProps) {
 handleOpenDetail, handleModuleRiskClick, isLoadingStats, lastRefreshed, loadStats, loadTestCases,
 selectedProject, testCaseFilterModules, hasUnassignedTestCases, testCases, search, filterStatus, filterTestType,
 filterPriority, filterModule, filterSubMenu, subMenuOptions, selectedIds, page, limit, total, totalPages,
+filterTestRun, setFilterTestRun, filterBug, setFilterBug, filterTag, setFilterTag, filterCreatedFrom, setFilterCreatedFrom, filterCreatedTo, setFilterCreatedTo, testRunOptions,
 testRecordById, fileInputRef, setSearch, setFilterStatus, setFilterTestType, setFilterPriority, setFilterModule,
-setFilterSubMenu, setPage, setLimit, setShowBulkAction, setShowDeleteConfirm, openCreateDialog, openAIDialog,
+ setFilterSubMenu, setPage, setLimit, setShowBulkAction, setShowBulkExecution, setShowBulkAssign, setShowDeleteConfirm, openCreateDialog, openAIDialog,
 setShowImportDialog, handleImportExcel, handleExportExcel, isLoadingTestCases, handleQuickStatusChange,
 toggleSelectAll, toggleSelect, toggleSort, openEditDialog, handleDuplicate, setEditingTestCase,
 getStatusColor, getStatusIcon, getStatusBadgeVariant, getPriorityColor, getTestTypeColor,
@@ -33,6 +34,7 @@ projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleD
       setSelectedModuleFilter={setSelectedModuleFilter}
       onOpenDetail={handleOpenDetail}
       onModuleRiskClick={handleModuleRiskClick}
+      onNavigate={(tab) => props.setActiveTab?.(tab)}
       isLoading={isLoadingStats}
       lastRefreshed={lastRefreshed}
       onRefresh={() => { loadStats(selectedProject); loadTestCases(selectedProject); }}
@@ -51,6 +53,17 @@ projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleD
       filterPriority={filterPriority}
       filterModule={filterModule}
       filterSubMenu={filterSubMenu}
+      filterTestRun={filterTestRun}
+      setFilterTestRun={setFilterTestRun}
+      filterBug={filterBug}
+      setFilterBug={setFilterBug}
+      filterTag={filterTag}
+      setFilterTag={setFilterTag}
+      filterCreatedFrom={filterCreatedFrom}
+      setFilterCreatedFrom={setFilterCreatedFrom}
+      filterCreatedTo={filterCreatedTo}
+      setFilterCreatedTo={setFilterCreatedTo}
+      testRunOptions={testRunOptions}
       subMenuOptions={subMenuOptions}
       selectedIds={selectedIds}
       page={page}
@@ -69,6 +82,8 @@ projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleD
       setPage={setPage}
       setLimit={setLimit}
       setShowBulkAction={setShowBulkAction}
+      setShowBulkExecution={setShowBulkExecution}
+      setShowBulkAssign={setShowBulkAssign}
       setShowDeleteConfirm={setShowDeleteConfirm}
       openCreateDialog={openCreateDialog}
       openAIDialog={FEATURES.aiTestcaseFlows ? openAIDialog : () => {}}
@@ -159,4 +174,3 @@ projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleD
     settings: renderSettings(),
   };
 }
-

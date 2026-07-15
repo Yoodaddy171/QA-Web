@@ -18,6 +18,7 @@ function testCase(overrides: Partial<ExportTestCase>): ExportTestCase {
     status: TESTCASE_STATUS.NOT_DONE,
     progress: 0,
     remarks: null,
+    tags: null,
     priority: 'Medium',
     projectId: 'project-1',
     moduleId: null,
@@ -55,6 +56,7 @@ describe('excel export formatting', () => {
       Status: TESTCASE_STATUS.DONE,
       Progress: 100,
       'Remarks of Test': 'ok',
+      Tags: '',
     });
   });
 

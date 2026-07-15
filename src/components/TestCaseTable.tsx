@@ -2,9 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowUpDown, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
+  ArrowUpDown, Bookmark, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
   FileSpreadsheet, MoreHorizontal, Plus, RefreshCw, Search, Settings2,
-  Sparkles, Trash2, Upload, X
+  Sparkles, Trash2, Upload, UserRound, X
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +46,18 @@ const DEFAULT_TESTCASE_COLUMNS = TESTCASE_COLUMN_OPTIONS.reduce<Record<TestCaseC
 
 const TESTCASE_COLUMN_STORAGE_KEY = 'qaDesk.testcaseTable.columns.v1';
 const TESTCASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+type SavedView = { name: string; search: string; status: string; testType: string; priority: string; module: string; subMenu: string; testRun: string; bug: string; tag: string; createdFrom: string; createdTo: string };
+
+const savedViewsKey = (projectId: string) => `qaDesk.testcaseTable.views.v1.${projectId}`;
+const readSavedViews = (projectId: string): SavedView[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const value = JSON.parse(window.localStorage.getItem(savedViewsKey(projectId)) || '[]');
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+};
 
 const getInitialTestCaseColumns = () => {
   if (typeof window === 'undefined') return DEFAULT_TESTCASE_COLUMNS;
@@ -71,6 +83,12 @@ export function TestCaseTable({
   filterPriority,
   filterModule,
   filterSubMenu,
+  filterTestRun,
+  filterBug,
+  filterTag,
+  filterCreatedFrom,
+  filterCreatedTo,
+  testRunOptions,
   subMenuOptions,
   selectedIds,
   page,
@@ -86,9 +104,16 @@ export function TestCaseTable({
   setFilterPriority,
   setFilterModule,
   setFilterSubMenu,
+  setFilterTestRun,
+  setFilterBug,
+  setFilterTag,
+  setFilterCreatedFrom,
+  setFilterCreatedTo,
   setPage,
   setLimit,
   setShowBulkAction,
+  setShowBulkExecution,
+  setShowBulkAssign,
   setShowDeleteConfirm,
   openCreateDialog,
   openAIDialog,
@@ -114,18 +139,50 @@ export function TestCaseTable({
   const [visibleColumns, setVisibleColumns] = useState<Record<TestCaseColumnKey, boolean>>(getInitialTestCaseColumns);
   // "Quest complete": row id that just got flipped to DONE, celebrated briefly.
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
+  const [savedViewsVersion, setSavedViewsVersion] = useState(0);
   useEffect(() => {
     if (!celebrateId) return;
     const timer = window.setTimeout(() => setCelebrateId(null), 1100);
     return () => window.clearTimeout(timer);
   }, [celebrateId]);
   const resetPage = () => setPage(1);
+  const hasExtendedFilters = Boolean(filterTag || filterCreatedFrom || filterCreatedTo);
   const hasActiveFilters = Boolean(search)
     || filterStatus !== 'all'
     || filterTestType !== 'all'
     || filterPriority !== 'all'
     || filterModule !== 'all'
-    || filterSubMenu !== 'all';
+    || filterSubMenu !== 'all'
+    || filterTestRun !== 'all'
+    || filterBug !== 'all'
+    || hasExtendedFilters;
+  const savedViews = useMemo(() => readSavedViews(selectedProject), [selectedProject, savedViewsVersion]);
+  const currentView: Omit<SavedView, 'name'> = { search, status: filterStatus, testType: filterTestType, priority: filterPriority, module: filterModule, subMenu: filterSubMenu, testRun: filterTestRun, bug: filterBug, tag: filterTag, createdFrom: filterCreatedFrom, createdTo: filterCreatedTo };
+  const saveCurrentView = () => {
+    const name = window.prompt('Nama saved view:')?.trim();
+    if (!name) return;
+    const next = [...savedViews.filter(view => view.name !== name), { name, ...currentView }];
+    window.localStorage.setItem(savedViewsKey(selectedProject), JSON.stringify(next));
+    setSavedViewsVersion(version => version + 1);
+  };
+  const applySavedView = (view: SavedView) => {
+    setSearch(view.search);
+    setFilterStatus(view.status);
+    setFilterTestType(view.testType);
+    setFilterPriority(view.priority);
+    setFilterModule(view.module);
+    setFilterSubMenu(view.subMenu);
+    setFilterTestRun(view.testRun || 'all');
+    setFilterBug(view.bug || 'all');
+    setFilterTag(view.tag || '');
+    setFilterCreatedFrom(view.createdFrom || '');
+    setFilterCreatedTo(view.createdTo || '');
+    setPage(1);
+  };
+  const deleteSavedView = (name: string) => {
+    window.localStorage.setItem(savedViewsKey(selectedProject), JSON.stringify(savedViews.filter(view => view.name !== name)));
+    setSavedViewsVersion(version => version + 1);
+  };
   const resetFilters = () => {
     setSearch('');
     setFilterStatus('all');
@@ -133,6 +190,11 @@ export function TestCaseTable({
     setFilterPriority('all');
     setFilterModule('all');
     setFilterSubMenu('all');
+    setFilterTestRun('all');
+    setFilterBug('all');
+    setFilterTag('');
+    setFilterCreatedFrom('');
+    setFilterCreatedTo('');
     setPage(1);
   };
   const selectTriggerClass = 'h-9 rounded-md border-border/60 bg-secondary/50 text-foreground text-sm shadow-sm';
@@ -252,6 +314,24 @@ export function TestCaseTable({
               ))}
             </SelectContent>
           </Select>
+          <Select value={filterTestRun} onValueChange={(v) => { setFilterTestRun(v); resetPage(); }}>
+            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition duration-200 sm:w-[165px]"><SelectValue placeholder="Test Run" /></SelectTrigger>
+            <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
+              <SelectItem value="all" className="rounded-lg text-xs font-medium">All Test Runs</SelectItem>
+              {testRunOptions.map(run => <SelectItem key={run.id} value={run.id} className="rounded-lg text-xs font-medium">{run.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterBug} onValueChange={(v) => { setFilterBug(v); resetPage(); }}>
+            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition duration-200 sm:w-[135px]"><SelectValue placeholder="Bug" /></SelectTrigger>
+            <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
+              <SelectItem value="all" className="rounded-lg text-xs font-medium">All Bugs</SelectItem>
+              <SelectItem value="yes" className="rounded-lg text-xs font-medium">Has Bug</SelectItem>
+              <SelectItem value="no" className="rounded-lg text-xs font-medium">No Bug</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input value={filterTag} onChange={(event) => { setFilterTag(event.target.value); resetPage(); }} placeholder="Tag" aria-label="Filter tag" className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold sm:w-[135px]" />
+          <Input type="date" value={filterCreatedFrom} onChange={(event) => { setFilterCreatedFrom(event.target.value); resetPage(); }} aria-label="Tanggal mulai" className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold sm:w-[145px]" />
+          <Input type="date" value={filterCreatedTo} onChange={(event) => { setFilterCreatedTo(event.target.value); resetPage(); }} aria-label="Tanggal akhir" className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold sm:w-[145px]" />
           <Button
             type="button"
             variant="outline"
@@ -263,6 +343,19 @@ export function TestCaseTable({
             <X className="h-3.5 w-3.5" />
             Reset
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="h-9.5 rounded-xl gap-1.5 border border-border/50 bg-secondary/35 text-xs font-bold">
+                <Bookmark className="h-3.5 w-3.5" /> Views{savedViews.length ? ` (${savedViews.length})` : ''}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64 rounded-xl bg-card">
+              <DropdownMenuItem onClick={saveCurrentView} className="font-semibold"><Bookmark className="mr-2 h-4 w-4" />Save current filters</DropdownMenuItem>
+              {savedViews.length > 0 && <DropdownMenuSeparator />}
+              {savedViews.map(view => <div key={view.name} className="flex items-center gap-1 px-1"><DropdownMenuItem onClick={() => applySavedView(view)} className="min-w-0 flex-1 truncate text-xs">{view.name}</DropdownMenuItem><button type="button" aria-label={`Delete saved view ${view.name}`} onClick={() => deleteSavedView(view.name)} className="px-2 text-xs text-muted-foreground hover:text-destructive">×</button></div>)}
+              {!savedViews.length && <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Belum ada saved view.</DropdownMenuLabel>}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         </div>
 
@@ -281,6 +374,15 @@ export function TestCaseTable({
             <>
               <Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
                 <Settings2 className="w-4 h-4" /> Update Status ({selectedIds.size})
+              </Button>
+              <Button onClick={() => setShowBulkExecution(true)} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
+                <CalendarClock className="w-4 h-4" /> Execute ({selectedIds.size})
+              </Button>
+              <Button onClick={() => setShowBulkAssign(true)} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
+                <UserRound className="w-4 h-4" /> Assign ({selectedIds.size})
+              </Button>
+              <Button onClick={() => handleExportExcel('xlsx', [...selectedIds])} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
+                <FileDown className="w-4 h-4" /> Export ({selectedIds.size})
               </Button>
               <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-9 rounded-xl gap-1.5 font-bold shadow-md shadow-red-900/10 transition duration-200">
                 <Trash2 className="w-4 h-4" /> Delete ({selectedIds.size})

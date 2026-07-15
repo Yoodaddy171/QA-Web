@@ -36,6 +36,7 @@ interface TestCase {
   status: string;
   progress: number;
   remarks?: string | null;
+  tags?: string | null;
   priority: string;
   moduleId?: string | null;
 }
@@ -53,6 +54,7 @@ export const EMPTY_TEST_CASE = {
   status: 'NOT DONE',
   progress: 0,
   remarks: '',
+  tags: '',
   priority: 'Medium',
   moduleId: '',
 };
@@ -80,6 +82,7 @@ export function TestCaseDialog({
 }: TestCaseDialogProps) {
   const { toast } = useToast();
   const [formData, setFormData] = useState(EMPTY_TEST_CASE);
+  const [initialSnapshot, setInitialSnapshot] = useState('');
 
   // Initialize form when editingTestCase changes or dialog opens
   useEffect(() => {
@@ -98,6 +101,7 @@ export function TestCaseDialog({
       status: editingTestCase.status || 'NOT DONE',
       progress: editingTestCase.progress || 0,
       remarks: editingTestCase.remarks || '',
+      tags: editingTestCase.tags || '',
       priority: editingTestCase.priority || 'Medium',
       moduleId: editingTestCase.moduleId || '',
     } : {
@@ -108,6 +112,7 @@ export function TestCaseDialog({
 
     const timer = window.setTimeout(() => {
       setFormData(nextFormData);
+      setInitialSnapshot(JSON.stringify(nextFormData));
     }, 0);
 
     return () => {
@@ -139,6 +144,7 @@ export function TestCaseDialog({
       actualResult: formData.actualResult || null,
       subMenu: formData.subMenu.trim() || null,
       remarks: formData.remarks.trim() || null,
+      tags: formData.tags.trim() || null,
     };
 
     try {
@@ -172,8 +178,14 @@ export function TestCaseDialog({
     }
   };
 
+  const isDirty = Boolean(initialSnapshot) && JSON.stringify(formData) !== initialSnapshot;
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isDirty && !window.confirm('Perubahan belum disimpan. Tutup dialog dan buang perubahan?')) return;
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-border/60 bg-card text-foreground elevation-3 rounded-2xl scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent p-6">
         <DialogHeader className="mb-4">
           <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
@@ -375,6 +387,12 @@ export function TestCaseDialog({
               rows={2}
               className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tags</Label>
+            <Input value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} placeholder="smoke, checkout, release" />
+            <p className="text-[10px] text-muted-foreground">Pisahkan beberapa tag dengan koma.</p>
           </div>
         </div>
 

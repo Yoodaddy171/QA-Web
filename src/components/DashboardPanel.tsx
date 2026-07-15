@@ -152,6 +152,17 @@ export interface DashboardStats {
   retestQueue?: RetestQueueItem[];
   bugAging?: BugAgingItem[];
   moduleRisks?: ModuleRiskItem[];
+  releaseReadiness?: {
+    recommendation: 'READY' | 'READY WITH RISK' | 'NOT READY';
+    testRunId: string | null;
+    testRunName: string | null;
+    failedCases: number;
+    blockedCases: number;
+    notRunCases: number;
+    criticalBugs: number;
+    openBugs: number;
+    reason: string;
+  };
 }
 
 interface DashboardPanelProps {
@@ -166,6 +177,7 @@ interface DashboardPanelProps {
   isLoading?: boolean;
   lastRefreshed?: Date | null;
   onRefresh?: () => void;
+  onNavigate?: (tab: 'testRuns' | 'reports') => void;
 }
 
 export function DashboardPanel({
@@ -180,6 +192,7 @@ export function DashboardPanel({
   isLoading,
   lastRefreshed,
   onRefresh,
+  onNavigate,
 }: DashboardPanelProps) {
   const statusDistribution = stats ? [
     { name: 'Done', value: stats.doneCount, color: '#10b981' },
@@ -272,6 +285,34 @@ export function DashboardPanel({
             </div>
           </CardContent>
         </Card>
+
+        {stats.releaseReadiness && (
+          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
+            <CardHeader className="border-b border-border/40 pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"><ShieldAlert className="h-4 w-4 text-primary" /> Release readiness</CardTitle>
+                <Badge variant={stats.releaseReadiness.recommendation === 'READY' ? 'success' : stats.releaseReadiness.recommendation === 'NOT READY' ? 'failed' : 'warning'}>{stats.releaseReadiness.recommendation}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-5">
+              <p className="text-sm font-semibold">{stats.releaseReadiness.testRunName || 'Belum ada Test Run aktif'}</p>
+              <p className="text-xs text-muted-foreground">{stats.releaseReadiness.reason}</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {[
+                  ['Failed', stats.releaseReadiness.failedCases],
+                  ['Blocked', stats.releaseReadiness.blockedCases],
+                  ['Not run', stats.releaseReadiness.notRunCases],
+                  ['Critical bugs', stats.releaseReadiness.criticalBugs],
+                  ['Open bugs', stats.releaseReadiness.openBugs],
+                ].map(([label, value]) => <div key={String(label)} className="rounded-lg border border-border/50 bg-secondary/25 p-3"><p className="font-mono text-lg font-bold">{value}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p></div>)}
+              </div>
+              <div className="flex flex-wrap gap-2 border-t border-border/50 pt-3">
+                {onNavigate && <Button size="sm" variant="outline" onClick={() => onNavigate('testRuns')}>Open Test Runs</Button>}
+                {onNavigate && <Button size="sm" variant="ghost" onClick={() => onNavigate('reports')}>Open Reports</Button>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="space-y-6">
 

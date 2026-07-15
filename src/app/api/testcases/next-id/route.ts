@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-const TEST_CASE_ID_PATTERN = /^([A-Za-z]+)-(\d+)$/;
+const TEST_CASE_ID_PATTERN = /^(.*?)-(\d+)$/;
 
 function makePrefixFromModuleName(name: string) {
   const words = name

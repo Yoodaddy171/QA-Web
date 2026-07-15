@@ -12,9 +12,10 @@ import type { ReportData } from '@/lib/services/report-types';
 
 interface ReportsPanelProps {
   projectId: string;
+  onNavigate?: (tab: 'testRuns' | 'traceability' | 'bugfix' | 'testcases') => void;
 }
 
-export function ReportsPanel({ projectId }: ReportsPanelProps) {
+export function ReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
   const { toast } = useToast();
   const [reports, setReports] = useState<ReportData[]>([]);
   const [selectedReport, setSelectedReport] = useState<ReportData | null>(null);
@@ -70,6 +71,7 @@ export function ReportsPanel({ projectId }: ReportsPanelProps) {
             setSelectedReport(report);
             setReports((current) => [report, ...current.filter(item => item.id !== report.id)]);
           }}
+          onNavigate={onNavigate}
         />
       </div>
     );

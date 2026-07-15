@@ -20,6 +20,10 @@ model Project {
   modules           Module[]
   knowledgeItems    ProjectKnowledge[]
   automationRuns    AutomationRun[]
+  testRuns          TestRun[]
+  activityHistory   ActivityHistory[]
+  requirements      Requirement[]
+  testPlans         TestPlan[]
   reports           Report[]
 
   @@index([updatedAt])
@@ -66,6 +70,7 @@ model TestCase {
   status         String   @default("NOT DONE") // DONE, NOT DONE, IN PROGRESS, BLOCKED, FAILED, READY TO RETEST, TBA
   progress       Int      @default(0) // 0-100
   remarks        String? // Remarks / notes
+  tags           String? // Comma-separated project-local tags
   priority       String   @default("Medium") // Low, Medium, High, Critical
   projectId      String
   project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -74,15 +79,171 @@ model TestCase {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   bugFixItems    BugFix[]
+  testRunCases   TestRunCase[]
+  testExecutions TestExecution[]
+  requirementLinks RequirementTestCase[]
 
   @@unique([projectId, testCaseId])
   @@index([projectId, moduleId, status])
   @@index([projectId, updatedAt])
 }
 
+model TestRun {
+  id          String          @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  status      String          @default("DRAFT")
+  startDate   DateTime?
+  endDate     DateTime?
+  createdBy   String?
+  assignedTo  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testPlanId  String?
+  testPlan    TestPlan?       @relation(fields: [testPlanId], references: [id], onDelete: SetNull)
+  testCases   TestRunCase[]
+  executions  TestExecution[]
+
+  @@index([projectId, status])
+  @@index([projectId, updatedAt])
+}
+
+model Requirement {
+  id          String                 @id @default(cuid())
+  projectId   String
+  key         String
+  title       String
+  description String?
+  status      String                 @default("DRAFT")
+  priority    String                 @default("Medium")
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  project     Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testPlans   TestPlanRequirement[]
+  testCases   RequirementTestCase[]
+
+  @@unique([projectId, key])
+  @@index([projectId, status])
+}
+
+model TestPlan {
+  id           String                 @id @default(cuid())
+  projectId    String
+  name         String
+  description  String?
+  status       String                 @default("DRAFT")
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  project      Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requirements TestPlanRequirement[]
+  testRuns     TestRun[]
+
+  @@index([projectId, status])
+}
+
+model TestPlanRequirement {
+  id            String      @id @default(cuid())
+  testPlanId    String
+  requirementId String
+  createdAt     DateTime    @default(now())
+  testPlan      TestPlan    @relation(fields: [testPlanId], references: [id], onDelete: Cascade)
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@unique([testPlanId, requirementId])
+  @@index([requirementId])
+}
+
+model RequirementTestCase {
+  id            String      @id @default(cuid())
+  requirementId String
+  testCaseId    String
+  createdAt     DateTime    @default(now())
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  testCase      TestCase    @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([requirementId, testCaseId])
+  @@index([testCaseId])
+}
+
+model ActivityHistory {
+  id         String   @id @default(cuid())
+  projectId  String
+  entityType String
+  entityId   String
+  action     String
+  field      String?
+  beforeValue Json?
+  afterValue  Json?
+  actor      String?
+  createdAt  DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([entityType, entityId, createdAt])
+}
+
+model TestRunCase {
+  id          String          @id @default(cuid())
+  testRunId   String
+  testCaseId  String
+  assignedTo  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  testRun     TestRun         @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  testCase    TestCase        @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  executions  TestExecution[]
+
+  @@unique([testRunId, testCaseId])
+  @@index([testCaseId, updatedAt])
+}
+
+model TestExecution {
+  id            String        @id @default(cuid())
+  testRunId     String
+  testCaseId    String
+  testRunCaseId String?
+  bugFixId      String?
+  tester        String?
+  status        String        @default("NOT RUN")
+  actualResult  String?
+  notes         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  testRun       TestRun       @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  testCase      TestCase      @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  testRunCase   TestRunCase?  @relation(fields: [testRunCaseId], references: [id], onDelete: SetNull)
+  bugFix        BugFix?       @relation("BugRetestExecutions", fields: [bugFixId], references: [id], onDelete: SetNull)
+  evidence      TestExecutionEvidence[]
+  createdBugFixes BugFix[]    @relation("BugSourceExecution")
+
+  @@index([testRunId, status])
+  @@index([testCaseId, createdAt])
+  @@index([testRunCaseId, createdAt])
+  @@index([bugFixId, createdAt])
+}
+
+model TestExecutionEvidence {
+  id          String        @id @default(cuid())
+  executionId String
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  storagePath String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  execution   TestExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId, createdAt])
+}
+
 model BugFix {
   id               String    @id @default(cuid())
   sourceTestCaseId String // ID of original TestCase
+  sourceExecutionId String? // Execution yang memicu bug dari Test Run
   testCaseId       String // TC-ID of original test case
   projectId        String
   page             String
@@ -106,9 +267,12 @@ model BugFix {
   project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   module         Module?  @relation(fields: [moduleId], references: [id], onDelete: SetNull)
   sourceTestCase TestCase @relation(fields: [sourceTestCaseId], references: [id], onDelete: Cascade)
+  sourceExecution TestExecution? @relation("BugSourceExecution", fields: [sourceExecutionId], references: [id], onDelete: SetNull)
+  retestExecutions TestExecution[] @relation("BugRetestExecutions")
 
   @@index([projectId, moduleId, status])
   @@index([projectId, updatedAt])
+  @@index([sourceExecutionId])
 }
 
 model AutomationRun {

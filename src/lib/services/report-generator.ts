@@ -6,6 +6,7 @@ import type {
   ReportMetadata,
   ReportMetrics,
   ReportSections,
+  TestRunSummary,
   ReportType,
   UpdateReportInput,
 } from './report-types';
@@ -36,7 +37,8 @@ const asMetrics = (value: unknown): ReportMetrics => {
     byModule: metrics.byModule || [],
     byPriority: metrics.byPriority || [],
     byStatus: metrics.byStatus || [],
-    bugSummary: metrics.bugSummary || { total: 0, reported: 0, fixing: 0, readyToRetest: 0, fixed: 0, byModule: [] },
+    bugSummary: { total: 0, critical: 0, open: 0, overdue: 0, reported: 0, fixing: 0, readyToRetest: 0, fixed: 0, byModule: [], ...(metrics.bugSummary || {}) },
+    testRunSummary: { totalPlanned: 0, totalCompleted: 0, totalPassed: 0, totalFailed: 0, totalBlocked: 0, totalNotRun: 0, unfinishedRuns: 0, activeRuns: [], ...(metrics.testRunSummary || {}) },
     appendix: metrics.appendix || [],
   };
 };
@@ -58,7 +60,7 @@ function isPassed(actualResult: string | null) {
 // counts — otherwise a report shows all-zeros whenever nothing was touched in
 // that exact window.
 export async function calculateProjectMetrics(projectId: string): Promise<ReportMetrics> {
-  const [testCases, bugFixItems] = await Promise.all([
+  const [testCases, bugFixItems, testRuns] = await Promise.all([
     db.testCase.findMany({
       where: { projectId },
       include: { module: true },
@@ -66,6 +68,11 @@ export async function calculateProjectMetrics(projectId: string): Promise<Report
     db.bugFix.findMany({
       where: { projectId },
       include: { module: true },
+    }),
+    db.testRun.findMany({
+      where: { projectId, status: { not: 'ARCHIVED' } },
+      include: { testCases: { include: { executions: { orderBy: { createdAt: 'desc' }, take: 1 } } } },
+      orderBy: { updatedAt: 'desc' },
     }),
   ]);
 
@@ -118,6 +125,30 @@ export async function calculateProjectMetrics(projectId: string): Promise<Report
     bugModules.set(key, (bugModules.get(key) || 0) + 1);
   }
 
+  const activeRuns = testRuns.map(run => {
+    const statuses = run.testCases.map(item => item.executions[0]?.status || 'NOT RUN');
+    const completed = statuses.filter(status => !['NOT RUN', 'IN PROGRESS'].includes(status)).length;
+    const passed = statuses.filter(status => status === 'PASSED' || status === 'VERIFIED').length;
+    const failed = statuses.filter(status => status === 'FAILED').length;
+    const blocked = statuses.filter(status => status === 'BLOCKED').length;
+    const notRun = statuses.filter(status => status === 'NOT RUN' || status === 'IN PROGRESS').length;
+    return { id: run.id, name: run.name, status: run.status, progress: statuses.length ? Math.round((completed / statuses.length) * 100) : 0, failed, blocked, notRun };
+  });
+  const latestRun = activeRuns[0];
+  const latestRunCases = testRuns[0]?.testCases || [];
+  const testRunSummary: TestRunSummary = {
+    latestRunId: latestRun?.id,
+    latestRunName: latestRun?.name,
+    totalPlanned: latestRunCases.length,
+    totalCompleted: latestRunCases.length ? latestRunCases.length - (latestRun?.notRun || 0) : 0,
+    totalPassed: latestRunCases.filter(item => ['PASSED', 'VERIFIED'].includes(item.executions[0]?.status || '')).length,
+    totalFailed: latestRun?.failed || 0,
+    totalBlocked: latestRun?.blocked || 0,
+    totalNotRun: latestRun?.notRun || 0,
+    unfinishedRuns: activeRuns.filter(run => run.status !== 'COMPLETED' && run.status !== 'ARCHIVED').length,
+    activeRuns,
+  };
+
   return {
     totalPlanned,
     totalExecuted,
@@ -132,12 +163,16 @@ export async function calculateProjectMetrics(projectId: string): Promise<Report
     byStatus: Array.from(statuses.entries()).map(([status, count]) => ({ status, count, percentage: pct(count, totalPlanned) })),
     bugSummary: {
       total: bugFixItems.length,
+      critical: bugFixItems.filter(b => b.priority === 'Critical').length,
+      open: bugFixItems.filter(b => b.status !== 'VERIFIED & FIXED').length,
+      overdue: bugFixItems.filter(b => b.status !== 'VERIFIED & FIXED' && b.reportedAt && (Date.now() - b.reportedAt.getTime()) > 7 * 24 * 60 * 60 * 1000).length,
       reported: bugFixItems.filter(b => b.status === 'SUDAH DILAPORKAN').length,
       fixing: bugFixItems.filter(b => b.status === 'SEDANG DI FIX').length,
       readyToRetest: bugFixItems.filter(b => b.status === 'READY TO RETEST').length,
       fixed: bugFixItems.filter(b => b.status === 'VERIFIED & FIXED').length,
       byModule: Array.from(bugModules.entries()).map(([moduleName, total]) => ({ moduleName, total })),
     },
+    testRunSummary,
     appendix: [
       { documentName: 'Test Case Inventory', description: 'Daftar test case dan hasil eksekusi dari QA-Web.', location: 'QA-Web Cases' },
       { documentName: 'Bug Report', description: 'Daftar defect yang tercatat selama periode pelaporan.', location: 'QA-Web Bugs' },

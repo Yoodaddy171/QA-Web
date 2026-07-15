@@ -36,6 +36,12 @@ export function useTestCases(selectedProject: string) {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterModule, setFilterModule] = useState<string>('all');
   const [filterSubMenu, setFilterSubMenu] = useState<string>('all');
+  const [filterTestRun, setFilterTestRun] = useState<string>('all');
+  const [filterBug, setFilterBug] = useState<string>('all');
+  const [filterTag, setFilterTag] = useState('');
+  const [filterCreatedFrom, setFilterCreatedFrom] = useState('');
+  const [filterCreatedTo, setFilterCreatedTo] = useState('');
+  const [testRunOptions, setTestRunOptions] = useState<Array<{ id: string; name: string; status: string }>>([]);
   const [sortBy, setSortBy] = useState<string>('testCaseId');
   const [sortOrder, setSortOrder] = useState<string>('asc');
   const [page, setPage] = useState(1);
@@ -76,12 +82,22 @@ export function useTestCases(selectedProject: string) {
       const fp = opts?.prioVal ?? filterPriority;
       const fm = opts?.modVal ?? filterModule;
       const fsm = opts?.subMenuVal ?? filterSubMenu;
+      const ftr = opts?.testRunVal ?? filterTestRun;
+      const fb = opts?.bugVal ?? filterBug;
+      const ftag = opts?.tagVal ?? filterTag;
+      const ffrom = opts?.createdFromVal ?? filterCreatedFrom;
+      const fto = opts?.createdToVal ?? filterCreatedTo;
       if (s) params.set('search', s);
       if (fs !== 'all') params.set('status', fs);
       if (ft !== 'all') params.set('testType', ft);
       if (fp !== 'all') params.set('priority', fp);
       if (fm !== 'all') params.set('moduleId', fm);
       if (fsm !== 'all') params.set('subMenu', fsm);
+      if (ftr !== 'all') params.set('testRunId', ftr);
+      if (fb !== 'all') params.set('hasBug', fb);
+      if (ftag) params.set('tag', ftag);
+      if (ffrom) params.set('createdFrom', ffrom);
+      if (fto) params.set('createdTo', fto);
 
       const data = await fetchTestCases(params, controller.signal);
       setTestCases(data.testCases || []);
@@ -97,7 +113,17 @@ export function useTestCases(selectedProject: string) {
     } finally {
       setIsLoadingTestCases(false);
     }
-  }, [debouncedSearch, filterModule, filterPriority, filterStatus, filterSubMenu, filterTestType, limit, page, sortBy, sortOrder, toast]);
+  }, [debouncedSearch, filterBug, filterCreatedFrom, filterCreatedTo, filterModule, filterPriority, filterStatus, filterSubMenu, filterTag, filterTestRun, filterTestType, limit, page, sortBy, sortOrder, toast]);
+
+  useEffect(() => {
+    if (!selectedProject) return;
+    const controller = new AbortController();
+    fetch(`/api/test-runs?projectId=${encodeURIComponent(selectedProject)}`, { signal: controller.signal })
+      .then(response => response.json())
+      .then(data => setTestRunOptions(data.testRuns || []))
+      .catch(error => { if (!(error instanceof DOMException && error.name === 'AbortError')) setTestRunOptions([]); });
+    return () => controller.abort();
+  }, [selectedProject]);
 
   const loadStats = useCallback(async (projId: string) => {
     if (!projId) return;
@@ -118,7 +144,7 @@ export function useTestCases(selectedProject: string) {
       setSelectedIds(new Set());
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [debouncedSearch, filterModule, filterPriority, filterStatus, filterSubMenu, filterTestType, limit, loadTestCases, page, sortBy, sortOrder]);
+  }, [debouncedSearch, filterBug, filterCreatedFrom, filterCreatedTo, filterModule, filterPriority, filterStatus, filterSubMenu, filterTag, filterTestRun, filterTestType, limit, loadTestCases, page, sortBy, sortOrder]);
 
   const handleQuickStatusChange = useCallback(async (testCaseId: string, newStatus: string) => {
     try {
@@ -240,6 +266,17 @@ export function useTestCases(selectedProject: string) {
     setFilterModule,
     filterSubMenu,
     setFilterSubMenu,
+    filterTestRun,
+    setFilterTestRun,
+    filterBug,
+    setFilterBug,
+    filterTag,
+    setFilterTag,
+    filterCreatedFrom,
+    setFilterCreatedFrom,
+    filterCreatedTo,
+    setFilterCreatedTo,
+    testRunOptions,
     sortBy,
     setSortBy,
     sortOrder,

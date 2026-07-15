@@ -1,6 +1,6 @@
 'use client';
 
-import { Bug, ClipboardList, FileText, FolderOpen, LayoutDashboard, MonitorDot, Settings2 } from 'lucide-react';
+import { Bug, ClipboardList, FileText, FolderOpen, GitBranch, LayoutDashboard, ListChecks, MonitorDot, Settings2 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { BrandMark } from '@/components/BrandMark';
@@ -50,6 +50,8 @@ interface AppShellProps {
     testcases: ReactNode;
     bugfix: ReactNode;
     automated: ReactNode;
+    testRuns: ReactNode;
+    traceability: ReactNode;
     reports: ReactNode;
     settings: ReactNode;
   };
@@ -60,6 +62,8 @@ const NAV_ITEMS = [
   { value: 'testcases', label: 'Cases', description: 'Test inventory', icon: ClipboardList },
   { value: 'bugfix', label: 'Bugs', description: 'Defect lifecycle', icon: Bug },
   { value: 'automated', label: 'Runs', description: 'Execution records', icon: MonitorDot },
+  { value: 'testRuns', label: 'Test Runs', description: 'QA execution cycles', icon: ListChecks },
+  { value: 'traceability', label: 'Traceability', description: 'Requirements & plans', icon: GitBranch },
   { value: 'reports', label: 'Reports', description: 'Test reports', icon: FileText },
   { value: 'settings', label: 'Settings', description: 'Project knowledge', icon: Settings2 },
 ] as const;
@@ -287,6 +291,8 @@ export function AppShell({
                     <TabsContent value="testcases" className="m-0">{activeTab === 'testcases' ? children.testcases : null}</TabsContent>
                     <TabsContent value="bugfix" className="m-0">{activeTab === 'bugfix' ? children.bugfix : null}</TabsContent>
                     <TabsContent value="automated" className="m-0">{activeTab === 'automated' ? children.automated : null}</TabsContent>
+                    <TabsContent value="testRuns" className="m-0">{activeTab === 'testRuns' ? children.testRuns : null}</TabsContent>
+                    <TabsContent value="traceability" className="m-0">{activeTab === 'traceability' ? children.traceability : null}</TabsContent>
                     <TabsContent value="reports" className="m-0">{activeTab === 'reports' ? children.reports : null}</TabsContent>
                     <TabsContent value="settings" className="m-0">{activeTab === 'settings' ? children.settings : null}</TabsContent>
                   </motion.div>

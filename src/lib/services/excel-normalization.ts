@@ -14,6 +14,37 @@ export const VALID_IMPORT_STATUSES = new Set<string>([
   TESTCASE_STATUS.TBA,
 ]);
 export const PREVIEW_HEADERS = ['ID', 'Page', 'Sub Menu', 'Feature', 'Test', 'Expected Result', 'Actual Result', 'Status'];
+export type ImportColumnMapping = Record<string, string>;
+
+const IMPORT_FIELD_ALIASES: Record<string, string[]> = {
+  ID: ['ID', 'Test Case ID', 'testCaseId'],
+  Page: ['Page', 'page'],
+  'Sub Menu': ['Sub Menu', 'subMenu', 'Submenu'],
+  Feature: ['Feature', 'feature'],
+  Test: ['Test', 'Test Action', 'testAction'],
+  Action: ['Action', 'Prerequisite', 'action'],
+  Steps: ['Steps', 'Step', 'steps'],
+  'Expected Result': ['Expected Result', 'expectedResult'],
+  'Actual Result': ['Actual Result', 'actualResult'],
+  Status: ['Status', 'status'],
+  Priority: ['Priority', 'priority'],
+  Weight: ['Weight', 'Bobot', 'weight'],
+  'Test Type': ['Test Type', 'Type', 'testType'],
+  Remarks: ['Remarks of Test', 'Remarks', 'remarks', 'Catatan'],
+  Tags: ['Tags', 'Tag', 'tags', 'tag'],
+};
+
+export function getDefaultImportMapping(headers: string[]): ImportColumnMapping {
+  return Object.fromEntries(Object.entries(IMPORT_FIELD_ALIASES).map(([field, aliases]) => {
+    const header = headers.find((candidate) => aliases.some((alias) => candidate.toLowerCase() === alias.toLowerCase()));
+    return [field, header || ''];
+  }));
+}
+
+export function applyImportMapping(row: Record<string, unknown>, mapping?: ImportColumnMapping) {
+  if (!mapping) return row;
+  return Object.fromEntries(Object.entries(mapping).map(([field, source]) => [field, source ? row[source] : '']));
+}
 
 export function detectHeaderRowIndex(sheet: XLSX.WorkSheet): number {
   const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
@@ -130,27 +161,28 @@ export function buildPreviewRow(row: Record<string, unknown>) {
   }));
 }
 
-export function mapImportRow(row: Record<string, unknown>, sheetName: string, projectId: string, moduleId: string | null) {
-  const testCaseId = getColValue(row, 'ID', 'Test Case ID', 'testCaseId');
-  const page = getColValue(row, 'Page', 'page');
-  const subMenu = getColValue(row, 'Sub Menu', 'subMenu', 'Submenu') || null;
-  const feature = getColValue(row, 'Feature', 'feature');
-  const testDescription = getColValue(row, 'Test', 'Test Action', 'testAction');
-  const action = getColValue(row, 'Action', 'Prerequisite', 'action', 'testAction');
-  const steps = getColValue(row, 'Steps', 'Step', 'steps');
+export function mapImportRow(row: Record<string, unknown>, sheetName: string, projectId: string, moduleId: string | null, mapping?: ImportColumnMapping) {
+  const mapped = applyImportMapping(row, mapping);
+  const testCaseId = getColValue(mapped, 'ID', 'Test Case ID', 'testCaseId');
+  const page = getColValue(mapped, 'Page', 'page');
+  const subMenu = getColValue(mapped, 'Sub Menu', 'subMenu', 'Submenu') || null;
+  const feature = getColValue(mapped, 'Feature', 'feature');
+  const testDescription = getColValue(mapped, 'Test', 'Test Action', 'testAction');
+  const action = getColValue(mapped, 'Action', 'Prerequisite', 'action', 'testAction');
+  const steps = getColValue(mapped, 'Steps', 'Step', 'steps');
   const testAction = buildTestAction(feature, testDescription, action);
   const finalSteps = buildFinalSteps(action, steps, testDescription, feature);
-  const expectedResult = getColValue(row, 'Expected Result', 'expectedResult');
-  const actualResult = normalizeActualResult(getColValue(row, 'Actual Result', 'actualResult'));
-  const status = normalizeImportStatus(getColValue(row, 'Status', 'status'), getColValue(row, 'Actual Result', 'actualResult'));
-  const priority = normalizePriority(getColValue(row, 'Priority', 'priority'));
-  const testType = normalizeTestType(getColValue(row, 'Test Type', 'Type', 'testType'));
+  const expectedResult = getColValue(mapped, 'Expected Result', 'expectedResult');
+  const actualResult = normalizeActualResult(getColValue(mapped, 'Actual Result', 'actualResult'));
+  const status = normalizeImportStatus(getColValue(mapped, 'Status', 'status'), getColValue(mapped, 'Actual Result', 'actualResult'));
+  const priority = normalizePriority(getColValue(mapped, 'Priority', 'priority'));
+  const testType = normalizeTestType(getColValue(mapped, 'Test Type', 'Type', 'testType'));
 
   return {
     testCaseId,
     page: page || sheetName,
     subMenu,
-    weight: getColValue(row, 'Weight', 'Bobot', 'weight') || null,
+    weight: getColValue(mapped, 'Weight', 'Bobot', 'weight') || null,
     testType,
     testAction,
     steps: finalSteps,
@@ -158,7 +190,8 @@ export function mapImportRow(row: Record<string, unknown>, sheetName: string, pr
     actualResult,
     status,
     progress: getProgressFromStatus(status),
-    remarks: getColValue(row, 'Remarks of Test', 'Remarks', 'remarks', 'Catatan') || null,
+    remarks: getColValue(mapped, 'Remarks of Test', 'Remarks', 'remarks', 'Catatan') || null,
+    tags: normalizeTags(getColValue(mapped, 'Tags', 'Tag', 'tags', 'tag')),
     priority,
     projectId,
     moduleId: moduleId || null,
@@ -200,4 +233,8 @@ function normalizeTestType(testTypeRaw: string) {
     if (t === 'negative') testType = 'Negative';
   }
   return testType;
+}
+
+function normalizeTags(value: string) {
+  return [...new Set(value.split(',').map(item => item.trim().toLowerCase()).filter(Boolean))].join(', ') || null;
 }

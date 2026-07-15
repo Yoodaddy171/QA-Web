@@ -36,7 +36,7 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
                       </Badge>
                     </div>
                     <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">
-                      {viewTestCase?.testCaseId || '-'} Â· {viewTestCase?.testAction || 'Execution telemetry'}
+                      {viewTestCase?.testCaseId || '-'} · {viewTestCase?.testAction || 'Execution telemetry'}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 pr-12">

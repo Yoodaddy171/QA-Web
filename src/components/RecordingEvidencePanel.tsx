@@ -124,7 +124,7 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                               Selected Evidence
                             </Badge>
                             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                              {selectedFullscreenLog.kind} Â· {formatRelativeTime(selectedFullscreenLog.relativeMs)}
+                              {selectedFullscreenLog.kind} · {formatRelativeTime(selectedFullscreenLog.relativeMs)}
                             </span>
                           </div>
                           <p className="mt-2 line-clamp-2 break-all text-[11px] font-semibold text-foreground">

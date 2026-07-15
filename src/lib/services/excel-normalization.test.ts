@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TESTCASE_ACTUAL_RESULT, TESTCASE_STATUS } from '@/lib/domain/testcase';
 import {
   mapImportRow,
+  getDefaultImportMapping,
   normalizeActualResult,
   normalizeImportStatus,
   VALID_IMPORT_STATUSES,
@@ -81,6 +82,34 @@ describe('excel normalization', () => {
       remarks: 'Imported',
       projectId: 'project-1',
       moduleId: 'module-1',
+    });
+  });
+
+  it('supports explicit column mappings from a non-standard worksheet', () => {
+    const mapping = getDefaultImportMapping(['Case', 'Screen', 'Capability', 'Scenario', 'Expected', 'Outcome']);
+    const mapped = mapImportRow({
+      Case: 'TC-009',
+      Screen: 'Checkout',
+      Capability: 'Payment',
+      Scenario: 'valid card',
+      Expected: 'Order is created',
+      Outcome: 'pass',
+    }, 'Custom Sheet', 'project-1', 'module-1', {
+      ...mapping,
+      ID: 'Case',
+      Page: 'Screen',
+      Feature: 'Capability',
+      Test: 'Scenario',
+      'Expected Result': 'Expected',
+      Status: 'Outcome',
+    });
+
+    expect(mapped).toMatchObject({
+      testCaseId: 'TC-009',
+      page: 'Checkout',
+      testAction: '[Payment] valid card',
+      expectedResult: 'Order is created',
+      status: TESTCASE_STATUS.DONE,
     });
   });
 });

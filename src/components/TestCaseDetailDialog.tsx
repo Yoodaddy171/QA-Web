@@ -2,8 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle, Bot, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
-  FileDown, Filter, Globe2, Layers, Loader2, Maximize2, Minus, MonitorDot, Play, Plus, RefreshCw, Search, Sparkles, Square, Trash2, UserRound, Wrench, X
+  AlertTriangle, Bot, Bug, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
+  FileDown, Filter, Globe2, Layers, Link2, Loader2, Maximize2, MessageSquare, Minus, MonitorDot, Paperclip, Play, PlayCircle, Plus, RefreshCw, Search, Sparkles, Square, Trash2, UserRound, Wrench, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,12 @@ import { TestCaseDetailDialogFooter } from '@/components/TestCaseDetailDialogFoo
 import { TestCaseDetailDialogHeader } from '@/components/TestCaseDetailDialogHeader';
 import { TestCaseDetailsTab } from '@/components/TestCaseDetailsTab';
 import { TestCaseLifecycleTab } from '@/components/TestCaseLifecycleTab';
+import { TestCaseTraceabilityTab } from '@/components/TestCaseTraceabilityTab';
+import { TestCaseCommentsTab } from '@/components/TestCaseCommentsTab';
+import { TestCaseEvidenceTab } from '@/components/TestCaseEvidenceTab';
+import { TestCaseBugsTab } from '@/components/TestCaseBugsTab';
+import { TestCaseHistoryTab } from '@/components/TestCaseHistoryTab';
+import { TestCaseExecutionTab } from '@/components/TestCaseExecutionTab';
 import { ManualCaptureCommand } from '@/components/ManualCaptureCommand';
 import { ManualRecordingPreview } from '@/components/ManualRecordingPreview';
 import { SystemDevLogHeader } from '@/components/SystemDevLogHeader';
@@ -812,7 +818,7 @@ export function TestCaseDetailDialog({
           <div className="flex-1 overflow-y-auto outline-none scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
             <div className="p-6 pt-4">
               <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
-                <TabsList className={cn("grid w-full mb-6 border border-border/60 bg-secondary/50 p-1 rounded-xl", isBugFixDetail ? 'grid-cols-3' : 'grid-cols-2')}>
+                <TabsList className={cn("grid w-full mb-6 border border-border/60 bg-secondary/50 p-1 rounded-xl", isBugFixDetail ? 'grid-cols-9' : 'grid-cols-8')}>
                   <TabsTrigger value="details" className="gap-2">
                     <ClipboardList className="w-4 h-4" /> Informasi Utama
                   </TabsTrigger>
@@ -821,6 +827,20 @@ export function TestCaseDetailDialog({
                       <History className="w-4 h-4" /> Lifecycle
                     </TabsTrigger>
                   )}
+                  <TabsTrigger value="traceability" className="gap-2">
+                    <Link2 className="w-4 h-4" /> Traceability
+                  </TabsTrigger>
+                  <TabsTrigger value="execution" className="gap-2">
+                    <PlayCircle className="w-4 h-4" /> Execution
+                  </TabsTrigger>
+                  <TabsTrigger value="evidence" className="gap-2">
+                    <Paperclip className="w-4 h-4" /> Evidence
+                  </TabsTrigger>
+                  <TabsTrigger value="bugs" className="gap-2"><Bug className="w-4 h-4" /> Bugs</TabsTrigger>
+                  <TabsTrigger value="history" className="gap-2"><History className="w-4 h-4" /> History</TabsTrigger>
+                  <TabsTrigger value="comments" className="gap-2">
+                    <MessageSquare className="w-4 h-4" /> Comments
+                  </TabsTrigger>
                   <TabsTrigger value="logs" className="gap-2">
                     <div className="relative">
                       <Wrench className="w-4 h-4" />
@@ -853,6 +873,24 @@ export function TestCaseDetailDialog({
                       getStatusBadgeVariant={getStatusBadgeVariant}
                       formatDateTime={formatDateTime}
                     />
+                  )}
+                  {activeMainTab === 'traceability' && (
+                    <TestCaseTraceabilityTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                  )}
+                  {activeMainTab === 'execution' && (
+                    <TestCaseExecutionTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                  )}
+                  {activeMainTab === 'evidence' && (
+                    <TestCaseEvidenceTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                  )}
+                  {activeMainTab === 'bugs' && (
+                    <TestCaseBugsTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                  )}
+                  {activeMainTab === 'history' && (
+                    <TestCaseHistoryTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                  )}
+                  {activeMainTab === 'comments' && (
+                    <TestCaseCommentsTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
                   )}
                   {activeMainTab === 'logs' && (
                     <TabsContent value="logs" className="space-y-4 mt-0 outline-none h-full flex flex-col">

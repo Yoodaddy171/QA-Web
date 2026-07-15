@@ -55,12 +55,16 @@ const DashboardPanel = dynamic(() => import('@/components/DashboardPanel').then(
 const TestCaseTable = dynamic(() => import('@/components/TestCaseTable').then(module => module.TestCaseTable), { loading: PanelFallback });
 const BugFixPanel = dynamic(() => import('@/components/BugFixPanel').then(module => module.BugFixPanel), { loading: PanelFallback });
 const AutomatedPanel = dynamic(() => import('@/components/AutomatedPanel').then(module => module.AutomatedPanel), { loading: PanelFallback });
+const TestRunsPanel = dynamic(() => import('@/components/TestRunsPanel').then(module => module.TestRunsPanel), { loading: PanelFallback });
+const TraceabilityPanel = dynamic(() => import('@/components/TraceabilityPanel').then(module => module.TraceabilityPanel), { loading: PanelFallback });
 const SettingsPanel = dynamic(() => import('@/components/SettingsPanel').then(module => module.SettingsPanel), { loading: PanelFallback });
 const ProjectModuleDialogs = dynamic(() => import('@/components/ProjectModuleDialogs').then(module => module.ProjectModuleDialogs));
 const TestCaseDialog = dynamic(() => import('@/components/TestCaseDialog').then(module => module.TestCaseDialog));
 const TestCaseDetailDialog = dynamic(() => import('@/components/TestCaseDetailDialog').then(module => module.TestCaseDetailDialog));
 const AIRefineDialog = dynamic(() => import('@/components/AIRefineDialog').then(module => module.AIRefineDialog));
 const BulkStatusDialog = dynamic(() => import('@/components/BulkStatusDialog').then(module => module.BulkStatusDialog));
+const BulkExecutionDialog = dynamic(() => import('@/components/BulkExecutionDialog').then(module => module.BulkExecutionDialog));
+const BulkAssignDialog = dynamic(() => import('@/components/BulkAssignDialog').then(module => module.BulkAssignDialog));
 const ImportExcelDialog = dynamic(() => import('@/components/ImportExcelDialog').then(module => module.ImportExcelDialog));
 const AIGenerateDialog = dynamic(() => import('@/components/AIGenerateDialog').then(module => module.AIGenerateDialog));
 const FloatingAIChat = dynamic(() => import('@/components/FloatingAIChat').then(module => module.FloatingAIChat), { ssr: false });
@@ -68,7 +72,7 @@ const FloatingAIChat = dynamic(() => import('@/components/FloatingAIChat').then(
 type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
 
 const LAST_ACTIVE_TAB_STORAGE_KEY = 'web-qa:last-active-tab';
-const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'reports', 'settings'] as const;
+const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'testRuns', 'traceability', 'reports', 'settings'] as const;
 type AppTab = typeof APP_TABS[number];
 
 // ============== MAIN APP ==============
@@ -108,6 +112,17 @@ export default function TestCaseManager() {
     setFilterModule,
     filterSubMenu,
     setFilterSubMenu,
+    filterTestRun,
+    setFilterTestRun,
+    filterBug,
+    setFilterBug,
+    filterTag,
+    setFilterTag,
+    filterCreatedFrom,
+    setFilterCreatedFrom,
+    filterCreatedTo,
+    setFilterCreatedTo,
+    testRunOptions,
     sortBy,
     sortOrder,
     page,
@@ -161,6 +176,8 @@ export default function TestCaseManager() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showBulkAction, setShowBulkAction] = useState(false);
+  const [showBulkExecution, setShowBulkExecution] = useState(false);
+  const [showBulkAssign, setShowBulkAssign] = useState(false);
 
   // Form state
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
@@ -170,6 +187,11 @@ export default function TestCaseManager() {
 
   // Bulk action
   const [bulkStatus, setBulkStatus] = useState<string>(TESTCASE_STATUS.DONE);
+  const [bulkExecutionRun, setBulkExecutionRun] = useState('');
+  const [bulkExecutionStatus, setBulkExecutionStatus] = useState('PASSED');
+  const [bulkExecutionTester, setBulkExecutionTester] = useState('');
+  const [bulkAssignRun, setBulkAssignRun] = useState('');
+  const [bulkAssignee, setBulkAssignee] = useState('');
 
   // Expandable modules state
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -256,13 +278,43 @@ export default function TestCaseManager() {
     importing,
     previewingImport,
     importPreview,
+    importMappings,
+    setImportMappings,
+    setImportPreview,
     selectedImportFile,
     fileInputRef,
     resetImportPreview,
     handleImportExcel,
     handleConfirmImportExcel,
+    lastImportBatchId,
+    handleUndoImport,
     handleExportExcel,
   } = useExcelImportExport(selectedProject, () => loadAll(selectedProject));
+  const handleImportMappingChange = (sheetName: string, field: string, header: string) => {
+    setImportMappings((current) => ({
+      ...current,
+      [sheetName]: { ...current[sheetName], [field]: header },
+    }));
+    // Keep the visible validation state in sync with the user's mapping choice.
+    // The server revalidates the mapping again on confirmation.
+    setImportPreview((current) => {
+      if (!current) return current;
+      const sheets = current.sheets.map((sheet) => {
+        if (sheet.sheet !== sheetName) return sheet;
+        const mapping = { ...sheet.mapping, [field]: header };
+        return {
+          ...sheet,
+          mapping,
+          missingHeaders: ['ID', 'Page', 'Feature', 'Test', 'Expected Result', 'Status'].filter((required) => !mapping[required]),
+        };
+      });
+      return {
+        ...current,
+        sheets,
+        canImport: sheets.every((sheet) => sheet.missingHeaders.length === 0 && sheet.duplicateIdsInFile.length === 0 && sheet.existingIds.length === 0 && sheet.invalidStatusRows.length === 0 && sheet.missingRequiredCounts.ID === 0),
+      };
+    });
+  };
   const {
     showAIDialog,
     setShowAIDialog,
@@ -403,6 +455,36 @@ export default function TestCaseManager() {
 
   const handleBulkStatusUpdate = async () => {
     if (await bulkStatusUpdate(bulkStatus, refreshAll)) setShowBulkAction(false);
+  };
+
+  const handleBulkExecution = async () => {
+    if (!bulkExecutionRun || selectedIds.size === 0) return;
+    try {
+      const response = await fetch(`/api/test-runs/${bulkExecutionRun}/executions/bulk`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: selectedProject, testCaseIds: [...selectedIds], status: bulkExecutionStatus, tester: bulkExecutionTester }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Bulk execute gagal.');
+      toast({ variant: 'success', title: 'Bulk execute berhasil', description: `${data.executed} testcase dijalankan.` });
+      setSelectedIds(new Set());
+      setShowBulkExecution(false);
+      refreshAll();
+    } catch (error) {
+      toast({ title: 'Bulk execute gagal', description: error instanceof Error ? error.message : 'Terjadi kesalahan.', variant: 'destructive' });
+    }
+  };
+
+  const handleBulkAssign = async () => {
+    if (!bulkAssignRun || !bulkAssignee.trim() || selectedIds.size === 0) return;
+    try {
+      const response = await fetch(`/api/test-runs/${bulkAssignRun}/cases`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: selectedProject, testCaseIds: [...selectedIds], assignedTo: bulkAssignee.trim() }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Bulk assign gagal.');
+      toast({ variant: 'success', title: 'Bulk assign berhasil', description: `${data.added || selectedIds.size} testcase ditugaskan.` });
+      setSelectedIds(new Set());
+      setShowBulkAssign(false);
+      refreshAll();
+    } catch (error) {
+      toast({ title: 'Bulk assign gagal', description: error instanceof Error ? error.message : 'Terjadi kesalahan.', variant: 'destructive' });
+    }
   };
 
   const openEditDialog = (tc: TestCase) => {
@@ -603,8 +685,9 @@ export default function TestCaseManager() {
     handleOpenDetail, handleModuleRiskClick, isLoadingStats, lastRefreshed, loadStats, loadTestCases,
     selectedProject, testCaseFilterModules, hasUnassignedTestCases, testCases, search, filterStatus, filterTestType,
     filterPriority, filterModule, filterSubMenu, subMenuOptions, selectedIds, page, limit, total, totalPages,
+    filterTestRun, setFilterTestRun, filterBug, setFilterBug, filterTag, setFilterTag, filterCreatedFrom, setFilterCreatedFrom, filterCreatedTo, setFilterCreatedTo, testRunOptions,
     testRecordById, fileInputRef, setSearch, setFilterStatus, setFilterTestType, setFilterPriority, setFilterModule,
-    setFilterSubMenu, setPage, setLimit, setShowBulkAction, setShowDeleteConfirm, openCreateDialog, openAIDialog,
+    setFilterSubMenu, setPage, setLimit, setShowBulkAction, setShowBulkExecution, setShowBulkAssign, setShowDeleteConfirm, openCreateDialog, openAIDialog,
     setShowImportDialog, handleImportExcel, handleExportExcel, isLoadingTestCases, handleQuickStatusChange,
     toggleSelectAll, toggleSelect, toggleSort, openEditDialog, handleDuplicate, setEditingTestCase,
     getStatusColor, getStatusIcon, getStatusBadgeVariant, getPriorityColor, getTestTypeColor,
@@ -613,6 +696,7 @@ export default function TestCaseManager() {
     handleBugFixStatusChange, openBugFixDetail, automatedItems, automatedSearch, automatedFilterModule,
     automatedLoading, setAutomatedSearch, setAutomatedFilterModule, loadAutomated, visibleAutomatedItems,
     projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleDeleteProject, handleDeleteModule,
+    setActiveTab,
   };
   const workspaceViews = buildWorkspaceViews(workspaceViewProps);
 
@@ -639,7 +723,9 @@ export default function TestCaseManager() {
           testcases: workspaceViews.testcases,
           bugfix: workspaceViews.bugfix,
           automated: workspaceViews.automated,
-          reports: <ReportsPanel projectId={selectedProject} />,
+          testRuns: <TestRunsPanel key={selectedProject} projectId={selectedProject} />,
+          traceability: <TraceabilityPanel key={selectedProject} projectId={selectedProject} />,
+          reports: <ReportsPanel projectId={selectedProject} onNavigate={(tab) => handleActiveTabChange(tab)} />,
           settings: workspaceViews.settings,
         }}
       </AppShell>
@@ -776,6 +862,8 @@ export default function TestCaseManager() {
         setBulkStatus={setBulkStatus}
         onSubmit={handleBulkStatusUpdate}
       />}
+      {showBulkExecution && <BulkExecutionDialog open={showBulkExecution} selectedCount={selectedIds.size} testRuns={testRunOptions} testRunId={bulkExecutionRun} status={bulkExecutionStatus} tester={bulkExecutionTester} onOpenChange={setShowBulkExecution} onTestRunChange={setBulkExecutionRun} onStatusChange={setBulkExecutionStatus} onTesterChange={setBulkExecutionTester} onSubmit={handleBulkExecution} />}
+      {showBulkAssign && <BulkAssignDialog open={showBulkAssign} selectedCount={selectedIds.size} testRuns={testRunOptions} testRunId={bulkAssignRun} assignee={bulkAssignee} onOpenChange={setShowBulkAssign} onTestRunChange={setBulkAssignRun} onAssigneeChange={setBulkAssignee} onSubmit={handleBulkAssign} />}
 
       {/* Import Excel Dialog */}
       {showImportDialog && <ImportExcelDialog
@@ -793,6 +881,9 @@ export default function TestCaseManager() {
         fileInputRef={fileInputRef}
         onChooseFile={() => fileInputRef.current?.click()}
         onConfirmImport={handleConfirmImportExcel}
+        lastImportBatchId={lastImportBatchId}
+        onUndoImport={handleUndoImport}
+        onMappingChange={handleImportMappingChange}
         onClearPreview={resetImportPreview}
       />}
 

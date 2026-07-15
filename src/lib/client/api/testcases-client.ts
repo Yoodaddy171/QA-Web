@@ -7,6 +7,11 @@ export type TestCaseQueryOptions = {
   prioVal?: string;
   modVal?: string;
   subMenuVal?: string;
+  testRunVal?: string;
+  bugVal?: string;
+  tagVal?: string;
+  createdFromVal?: string;
+  createdToVal?: string;
   pageVal?: number;
   sortVal?: string;
   orderVal?: string;

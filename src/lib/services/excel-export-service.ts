@@ -6,8 +6,8 @@ export type ExportTestCase = Awaited<ReturnType<typeof db.testCase.findMany>>[nu
   module?: { name: string } | null;
 };
 
-export const HEADERS = ['ID', 'Page', 'Sub Menu', 'Feature', 'Bobot', 'Test', 'Action', 'Step', 'Expected Result', 'Actual Result', 'Status', 'Progress', 'Remarks of Test'];
-export const COL_WIDTHS = [5.5, 5.75, 17.5, 42.63, 13, 54.13, 57, 62, 87.63, 38.13, 13, 13, 13];
+export const HEADERS = ['ID', 'Page', 'Sub Menu', 'Feature', 'Bobot', 'Test', 'Action', 'Step', 'Expected Result', 'Actual Result', 'Status', 'Progress', 'Remarks of Test', 'Tags'];
+export const COL_WIDTHS = [5.5, 5.75, 17.5, 42.63, 13, 54.13, 57, 62, 87.63, 38.13, 13, 13, 13, 24];
 
 const HEADER_FILL: ExcelJS.Fill = {
   type: 'pattern',
@@ -85,6 +85,7 @@ export function writeTestCaseRows(ws: ExcelJS.Worksheet, testCases: ExportTestCa
     row.getCell(11).value = formatted.Status;
     row.getCell(12).value = formatted.Progress;
     row.getCell(13).value = formatted['Remarks of Test'];
+    row.getCell(14).value = formatted.Tags;
 
     styleDataRow(row);
     currentRow++;
@@ -111,6 +112,7 @@ export function formatExportRow(tc: ExportTestCase) {
     Status: tc.status,
     Progress: tc.progress,
     'Remarks of Test': tc.remarks || '',
+    Tags: tc.tags || '',
   };
 }
 

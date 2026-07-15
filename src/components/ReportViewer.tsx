@@ -12,6 +12,7 @@ interface ReportViewerProps {
   report: ReportData;
   onEdit: (report: ReportData) => void;
   onReportChange: (report: ReportData) => void;
+  onNavigate?: (tab: 'testRuns' | 'traceability' | 'bugfix' | 'testcases') => void;
 }
 
 const ACTION_SUCCESS: Record<ReportAction, string> = {
@@ -20,11 +21,20 @@ const ACTION_SUCCESS: Record<ReportAction, string> = {
   versions: 'Versi report baru berhasil dibuat.',
 };
 
-export function ReportViewer({ report, onEdit, onReportChange }: ReportViewerProps) {
+export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: ReportViewerProps) {
   const { toast } = useToast();
   const formatDate = (date?: Date) => date ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(date)) : '-';
   const { metrics, sections, metadata } = report;
   const isPlanning = report.reportType === 'TEST_PLANNING_DOCUMENT';
+  const runSummary = metrics.testRunSummary;
+  const blocked = runSummary.totalBlocked || metrics.byStatus.find(item => item.status === 'BLOCKED')?.count || 0;
+  const failed = runSummary.totalPlanned ? runSummary.totalFailed : metrics.totalFailed;
+  const pending = runSummary.totalPlanned ? runSummary.totalNotRun : metrics.totalPending;
+  const recommendation = failed > 0 || blocked > 0 || metrics.bugSummary.critical > 0
+    ? 'NOT READY'
+    : pending > 0 || runSummary.unfinishedRuns > 0 || metrics.bugSummary.open > 0
+      ? 'READY WITH RISK'
+      : 'READY';
 
   async function postAction(action: ReportAction) {
     try {
@@ -93,10 +103,10 @@ export function ReportViewer({ report, onEdit, onReportChange }: ReportViewerPro
 
       <div className="grid gap-4 md:grid-cols-4">
         {[
-          ['Planned', metrics.totalPlanned, 'text-cyan-500'],
-          ['Executed', `${metrics.totalExecuted} (${metrics.executionRate}%)`, 'text-violet-500'],
-          ['Passed', `${metrics.totalPassed} (${metrics.passRate}%)`, 'text-emerald-500'],
-          ['Failed', `${metrics.totalFailed} (${metrics.failRate}%)`, 'text-red-500'],
+          ['Planned', runSummary.totalPlanned || metrics.totalPlanned, 'text-cyan-500'],
+          ['Executed', runSummary.totalPlanned ? `${runSummary.totalCompleted} (${Math.round((runSummary.totalCompleted / runSummary.totalPlanned) * 100)}%)` : `${metrics.totalExecuted} (${metrics.executionRate}%)`, 'text-violet-500'],
+          ['Passed', runSummary.totalPlanned ? runSummary.totalPassed : metrics.totalPassed, 'text-emerald-500'],
+          ['Failed', failed, 'text-red-500'],
         ].map(([label, value, color]) => (
           <div key={label} className="rounded-lg border border-border/60 bg-card p-4 shadow-sm">
             <div className={`text-2xl font-bold ${color}`}>{value}</div>
@@ -104,6 +114,26 @@ export function ReportViewer({ report, onEdit, onReportChange }: ReportViewerPro
           </div>
         ))}
       </div>
+
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Release decision summary</p>
+            <p className="mt-1 text-xl font-bold">Release recommendation: {recommendation}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{failed} failed, {blocked} blocked, {pending} not run, {metrics.bugSummary.open} open bugs, {metrics.bugSummary.critical} critical, {metrics.bugSummary.overdue} overdue.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {onNavigate && <Button size="sm" variant="outline" onClick={() => onNavigate('testRuns')}>Open Test Runs</Button>}
+            {onNavigate && <Button size="sm" variant="ghost" onClick={() => onNavigate('traceability')}>Open Traceability</Button>}
+            {onNavigate && metrics.bugSummary.open > 0 && <Button size="sm" variant="ghost" onClick={() => onNavigate('bugfix')}>Open Bugs</Button>}
+          </div>
+        </div>
+      </div>
+
+      {runSummary.activeRuns.length > 0 && <div className="rounded-lg border border-border/60 bg-card p-6 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-bold text-foreground">Test Run readiness</h2><span className="text-sm text-muted-foreground">{runSummary.unfinishedRuns} unfinished run</span></div>
+        <div className="space-y-2">{runSummary.activeRuns.slice(0, 5).map(run => <button key={run.id} type="button" onClick={() => onNavigate?.('testRuns')} className="flex w-full flex-wrap items-center gap-3 rounded-md border border-border/50 p-3 text-left transition hover:border-primary/40 hover:bg-primary/5"><span className="min-w-48 flex-1 text-sm font-semibold">{run.name}</span><Badge variant="outline">{run.status}</Badge><span className="text-xs text-muted-foreground">{run.progress}% · {run.failed} failed · {run.blocked} blocked · {run.notRun} not run</span></button>)}</div>
+      </div>}
 
       {section('INTRODUCTION / Scope', sections.scope)}
       {isPlanning ? (
@@ -155,6 +185,9 @@ export function ReportViewer({ report, onEdit, onReportChange }: ReportViewerPro
         <h2 className="mb-4 text-xl font-bold text-foreground">Defect Summary</h2>
         <div className="grid gap-3 md:grid-cols-5">
           <Badge variant="outline">Total {metrics.bugSummary.total}</Badge>
+          <Badge variant="failed">Critical {metrics.bugSummary.critical}</Badge>
+          <Badge variant="warning">Open {metrics.bugSummary.open}</Badge>
+          <Badge variant="failed">Overdue {metrics.bugSummary.overdue}</Badge>
           <Badge variant="warning">Reported {metrics.bugSummary.reported}</Badge>
           <Badge variant="info">Fixing {metrics.bugSummary.fixing}</Badge>
           <Badge variant="readyretest">Ready {metrics.bugSummary.readyToRetest}</Badge>

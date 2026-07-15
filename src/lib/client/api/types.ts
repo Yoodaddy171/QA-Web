@@ -30,6 +30,7 @@ export interface TestCase {
   status: string;
   progress: number;
   remarks?: string | null;
+  tags?: string | null;
   priority: string;
   projectId: string;
   moduleId?: string | null;
@@ -153,4 +154,15 @@ export interface Stats {
     notDone: number;
     riskScore: number;
   }[];
+  releaseReadiness?: {
+    recommendation: 'READY' | 'READY WITH RISK' | 'NOT READY';
+    testRunId: string | null;
+    testRunName: string | null;
+    failedCases: number;
+    blockedCases: number;
+    notRunCases: number;
+    criticalBugs: number;
+    openBugs: number;
+    reason: string;
+  };
 }

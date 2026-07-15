@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
-import { buildImportPreview as buildImportPreviewService, importWorkbook } from '@/lib/services/excel-import-service';
+import { buildImportPreview as buildImportPreviewService, importWorkbook, undoImportBatch } from '@/lib/services/excel-import-service';
 import {
   formatExportRow,
   HEADERS,
@@ -20,6 +20,15 @@ export async function POST(req: NextRequest) {
     const projectId = formData.get('projectId') as string;
     const createModules = formData.get('createModules') === 'true';
     const mode = String(formData.get('mode') || 'import');
+    const mappingRaw = String(formData.get('mapping') || '');
+    let mappings: Record<string, Record<string, string>> | undefined;
+    if (mappingRaw) {
+      try {
+        mappings = JSON.parse(mappingRaw);
+      } catch {
+        return NextResponse.json({ error: 'Mapping kolom tidak valid.' }, { status: 400 });
+      }
+    }
 
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     if (!projectId) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
@@ -39,14 +48,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (mode === 'preview') {
-      const preview = await buildImportPreviewService(workbook, projectId, createModules);
+      const preview = await buildImportPreviewService(workbook, projectId, createModules, mappings);
       return NextResponse.json(preview);
     }
     if (mode !== 'import') {
       return NextResponse.json({ error: 'Mode import tidak valid.' }, { status: 400 });
     }
 
-    const preview = await buildImportPreviewService(workbook, projectId, createModules);
+    const preview = await buildImportPreviewService(workbook, projectId, createModules, mappings);
     if (!preview.canImport) {
       return NextResponse.json({
         error: 'File belum aman untuk diimport. Periksa preview import terlebih dahulu.',
@@ -54,16 +63,29 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const importResult = await importWorkbook(workbook, projectId, createModules);
+    const importResult = await importWorkbook(workbook, projectId, createModules, undefined, mappings);
 
     return NextResponse.json({
       imported: importResult.imported,
       sheets: importResult.sheets,
       totalSheets: importResult.totalSheets,
+      batchId: importResult.batchId,
     }, { status: 201 });
   } catch (error) {
     console.error('POST /api/excel/import error:', error);
     return NextResponse.json({ error: 'Failed to import Excel file' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const projectId = req.nextUrl.searchParams.get('projectId')?.trim();
+  const batchId = req.nextUrl.searchParams.get('batchId')?.trim();
+  if (!projectId || !batchId) return NextResponse.json({ error: 'projectId dan batchId wajib diisi.' }, { status: 400 });
+  try {
+    return NextResponse.json(await undoImportBatch(projectId, batchId));
+  } catch (error) {
+    console.error('DELETE /api/excel/import error:', error);
+    return NextResponse.json({ error: 'Undo import gagal.' }, { status: 500 });
   }
 }
 
@@ -75,11 +97,12 @@ export async function GET(req: NextRequest) {
     const projectId = url.searchParams.get('projectId');
     const format = url.searchParams.get('format') || 'xlsx';
     const multiSheet = url.searchParams.get('multiSheet') === 'true';
+    const selectedIds = (url.searchParams.get('ids') || '').split(',').map(id => id.trim()).filter(Boolean);
 
     if (!projectId) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
 
     const testCases = await db.testCase.findMany({
-      where: { projectId },
+      where: { projectId, ...(selectedIds.length ? { id: { in: selectedIds } } : {}) },
       include: { module: true },
       orderBy: { testCaseId: 'asc' },
     });

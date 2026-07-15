@@ -16,6 +16,10 @@ const dbMock = vi.hoisted(() => ({
     findFirst: vi.fn(),
     create: vi.fn(),
   },
+  activityHistory: {
+    create: vi.fn(),
+    findMany: vi.fn(),
+  },
 }));
 
 vi.mock('@/lib/db', () => ({ db: dbMock }));
@@ -38,6 +42,8 @@ describe('excel import service', async () => {
     dbMock.bugFix.create.mockResolvedValue({});
     dbMock.module.findFirst.mockResolvedValue(null);
     dbMock.module.create.mockResolvedValue({ id: 'module-1' });
+    dbMock.activityHistory.create.mockResolvedValue({ id: 'activity-1' });
+    dbMock.activityHistory.findMany.mockResolvedValue([]);
   });
 
   it('returns the preview response shape and flags unknown uppercase statuses invalid', async () => {
@@ -77,6 +83,7 @@ describe('excel import service', async () => {
     const result = await importWorkbook(workbook, 'project-1', true);
 
     expect(result).toEqual({
+      batchId: expect.any(String),
       imported: 1,
       sheets: [{ sheet: 'Import Sheet', imported: 1, skipped: 0, moduleId: 'module-1' }],
       totalSheets: 1,

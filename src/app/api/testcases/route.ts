@@ -13,6 +13,7 @@ import {
   createTestCaseRecord,
   deleteTestCaseById,
   deleteTestCasesByIds,
+  resequenceTestCaseIdsForProject,
   updateTestCaseRecordWithBugFixSync,
 } from '@/lib/services/testcase-service';
 import { scheduleWeightRecalculation } from '@/lib/services/weight-service';
@@ -45,6 +46,11 @@ export async function GET(req: NextRequest) {
     const status = url.searchParams.get('status');
     const testType = url.searchParams.get('testType');
     const priority = url.searchParams.get('priority');
+    const tag = cleanText(url.searchParams.get('tag'));
+    const createdFrom = url.searchParams.get('createdFrom');
+    const createdTo = url.searchParams.get('createdTo');
+    const testRunId = url.searchParams.get('testRunId');
+    const hasBug = url.searchParams.get('hasBug');
     const search = url.searchParams.get('search');
     const page = parsePositiveInt(url.searchParams.get('page'), 1, 100000);
     const limit = parsePositiveInt(url.searchParams.get('limit'), 50, 200);
@@ -57,6 +63,9 @@ export async function GET(req: NextRequest) {
       const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true } });
       if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
       where.projectId = projectId;
+      // Repair legacy gaps as part of loading the list, so refresh also fixes
+      // IDs that were deleted before resequencing was introduced.
+      await resequenceTestCaseIdsForProject(projectId);
     }
     if (moduleId === 'unassigned') {
       where.moduleId = null;
@@ -83,6 +92,29 @@ export async function GET(req: NextRequest) {
       if (!isTestCasePriority(priority)) return validationError('Prioritas testcase tidak valid.');
       where.priority = priority;
     }
+    if (tag) where.tags = { contains: tag };
+    if (createdFrom || createdTo) {
+      const createdAt: Record<string, Date> = {};
+      if (createdFrom) {
+        const date = new Date(createdFrom);
+        if (Number.isNaN(date.getTime())) return validationError('createdFrom tidak valid.');
+        createdAt.gte = date;
+      }
+      if (createdTo) {
+        const date = new Date(createdTo);
+        if (Number.isNaN(date.getTime())) return validationError('createdTo tidak valid.');
+        date.setHours(23, 59, 59, 999);
+        createdAt.lte = date;
+      }
+      where.createdAt = createdAt;
+    }
+    if (testRunId) {
+      const run = await db.testRun.findFirst({ where: { id: testRunId, ...(projectId ? { projectId } : {}) }, select: { id: true } });
+      if (!run) return NextResponse.json({ error: 'Test Run not found' }, { status: 404 });
+      where.testRunCases = { some: { testRunId } };
+    }
+    if (hasBug === 'yes') where.bugFixItems = { some: {} };
+    if (hasBug === 'no') where.bugFixItems = { none: {} };
     if (search) {
       where.OR = [
         { id: { contains: search } },
@@ -92,6 +124,7 @@ export async function GET(req: NextRequest) {
         { testAction: { contains: search } },
         { steps: { contains: search } },
         { remarks: { contains: search } },
+        { tags: { contains: search } },
       ];
     }
 
@@ -112,6 +145,7 @@ export async function GET(req: NextRequest) {
         status: true,
         progress: true,
         remarks: true,
+        tags: true,
         priority: true,
         projectId: true,
         moduleId: true,
@@ -153,6 +187,7 @@ export async function POST(req: NextRequest) {
     const status = isTestCaseStatus(body.status) ? body.status : TESTCASE_STATUS.NOT_DONE;
     const testType = isTestType(body.testType) ? body.testType : 'Positive';
     const priority = isTestCasePriority(body.priority) ? body.priority : 'Medium';
+    const tags = normalizeTags(body.tags);
 
     if (!projectId) return validationError('Project wajib dipilih.');
     if (!testCaseId) return validationError('Test Case ID wajib diisi.');
@@ -194,9 +229,11 @@ export async function POST(req: NextRequest) {
       status,
       progress,
       remarks,
+      tags,
       priority,
       projectId,
       moduleId,
+      actor: 'local-user',
     });
 
     scheduleWeightRecalculation([{ projectId, page, subMenu }], 'test case create');
@@ -217,7 +254,7 @@ export async function PUT(req: NextRequest) {
     // Get current test case for comparison
     const current = await db.testCase.findUnique({
       where: { id },
-      select: { projectId: true, page: true, subMenu: true, status: true, actualResult: true, testCaseId: true, testType: true, testAction: true, steps: true, expectedResult: true, priority: true, moduleId: true },
+      select: { projectId: true, page: true, subMenu: true, status: true, actualResult: true, testCaseId: true, testType: true, testAction: true, steps: true, expectedResult: true, priority: true, moduleId: true, remarks: true, tags: true, weight: true },
     });
     if (!current) return NextResponse.json({ error: 'Test case not found' }, { status: 404 });
 
@@ -256,6 +293,8 @@ export async function PUT(req: NextRequest) {
     }
     // Handle subMenu: convert empty string to null
     const finalSubMenu = data.subMenu === '' ? null : data.subMenu;
+    if (data.tags !== undefined && typeof data.tags !== 'string' && !Array.isArray(data.tags)) return validationError('Tags tidak valid.');
+    if (data.tags !== undefined) data.tags = normalizeTags(data.tags);
     // Handle actualResult: convert empty string to null
     const finalActualResultForDb = finalActualResult === '' ? null : finalActualResult;
     const shouldWriteActualResult = data.actualResult !== undefined
@@ -274,6 +313,7 @@ export async function PUT(req: NextRequest) {
       progress,
       finalModuleId,
       finalSubMenu,
+      actor: 'local-user',
     });
 
     // Recalculate weights if page/subMenu changed (background, non-blocking)
@@ -291,6 +331,11 @@ export async function PUT(req: NextRequest) {
     console.error('PUT /api/testcases error:', error);
     return NextResponse.json({ error: 'Failed to update test case' }, { status: 500 });
   }
+}
+
+function normalizeTags(value: unknown) {
+  const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [];
+  return [...new Set(values.map(item => String(item).trim().toLowerCase()).filter(Boolean))].join(', ') || null;
 }
 
 // Bulk status update: { ids: string[], status: string }

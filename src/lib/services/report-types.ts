@@ -104,6 +104,7 @@ export interface ReportData {
   reportType: ReportType;
   status: ReportStatus;
   documentId?: string;
+  testRunId?: string;
   version: string;
   author?: string;
   approvedBy?: string;
@@ -117,12 +118,16 @@ export interface ReportData {
   generatedAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  finalizedAt?: Date;
+  finalizedBy?: string;
+  snapshotChecksum?: string;
 }
 
 export interface CreateReportInput {
   projectId: string;
   reportType: ReportType;
   documentId?: string;
+  testRunId?: string;
   version: string;
   author?: string;
   approvedBy?: string;

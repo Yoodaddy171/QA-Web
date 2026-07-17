@@ -47,7 +47,7 @@ export async function refineAiTestCase(input: { mode: string; testCase: TestCase
     const response = await fetch('/api/ai/refine', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ ...input, projectId: input.testCase.projectId }),
       signal,
     });
     const data = await response.json();

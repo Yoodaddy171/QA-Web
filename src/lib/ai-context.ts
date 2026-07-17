@@ -13,7 +13,7 @@ interface KnowledgeRow {
   type: string;
   title: string;
   content: string;
-  updatedAt: string;
+  updatedAt: Date;
 }
 
 export interface ProjectSummary {
@@ -85,14 +85,12 @@ export async function readRelevantKnowledge(
   const { maxItems = 8, maxCharsPerItem = 1200, maxTotalChars = 5000 } = options || {};
   const keywords = extractKeywords(contextHint);
 
-  const rows = await db.$queryRawUnsafe<KnowledgeRow[]>(
-    `SELECT id, type, title, content, updatedAt
-     FROM ProjectKnowledge
-     WHERE projectId = ?
-     ORDER BY updatedAt DESC
-     LIMIT 40`,
-    projectId
-  );
+  const rows: KnowledgeRow[] = await db.projectKnowledge.findMany({
+    where: { projectId },
+    select: { id: true, type: true, title: true, content: true, updatedAt: true },
+    orderBy: { updatedAt: 'desc' },
+    take: 40,
+  });
 
   if (rows.length === 0) return '';
 

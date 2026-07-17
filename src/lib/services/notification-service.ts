@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
+import { getRequestActor } from '@/lib/request-actor';
 
 export const LOCAL_RECIPIENT_KEY = 'local-user';
 
@@ -26,7 +27,8 @@ function jsonValue(value: Record<string, unknown> | null | undefined) {
 }
 
 export async function createNotification(input: CreateNotificationInput, client: NotificationClient = db) {
-  const recipientKey = input.recipientKey?.trim() || LOCAL_RECIPIENT_KEY;
+  const requestActor = await getRequestActor();
+  const recipientKey = requestActor?.userId || input.recipientKey?.trim() || LOCAL_RECIPIENT_KEY;
   const dedupeKey = input.dedupeKey?.trim() || null;
   const data = {
     projectId: input.projectId,
@@ -67,7 +69,8 @@ export async function listNotifications(input: {
   limit?: number;
   unreadOnly?: boolean;
 }) {
-  const recipientKey = input.recipientKey?.trim() || LOCAL_RECIPIENT_KEY;
+  const requestActor = await getRequestActor();
+  const recipientKey = requestActor?.userId || input.recipientKey?.trim() || LOCAL_RECIPIENT_KEY;
   const limit = Math.max(1, Math.min(input.limit || 20, 50));
   const where = {
     projectId: input.projectId,
@@ -98,7 +101,8 @@ export async function setNotificationReadState(input: {
   recipientKey?: string | null;
   read: boolean;
 }) {
-  const recipientKey = input.recipientKey?.trim() || LOCAL_RECIPIENT_KEY;
+  const requestActor = await getRequestActor();
+  const recipientKey = requestActor?.userId || input.recipientKey?.trim() || LOCAL_RECIPIENT_KEY;
   const existing = await db.notification.findFirst({
     where: { id: input.id, projectId: input.projectId, recipientKey },
     select: { id: true },
@@ -108,7 +112,8 @@ export async function setNotificationReadState(input: {
 }
 
 export async function markAllNotificationsRead(input: { projectId: string; recipientKey?: string | null }) {
-  const recipientKey = input.recipientKey?.trim() || LOCAL_RECIPIENT_KEY;
+  const requestActor = await getRequestActor();
+  const recipientKey = requestActor?.userId || input.recipientKey?.trim() || LOCAL_RECIPIENT_KEY;
   return db.notification.updateMany({
     where: { projectId: input.projectId, recipientKey, readAt: null },
     data: { readAt: new Date() },

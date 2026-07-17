@@ -15,16 +15,6 @@ const KNOWLEDGE_TYPES = new Set([
   'PROJECT_RULE',
 ]);
 
-type KnowledgeRow = {
-  id: string;
-  projectId: string;
-  type: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
 const cleanText = (value: unknown) => String(value ?? '').trim();
 
 function validationError(message: string) {
@@ -45,13 +35,7 @@ export async function GET(req: NextRequest) {
     const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true } });
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
-    const items = await db.$queryRawUnsafe<KnowledgeRow[]>(
-      `SELECT id, projectId, type, title, content, createdAt, updatedAt
-       FROM ProjectKnowledge
-       WHERE projectId = ?
-       ORDER BY updatedAt DESC`,
-      projectId
-    );
+    const items = await db.projectKnowledge.findMany({ where: { projectId }, orderBy: { updatedAt: 'desc' } });
 
     return NextResponse.json({ items });
   } catch (error) {
@@ -75,22 +59,8 @@ export async function POST(req: NextRequest) {
     const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true } });
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
-    const id = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    await db.$executeRawUnsafe(
-      `INSERT INTO ProjectKnowledge (id, projectId, type, title, content, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      id,
-      projectId,
-      type,
-      title,
-      content,
-      now,
-      now
-    );
-
-    return NextResponse.json({ id, projectId, type, title, content, createdAt: now, updatedAt: now }, { status: 201 });
+    const item = await db.projectKnowledge.create({ data: { projectId, type, title, content } });
+    return NextResponse.json(item, { status: 201 });
   } catch (error) {
     console.error('POST /api/project-knowledge error:', error);
     return NextResponse.json({ error: 'Failed to create project knowledge' }, { status: 500 });
@@ -109,25 +79,10 @@ export async function PUT(req: NextRequest) {
     if (!title) return validationError('Judul knowledge wajib diisi.');
     if (!content) return validationError('Isi knowledge wajib diisi.');
 
-    const existing = await db.$queryRawUnsafe<Array<{ id: string }>>(
-      'SELECT id FROM ProjectKnowledge WHERE id = ? LIMIT 1',
-      id
-    );
-    if (existing.length === 0) return NextResponse.json({ error: 'Knowledge not found' }, { status: 404 });
-
-    const now = new Date().toISOString();
-    await db.$executeRawUnsafe(
-      `UPDATE ProjectKnowledge
-       SET type = ?, title = ?, content = ?, updatedAt = ?
-       WHERE id = ?`,
-      type,
-      title,
-      content,
-      now,
-      id
-    );
-
-    return NextResponse.json({ id, type, title, content, updatedAt: now });
+    const existing = await db.projectKnowledge.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) return NextResponse.json({ error: 'Knowledge not found' }, { status: 404 });
+    const item = await db.projectKnowledge.update({ where: { id }, data: { type, title, content } });
+    return NextResponse.json(item);
   } catch (error) {
     console.error('PUT /api/project-knowledge error:', error);
     return NextResponse.json({ error: 'Failed to update project knowledge' }, { status: 500 });
@@ -140,8 +95,9 @@ export async function DELETE(req: NextRequest) {
     const id = cleanText(url.searchParams.get('id'));
     if (!id) return validationError('ID is required');
 
-    await db.$executeRawUnsafe('DELETE FROM ProjectKnowledge WHERE id = ?', id);
-    return NextResponse.json({ deleted: 1 });
+    const result = await db.projectKnowledge.deleteMany({ where: { id } });
+    if (!result.count) return NextResponse.json({ error: 'Knowledge not found' }, { status: 404 });
+    return NextResponse.json({ deleted: result.count });
   } catch (error) {
     console.error('DELETE /api/project-knowledge error:', error);
     return NextResponse.json({ error: 'Failed to delete project knowledge' }, { status: 500 });

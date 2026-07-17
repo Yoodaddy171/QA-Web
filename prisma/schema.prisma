@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/@prisma/postgresql-client"
 }
 
 datasource db {
@@ -10,9 +9,15 @@ datasource db {
 
 model Project {
   id                String             @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name              String
   description       String?
   automationContext String? // Object Repository info for AI
+  allowExternalAi   Boolean            @default(false)
+  aiMonthlyTokenBudget Int             @default(100000)
+  deletionState     String             @default("ACTIVE")
+  deletedAt         DateTime?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   testCases         TestCase[]
@@ -26,8 +31,103 @@ model Project {
   testPlans         TestPlan[]
   reports           Report[]
   notifications     Notification[]
+  aiRequestAudits   AiRequestAudit[]
+  aiUsageMonths     AiUsageMonth[]
 
   @@index([updatedAt])
+  @@index([workspaceId, updatedAt])
+}
+
+model User {
+  id           String                @id @default(cuid())
+  email        String                @unique
+  name         String
+  passwordHash String
+  disabledAt   DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  memberships WorkspaceMembership[]
+  sessions     Session[]
+  activities   ActivityHistory[]
+  aiRequests   AiRequestAudit[]
+}
+
+model AiRequestAudit {
+  id             String   @id @default(cuid())
+  projectId      String
+  actorUserId    String?
+  operation      String
+  promptVersion  String
+  provider       String
+  model          String
+  contextIds     Json?
+  dataCategories Json?
+  inputChars     Int
+  outputChars    Int
+  inputTokens    Int
+  outputTokens   Int
+  outputHash     String?
+  status         String
+  errorCode      String?
+  createdAt      DateTime @default(now())
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actorUser      User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([projectId, provider, status])
+  @@map("AIRequestAudit")
+}
+
+model AiUsageMonth {
+  id           String   @id @default(cuid())
+  projectId    String
+  month        String
+  usedTokens   Int      @default(0)
+  requestCount Int      @default(0)
+  updatedAt    DateTime @updatedAt
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, month])
+  @@index([month, updatedAt])
+  @@map("AIUsageMonth")
+}
+
+model Workspace {
+  id          String                @id @default(cuid())
+  name        String
+  slug        String                @unique
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  projects    Project[]
+  memberships WorkspaceMembership[]
+}
+
+model WorkspaceMembership {
+  id          String    @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String    @default("VIEWER")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId, role])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
 }
 
 model ProjectKnowledge {
@@ -106,6 +206,7 @@ model TestRun {
   testPlan    TestPlan?       @relation(fields: [testPlanId], references: [id], onDelete: SetNull)
   testCases   TestRunCase[]
   executions  TestExecution[]
+  reports     Report[]
 
   @@index([projectId, status])
   @@index([projectId, updatedAt])
@@ -178,11 +279,14 @@ model ActivityHistory {
   beforeValue Json?
   afterValue  Json?
   actor      String?
+  actorUserId String?
   createdAt  DateTime @default(now())
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actorUser  User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([projectId, createdAt])
   @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
 }
 
 model Notification {
@@ -211,6 +315,8 @@ model TestRunCase {
   testRunId   String
   testCaseId  String
   assignedTo  String?
+  latestStatus String         @default("NOT RUN")
+  latestExecutionAt DateTime?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   testRun     TestRun         @relation(fields: [testRunId], references: [id], onDelete: Cascade)
@@ -255,6 +361,7 @@ model TestExecutionEvidence {
   mimeType    String
   sizeBytes   Int
   storagePath String
+  sha256      String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   execution   TestExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
@@ -362,6 +469,8 @@ model Report {
   id                   String   @id @default(cuid())
   projectId            String
   project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testRunId            String?
+  testRun              TestRun? @relation(fields: [testRunId], references: [id], onDelete: SetNull)
   reportType           String // TEST_STATUS_REPORT, TEST_PLANNING_DOCUMENT
   status               String   @default("DRAFT") // DRAFT, FINAL
   documentId           String?
@@ -383,6 +492,9 @@ model Report {
   
   // Auto-generated metrics snapshot (JSON for historical accuracy)
   metricsSnapshot      Json
+  finalizedAt          DateTime?
+  finalizedBy          String?
+  snapshotChecksum     String?
   
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -390,4 +502,6 @@ model Report {
   @@index([projectId, createdAt])
   @@index([projectId, status])
   @@index([reportType, createdAt])
+  @@index([testRunId])
+  @@unique([projectId, documentId, version])
 }

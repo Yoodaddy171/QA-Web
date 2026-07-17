@@ -4,6 +4,7 @@
   var testCaseId = params.get('qaTestCaseId') || params.get('caseId') || '';
   var sessionId = params.get('qaSessionId') || '';
   var relay = params.get('qaRelay') || 'http://127.0.0.1:3001';
+  var relayToken = params.get('qaToken') || '';
   var maxTextLength = 4000;
 
   if (!enabled || !testCaseId || !sessionId || window.__qaManualCaptureInstalled) return;
@@ -82,13 +83,13 @@
     try {
       if (navigator.sendBeacon) {
         var blob = new Blob([JSON.stringify(logPayload)], { type: 'application/json' });
-        if (navigator.sendBeacon(relay.replace(/\/$/, '') + '/log', blob)) return;
+        if (navigator.sendBeacon(relay.replace(/\/$/, '') + '/log?access_token=' + encodeURIComponent(relayToken), blob)) return;
       }
     } catch (_) {}
 
     try {
       if (originalFetch) {
-        originalFetch(relay.replace(/\/$/, '') + '/log', {
+        originalFetch(relay.replace(/\/$/, '') + '/log?access_token=' + encodeURIComponent(relayToken), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(logPayload),

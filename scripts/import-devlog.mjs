@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { PrismaClient } from '@prisma/postgresql-client';
+import { PrismaClient } from '@prisma/devlog-client';
 
 const require = createRequire(import.meta.url);
 const { normalizeAutomationEvent } = require('../mini-services/automation-event');

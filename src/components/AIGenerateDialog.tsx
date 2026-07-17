@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Bot, Loader2, RefreshCw, Save, Sparkles, Target, Wand2 } from 'lucide-react';
+import { AlertTriangle, Bot, Loader2, RefreshCw, Save, ShieldCheck, Sparkles, Target, Wand2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface Module {
   id: string;
@@ -110,7 +111,21 @@ export function AIGenerateDialog({
   const [generateCount, setGenerateCount] = useState(4);
   const [insights, setInsights] = useState<GenerateInsights | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [dataPreview, setDataPreview] = useState<{ providerPolicy: string; preview: { user: string; redactions: number; estimatedInputTokens: number; truncated: boolean }; dataCategories: string[] } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const closeDialog = () => onOpenChange(false);
+  const previewData = async () => {
+    setPreviewLoading(true);
+    try {
+      const response = await fetch('/api/ai/governance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId, system: `Generate ${generateCount} testcase for module ${moduleFilter}.`, user: prompt, dataCategories: ['project-summary', 'up-to-12-testcase-metadata', 'up-to-6-knowledge-items', 'up-to-5-active-bugs', 'user-prompt'] }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Preview gagal.');
+      setDataPreview(data);
+    } catch (error) {
+      setDataPreview(null);
+      toast.error(error instanceof Error ? error.message : 'Preview data AI gagal.');
+    } finally { setPreviewLoading(false); }
+  };
 
   useEffect(() => {
     if (!open || !projectId) return;
@@ -162,7 +177,7 @@ export function AIGenerateDialog({
                 <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Apa yang ingin Anda test?</Label>
                 <Textarea
                   value={prompt}
-                  onChange={(event) => setPrompt(event.target.value)}
+                  onChange={(event) => { setPrompt(event.target.value); setDataPreview(null); }}
                   placeholder="Contoh: Buatkan test case untuk fitur register akun baru, termasuk validasi email, password strength, dan konfirmasi password. Sertakan positive dan negative test case."
                   rows={4}
                   className="resize-none rounded-2xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground placeholder:text-muted-foreground/40 focus-visible:ring-primary/20 transition duration-300 p-4"
@@ -174,13 +189,15 @@ export function AIGenerateDialog({
                       variant="outline"
                       size="sm"
                       className="h-8 rounded-xl text-[10px] font-bold text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition"
-                      onClick={() => setPrompt(suggestion)}
+                      onClick={() => { setPrompt(suggestion); setDataPreview(null); }}
                     >
                       {suggestion}
                     </Button>
                   ))}
                 </div>
               </div>
+
+              {dataPreview && <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 text-xs"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">Data preview</Badge><span className="font-semibold">{dataPreview.providerPolicy}</span><span className="ml-auto tabular-nums text-muted-foreground">~{dataPreview.preview.estimatedInputTokens} input tokens sebelum server context</span></div><p className="mt-3 whitespace-pre-wrap rounded-lg bg-card/70 p-3 text-muted-foreground">{dataPreview.preview.user || 'Prompt kosong'}</p><div className="mt-3 flex flex-wrap gap-1.5">{dataPreview.dataCategories.map(category => <Badge key={category} variant="outline">{category}</Badge>)}</div>{dataPreview.preview.redactions > 0 && <p className="mt-2 text-amber-600">{dataPreview.preview.redactions} nilai sensitif disamarkan.</p>}</div>}
 
               <div className="rounded-2xl border border-border/60 bg-secondary/20 p-5 shadow-inner overflow-hidden relative group">
                 <div className="absolute top-0 right-0 h-32 w-32 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -224,7 +241,7 @@ export function AIGenerateDialog({
                           <button
                             key={`${area.moduleName}-${area.label}`}
                             type="button"
-                            onClick={() => setPrompt(`Buat missing negative cases untuk ${area.moduleName} - ${area.label}`)}
+                            onClick={() => { setPrompt(`Buat missing negative cases untuk ${area.moduleName} - ${area.label}`); setDataPreview(null); }}
                             className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 text-left text-xs text-amber-600 transition hover:bg-amber-500/10 dark:text-amber-300"
                           >
                             <span className="flex min-w-0 items-center gap-2.5 font-bold">
@@ -249,7 +266,7 @@ export function AIGenerateDialog({
                 {modules.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Fokus pada Module</Label>
-                    <Select value={moduleFilter} onValueChange={setModuleFilter}>
+                    <Select value={moduleFilter} onValueChange={(value) => { setModuleFilter(value); setDataPreview(null); }}>
                       <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition duration-300">
                         <SelectValue placeholder="Semua Module" />
                       </SelectTrigger>
@@ -264,7 +281,7 @@ export function AIGenerateDialog({
                 )}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Jumlah Output</Label>
-                  <Select value={String(generateCount)} onValueChange={(value) => setGenerateCount(Number(value))}>
+                  <Select value={String(generateCount)} onValueChange={(value) => { setGenerateCount(Number(value)); setDataPreview(null); }}>
                     <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition duration-300">
                       <SelectValue />
                     </SelectTrigger>
@@ -352,6 +369,7 @@ export function AIGenerateDialog({
                       <Badge className={cn("rounded-lg text-[9px] font-semibold uppercase tracking-tight py-0.5 shadow-sm", getPriorityColor(testCase.priority))}>
                         {testCase.priority}
                       </Badge>
+                      <Badge variant="outline" className="text-[9px] uppercase">Draft · review required</Badge>
                       <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">{testCase.page} {testCase.subMenu && `› ${testCase.subMenu}`}</span>
                     </div>
 
@@ -407,13 +425,13 @@ export function AIGenerateDialog({
                     className="h-10 gap-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-7 shadow-lg hover:shadow-emerald-500/20 transition duration-300"
                   >
                     {aiSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Save Scenarios
+                    Approve & Save
                   </Button>
                 </>
               ) : (
-                <Button
+                <><Button type="button" variant="outline" onClick={() => void previewData()} disabled={!prompt.trim() || previewLoading}>{previewLoading ? <Loader2 className="animate-spin" /> : <ShieldCheck />}Preview data</Button><Button
                   onClick={() => handleAIGenerate({ prompt, moduleFilter, count: generateCount })}
-                  disabled={!prompt.trim() || aiGenerating}
+                  disabled={!prompt.trim() || aiGenerating || !dataPreview}
                   className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-semibold text-xs px-8 shadow-lg hover:shadow-primary/30 transition duration-300 uppercase tracking-wider"
                 >
                   {aiGenerating ? (
@@ -425,7 +443,7 @@ export function AIGenerateDialog({
                       <Sparkles className="h-4 w-4" /> Generate Scenarios
                     </>
                   )}
-                </Button>
+                </Button></>
               )}
             </div>
           </div>

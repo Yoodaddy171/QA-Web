@@ -6,6 +6,7 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { BrandMark } from '@/components/BrandMark';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import { AccountMenu } from '@/components/AccountMenu';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -67,11 +68,11 @@ const NAV_ITEMS = [
   { value: 'dashboard', label: 'Dashboard', description: 'Readiness overview', icon: LayoutDashboard },
   { value: 'testcases', label: 'Cases', description: 'Test inventory', icon: ClipboardList },
   { value: 'bugfix', label: 'Bugs', description: 'Defect lifecycle', icon: Bug },
-  { value: 'automated', label: 'Runs', description: 'Execution records', icon: MonitorDot },
-  { value: 'testRuns', label: 'Test Runs', description: 'QA execution cycles', icon: ListChecks },
+  { value: 'automated', label: 'Automation Logs', description: 'Automation records', icon: MonitorDot },
+  { value: 'testRuns', label: 'Test Cycles', description: 'QA execution cycles', icon: ListChecks },
   { value: 'traceability', label: 'Traceability', description: 'Requirements & plans', icon: GitBranch },
   { value: 'reports', label: 'Reports', description: 'Test reports', icon: FileText },
-  { value: 'settings', label: 'Settings', description: 'Project knowledge', icon: Settings2 },
+  { value: 'settings', label: 'Settings', description: 'Configuration & readiness', icon: Settings2 },
 ] as const;
 
 function WorkspaceCommandPalette({ open, onOpenChange, setActiveTab }: { open: boolean; onOpenChange: (open: boolean) => void; setActiveTab: (value: string) => void }) {
@@ -343,7 +344,7 @@ export function AppShell({
         />
 
         <SidebarInset className="min-w-0 overflow-x-hidden bg-background">
-          <header className="sticky top-0 z-40 grid min-h-16 grid-cols-[1fr_auto] items-center gap-4 border-b border-border/70 bg-background/95 px-4 backdrop-blur-md sm:px-6 lg:grid-cols-[1fr_minmax(280px,420px)_1fr] lg:px-8">
+          <header className="sticky top-0 z-40 grid min-h-16 grid-cols-[1fr_auto] items-center gap-4 border-b border-border/70 bg-background/95 px-4 backdrop-blur-md sm:px-6 lg:px-8 xl:grid-cols-[1fr_minmax(280px,420px)_1fr]">
             <div className="flex min-w-0 items-center gap-3">
               <SidebarTrigger className="h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-card text-muted-foreground shadow-sm hover:bg-secondary hover:text-foreground" />
               <div className="min-w-0">
@@ -354,12 +355,12 @@ export function AppShell({
                 <p className="hidden truncate text-[11px] font-medium text-muted-foreground sm:block"><span>{selectedProjectName}</span><span className="px-1.5 text-border">/</span><span>{activeItem.description}</span></p>
               </div>
             </div>
-            <Button type="button" variant="outline" onClick={() => setCommandOpen(true)} className="hidden h-9 justify-between rounded-lg border-border/70 bg-card px-3 text-muted-foreground shadow-none lg:flex">
+            <Button type="button" variant="outline" onClick={() => setCommandOpen(true)} className="hidden h-9 justify-between rounded-lg border-border/70 bg-card px-3 text-muted-foreground shadow-none xl:flex">
               <span className="flex items-center gap-2"><Search className="size-4" />Cari atau pindah menu...</span>
               <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[9px]">Ctrl K</kbd>
             </Button>
             <div className="flex items-center justify-self-end gap-2">
-              <Button type="button" variant="outline" size="icon" onClick={() => setCommandOpen(true)} aria-label="Buka command palette" className="size-9 rounded-lg border-border/70 bg-card shadow-none lg:hidden"><Search /></Button>
+              <Button type="button" variant="outline" size="icon" onClick={() => setCommandOpen(true)} aria-label="Buka command palette" className="size-9 rounded-lg border-border/70 bg-card shadow-none xl:hidden"><Search /></Button>
               {typeof projectHealth === 'number' && (
                 <div className="hidden items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground sm:flex">
                   <span className="size-1.5 rounded-full bg-emerald-500" />
@@ -367,6 +368,7 @@ export function AppShell({
                 </div>
               )}
               <NotificationCenter projectId={selectedProject} onNavigate={setActiveTab} />
+              <AccountMenu />
             </div>
           </header>
 

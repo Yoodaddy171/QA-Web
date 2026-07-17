@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -69,10 +70,19 @@ type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
 const LAST_ACTIVE_TAB_STORAGE_KEY = 'web-qa:last-active-tab';
 const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'testRuns', 'traceability', 'reports', 'settings'] as const;
 type AppTab = typeof APP_TABS[number];
+const TAB_ROUTES: Record<AppTab, string> = { dashboard: 'dashboard', testcases: 'test-cases', bugfix: 'bugs', automated: 'automation', testRuns: 'test-runs', traceability: 'traceability', reports: 'reports', settings: 'settings' };
+const ROUTE_TABS = Object.fromEntries(Object.entries(TAB_ROUTES).map(([tab, route]) => [route, tab])) as Record<string, AppTab>;
+function workspaceRoute(pathname: string) {
+  const match = pathname.match(/^\/projects\/([^/]+)\/([^/]+)\/?$/);
+  const tab = match ? ROUTE_TABS[match[2]] : undefined;
+  return match && tab ? { projectId: decodeURIComponent(match[1]), tab } : null;
+}
 
 // ============== MAIN APP ==============
 export default function TestCaseManager() {
   const { toast } = useToast();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const {
     projects,
@@ -194,6 +204,21 @@ export default function TestCaseManager() {
 
   // Dashboard filter state
   const [selectedModuleFilter, setSelectedModuleFilter] = useState<string>('all');
+
+  const navigateToTab = useCallback((tab: AppTab, projectId = selectedProject, replace = false) => {
+    setActiveTab(tab);
+    if (projectId) {
+      const href = `/projects/${encodeURIComponent(projectId)}/${TAB_ROUTES[tab]}`;
+      if (pathname !== href) {
+        if (replace) router.replace(href);
+        else router.push(href);
+      }
+    }
+  }, [pathname, router, selectedProject]);
+  const handleProjectChange = useCallback((projectId: string) => {
+    setSelectedProject(projectId);
+    if (projectId) navigateToTab(activeTab, projectId);
+  }, [activeTab, navigateToTab, setSelectedProject]);
 
   const {
     automatedItems,
@@ -345,13 +370,24 @@ export default function TestCaseManager() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      const routed = workspaceRoute(pathname);
+      if (routed) {
+        setActiveTab(routed.tab);
+        if (projects.some(project => project.id === routed.projectId)) setSelectedProject(routed.projectId);
+        return;
+      }
       const savedTab = window.localStorage.getItem(LAST_ACTIVE_TAB_STORAGE_KEY);
       if (APP_TABS.includes(savedTab as AppTab)) {
         setActiveTab(savedTab as AppTab);
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [pathname, projects, setSelectedProject]);
+  useEffect(() => {
+    if (pathname !== '/' || !selectedProject) return;
+    const href = `/projects/${encodeURIComponent(selectedProject)}/${TAB_ROUTES[activeTab]}`;
+    router.replace(href);
+  }, [activeTab, pathname, router, selectedProject]);
   useEffect(() => {
     if (skipInitialActiveTabPersistRef.current) {
       skipInitialActiveTabPersistRef.current = false;
@@ -677,7 +713,7 @@ export default function TestCaseManager() {
     const nextModuleFilter = moduleRisk.moduleId || 'unassigned';
     const nextStatusFilter = getModuleRiskTargetStatus(moduleRisk);
 
-    setActiveTab('testcases');
+    navigateToTab('testcases');
     setSearch('');
     setFilterTestType('all');
     setFilterPriority('all');
@@ -716,14 +752,14 @@ export default function TestCaseManager() {
     bugFixFilterModule, bugFixTab, setBugFixSearch, setBugFixFilterStatus, setBugFixFilterModule, setBugFixTab,
     handleBugFixStatusChange, openBugFixDetail, automatedItems, automatedSearch, automatedFilterModule,
     automatedLoading, setAutomatedSearch, setAutomatedFilterModule, loadAutomated, visibleAutomatedItems,
-    projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleDeleteProject, handleDeleteModule,
-    setActiveTab,
+    projects, setSelectedProject: handleProjectChange, setShowCreateProject, setShowCreateModule, handleDeleteProject, handleDeleteModule,
+    setActiveTab: navigateToTab,
   };
   const workspaceViews = buildWorkspaceViews(workspaceViewProps);
 
   const handleActiveTabChange = (value: string) => {
     if (APP_TABS.includes(value as AppTab)) {
-      setActiveTab(value as AppTab);
+      navigateToTab(value as AppTab);
     }
   };
 
@@ -737,7 +773,7 @@ export default function TestCaseManager() {
         selectedProject={selectedProject}
         activeTab={activeTab}
         projectHealth={stats?.overallProgress ?? null}
-        setSelectedProject={setSelectedProject}
+        setSelectedProject={handleProjectChange}
         setActiveTab={handleActiveTabChange}
       >
         {{

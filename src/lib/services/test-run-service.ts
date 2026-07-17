@@ -11,46 +11,76 @@ const testRunInclude = {
   _count: { select: { testCases: true, executions: true } },
 } as const;
 
-export async function listTestRuns(projectId: string) {
+export async function listTestRuns(projectId: string, options: { cursor?: string; limit?: number } = {}) {
+  const limit = Math.min(100, Math.max(1, options.limit || 25));
   const runs = await db.testRun.findMany({
     where: { projectId },
     include: {
       ...testRunInclude,
-      testCases: { include: { executions: { orderBy: { createdAt: 'desc' }, take: 1 } } },
+      testCases: { select: { latestStatus: true } },
     },
-    orderBy: [{ status: 'asc' }, { updatedAt: 'desc' }],
+    orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+    take: limit + 1,
+    ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
   });
 
-  return runs.map(run => {
-    const summary = summarizeStatuses(run.testCases.map(item => item.executions[0]?.status || TEST_EXECUTION_STATUS.NOT_RUN));
+  const hasMore = runs.length > limit;
+  const page = hasMore ? runs.slice(0, limit) : runs;
+  const items = page.map(run => {
+    const summary = summarizeStatuses(run.testCases.map(item => item.latestStatus));
     return {
       ...run,
       progress: summary.total ? Math.round((summary.completed / summary.total) * 100) : 0,
       summary,
     };
   });
+  return { items, hasMore, nextCursor: hasMore ? page.at(-1)?.id || null : null };
 }
 
-export async function getTestRun(projectId: string, id: string) {
-  const run = await db.testRun.findFirst({
+export async function getTestRunCasesPage(projectId: string, id: string, options: { cursor?: string; limit?: number } = {}) {
+  const limit = Math.min(200, Math.max(1, options.limit || 100));
+  if (!await db.testRun.findFirst({ where: { id, projectId }, select: { id: true } })) return null;
+  const rows = await db.testRunCase.findMany({
+    where: { testRunId: id },
+    include: {
+      testCase: { include: { module: { select: { id: true, name: true } } } },
+      executions: { orderBy: { createdAt: 'desc' }, take: 1 },
+    },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    take: limit + 1,
+    ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+  });
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  return {
+    items: page.map(item => ({ ...item.testCase, membershipId: item.id, assignedTo: item.assignedTo, executions: item.executions })),
+    hasMore,
+    nextCursor: hasMore ? page.at(-1)?.id || null : null,
+  };
+}
+
+export async function getTestRun(projectId: string, id: string, options: { caseCursor?: string; caseLimit?: number } = {}) {
+  const [run, statusRows, casePage] = await Promise.all([db.testRun.findFirst({
     where: { id, projectId },
     include: {
-      testCases: {
-        include: {
-          testCase: { include: { module: { select: { id: true, name: true } } } },
-          executions: { include: { evidence: { orderBy: { createdAt: 'desc' } } }, orderBy: { createdAt: 'desc' }, take: 1 },
-        },
-        orderBy: { createdAt: 'asc' },
-      },
       testPlan: true,
-      executions: { include: { evidence: { orderBy: { createdAt: 'desc' } } }, orderBy: { createdAt: 'desc' } },
+      _count: { select: { testCases: true, executions: true } },
     },
-  });
+  }), db.testRunCase.findMany({
+    where: { testRunId: id },
+    select: { latestStatus: true },
+  }), getTestRunCasesPage(projectId, id, { cursor: options.caseCursor, limit: options.caseLimit })]);
   if (!run) return null;
 
-  const latestStatuses = run.testCases.map(item => item.executions[0]?.status || TEST_EXECUTION_STATUS.NOT_RUN);
+  const latestStatuses = statusRows.map(item => item.latestStatus);
   const summary = summarizeStatuses(latestStatuses);
-  return { ...run, progress: summary.total ? Math.round((summary.completed / summary.total) * 100) : 0, summary };
+  return {
+    ...run,
+    testCases: casePage?.items || [],
+    casePage: { hasMore: casePage?.hasMore || false, nextCursor: casePage?.nextCursor || null },
+    progress: summary.total ? Math.round((summary.completed / summary.total) * 100) : 0,
+    summary,
+  };
 }
 
 export async function createTestRun(input: {
@@ -73,7 +103,7 @@ export async function createTestRun(input: {
       testPlanId: input.testPlanId || null,
       startDate: input.startDate || null,
       endDate: input.endDate || null,
-      createdBy: input.createdBy || 'local-user',
+      createdBy: input.createdBy || 'system',
       assignedTo: input.assignedTo || null,
     },
     include: testRunInclude,
@@ -162,6 +192,7 @@ export async function bulkExecuteTestCases(input: { projectId: string; testRunId
     for (const testCase of testCases) {
       const membership = await tx.testRunCase.upsert({ where: { testRunId_testCaseId: { testRunId: input.testRunId, testCaseId: testCase.id } }, create: { testRunId: input.testRunId, testCaseId: testCase.id }, update: {} });
       const execution = await tx.testExecution.create({ data: { testRunId: input.testRunId, testCaseId: testCase.id, testRunCaseId: membership.id, tester, status: input.status, notes: input.notes || null, startedAt: now, completedAt: now } });
+      await tx.testRunCase.update({ where: { id: membership.id }, data: { latestStatus: input.status, latestExecutionAt: execution.createdAt } });
       await recordActivity({ projectId: input.projectId, entityType: 'TestExecution', entityId: execution.id, action: 'CREATED', afterValue: { testRunId: input.testRunId, testCaseId: testCase.id, status: input.status }, actor: tester }, tx);
       await createExecutionNotification({
         projectId: input.projectId,
@@ -227,7 +258,7 @@ export async function createTestExecution(input: {
         testCaseId: input.testCaseId,
         testRunCaseId: membership.id,
         bugFixId: linkedBug?.id || null,
-        tester: input.tester || run.assignedTo || 'local-user',
+        tester: input.tester || run.assignedTo || 'system',
         status: executionStatus,
         actualResult: input.actualResult || null,
         notes: input.notes || null,
@@ -235,6 +266,7 @@ export async function createTestExecution(input: {
         completedAt: input.completedAt || (isCompleted ? now : null),
       },
     });
+    await tx.testRunCase.update({ where: { id: membership.id }, data: { latestStatus: execution.status, latestExecutionAt: execution.createdAt } });
     await recordActivity({ projectId: input.projectId, entityType: 'TestExecution', entityId: execution.id, action: 'CREATED', afterValue: { testRunId: input.testRunId, testCaseId: input.testCaseId, status: execution.status }, actor: execution.tester }, tx);
     await createExecutionNotification({
       projectId: input.projectId,
@@ -249,7 +281,7 @@ export async function createTestExecution(input: {
 }
 
 export async function updateTestExecution(projectId: string, id: string, data: Record<string, unknown>) {
-  const execution = await db.testExecution.findFirst({ where: { id, testRun: { projectId } }, select: { id: true, status: true, notes: true, tester: true, startedAt: true, completedAt: true } });
+  const execution = await db.testExecution.findFirst({ where: { id, testRun: { projectId } }, select: { id: true, status: true, notes: true, tester: true, startedAt: true, completedAt: true, testRunCaseId: true } });
   if (!execution) return null;
   const nextStatus = typeof data.status === 'string' ? data.status : execution.status;
   const isCompleted = ![TEST_EXECUTION_STATUS.NOT_RUN, TEST_EXECUTION_STATUS.IN_PROGRESS].includes(nextStatus as never);
@@ -259,6 +291,14 @@ export async function updateTestExecution(projectId: string, id: string, data: R
     ...(data.status !== undefined && isCompleted && !execution.completedAt && { completedAt: new Date() }),
   } as Prisma.TestExecutionUncheckedUpdateInput;
   const updated = await db.testExecution.update({ where: { id }, data: updateData });
+  if (execution.testRunCaseId && data.status !== undefined) {
+    const newer = await db.testExecution.findFirst({
+      where: { testRunCaseId: execution.testRunCaseId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { id: true },
+    });
+    if (newer?.id === execution.id) await db.testRunCase.update({ where: { id: execution.testRunCaseId }, data: { latestStatus: updated.status, latestExecutionAt: updated.createdAt } });
+  }
   for (const field of ['status', 'notes', 'tester'] as const) {
     if (data[field] !== undefined && data[field] !== execution[field]) {
       await recordActivity({ projectId, entityType: 'TestExecution', entityId: id, action: 'UPDATED', field, beforeValue: execution[field], afterValue: data[field] });

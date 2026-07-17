@@ -6,7 +6,7 @@ import {
 } from '@/lib/client/automation/automation-event-client';
 import { NextRequest, NextResponse } from 'next/server';
 import { renderHtml } from './evidence-renderer';
-import fs from 'fs';
+import fs from 'node:fs/promises';
 import path from 'path';
 import os from 'os';
 
@@ -93,9 +93,9 @@ export type EvidenceVideo = {
 
 const RUNTIME_DIR = process.env.QA_RUNTIME_DIR
   || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
-const RECORDINGS_DIR = path.join(RUNTIME_DIR, 'recordings');
-const LEGACY_RECORDINGS_DIR = path.join(process.cwd(), 'mini-services', 'recordings');
-const LOGS_DIR = path.join(process.cwd(), 'mini-services', 'logs');
+const RECORDINGS_DIR = path.join(/*turbopackIgnore: true*/ RUNTIME_DIR, 'recordings');
+const LEGACY_RECORDINGS_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'recordings');
+const LOGS_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
 const IMPORTANT_LOG_PATTERN = /error|failed|failure|exception|timeout|severe|warn|warning|status["':= ]+(4|5)\d\d|success[:= ]+false/i;
 
 function escapeHtml(value: unknown) {
@@ -252,13 +252,12 @@ function buildRunLogs(raw: string, logPath: string | null) {
 
   return { raw, path: logPath, selected, logs };
 }
-function readRunLogs(candidateIds: string[]) {
-  const logPath = candidateIds
-    .map(id => path.join(LOGS_DIR, `${id}.current.jsonl`))
-    .find(candidate => fs.existsSync(candidate));
-  return logPath
-    ? buildRunLogs(fs.readFileSync(logPath, 'utf8'), logPath)
-    : buildRunLogs('', null);
+async function readRunLogs(candidateIds: string[]) {
+  for (const id of candidateIds) {
+    const logPath = path.join(/*turbopackIgnore: true*/ LOGS_DIR, `${encodeURIComponent(id)}.current.jsonl`);
+    try { return buildRunLogs(await fs.readFile(logPath, 'utf8'), logPath); } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
+  }
+  return buildRunLogs('', null);
 }
 
 async function readRunLogsFromDatabase(candidateIds: string[]) {
@@ -283,22 +282,19 @@ async function readRunLogsFromDatabase(candidateIds: string[]) {
   return buildRunLogs(raw, null);
 }
 
-function getRecordingMetadataCandidates(testCaseIds: string[]) {
+async function getRecordingMetadataCandidates(testCaseIds: string[]) {
   const metadataItems: Array<{ metadataPath: string; mtimeMs: number }> = [];
 
   for (const root of [RECORDINGS_DIR, LEGACY_RECORDINGS_DIR]) {
     for (const testCaseId of testCaseIds) {
-      const testCaseDir = path.join(root, encodeURIComponent(testCaseId));
-      if (!fs.existsSync(testCaseDir)) continue;
-
-      const sessionDirs = fs.readdirSync(testCaseDir, { withFileTypes: true })
-        .filter(entry => entry.isDirectory())
-        .map(entry => path.join(testCaseDir, entry.name));
+      const testCaseDir = path.join(/*turbopackIgnore: true*/ root, encodeURIComponent(testCaseId));
+      let entries;
+      try { entries = await fs.readdir(testCaseDir, { withFileTypes: true }); } catch (error: any) { if (error.code === 'ENOENT') continue; throw error; }
+      const sessionDirs = entries.filter(entry => entry.isDirectory()).map(entry => path.join(/*turbopackIgnore: true*/ testCaseDir, entry.name));
 
       for (const sessionDir of sessionDirs) {
-        const metadataPath = path.join(sessionDir, 'metadata.json');
-        if (!fs.existsSync(metadataPath)) continue;
-        metadataItems.push({ metadataPath, mtimeMs: fs.statSync(metadataPath).mtimeMs });
+        const metadataPath = path.join(/*turbopackIgnore: true*/ sessionDir, 'metadata.json');
+        try { metadataItems.push({ metadataPath, mtimeMs: (await fs.stat(metadataPath)).mtimeMs }); } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
       }
     }
   }
@@ -306,15 +302,15 @@ function getRecordingMetadataCandidates(testCaseIds: string[]) {
   return metadataItems.sort((a, b) => b.mtimeMs - a.mtimeMs);
 }
 
-function readLatestRecording(testCaseIds: string[]) {
-  for (const item of getRecordingMetadataCandidates(testCaseIds)) {
+async function readLatestRecording(testCaseIds: string[]) {
+  for (const item of await getRecordingMetadataCandidates(testCaseIds)) {
     try {
-      const metadata = JSON.parse(fs.readFileSync(item.metadataPath, 'utf8')) as RecordingMetadata;
+      const metadata = JSON.parse(await fs.readFile(item.metadataPath, 'utf8')) as RecordingMetadata;
       if (!metadata.frames?.length && !metadata.video?.url) continue;
       return {
         metadata,
-        framesDir: path.join(path.dirname(item.metadataPath), 'frames'),
-        videoDir: path.join(path.dirname(item.metadataPath), 'video'),
+        framesDir: path.join(/*turbopackIgnore: true*/ path.dirname(item.metadataPath), 'frames'),
+        videoDir: path.join(/*turbopackIgnore: true*/ path.dirname(item.metadataPath), 'video'),
       };
     } catch (_) {}
   }
@@ -333,8 +329,8 @@ async function readLatestRecordingFromDatabase(testCaseIds: string[]) {
   const metadata = recording.metadata as unknown as RecordingMetadata;
   return {
     metadata,
-    framesDir: path.join(recording.mediaRoot, 'frames'),
-    videoDir: path.join(recording.mediaRoot, 'video'),
+    framesDir: path.join(/*turbopackIgnore: true*/ recording.mediaRoot, 'frames'),
+    videoDir: path.join(/*turbopackIgnore: true*/ recording.mediaRoot, 'video'),
   };
 }
 
@@ -373,19 +369,15 @@ function pickFrames(frames: RecordingFrame[], importantTimes: number[]) {
   return Array.from(new Map(selected.map(frame => [frame.file, frame])).values()).slice(0, 8);
 }
 
-function imageDataUri(filePath: string) {
-  if (!fs.existsSync(filePath)) return '';
-  return `data:image/jpeg;base64,${fs.readFileSync(filePath).toString('base64')}`;
+async function imageDataUri(filePath: string) {
+  try { return `data:image/jpeg;base64,${(await fs.readFile(filePath)).toString('base64')}`; } catch (error: any) { if (error.code === 'ENOENT') return ''; throw error; }
 }
 
-function videoDataUri(filePath: string, mimeType = 'video/webm'): EvidenceVideo | null {
-  if (!fs.existsSync(filePath)) return null;
-  const stat = fs.statSync(filePath);
-  return {
-    src: `data:${mimeType};base64,${fs.readFileSync(filePath).toString('base64')}`,
-    sizeBytes: stat.size,
-    mimeType,
-  };
+async function videoDataUri(filePath: string, mimeType = 'video/webm'): Promise<EvidenceVideo | null> {
+  try {
+    const [stat, file] = await Promise.all([fs.stat(filePath), fs.readFile(filePath)]);
+    return { src: `data:${mimeType};base64,${file.toString('base64')}`, sizeBytes: stat.size, mimeType };
+  } catch (error: any) { if (error.code === 'ENOENT') return null; throw error; }
 }
 
 function toJsonScript(value: unknown) {
@@ -395,16 +387,16 @@ function toJsonScript(value: unknown) {
     .replace(/&/g, '\\u0026');
 }
 
-async function findRecord(requestedId: string): Promise<{ record: EvidenceRecord | null; type: 'TestCase' | 'BugFix' }> {
+async function findRecord(requestedId: string, projectId: string): Promise<{ record: EvidenceRecord | null; type: 'TestCase' | 'BugFix' }> {
   const testCase = await db.testCase.findFirst({
-    where: { OR: [{ id: requestedId }, { testCaseId: requestedId }] },
+    where: { projectId, OR: [{ id: requestedId }, { testCaseId: requestedId }] },
     include: { project: { select: { name: true } }, module: { select: { name: true } } },
   });
 
   if (testCase) return { record: testCase, type: 'TestCase' };
 
   const bugFix = await db.bugFix.findFirst({
-    where: { OR: [{ id: requestedId }, { testCaseId: requestedId }, { sourceTestCaseId: requestedId }] },
+    where: { projectId, OR: [{ id: requestedId }, { testCaseId: requestedId }, { sourceTestCaseId: requestedId }] },
     include: { project: { select: { name: true } }, module: { select: { name: true } } },
   });
 
@@ -415,10 +407,12 @@ async function findRecord(requestedId: string): Promise<{ record: EvidenceRecord
 export async function GET(req: NextRequest) {
   try {
     const requestedId = req.nextUrl.searchParams.get('testCaseId')?.trim();
+    const projectId = req.nextUrl.searchParams.get('projectId')?.trim();
     const shouldDownload = req.nextUrl.searchParams.get('download') === '1';
     if (!requestedId) return NextResponse.json({ error: 'testCaseId is required' }, { status: 400 });
+    if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 });
 
-    const { record, type } = await findRecord(requestedId);
+    const { record, type } = await findRecord(requestedId, projectId);
     if (!record) return NextResponse.json({ error: 'Test case atau bug fix tidak ditemukan.' }, { status: 404 });
 
     const candidateIds = Array.from(new Set([
@@ -427,17 +421,17 @@ export async function GET(req: NextRequest) {
       record.testCaseId,
       record.sourceTestCaseId || '',
     ].filter(Boolean)));
-    const { raw, logs } = await readRunLogsFromDatabase(candidateIds) || readRunLogs(candidateIds);
-    const recording = await readLatestRecordingFromDatabase(candidateIds) || readLatestRecording(candidateIds);
+    const { raw, logs } = await readRunLogsFromDatabase(candidateIds) || await readRunLogs(candidateIds);
+    const recording = await readLatestRecordingFromDatabase(candidateIds) || await readLatestRecording(candidateIds);
     const pickedFrames = recording ? pickFrames(recording.metadata.frames, extractImportantRelativeTimes(raw)) : [];
-    const frames = recording ? pickedFrames.map(frame => ({
+    const frames = recording ? (await Promise.all(pickedFrames.map(async frame => ({
       time: formatRelativeTime(frame.relativeMs),
       relativeMs: frame.relativeMs,
-      src: imageDataUri(path.join(recording.framesDir, frame.file)),
-    })).filter(frame => frame.src) : [];
+      src: await imageDataUri(path.join(/*turbopackIgnore: true*/ recording.framesDir, frame.file)),
+    })))).filter(frame => frame.src) : [];
     const video = recording?.metadata.video?.file
-      ? videoDataUri(
-          path.join(recording.videoDir, recording.metadata.video.file),
+      ? await videoDataUri(
+          path.join(/*turbopackIgnore: true*/ recording.videoDir, recording.metadata.video.file),
           recording.metadata.video.mimeType || 'video/webm'
         )
       : null;

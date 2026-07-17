@@ -19,7 +19,7 @@ export async function getDevLogSummary(testCaseId: string): Promise<CopilotToolR
   const id = cleanText(testCaseId);
   if (!id) return { name: 'getDevLogSummary', summary: 'Tidak ada testcase dipilih.', data: null, citations: [] };
 
-  const logsDir = path.join(process.cwd(), 'mini-services', 'logs');
+  const logsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
   const candidates = [
     path.join(logsDir, `${id}.current.jsonl`),
     path.join(logsDir, `${id}.previous.jsonl`),
@@ -57,7 +57,7 @@ export async function getDevLogSummary(testCaseId: string): Promise<CopilotToolR
 }
 
 export async function getAutomationHistory(projectId: string, testCaseId?: string): Promise<CopilotToolResult> {
-  const logsDir = path.join(process.cwd(), 'mini-services', 'logs');
+  const logsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
   let files: string[] = [];
   try {
     files = await fs.readdir(logsDir);
@@ -117,7 +117,7 @@ export async function getAutomationHistory(projectId: string, testCaseId?: strin
 }
 
 export async function getLatestDevLogErrors(projectId: string): Promise<CopilotToolResult> {
-  const logsDir = path.join(process.cwd(), 'mini-services', 'logs');
+  const logsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
   let files: string[] = [];
   try {
     files = await fs.readdir(logsDir);

@@ -1,6 +1,7 @@
 // Pure helpers, types, and constants for TestCaseDetailDialog.
 // Extracted verbatim from the dialog component; no behavior changes.
 import type { TestCase } from '@/components/TestCaseTable';
+import { buildDevlogRelayUrl } from '@/lib/client/api/devlog-client';
 
 export type DevLogTab = 'console' | 'network' | 'execution';
 export type FullscreenLogFilter = 'all' | 'errors' | 'api';
@@ -142,11 +143,11 @@ export const escapeHtml = (value: string) => (
 );
 
 export const getManualFrameUrl = (frameUrl?: string) => (
-  frameUrl ? `http://127.0.0.1:3001${frameUrl}` : ''
+  frameUrl ? buildDevlogRelayUrl(frameUrl) : ''
 );
 
 export const getManualVideoUrl = (videoUrl?: string) => (
-  videoUrl ? `http://127.0.0.1:3001${videoUrl}` : ''
+  videoUrl ? buildDevlogRelayUrl(videoUrl) : ''
 );
 
 export const blobToDataUrl = async (blob: Blob) => (

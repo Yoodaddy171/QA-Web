@@ -3,7 +3,7 @@ import type { ReportData } from '@/lib/services/report-types';
 export type ReportAction = 'refresh' | 'finalize' | 'versions';
 
 export async function fetchReports(projectId: string): Promise<ReportData[]> {
-  const res = await fetch(`/api/reports?projectId=${encodeURIComponent(projectId)}`);
+  const res = await fetch(`/api/reports?projectId=${encodeURIComponent(projectId)}&limit=100`);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Report gagal dimuat');
   return data.reports || [];

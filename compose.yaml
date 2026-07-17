@@ -5,9 +5,9 @@ services:
     environment:
       POSTGRES_DB: qa_web
       POSTGRES_USER: qa_web
-      POSTGRES_PASSWORD: qa_web
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your local .env}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - qa-web-postgres:/var/lib/postgresql/data
     healthcheck:

@@ -88,10 +88,15 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
   useEffect(() => {
-    if (!selectedRequirementId) { setTraceability(null); return; }
+    if (!selectedRequirementId) {
+      const timer = window.setTimeout(() => setTraceability(null), 0);
+      return () => window.clearTimeout(timer);
+    }
     const controller = new AbortController();
-    void loadTraceability(selectedRequirementId, controller.signal)
-      .catch(error => { if (error instanceof Error && error.name !== 'AbortError') setMessage(error.message); });
+    queueMicrotask(() => {
+      void loadTraceability(selectedRequirementId, controller.signal)
+        .catch(error => { if (error instanceof Error && error.name !== 'AbortError') setMessage(error.message); });
+    });
     return () => controller.abort();
   }, [loadTraceability, selectedRequirementId]);
 
@@ -158,13 +163,16 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     if (!selectedRequirement) return;
-    setEditRequirementKey(selectedRequirement.key);
-    setEditRequirementTitle(selectedRequirement.title);
-    setEditRequirementDescription(selectedRequirement.description || '');
+    const timer = window.setTimeout(() => {
+      setEditRequirementKey(selectedRequirement.key);
+      setEditRequirementTitle(selectedRequirement.title);
+      setEditRequirementDescription(selectedRequirement.description || '');
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [selectedRequirement]);
 
   return <div className="flex flex-col gap-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-semibold">Traceability</p><p className="text-xs text-muted-foreground">Requirement → Test Cases → Test Plans → Test Runs</p></div><div className="flex flex-wrap gap-2"><Button variant={uncoveredOnly ? 'secondary' : 'outline'} onClick={() => setUncoveredOnly(value => !value)}><AlertCircle data-icon="inline-start" />View Uncovered Gaps {summary.uncovered + summary.partial}</Button><Button onClick={() => setCreateOpen(true)}><Plus data-icon="inline-start" />Buat Relation</Button><Button variant="outline" onClick={() => setManageOpen(true)} disabled={!selectedRequirementId} title={!selectedRequirementId ? 'Pilih atau buat requirement terlebih dahulu' : undefined}><Settings2 data-icon="inline-start" />Manage Relations</Button><Button variant="outline" size="icon" onClick={() => void load()} disabled={loading} aria-label="Muat ulang"><RefreshCw /></Button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-semibold">Traceability</p><p className="text-xs text-muted-foreground">Requirement → Test Cases → Test Plans → Test Cycles</p></div><div className="flex flex-wrap gap-2"><Button variant={uncoveredOnly ? 'secondary' : 'outline'} onClick={() => setUncoveredOnly(value => !value)}><AlertCircle data-icon="inline-start" />View Uncovered Gaps {summary.uncovered + summary.partial}</Button><Button onClick={() => setCreateOpen(true)}><Plus data-icon="inline-start" />Buat Relation</Button><Button variant="outline" onClick={() => setManageOpen(true)} disabled={!selectedRequirementId} title={!selectedRequirementId ? 'Pilih atau buat requirement terlebih dahulu' : undefined}><Settings2 data-icon="inline-start" />Manage Relations</Button><Button variant="outline" size="icon" onClick={() => void load()} disabled={loading} aria-label="Muat ulang"><RefreshCw /></Button></div></div>
     {message && <div className="rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-sm" role="status">{message}</div>}
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Metric label="Requirements" value={requirements.length} /><Metric label="Covered" value={summary.covered} tone="success" /><Metric label="Partial" value={summary.partial} tone="warning" /><Metric label="Uncovered" value={summary.uncovered} tone="failed" /></div>
 

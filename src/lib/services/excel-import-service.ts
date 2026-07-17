@@ -164,7 +164,7 @@ export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string,
 
       try {
         const tc = await db.testCase.create({ data: mappedRow });
-        await recordActivity({ projectId, entityType: 'TestCase', entityId: tc.id, action: 'IMPORTED', afterValue: { batchId, testCaseId: tc.id }, actor: 'local-user' });
+        await recordActivity({ projectId, entityType: 'TestCase', entityId: tc.id, action: 'IMPORTED', afterValue: { batchId, testCaseId: tc.id } });
 
         if (mappedRow.status === TESTCASE_STATUS.FAILED) {
           const existingBugFix = await db.bugFix.findFirst({
@@ -203,7 +203,6 @@ export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string,
     sheetResults.push({ sheet: sheetName, imported, skipped, moduleId: moduleId || undefined });
   }
 
-  await recalculateImportedWeights(projectId);
 
   return {
     imported: totalImported,
@@ -236,24 +235,4 @@ async function resolveImportModule(projectId: string, sheetName: string, createM
     data: { name: sheetName, projectId },
   });
   return newModule.id;
-}
-
-async function recalculateImportedWeights(projectId: string) {
-  const allNewCases = await db.testCase.findMany({
-    where: { projectId },
-    select: { id: true, page: true, subMenu: true },
-  });
-  const menuGroups = new Map<string, string[]>();
-  for (const tc of allNewCases) {
-    const key = `${tc.page}|||${tc.subMenu || ''}`;
-    if (!menuGroups.has(key)) menuGroups.set(key, []);
-    menuGroups.get(key)!.push(tc.id);
-  }
-  for (const [, ids] of menuGroups) {
-    if (ids.length === 0) continue;
-    const weightPerCase = `${(100 / ids.length).toFixed(2)}%`;
-    await Promise.all(ids.map(id =>
-      db.testCase.update({ where: { id }, data: { weight: weightPerCase } })
-    ));
-  }
 }

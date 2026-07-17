@@ -1,7 +1,16 @@
 export const DEVLOG_RELAY_URL = 'http://127.0.0.1:3001';
+export const DEVLOG_RELAY_TOKEN = process.env.NEXT_PUBLIC_QA_RELAY_TOKEN || '';
 
 export function buildDevlogRelayUrl(path: string) {
-  return `${DEVLOG_RELAY_URL}${path}`;
+  const url = new URL(path, `${DEVLOG_RELAY_URL}/`);
+  if (DEVLOG_RELAY_TOKEN) url.searchParams.set('access_token', DEVLOG_RELAY_TOKEN);
+  return url.toString();
+}
+
+export function buildDevlogRelayWebSocketUrl() {
+  const url = new URL(DEVLOG_RELAY_URL.replace(/^http/, 'ws'));
+  if (DEVLOG_RELAY_TOKEN) url.searchParams.set('access_token', DEVLOG_RELAY_TOKEN);
+  return url.toString();
 }
 
 export function normalizeManualCaptureUrl(value: string) {

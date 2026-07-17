@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
   buildDevlogRelayUrl,
+  buildDevlogRelayWebSocketUrl,
   DEVLOG_RELAY_URL,
   normalizeManualCaptureUrl,
 } from '@/lib/client/api/devlog-client';
@@ -72,6 +73,7 @@ const DEBUG_AUTOMATION_LOGS = false;
 
 interface AutomationLogTestCase {
   id: string;
+  projectId: string;
   stepLogs?: string | null;
 }
 
@@ -355,7 +357,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       if (closedByHook) return;
 
       try {
-        ws = new WebSocket(DEVLOG_RELAY_URL.replace(/^http/, 'ws'));
+        ws = new WebSocket(buildDevlogRelayWebSocketUrl());
       } catch {
         setSocketReady(false);
         scheduleReconnect();
@@ -471,7 +473,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       const response = await fetch('/api/ai/summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ testCaseId: targetId.trim() }),
+        body: JSON.stringify({ testCaseId: targetId.trim(), projectId: viewTestCase.projectId }),
       });
       const data = await response.json();
 
@@ -507,6 +509,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     url.searchParams.set('qaTestCaseId', testCaseId);
     url.searchParams.set('qaSessionId', sessionId);
     url.searchParams.set('qaRelay', relayUrl);
+    if (process.env.NEXT_PUBLIC_QA_RELAY_TOKEN) url.searchParams.set('qaToken', process.env.NEXT_PUBLIC_QA_RELAY_TOKEN);
     url.searchParams.set('qaScript', `${window.location.origin}/qa-capture.js`);
     return url.toString();
   };

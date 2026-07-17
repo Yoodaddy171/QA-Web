@@ -182,6 +182,7 @@ Profiles/default.glbl: webQaRelayUrl, webQaEnabled</pre>
         <thead><tr><th>Nama</th><th>Contoh nilai</th><th>Fungsi</th></tr></thead>
         <tbody>
           <tr><td>webQaRelayUrl</td><td>http://127.0.0.1:3001/log</td><td>Endpoint relay DevLog.</td></tr>
+          <tr><td>webQaRelayToken</td><td>token acak dari <code>npm run relay:token</code></td><td>Bearer token yang wajib sama dengan <code>QA_RELAY_TOKEN</code>.</td></tr>
           <tr><td>webQaEnabled</td><td>true</td><td>Bisa mematikan DevLog tanpa edit script.</td></tr>
         </tbody>
       </table>
@@ -307,6 +308,14 @@ class DevLog {
         }
     }
 
+    static String getRelayToken() {
+        try {
+            return String.valueOf(GlobalVariable.webQaRelayToken ?: '')
+        } catch (Exception ignored) {
+            return ''
+        }
+    }
+
     static String resolveMappedTestCaseId(String path) {
         String override = System.getProperty('webqa.testCaseId')
         if (override) return override
@@ -379,6 +388,7 @@ class DevLog {
 
             HttpPost post = new HttpPost(relayUrl ?: getRelayUrl())
             post.setHeader('Content-Type', 'application/json')
+            post.setHeader('Authorization', 'Bearer ' + getRelayToken())
             post.setEntity(new StringEntity(JsonOutput.toJson(payload), 'UTF-8'))
             CloseableHttpClient client = HttpClients.custom()
                 .setDefaultRequestConfig(config)

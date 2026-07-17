@@ -1,20 +1,13 @@
-import { PrismaClient as SqliteClient } from '@prisma/client'
-import { PrismaClient as PostgresClient } from '@prisma/postgresql-client'
+import { PrismaClient } from '@prisma/client'
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: SqliteClient | undefined
+  prisma: PrismaClient | undefined
 }
 
 const databaseUrl = process.env.DATABASE_URL || ''
 const usesPostgres = /^postgres(?:ql)?:\/\//i.test(databaseUrl)
-function createDb(): SqliteClient {
-  if (usesPostgres) {
-    return new PostgresClient({
-      datasourceUrl: databaseUrl,
-      log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-    }) as unknown as SqliteClient
-  }
-  return new SqliteClient({
+function createDb() {
+  return new PrismaClient({
     datasourceUrl: databaseUrl,
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   })

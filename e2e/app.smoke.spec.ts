@@ -12,12 +12,14 @@ test('loads the QA workspace and exposes primary navigation', async ({ page }) =
   await expect(page.getByText('QADesk', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Dashboard/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Cases/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Test Runs/i })).toBeVisible();
-  await page.getByRole('button', { name: /Test Runs/i }).click();
-  await expect(page.getByRole('heading', { name: 'Test Runs' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Test Cycles/i })).toBeVisible();
+  await page.getByRole('button', { name: /Test Cycles/i }).click();
+  await expect(page).toHaveURL(/\/projects\/[^/]+\/test-runs$/);
+  await expect(page.getByRole('heading', { name: 'Test Cycles' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Traceability/i })).toBeVisible();
   await page.getByRole('button', { name: /Traceability/i }).click();
-  await expect(page.getByRole('heading', { name: /Requirements & Test Plans/i })).toBeVisible();
+  await expect(page).toHaveURL(/\/projects\/[^/]+\/traceability$/);
+  await expect(page.getByRole('heading', { name: 'Traceability' })).toBeVisible();
 
   expect(consoleErrors).toEqual([]);
 });

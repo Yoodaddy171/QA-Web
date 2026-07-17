@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/postgresql-client';
+import { PrismaClient } from '@prisma/devlog-client';
 
 const url = process.env.POSTGRES_DATABASE_URL;
 const globalForDevlog = globalThis as unknown as { devlogDb?: PrismaClient };

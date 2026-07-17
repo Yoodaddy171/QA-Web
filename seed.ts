@@ -2,6 +2,11 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+  const workspace = await prisma.workspace.upsert({
+    where: { slug: 'seed-workspace' },
+    update: {},
+    create: { id: 'seed-workspace', name: 'Seed Workspace', slug: 'seed-workspace' },
+  });
   // Create project
   const project = await prisma.project.upsert({
     where: { id: 'servios-cms' },
@@ -10,6 +15,7 @@ async function main() {
       id: 'servios-cms',
       name: 'Servios CMS',
       description: 'Test case untuk CMS Servios - Sistem manajemen restoran',
+      workspaceId: workspace.id,
     },
   });
 

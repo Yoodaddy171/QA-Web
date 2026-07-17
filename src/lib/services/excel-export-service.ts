@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 
 export type ExportTestCase = Awaited<ReturnType<typeof db.testCase.findMany>>[number] & {
   module?: { name: string } | null;
+  calculatedWeight?: number | null;
 };
 
 export const HEADERS = ['ID', 'Page', 'Sub Menu', 'Feature', 'Bobot', 'Test', 'Action', 'Step', 'Expected Result', 'Actual Result', 'Status', 'Progress', 'Remarks of Test', 'Tags'];
@@ -103,7 +104,7 @@ export function formatExportRow(tc: ExportTestCase) {
     Page: tc.page,
     'Sub Menu': tc.subMenu || '',
     Feature: feature,
-    Bobot: tc.weight || '',
+    Bobot: tc.calculatedWeight == null ? '' : `${tc.calculatedWeight.toFixed(2)}%`,
     Test: testDesc,
     Action: action,
     Step: steps,

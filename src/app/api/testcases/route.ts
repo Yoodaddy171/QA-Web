@@ -13,10 +13,9 @@ import {
   createTestCaseRecord,
   deleteTestCaseById,
   deleteTestCasesByIds,
-  resequenceTestCaseIdsForProject,
   updateTestCaseRecordWithBugFixSync,
 } from '@/lib/services/testcase-service';
-import { scheduleWeightRecalculation } from '@/lib/services/weight-service';
+import { calculatedWeightFor, getCalculatedWeightMap } from '@/lib/services/weight-service';
 import { NextRequest, NextResponse } from 'next/server';
 
 const TESTCASE_SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'testCaseId', 'page', 'status', 'priority', 'testType']);
@@ -63,9 +62,6 @@ export async function GET(req: NextRequest) {
       const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true } });
       if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
       where.projectId = projectId;
-      // Repair legacy gaps as part of loading the list, so refresh also fixes
-      // IDs that were deleted before resequencing was introduced.
-      await resequenceTestCaseIdsForProject(projectId);
     }
     if (moduleId === 'unassigned') {
       where.moduleId = null;
@@ -128,15 +124,13 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const total = await db.testCase.count({ where });
-    const testCases = await db.testCase.findMany({
+    const [total, testCases, weightMap] = await Promise.all([db.testCase.count({ where }), db.testCase.findMany({
       where,
       select: {
         id: true,
         testCaseId: true,
         page: true,
         subMenu: true,
-        weight: true,
         testType: true,
         testAction: true,
         steps: true,
@@ -156,15 +150,14 @@ export async function GET(req: NextRequest) {
       orderBy: { [sortBy]: sortOrder },
       skip: (page - 1) * limit,
       take: limit,
-    });
+    }), getCalculatedWeightMap(projectId || undefined)]);
 
-    // Use stored weight field to calculate numeric weight (no extra DB query needed)
     const enrichedCases = testCases.map(tc => {
-      const weightStr = tc.weight || '';
-      const calculatedWeight = weightStr ? parseFloat(weightStr.replace('%', '')) : null;
+      const calculatedWeight = calculatedWeightFor(weightMap, tc);
       return {
         ...tc,
-        calculatedWeight: calculatedWeight !== null && !isNaN(calculatedWeight) ? Math.round(calculatedWeight * 100) / 100 : null,
+        weight: null,
+        calculatedWeight: calculatedWeight === null ? null : Math.round(calculatedWeight * 100) / 100,
       };
     });
 
@@ -207,7 +200,6 @@ export async function POST(req: NextRequest) {
 
     // Normalize empty strings to null for optional fields
     const subMenu = cleanNullableText(body.subMenu);
-    const weight = cleanNullableText(body.weight);
     const actualResult = cleanNullableText(body.actualResult);
     const remarks = cleanNullableText(body.remarks);
     const moduleId = cleanNullableText(body.moduleId);
@@ -220,7 +212,6 @@ export async function POST(req: NextRequest) {
       testCaseId,
       page,
       subMenu,
-      weight,
       testType,
       testAction,
       steps,
@@ -235,8 +226,6 @@ export async function POST(req: NextRequest) {
       moduleId,
       actor: 'local-user',
     });
-
-    scheduleWeightRecalculation([{ projectId, page, subMenu }], 'test case create');
 
     return NextResponse.json(testCase, { status: 201 });
   } catch (error) {
@@ -254,7 +243,7 @@ export async function PUT(req: NextRequest) {
     // Get current test case for comparison
     const current = await db.testCase.findUnique({
       where: { id },
-      select: { projectId: true, page: true, subMenu: true, status: true, actualResult: true, testCaseId: true, testType: true, testAction: true, steps: true, expectedResult: true, priority: true, moduleId: true, remarks: true, tags: true, weight: true },
+      select: { projectId: true, page: true, subMenu: true, status: true, actualResult: true, testCaseId: true, testType: true, testAction: true, steps: true, expectedResult: true, priority: true, moduleId: true, remarks: true, tags: true },
     });
     if (!current) return NextResponse.json({ error: 'Test case not found' }, { status: 404 });
 
@@ -262,22 +251,13 @@ export async function PUT(req: NextRequest) {
     if (!isTestCaseStatus(data.status ?? current.status)) return validationError('Status testcase tidak valid.');
     if (data.testType !== undefined && !isTestType(data.testType)) return validationError('Tipe testcase tidak valid.');
     if (data.priority !== undefined && !isTestCasePriority(data.priority)) return validationError('Prioritas testcase tidak valid.');
-    if (data.testCaseId !== undefined && !cleanText(data.testCaseId)) return validationError('Test Case ID wajib diisi.');
+    if (data.testCaseId !== undefined && cleanText(data.testCaseId) !== current.testCaseId) return NextResponse.json({ error: 'Test Case ID bersifat immutable dan tidak dapat diubah.' }, { status: 409 });
     if (data.page !== undefined && !cleanText(data.page)) return validationError('Page wajib diisi.');
     if (data.testAction !== undefined && !cleanText(data.testAction)) return validationError('Test Action wajib diisi.');
     if (data.steps !== undefined && !cleanText(data.steps)) return validationError('Steps wajib diisi.');
     if (data.expectedResult !== undefined && !cleanText(data.expectedResult)) return validationError('Expected Result wajib diisi.');
-    if (data.testCaseId !== undefined) {
-      const duplicate = await db.testCase.findFirst({
-        where: {
-          projectId: current.projectId,
-          testCaseId: cleanText(data.testCaseId),
-          id: { not: id },
-        },
-        select: { id: true },
-      });
-      if (duplicate) return NextResponse.json({ error: `Test Case ID "${cleanText(data.testCaseId)}" sudah digunakan di project ini.` }, { status: 409 });
-    }
+    delete data.testCaseId;
+    delete data.weight;
     const { finalStatus, finalActualResult } = resolveTestCaseStatusTransition({
       currentStatus: current.status,
       currentActualResult: current.actualResult,
@@ -315,16 +295,6 @@ export async function PUT(req: NextRequest) {
       finalSubMenu,
       actor: 'local-user',
     });
-
-    // Recalculate weights if page/subMenu changed (background, non-blocking)
-    const pageChanged = data.page !== undefined && data.page !== current.page;
-    const subMenuChanged = finalSubMenu !== current.subMenu;
-    if (pageChanged || subMenuChanged) {
-      scheduleWeightRecalculation([
-        { projectId: current.projectId, page: current.page, subMenu: current.subMenu },
-        { projectId: testCase.projectId, page: testCase.page, subMenu: testCase.subMenu },
-      ], 'test case update');
-    }
 
     return NextResponse.json(testCase);
   } catch (error) {
@@ -365,16 +335,12 @@ export async function DELETE(req: NextRequest) {
       const idList = ids.split(',').map(id => id.trim()).filter(Boolean);
       if (idList.length === 0) return validationError('ID is required');
       const result = await deleteTestCasesByIds(idList);
-      scheduleWeightRecalculation(result.weightTargets, 'test case bulk delete');
-
       return NextResponse.json({ deleted: result.deleted });
     }
 
     if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     const result = await deleteTestCaseById(id);
     if (!result) return NextResponse.json({ error: 'Test case not found' }, { status: 404 });
-    scheduleWeightRecalculation(result.weightTargets, 'test case delete');
-
     return NextResponse.json({ deleted: result.deleted });
   } catch (error) {
     console.error('DELETE /api/testcases error:', error);

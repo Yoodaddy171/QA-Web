@@ -56,6 +56,7 @@ test('runs the core QA workflow through execution, evidence, bug, retest, and re
     expect(runDetail.testCases[0].assignedTo).toBe('assigned-tester');
     await jsonPost(request, '/api/reports', {
       projectId: project.id,
+      testRunId: run.id,
       reportType: 'TEST_STATUS_REPORT',
       version: '1.0',
       reportingPeriodStart: new Date(Date.now() - 86_400_000).toISOString(),

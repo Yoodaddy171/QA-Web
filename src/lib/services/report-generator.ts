@@ -1,5 +1,7 @@
 import { db } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
+import crypto from 'node:crypto';
+import { assertReportMetricsConsistent, executionOutcome } from './report-integrity';
 import type {
   CreateReportInput,
   ReportData,
@@ -50,18 +52,14 @@ function pct(part: number, total: number) {
   return total > 0 ? Math.round((part / total) * 10000) / 100 : 0;
 }
 
-function isPassed(actualResult: string | null) {
-  return (actualResult || '').toLowerCase() === 'as expected';
-}
-
 // Metrics reflect the whole project's current state (a status snapshot), not
 // just rows edited within the reporting period. The reporting period is kept
 // as document metadata / narrative context, not a filter on the headline
 // counts — otherwise a report shows all-zeros whenever nothing was touched in
 // that exact window.
-export async function calculateProjectMetrics(projectId: string): Promise<ReportMetrics> {
-  const [testCases, bugFixItems, testRuns] = await Promise.all([
-    db.testCase.findMany({
+export async function calculateProjectMetrics(projectId: string, testRunId?: string): Promise<ReportMetrics> {
+  const [testCases, bugFixItems, testRuns, sourceRun] = await Promise.all([
+    testRunId ? Promise.resolve([]) : db.testCase.findMany({
       where: { projectId },
       include: { module: true },
     }),
@@ -71,27 +69,51 @@ export async function calculateProjectMetrics(projectId: string): Promise<Report
     }),
     db.testRun.findMany({
       where: { projectId, status: { not: 'ARCHIVED' } },
-      include: { testCases: { include: { executions: { orderBy: { createdAt: 'desc' }, take: 1 } } } },
+      include: { testCases: { select: { latestStatus: true } } },
       orderBy: { updatedAt: 'desc' },
     }),
+    testRunId ? db.testRun.findFirst({
+      where: { id: testRunId, projectId, status: { not: 'ARCHIVED' } },
+      include: { testCases: { include: { testCase: { include: { module: true } } } } },
+    }) : Promise.resolve(null),
   ]);
 
-  const totalPlanned = testCases.length;
-  const totalExecuted = testCases.filter(tc => tc.actualResult).length;
-  const totalPassed = testCases.filter(tc => isPassed(tc.actualResult)).length;
-  const totalFailed = testCases.filter(tc => tc.actualResult && !isPassed(tc.actualResult)).length;
+  if (testRunId && !sourceRun) throw new Error('Source Test Cycle tidak ditemukan atau sudah diarsipkan.');
+
+  const metricCases = sourceRun
+    ? sourceRun.testCases.map(item => {
+        const outcome = executionOutcome(item.latestStatus);
+        return {
+          moduleName: item.testCase.module?.name || 'No Module',
+          priority: item.testCase.priority || 'Medium',
+          ...outcome,
+        };
+      })
+    : testCases.map(testCase => ({
+        moduleName: testCase.module?.name || 'No Module',
+        priority: testCase.priority || 'Medium',
+        status: 'NOT RUN',
+        executed: false,
+        passed: false,
+        failed: false,
+      }));
+
+  const totalPlanned = metricCases.length;
+  const totalExecuted = metricCases.filter(tc => tc.executed).length;
+  const totalPassed = metricCases.filter(tc => tc.passed).length;
+  const totalFailed = metricCases.filter(tc => tc.failed).length;
   const totalPending = totalPlanned - totalExecuted;
 
-  const grouped = new Map<string, typeof testCases>();
-  for (const tc of testCases) {
-    const key = tc.module?.name || 'No Module';
+  const grouped = new Map<string, typeof metricCases>();
+  for (const tc of metricCases) {
+    const key = tc.moduleName;
     grouped.set(key, [...(grouped.get(key) || []), tc]);
   }
 
   const byModule = Array.from(grouped.entries()).map(([moduleName, cases]) => {
-    const executed = cases.filter(tc => tc.actualResult).length;
-    const passed = cases.filter(tc => isPassed(tc.actualResult)).length;
-    const failed = cases.filter(tc => tc.actualResult && !isPassed(tc.actualResult)).length;
+    const executed = cases.filter(tc => tc.executed).length;
+    const passed = cases.filter(tc => tc.passed).length;
+    const failed = cases.filter(tc => tc.failed).length;
     return {
       moduleName,
       totalPlanned: cases.length,
@@ -103,21 +125,21 @@ export async function calculateProjectMetrics(projectId: string): Promise<Report
     };
   });
 
-  const priorities = new Map<string, typeof testCases>();
-  for (const tc of testCases) {
-    const key = tc.priority || 'Medium';
+  const priorities = new Map<string, typeof metricCases>();
+  for (const tc of metricCases) {
+    const key = tc.priority;
     priorities.set(key, [...(priorities.get(key) || []), tc]);
   }
 
   const byPriority = Array.from(priorities.entries()).map(([priority, cases]) => {
-    const executed = cases.filter(tc => tc.actualResult).length;
-    const passed = cases.filter(tc => isPassed(tc.actualResult)).length;
-    const failed = cases.filter(tc => tc.actualResult && !isPassed(tc.actualResult)).length;
+    const executed = cases.filter(tc => tc.executed).length;
+    const passed = cases.filter(tc => tc.passed).length;
+    const failed = cases.filter(tc => tc.failed).length;
     return { priority, totalPlanned: cases.length, totalExecuted: executed, totalPassed: passed, totalFailed: failed, passRate: pct(passed, executed) };
   });
 
   const statuses = new Map<string, number>();
-  for (const tc of testCases) statuses.set(tc.status || 'NOT DONE', (statuses.get(tc.status || 'NOT DONE') || 0) + 1);
+  for (const tc of metricCases) statuses.set(tc.status, (statuses.get(tc.status) || 0) + 1);
 
   const bugModules = new Map<string, number>();
   for (const bug of bugFixItems) {
@@ -126,7 +148,7 @@ export async function calculateProjectMetrics(projectId: string): Promise<Report
   }
 
   const activeRuns = testRuns.map(run => {
-    const statuses = run.testCases.map(item => item.executions[0]?.status || 'NOT RUN');
+    const statuses = run.testCases.map(item => item.latestStatus);
     const completed = statuses.filter(status => !['NOT RUN', 'IN PROGRESS'].includes(status)).length;
     const passed = statuses.filter(status => status === 'PASSED' || status === 'VERIFIED').length;
     const failed = statuses.filter(status => status === 'FAILED').length;
@@ -134,14 +156,14 @@ export async function calculateProjectMetrics(projectId: string): Promise<Report
     const notRun = statuses.filter(status => status === 'NOT RUN' || status === 'IN PROGRESS').length;
     return { id: run.id, name: run.name, status: run.status, progress: statuses.length ? Math.round((completed / statuses.length) * 100) : 0, failed, blocked, notRun };
   });
-  const latestRun = activeRuns[0];
-  const latestRunCases = testRuns[0]?.testCases || [];
+  const latestRun = sourceRun ? activeRuns.find(run => run.id === sourceRun.id) : activeRuns[0];
+  const latestRunCases = sourceRun?.testCases || testRuns[0]?.testCases || [];
   const testRunSummary: TestRunSummary = {
     latestRunId: latestRun?.id,
     latestRunName: latestRun?.name,
     totalPlanned: latestRunCases.length,
     totalCompleted: latestRunCases.length ? latestRunCases.length - (latestRun?.notRun || 0) : 0,
-    totalPassed: latestRunCases.filter(item => ['PASSED', 'VERIFIED'].includes(item.executions[0]?.status || '')).length,
+    totalPassed: latestRunCases.filter(item => ['PASSED', 'VERIFIED'].includes(item.latestStatus)).length,
     totalFailed: latestRun?.failed || 0,
     totalBlocked: latestRun?.blocked || 0,
     totalNotRun: latestRun?.notRun || 0,
@@ -238,6 +260,7 @@ function mapReport(report: any): ReportData {
     reportType: normalizeType(report.reportType),
     status: report.status || 'DRAFT',
     documentId: report.documentId || undefined,
+    testRunId: report.testRunId || undefined,
     version: report.version,
     author: report.author || undefined,
     approvedBy: report.approvedBy || undefined,
@@ -257,6 +280,9 @@ function mapReport(report: any): ReportData {
     generatedAt: report.createdAt,
     createdAt: report.createdAt,
     updatedAt: report.updatedAt,
+    finalizedAt: report.finalizedAt || undefined,
+    finalizedBy: report.finalizedBy || undefined,
+    snapshotChecksum: report.snapshotChecksum || undefined,
   };
 }
 
@@ -264,7 +290,7 @@ export async function generateReport(input: CreateReportInput): Promise<ReportDa
   const project = await db.project.findUnique({ where: { id: input.projectId } });
   if (!project) throw new Error('Project tidak ditemukan.');
 
-  const metrics = await calculateProjectMetrics(input.projectId);
+  const metrics = await calculateProjectMetrics(input.projectId, input.testRunId);
   const parts = await defaultDocumentParts(input, project.name);
 
   const report = await db.report.create({
@@ -273,6 +299,7 @@ export async function generateReport(input: CreateReportInput): Promise<ReportDa
       reportType: input.reportType,
       status: 'DRAFT',
       documentId: input.documentId,
+      testRunId: input.testRunId,
       version: input.version,
       author: input.author,
       approvedBy: input.approvedBy,
@@ -294,9 +321,18 @@ export async function generateReport(input: CreateReportInput): Promise<ReportDa
   return mapReport(report);
 }
 
-export async function getProjectReports(projectId: string): Promise<ReportData[]> {
-  const reports = await db.report.findMany({ where: { projectId }, include: { project: true }, orderBy: { createdAt: 'desc' } });
-  return reports.map(mapReport);
+export async function getProjectReports(projectId: string, options: { cursor?: string; limit?: number } = {}) {
+  const limit = Math.min(100, Math.max(1, options.limit || 50));
+  const rows = await db.report.findMany({
+    where: { projectId },
+    include: { project: true },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: limit + 1,
+    ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+  });
+  const hasMore = rows.length > limit;
+  const reports = hasMore ? rows.slice(0, limit) : rows;
+  return { items: reports.map(mapReport), hasMore, nextCursor: hasMore ? reports.at(-1)?.id || null : null };
 }
 
 export async function getReportById(reportId: string): Promise<ReportData | null> {
@@ -308,6 +344,9 @@ export async function updateReport(reportId: string, input: UpdateReportInput): 
   const current = await db.report.findUnique({ where: { id: reportId }, include: { project: true } });
   if (!current) throw new Error('Report tidak ditemukan.');
   if (current.status === 'FINAL') throw new Error('Report final tidak dapat diubah.');
+  if (input.testRunId !== undefined && (input.testRunId || null) !== current.testRunId) {
+    throw new Error('Source Test Cycle tidak dapat diubah. Buat report baru untuk cycle yang berbeda.');
+  }
 
   const sections = { ...asSections(current.sectionsJson), ...(input.sections || {}) };
   const metadata = { ...asMetadata(current.metadataJson), ...(input.metadata || {}) };
@@ -338,7 +377,10 @@ export async function refreshReportSnapshot(reportId: string): Promise<ReportDat
   const current = await db.report.findUnique({ where: { id: reportId } });
   if (!current) throw new Error('Report tidak ditemukan.');
   if (current.status === 'FINAL') throw new Error('Report final tidak dapat di-refresh.');
-  const metrics = await calculateProjectMetrics(current.projectId);
+  if (normalizeType(current.reportType) === 'TEST_STATUS_REPORT' && !current.testRunId) {
+    throw new Error('Source Test Cycle report sudah tidak tersedia. Buat report baru dari cycle yang valid.');
+  }
+  const metrics = await calculateProjectMetrics(current.projectId, current.testRunId || undefined);
   const report = await db.report.update({
     where: { id: reportId },
     data: { metricsSnapshot: metrics as unknown as Prisma.InputJsonValue },
@@ -347,8 +389,35 @@ export async function refreshReportSnapshot(reportId: string): Promise<ReportDat
   return mapReport(report);
 }
 
-export async function finalizeReport(reportId: string): Promise<ReportData> {
-  const report = await db.report.update({ where: { id: reportId }, data: { status: 'FINAL' }, include: { project: true } });
+export async function finalizeReport(reportId: string, actor = 'system'): Promise<ReportData> {
+  const current = await db.report.findUnique({ where: { id: reportId }, include: { project: true } });
+  if (!current) throw new Error('Report tidak ditemukan.');
+  if (current.status === 'FINAL') throw new Error('Report sudah final.');
+  if (!current.author?.trim()) throw new Error('Author wajib diisi sebelum finalisasi.');
+  if (!current.approvedBy?.trim()) throw new Error('Approval atau waiver wajib diisi sebelum finalisasi.');
+  if (!current.documentId?.trim()) throw new Error('Document ID wajib diisi sebelum finalisasi.');
+  if (normalizeType(current.reportType) === 'TEST_STATUS_REPORT' && !current.testRunId) throw new Error('Source Test Cycle wajib tersedia sebelum finalisasi.');
+  if (!current.reportingPeriodStart || !current.reportingPeriodEnd || current.reportingPeriodStart > current.reportingPeriodEnd) throw new Error('Reporting period tidak valid.');
+
+  const metrics = asMetrics(current.metricsSnapshot);
+  assertReportMetricsConsistent(metrics);
+
+  const checksum = crypto.createHash('sha256').update(JSON.stringify({
+    reportId: current.id,
+    projectId: current.projectId,
+    testRunId: current.testRunId,
+    version: current.version,
+    metrics: current.metricsSnapshot,
+    metadata: current.metadataJson,
+    sections: current.sectionsJson,
+  })).digest('hex');
+  const finalizedAt = new Date();
+  const updated = await db.report.updateMany({
+    where: { id: reportId, status: 'DRAFT' },
+    data: { status: 'FINAL', finalizedAt, finalizedBy: actor, snapshotChecksum: checksum, documentStatus: 'Final' },
+  });
+  if (!updated.count) throw new Error('Report berubah saat finalisasi. Muat ulang dan coba lagi.');
+  const report = await db.report.findUniqueOrThrow({ where: { id: reportId }, include: { project: true } });
   return mapReport(report);
 }
 
@@ -361,6 +430,7 @@ export async function createReportVersion(reportId: string): Promise<ReportData>
       reportType: current.reportType,
       status: 'DRAFT',
       documentId: current.documentId,
+      testRunId: current.testRunId,
       version: `${current.version}.1`,
       author: current.author,
       approvedBy: current.approvedBy,

@@ -19,7 +19,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   const projectId = req.nextUrl.searchParams.get('projectId')?.trim();
   if (!projectId) return errorResponse('projectId wajib diisi.');
 
-  const testRun = await getTestRun(projectId, id);
+  const testRun = await getTestRun(projectId, id, {
+    caseCursor: req.nextUrl.searchParams.get('caseCursor') || undefined,
+    caseLimit: Number(req.nextUrl.searchParams.get('caseLimit') || 100),
+  });
   if (!testRun) return errorResponse('Test Run tidak ditemukan.', 404);
   return NextResponse.json(testRun);
 }

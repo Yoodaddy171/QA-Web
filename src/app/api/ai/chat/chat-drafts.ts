@@ -1,13 +1,10 @@
 import { db } from '@/lib/db';
-import Groq from 'groq-sdk';
+import { generateCopilotJson } from '@/lib/ai-provider';
+import { z } from 'zod';
 import { MAX_DRAFT_TEST_CASES, extractActionableTasksFromHistory, isActionableQaTask, parseTestCaseId } from './chat-logic';
 import type { ChatMessage } from './chat-logic';
 
-const AI_MODEL = process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-
-function getGroq() {
-  return new Groq({ apiKey: process.env.GROQ_API_KEY });
-}
+const draftSchema = z.object({ answer: z.string().max(12000).default(''), test_cases: z.array(z.record(z.string(), z.unknown())).max(MAX_DRAFT_TEST_CASES).default([]) }).passthrough();
 
 export type TestCaseDraft = {
   testCaseId: string;
@@ -413,19 +410,22 @@ JSON schema:
   ]
 }`;
 
-  const completion = await getGroq().chat.completions.create({
-    model: AI_MODEL,
+  const result = await generateCopilotJson({
+    system: systemPrompt,
+    user: userMessage,
     temperature: 0.25,
-    max_tokens: 1600,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ],
+    maxTokens: 1600,
+    schema: draftSchema,
+    repairSchemaHint: '{"answer":"string","test_cases":[]}',
+    governance: {
+      projectId,
+      operation: 'CHAT_TESTCASE_DRAFTS',
+      promptVersion: 'chat-drafts-v2',
+      contextIds: modules.map(module => module.id),
+      dataCategories: ['project-context', 'module-list', 'testcase-id-pool', 'user-prompt'],
+    },
   });
-
-  const raw = completion.choices[0]?.message?.content || '{}';
-  const parsed = JSON.parse(raw);
+  const parsed = result.parsed;
   const generated = Array.isArray(parsed.test_cases) ? parsed.test_cases : [];
 
   const usedPrefixes = new Set<string>();

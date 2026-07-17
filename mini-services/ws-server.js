@@ -5,13 +5,15 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-const { spawn, spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 const {
   normalizeAutomationEvent,
   validateAutomationEvent,
 } = require('./automation-event');
 const { connectDevlogStore } = require('./devlog-store');
 const { createVideoFrameWriter, getVideoFrameCopies, markInterruptedVideoFailed } = require('./video-frame-writer');
+const { createRelaySecurity } = require('./relay-security');
+const { createRelayLogStore } = require('./relay-log-store');
 let sharp = null;
 try {
   sharp = require('sharp');
@@ -21,8 +23,15 @@ try {
   bundledFfmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 } catch (_) {}
 
-const wss = new WebSocketServer({ noServer: true });
+const relaySecurity = createRelaySecurity();
+const wss = new WebSocketServer({
+  noServer: true,
+  clientTracking: false,
+  perMessageDeflate: false,
+  maxPayload: relaySecurity.maxWsPayloadBytes,
+});
 const clients = new Set();
+const wsConnectionsByIp = new Map();
 const devlogStore = connectDevlogStore();
 const activeManualSessions = new Map();
 const cdpSessions = new Map();
@@ -33,44 +42,30 @@ function createRecordingId() {
     : crypto.randomBytes(16).toString('hex');
 }
 
-// Ensure logs directory exists
-const LOGS_DIR = path.join(__dirname, 'logs');
 const RUNTIME_DIR = process.env.QA_RUNTIME_DIR
   || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
+const LOGS_DIR = path.join(__dirname, 'logs');
 const RECORDINGS_DIR = path.join(RUNTIME_DIR, 'recordings');
 const LEGACY_RECORDINGS_DIR = path.join(__dirname, 'recordings');
-if (!fs.existsSync(LOGS_DIR)) {
-  fs.mkdirSync(LOGS_DIR, { recursive: true });
-}
-if (!fs.existsSync(RECORDINGS_DIR)) {
-  fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
-}
-
-// Retensi log: hapus file .previous.jsonl yang tidak tersentuh > 30 hari saat startup.
-// File .current dan .jsonl legacy tidak pernah dihapus otomatis.
-const PREVIOUS_LOG_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-try {
-  const cutoff = Date.now() - PREVIOUS_LOG_MAX_AGE_MS;
-  for (const name of fs.readdirSync(LOGS_DIR)) {
-    if (!name.endsWith('.previous.jsonl')) continue;
-    const filePath = path.join(LOGS_DIR, name);
-    const stat = fs.statSync(filePath);
-    if (stat.mtimeMs < cutoff) {
-      fs.unlinkSync(filePath);
-      console.log(`[LOG RETENTION] Removed stale previous run: ${name}`);
-    }
-  }
-} catch (err) {
-  console.error('Log retention sweep failed:', err.message);
-}
+const logStore = createRelayLogStore({ directory: LOGS_DIR });
+logStore.initialize().catch(error => console.error('Log store initialization failed:', error.message));
+fs.promises.mkdir(RECORDINGS_DIR, { recursive: true }).catch(error => console.error('Recording directory initialization failed:', error.message));
 
 // WebSocket connection handling
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, request) => {
   console.log('Web UI Client connected');
+  const clientIp = request.socket?.remoteAddress || 'unknown';
+  ws.isAlive = true;
+  ws.clientIp = clientIp;
   clients.add(ws);
+  wsConnectionsByIp.set(clientIp, (wsConnectionsByIp.get(clientIp) || 0) + 1);
+  ws.on('pong', () => { ws.isAlive = true; });
   ws.on('close', () => {
     console.log('Web UI Client disconnected');
     clients.delete(ws);
+    const remaining = Math.max(0, (wsConnectionsByIp.get(clientIp) || 1) - 1);
+    if (remaining) wsConnectionsByIp.set(clientIp, remaining);
+    else wsConnectionsByIp.delete(clientIp);
   });
   ws.on('error', (err) => console.error('WebSocket Client Error:', err));
 });
@@ -80,7 +75,7 @@ function broadcast(data) {
   const message = typeof data === 'string' ? data : JSON.stringify(data);
   
   clients.forEach((client) => {
-    if (client.readyState === 1) { // 1 = OPEN
+    if (client.readyState === 1 && client.bufferedAmount <= relaySecurity.maxWsBufferedBytes) { // 1 = OPEN
       try {
         client.send(message, (err) => {
           if (err) console.error('Send Error:', err);
@@ -92,55 +87,6 @@ function broadcast(data) {
   });
 }
 
-function getRunPaths(testCaseId) {
-  const fileSafeTestCaseId = encodeURIComponent(String(testCaseId));
-  return {
-    current: path.join(LOGS_DIR, `${fileSafeTestCaseId}.current.jsonl`),
-    previous: path.join(LOGS_DIR, `${fileSafeTestCaseId}.previous.jsonl`),
-    legacy: path.join(LOGS_DIR, `${fileSafeTestCaseId}.jsonl`),
-  };
-}
-
-function isRunStart(logData) {
-  const text = String(logData.log || '');
-  return /Starting\s+.*(Automation|Manual\s+Capture)/i.test(text);
-}
-
-function rotateRunIfNeeded(logData) {
-  if (!logData.testCaseId || !isRunStart(logData)) return;
-
-  const { current, previous } = getRunPaths(logData.testCaseId);
-  if (!fs.existsSync(current)) return;
-
-  try {
-    fs.copyFileSync(current, previous);
-    fs.truncateSync(current, 0);
-    console.log(`[LOG ROTATE] Previous run saved for TC: ${logData.testCaseId}`);
-  } catch (err) {
-    console.error(`Failed to rotate log for ${logData.testCaseId}:`, err.message);
-  }
-}
-
-// Persistence helper: Simpan log current run ke file JSONL.
-// History hanya menyimpan satu run sebelumnya: current -> previous saat run baru dimulai.
-function saveLog(logData) {
-  if (!logData.testCaseId) return;
-
-  rotateRunIfNeeded(logData);
-
-  const { current } = getRunPaths(logData.testCaseId);
-  const logEntry = JSON.stringify({
-    ...logData,
-    timestamp: logData.timestamp || new Date().toISOString()
-  }) + '\n';
-
-  try {
-    fs.appendFileSync(current, logEntry);
-  } catch (err) {
-    console.error(`Failed to save log for ${logData.testCaseId}:`, err);
-  }
-}
-
 function sendJson(res, status, payload) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));
@@ -148,13 +94,17 @@ function sendJson(res, status, payload) {
 
 function readJsonBody(req, callback) {
   let body = '';
+  let rejected = false;
   req.on('data', chunk => {
+    if (rejected) return;
     body += chunk.toString();
-    if (body.length > 2_000_000) {
-      req.destroy();
+    if (Buffer.byteLength(body, 'utf8') > relaySecurity.maxBodyBytes) {
+      rejected = true;
+      callback(new Error('Payload exceeds relay limit'));
     }
   });
   req.on('end', () => {
+    if (rejected) return;
     try {
       callback(null, body ? JSON.parse(body) : {});
     } catch (error) {
@@ -171,7 +121,7 @@ function emitLog(logData) {
     automationEvent,
   };
 
-  saveLog(persistedLog);
+  const filePersistence = logStore.save(persistedLog);
   const send = (persisted) => {
     if (!validation.valid) {
       broadcast({ ...logData, cursor: persisted?.cursor });
@@ -189,11 +139,10 @@ function emitLog(logData) {
     console.warn('[AUTOMATION EVENT] Legacy log preserved without normalized broadcast:', validation.errors.join(', '));
   }
   if (!devlogStore || !validation.valid) {
-    send(null);
-    return Promise.resolve();
+    return filePersistence.then(() => send(null));
   }
-  return devlogStore.persistEvent(automationEvent)
-    .then(send)
+  return Promise.all([filePersistence, devlogStore.persistEvent(automationEvent)])
+    .then(([, persisted]) => send(persisted))
     .catch(error => {
       console.error(`[DEVLOG DB] Event persistence failed: ${error.message}`);
       send(null);
@@ -203,6 +152,12 @@ function emitLog(logData) {
 function getManualSession(sessionId) {
   if (!sessionId) return null;
   return activeManualSessions.get(sessionId) || null;
+}
+
+function publicManualSession(session) {
+  if (!session) return null;
+  const { ownerKey: _ownerKey, ...publicSession } = session;
+  return publicSession;
 }
 
 function isStoppedManualLog(logData) {
@@ -302,7 +257,7 @@ function redactHeaders(headers = {}) {
   return output;
 }
 
-function findBrowserPath() {
+async function findBrowserPath() {
   const candidates = [
     path.join(process.env.ProgramFiles || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
     path.join(process.env['ProgramFiles(x86)'] || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
@@ -310,7 +265,11 @@ function findBrowserPath() {
     path.join(process.env.ProgramFiles || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
     path.join(process.env['ProgramFiles(x86)'] || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
   ];
-  return candidates.find(candidate => candidate && fs.existsSync(candidate));
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try { await fs.promises.access(candidate); return candidate; } catch (_) {}
+  }
+  return undefined;
 }
 
 function isValidHttpUrl(value) {
@@ -373,7 +332,7 @@ function resolveManualUserDataDir(sessionId, browserMode) {
 }
 
 function cleanupProfileBrowserProcesses(userDataDir) {
-  if (process.platform !== 'win32' || !userDataDir) return;
+  if (process.platform !== 'win32' || !userDataDir) return Promise.resolve();
   const escapedProfile = userDataDir.replace(/'/g, "''");
   const script = [
     `$profile='${escapedProfile}'`,
@@ -381,24 +340,21 @@ function cleanupProfileBrowserProcesses(userDataDir) {
     " | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($profile) }",
     " | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
   ].join('');
-  try {
-    spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script], {
+  return new Promise(resolve => {
+    const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script], {
       windowsHide: true,
-      timeout: 5000,
       stdio: 'ignore',
     });
-  } catch (error) {
-    console.warn('Failed to cleanup profiled browser processes:', error.message);
-  }
+    const timer = setTimeout(() => { try { child.kill(); } catch (_) {} }, 5000);
+    child.once('error', error => { clearTimeout(timer); console.warn('Failed to cleanup profiled browser processes:', error.message); resolve(); });
+    child.once('close', () => { clearTimeout(timer); resolve(); });
+  });
 }
 
-function cleanupProfileLockFiles(userDataDir) {
-  if (!userDataDir || !fs.existsSync(userDataDir)) return;
-  for (const name of ['lockfile', 'SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
-    try {
-      fs.rmSync(path.join(userDataDir, name), { force: true });
-    } catch (_) {}
-  }
+async function cleanupProfileLockFiles(userDataDir) {
+  if (!userDataDir) return;
+  await Promise.all(['lockfile', 'SingletonLock', 'SingletonCookie', 'SingletonSocket']
+    .map(name => fs.promises.rm(path.join(userDataDir, name), { force: true }).catch(() => undefined)));
 }
 
 async function waitForCdpPage(port, targetUrl) {
@@ -495,11 +451,9 @@ async function focusCdpPage(cdp, target) {
 }
 
 async function installCdpClickTracker(cdp, session) {
-  const relayUrl = 'http://127.0.0.1:3001/log';
   const source = `(() => {
     if (window.__qaCdpClickTrackerInstalled) return;
     window.__qaCdpClickTrackerInstalled = true;
-    const relayUrl = ${JSON.stringify(relayUrl)};
     const testCaseId = ${JSON.stringify(session.testCaseId)};
     const sessionId = ${JSON.stringify(session.sessionId)};
     const truncate = (value) => {
@@ -536,12 +490,12 @@ async function installCdpClickTracker(cdp, session) {
         },
       };
       try {
-        navigator.sendBeacon?.(relayUrl, new Blob([JSON.stringify(payload)], { type: 'application/json' }))
-          || fetch(relayUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true }).catch(() => {});
+        window.__qaRelayClick?.(JSON.stringify(payload));
       } catch (_) {}
     }, true);
   })();`;
   try {
+    await cdp.send('Runtime.addBinding', { name: '__qaRelayClick' });
     await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source });
     await cdp.send('Runtime.evaluate', { expression: source, returnByValue: true });
   } catch (error) {
@@ -679,32 +633,16 @@ function buildRecordingPayload(recording) {
 }
 
 function writeRecordingMetadata(recording, notify = false) {
-  if (!recording) return;
+  if (!recording) return Promise.resolve();
   const payload = buildRecordingPayload(recording);
-
-  try {
-    fs.writeFileSync(recording.paths.metadata, JSON.stringify(payload, null, 2));
-  } catch (error) {
-    console.error('Failed to write recording metadata:', error.message);
-  }
-  const notifyClients = () => {
-    if (!notify) return;
-    broadcast({
-      type: 'recording.updated',
-      testCaseId: recording.testCaseId,
-      recording: payload,
-    });
-  };
-  if (devlogStore) {
-    devlogStore.persistRecording(payload, recording.paths.baseDir)
-      .then(notifyClients)
-      .catch(error => {
-        console.error(`[DEVLOG DB] Recording persistence failed: ${error.message}`);
-        notifyClients();
-      });
-  } else {
-    notifyClients();
-  }
+  const previousWrite = recording.metadataWriteQueue || Promise.resolve();
+  const nextWrite = previousWrite.then(async () => {
+    await fs.promises.writeFile(recording.paths.metadata, JSON.stringify(payload, null, 2));
+    if (devlogStore) await devlogStore.persistRecording(payload, recording.paths.baseDir);
+    if (notify) broadcast({ type: 'recording.updated', testCaseId: recording.testCaseId, recording: payload });
+  }).catch(error => console.error(`Recording metadata persistence failed: ${error.message}`));
+  recording.metadataWriteQueue = nextWrite;
+  return nextWrite;
 }
 
 function startManualRecorder(session, cdp, targetUrl, options = {}) {
@@ -725,8 +663,6 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
     ? Math.min(80, Math.max(35, configuredQuality))
     : 40;
   const paths = getRecordingPaths(session.testCaseId, session.sessionId);
-  fs.mkdirSync(paths.framesDir, { recursive: true });
-  fs.mkdirSync(paths.videoDir, { recursive: true });
 
   const recording = {
     recordingId: createRecordingId(),
@@ -866,14 +802,14 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
         writeRecordingMetadata(recording, true);
         ensureKeyframeFallback();
       });
-      ffmpeg.on('close', () => {
+      ffmpeg.on('close', async () => {
         if (recording.videoFinalizeTimer) clearTimeout(recording.videoFinalizeTimer);
         recording.videoFinalizeTimer = null;
-        if (fs.existsSync(filePath)) {
-          recording.video.sizeBytes = fs.statSync(filePath).size;
+        try {
+          recording.video.sizeBytes = (await fs.promises.stat(filePath)).size;
           recording.video.durationMs = getEncodedVideoDurationMs(recording);
           if (recording.video.status !== 'failed') recording.video.status = 'ready';
-        } else {
+        } catch {
           recording.video.status = 'failed';
           ensureKeyframeFallback();
         }
@@ -1030,7 +966,7 @@ function startManualRecorder(session, cdp, targetUrl, options = {}) {
         recording.frameIndex += 1;
         const file = `${String(recording.frameIndex).padStart(6, '0')}.jpg`;
         const frameBuffer = await drawClickMarkers(imageBuffer, activeClickMarkers);
-        fs.writeFileSync(path.join(paths.framesDir, file), frameBuffer);
+        await fs.promises.writeFile(path.join(paths.framesDir, file), frameBuffer);
         recording.lastKeyframeSavedAt = Date.now();
         recording.frames.push({
           file,
@@ -1195,58 +1131,57 @@ function stopManualRecorder(recording, stopStatus = 'stopped') {
   };
 }
 
-function readRecordingMetadata(testCaseId, sessionId) {
+async function readRecordingMetadata(testCaseId, sessionId) {
   for (const paths of [getRecordingPaths(testCaseId, sessionId), getLegacyRecordingPaths(testCaseId, sessionId)]) {
-    if (!fs.existsSync(paths.metadata)) continue;
     try {
-      return JSON.parse(fs.readFileSync(paths.metadata, 'utf8'));
-    } catch {
-      return null;
-    }
+      return JSON.parse(await fs.promises.readFile(paths.metadata, 'utf8'));
+    } catch (error) { if (error.code !== 'ENOENT') return null; }
   }
   return null;
 }
 
-function getLatestRecordingMetadata(testCaseId) {
+async function getLatestRecordingMetadata(testCaseId) {
   const roots = [RECORDINGS_DIR, LEGACY_RECORDINGS_DIR];
   const metadataItems = [];
 
   for (const root of roots) {
     const testCaseDir = path.join(root, encodeURIComponent(testCaseId));
-    if (!fs.existsSync(testCaseDir)) continue;
-
-    const sessionDirs = fs.readdirSync(testCaseDir, { withFileTypes: true })
-      .filter(entry => entry.isDirectory())
-      .map(entry => path.join(testCaseDir, entry.name));
+    let entries;
+    try { entries = await fs.promises.readdir(testCaseDir, { withFileTypes: true }); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    const sessionDirs = entries.filter(entry => entry.isDirectory()).map(entry => path.join(testCaseDir, entry.name));
 
     for (const sessionDir of sessionDirs) {
       const metadataPath = path.join(sessionDir, 'metadata.json');
-      if (!fs.existsSync(metadataPath)) continue;
-      metadataItems.push({ metadataPath, mtimeMs: fs.statSync(metadataPath).mtimeMs });
+      try { metadataItems.push({ metadataPath, mtimeMs: (await fs.promises.stat(metadataPath)).mtimeMs }); } catch (error) { if (error.code !== 'ENOENT') throw error; }
     }
   }
 
   metadataItems.sort((a, b) => b.mtimeMs - a.mtimeMs);
   for (const item of metadataItems) {
     try {
-      return JSON.parse(fs.readFileSync(item.metadataPath, 'utf8'));
+      return JSON.parse(await fs.promises.readFile(item.metadataPath, 'utf8'));
     } catch (_) {}
   }
   return null;
 }
 
 async function startCdpCapture(session, targetUrl, options = {}) {
-  const browserPath = findBrowserPath();
+  const browserPath = await findBrowserPath();
   if (!browserPath) throw new Error('Chrome atau Edge tidak ditemukan untuk manual capture');
 
   const port = 9300 + Math.floor(Math.random() * 500);
   const browserMode = options.browserMode === 'profiled' ? 'profiled' : 'clean';
   const { userDataDir, cleanupUserDataDir } = resolveManualUserDataDir(session.sessionId, browserMode);
   if (browserMode === 'profiled') {
-    cleanupProfileBrowserProcesses(userDataDir);
-    cleanupProfileLockFiles(userDataDir);
+    await cleanupProfileBrowserProcesses(userDataDir);
+    await cleanupProfileLockFiles(userDataDir);
   }
-  fs.mkdirSync(userDataDir, { recursive: true });
+  await fs.promises.mkdir(userDataDir, { recursive: true });
+  const recordingPaths = getRecordingPaths(session.testCaseId, session.sessionId);
+  await Promise.all([
+    fs.promises.mkdir(recordingPaths.framesDir, { recursive: true }),
+    fs.promises.mkdir(recordingPaths.videoDir, { recursive: true }),
+  ]);
   const browserArgs = [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${userDataDir}`,
@@ -1267,9 +1202,9 @@ async function startCdpCapture(session, targetUrl, options = {}) {
     try {
       if (!browser.killed) browser.kill();
     } catch (_) {}
-    cleanupProfileBrowserProcesses(userDataDir);
+    await cleanupProfileBrowserProcesses(userDataDir);
     if (browserMode === 'profiled') {
-      cleanupProfileLockFiles(userDataDir);
+      await cleanupProfileLockFiles(userDataDir);
     }
     throw new Error(`${error.message}. Jika memakai Profiled Browser, coba start ulang; profile QA lama sudah dibersihkan.`);
   }
@@ -1298,6 +1233,17 @@ async function startCdpCapture(session, targetUrl, options = {}) {
     if (message.params?.timestamp) syncCdpClock(currentSession, message.params.timestamp);
     if (message.params?.wallTime && !currentSession.cdpTimeOffsetMs) {
       currentSession.cdpTimeOffsetMs = (Number(message.params.wallTime) * 1000) - (Number(message.params.timestamp || 0) * 1000);
+    }
+
+    if (message.method === 'Runtime.bindingCalled' && message.params?.name === '__qaRelayClick') {
+      try {
+        const clickLog = JSON.parse(message.params.payload);
+        if (clickLog.sessionId !== session.sessionId || clickLog.testCaseId !== session.testCaseId) return;
+        sessionInfo.recording?.noteClick?.(clickLog.interaction);
+        await emitLog(clickLog);
+      } catch (error) {
+        console.warn('Rejected invalid CDP click payload:', error.message);
+      }
     }
 
     if (message.method === 'Runtime.consoleAPICalled') {
@@ -1476,7 +1422,7 @@ async function stopCdpCapture(sessionId) {
   } catch (error) {
     result.errors.push(`Browser kill failed: ${error.message}`);
   }
-  cleanupProfileBrowserProcesses(session.userDataDir);
+  await cleanupProfileBrowserProcesses(session.userDataDir);
   cdpSessions.delete(sessionId);
   if (session.userDataDir && session.cleanupUserDataDir !== false) {
     setTimeout(() => {
@@ -1488,22 +1434,24 @@ async function stopCdpCapture(sessionId) {
 
 async function failInterruptedRecordingsOnStartup() {
   for (const root of [RECORDINGS_DIR, LEGACY_RECORDINGS_DIR]) {
-    if (!fs.existsSync(root)) continue;
-    for (const testCaseEntry of fs.readdirSync(root, { withFileTypes: true })) {
+    let testCaseEntries;
+    try { testCaseEntries = await fs.promises.readdir(root, { withFileTypes: true }); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    for (const testCaseEntry of testCaseEntries) {
       if (!testCaseEntry.isDirectory()) continue;
       const testCaseDir = path.join(root, testCaseEntry.name);
-      for (const sessionEntry of fs.readdirSync(testCaseDir, { withFileTypes: true })) {
+      const sessionEntries = await fs.promises.readdir(testCaseDir, { withFileTypes: true });
+      for (const sessionEntry of sessionEntries) {
         if (!sessionEntry.isDirectory()) continue;
         const sessionDir = path.join(testCaseDir, sessionEntry.name);
         const metadataPath = path.join(sessionDir, 'metadata.json');
-        if (!fs.existsSync(metadataPath)) continue;
         try {
-          const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+          const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf8'));
           const failed = markInterruptedVideoFailed(metadata, 'Video finalization was interrupted by a relay restart.');
           if (!failed) continue;
-          fs.writeFileSync(metadataPath, JSON.stringify(failed, null, 2));
+          await fs.promises.writeFile(metadataPath, JSON.stringify(failed, null, 2));
           await devlogStore?.persistRecording(failed, sessionDir);
         } catch (error) {
+          if (error.code === 'ENOENT') continue;
           console.warn(`Failed to mark interrupted recording ${metadataPath}: ${error.message}`);
         }
       }
@@ -1512,19 +1460,37 @@ async function failInterruptedRecordingsOnStartup() {
 }
 
 // HTTP Server: Menerima POST /log dari Katalon
-const server = http.createServer((req, res) => {
-  // Add CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+const server = http.createServer(async (req, res) => {
+  const requestUrl = new URL(req.url, `http://${relaySecurity.host}:${relaySecurity.port}`);
+  relaySecurity.applyCors(req, res);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
+    if (!relaySecurity.isAllowedOrigin(String(req.headers.origin || ''))) {
+      return sendJson(res, 403, { success: false, error: 'Origin tidak diizinkan.' });
+    }
     res.writeHead(204);
     res.end();
     return;
   }
 
-  const requestUrl = new URL(req.url, 'http://localhost:3001');
+  const authorization = relaySecurity.authorize(req, requestUrl);
+  if (!authorization.allowed) {
+    if (authorization.retryAfter) res.setHeader('Retry-After', String(authorization.retryAfter));
+    return sendJson(res, authorization.status, { success: false, error: authorization.error });
+  }
+
+  if (req.method === 'GET' && requestUrl.pathname === '/health') {
+    return sendJson(res, 200, {
+      success: true,
+      status: 'ready',
+      activeManualSessions: [...activeManualSessions.values()].filter(session => session.active).length,
+      websocketClients: clients.size,
+      recordingSessions: [...cdpSessions.values()].filter(session => session.recording).length,
+      browserLaunchEnabled: relaySecurity.allowBrowserLaunch,
+    });
+  }
 
   if (req.method === 'POST' && requestUrl.pathname === '/log') {
     readJsonBody(req, async (error, logData) => {
@@ -1532,6 +1498,12 @@ const server = http.createServer((req, res) => {
         if (error) throw error;
         if (isStoppedManualLog(logData)) {
           return sendJson(res, 409, { success: false, error: 'Manual capture session is not active' });
+        }
+        if (String(logData.source || '').startsWith('manual-')) {
+          const session = getManualSession(logData.sessionId);
+          if (!session || session.testCaseId !== logData.testCaseId || session.ownerKey !== relaySecurity.ownerKey(req)) {
+            return sendJson(res, 403, { success: false, error: 'Manual capture session ownership mismatch' });
+          }
         }
 
         if (logData.interaction?.type === 'click' && logData.sessionId) {
@@ -1563,6 +1535,9 @@ const server = http.createServer((req, res) => {
       if (targetUrl && !isValidHttpUrl(targetUrl)) {
         return sendJson(res, 400, { success: false, error: 'targetUrl must be a valid http/https URL' });
       }
+      if (launchBrowser && !relaySecurity.allowBrowserLaunch) {
+        return sendJson(res, 403, { success: false, error: 'Browser launch dinonaktifkan. Set QA_RELAY_ALLOW_BROWSER_LAUNCH=1 pada host untuk mengaktifkannya.' });
+      }
 
       for (const [id, session] of activeManualSessions.entries()) {
         if (session.testCaseId === testCaseId && session.active) {
@@ -1578,8 +1553,8 @@ const server = http.createServer((req, res) => {
             await stopCdpCapture(id);
           }
         }
-        cleanupProfileBrowserProcesses(getManualCaptureProfileDir());
-        cleanupProfileLockFiles(getManualCaptureProfileDir());
+        await cleanupProfileBrowserProcesses(getManualCaptureProfileDir());
+        await cleanupProfileLockFiles(getManualCaptureProfileDir());
       }
 
       const startedAtMs = Date.now();
@@ -1590,6 +1565,7 @@ const server = http.createServer((req, res) => {
         targetUrl: targetUrl || null,
         browserMode: requestedBrowserMode,
         captureMode: requestedCaptureMode,
+        ownerKey: relaySecurity.ownerKey(req),
         active: true,
         startedAt: new Date(startedAtMs).toISOString(),
         startedAtMs,
@@ -1621,13 +1597,16 @@ const server = http.createServer((req, res) => {
         relativeMs: 0,
       });
 
-      sendJson(res, 200, { success: true, session, mode: captureMode, browserMode: requestedBrowserMode, captureMode: requestedCaptureMode, profileDir });
+      sendJson(res, 200, { success: true, session: publicManualSession(session), mode: captureMode, browserMode: requestedBrowserMode, captureMode: requestedCaptureMode, profileDir });
     });
   } else if (req.method === 'POST' && requestUrl.pathname === '/manual/stop') {
     readJsonBody(req, async (error, data) => {
       if (error) return sendJson(res, 400, { success: false, error: 'Invalid JSON' });
       const { sessionId } = data;
       const session = getManualSession(sessionId);
+      if (session && session.ownerKey !== relaySecurity.ownerKey(req)) {
+        return sendJson(res, 403, { success: false, error: 'Manual capture session ownership mismatch' });
+      }
       if (!session) {
         const cleanup = await stopCdpCapture(sessionId);
         return sendJson(res, 200, { success: true, alreadyStopped: true, cleanup });
@@ -1653,7 +1632,8 @@ const server = http.createServer((req, res) => {
     const sessionId = decodeURIComponent(requestUrl.pathname.split('/').pop());
     const session = getManualSession(sessionId);
     if (!session) return sendJson(res, 404, { success: false, active: false });
-    sendJson(res, 200, { success: true, ...session });
+    if (session.ownerKey !== relaySecurity.ownerKey(req)) return sendJson(res, 403, { success: false, error: 'Manual capture session ownership mismatch' });
+    sendJson(res, 200, { success: true, ...publicManualSession(session) });
   } else if (req.method === 'GET' && requestUrl.pathname.startsWith('/runs/')) {
     const testCaseId = decodeURIComponent(requestUrl.pathname.split('/').pop());
     if (!devlogStore) {
@@ -1698,35 +1678,25 @@ const server = http.createServer((req, res) => {
     const [, testCaseId, sessionId, type, file] = parts;
 
     if (testCaseId && sessionId === 'latest') {
-      if (devlogStore) {
-        devlogStore.getLatestRecording(testCaseId)
-          .then(metadata => {
-            const recording = metadata || getLatestRecordingMetadata(testCaseId);
-            if (!recording) return sendJson(res, 404, { success: false, error: 'Recording not found' });
-            sendJson(res, 200, { success: true, recording });
-          })
-          .catch(error => sendJson(res, 500, { success: false, error: error.message }));
-        return;
+      try {
+        const metadata = devlogStore ? await devlogStore.getLatestRecording(testCaseId) : null;
+        const recording = metadata || await getLatestRecordingMetadata(testCaseId);
+        if (!recording) return sendJson(res, 404, { success: false, error: 'Recording not found' });
+        return sendJson(res, 200, { success: true, recording });
+      } catch (error) {
+        return sendJson(res, 500, { success: false, error: error.message });
       }
-      const metadata = getLatestRecordingMetadata(testCaseId);
-      if (!metadata) return sendJson(res, 404, { success: false, error: 'Recording not found' });
-      return sendJson(res, 200, { success: true, recording: metadata });
     }
 
     if (testCaseId && sessionId && type === 'metadata') {
-      if (devlogStore) {
-        devlogStore.getRecording(testCaseId, sessionId)
-          .then(metadata => {
-            const recording = metadata || readRecordingMetadata(testCaseId, sessionId);
-            if (!recording) return sendJson(res, 404, { success: false, error: 'Recording not found' });
-            sendJson(res, 200, { success: true, recording });
-          })
-          .catch(error => sendJson(res, 500, { success: false, error: error.message }));
-        return;
+      try {
+        const metadata = devlogStore ? await devlogStore.getRecording(testCaseId, sessionId) : null;
+        const recording = metadata || await readRecordingMetadata(testCaseId, sessionId);
+        if (!recording) return sendJson(res, 404, { success: false, error: 'Recording not found' });
+        return sendJson(res, 200, { success: true, recording });
+      } catch (error) {
+        return sendJson(res, 500, { success: false, error: error.message });
       }
-      const metadata = readRecordingMetadata(testCaseId, sessionId);
-      if (!metadata) return sendJson(res, 404, { success: false, error: 'Recording not found' });
-      return sendJson(res, 200, { success: true, recording: metadata });
     }
 
     if (testCaseId && sessionId && type === 'frames' && file) {
@@ -1735,10 +1705,8 @@ const server = http.createServer((req, res) => {
         const candidatePath = path.resolve(paths.framesDir, file);
         const frameRoot = path.resolve(paths.framesDir);
         const relativeFramePath = path.relative(frameRoot, candidatePath);
-        if (!relativeFramePath.startsWith('..') && !path.isAbsolute(relativeFramePath) && fs.existsSync(candidatePath)) {
-          framePath = candidatePath;
-          break;
-        }
+        if (relativeFramePath.startsWith('..') || path.isAbsolute(relativeFramePath)) continue;
+        try { await fs.promises.access(candidatePath); framePath = candidatePath; break; } catch (_) {}
       }
       if (!framePath) {
         return sendJson(res, 404, { success: false, error: 'Frame not found' });
@@ -1753,17 +1721,15 @@ const server = http.createServer((req, res) => {
         const candidatePath = path.resolve(paths.videoDir, file);
         const videoRoot = path.resolve(paths.videoDir);
         const relativeVideoPath = path.relative(videoRoot, candidatePath);
-        if (!relativeVideoPath.startsWith('..') && !path.isAbsolute(relativeVideoPath) && fs.existsSync(candidatePath)) {
-          videoPath = candidatePath;
-          break;
-        }
+        if (relativeVideoPath.startsWith('..') || path.isAbsolute(relativeVideoPath)) continue;
+        try { await fs.promises.access(candidatePath); videoPath = candidatePath; break; } catch (_) {}
       }
       if (!videoPath) {
         return sendJson(res, 404, { success: false, error: 'Video not found' });
       }
       const ext = path.extname(videoPath).toLowerCase();
       const contentType = ext === '.mp4' ? 'video/mp4' : 'video/webm';
-      const stat = fs.statSync(videoPath);
+      const stat = await fs.promises.stat(videoPath);
       const range = req.headers.range;
       if (range) {
         const match = /^bytes=(\d*)-(\d*)$/.exec(range);
@@ -1797,17 +1763,7 @@ const server = http.createServer((req, res) => {
     // Tanpa query, fallback ke previous lalu current agar UI lama tidak 404 ketika baru ada satu run.
     const tcId = decodeURIComponent(requestUrl.pathname.split('/').pop());
     const run = requestUrl.searchParams.get('run') || 'auto';
-    const { current, previous, legacy } = getRunPaths(tcId);
-    const candidates = run === 'current' || run === 'latest'
-      ? [{ kind: 'current', filePath: current }]
-      : run === 'previous' || run === 'history'
-        ? [{ kind: 'previous', filePath: previous }, { kind: 'legacy', filePath: legacy }]
-        : [
-            { kind: 'previous', filePath: previous },
-            { kind: 'current', filePath: current },
-            { kind: 'legacy', filePath: legacy },
-          ];
-    const found = candidates.find(candidate => fs.existsSync(candidate.filePath));
+    const found = await logStore.findSavedRun(tcId, run);
     
     if (found) {
       res.writeHead(200, {
@@ -1827,17 +1783,40 @@ const server = http.createServer((req, res) => {
 
 // Upgrade HTTP ke WebSocket
 server.on('upgrade', (request, socket, head) => {
+  const requestUrl = new URL(request.url, `http://${relaySecurity.host}:${relaySecurity.port}`);
+  const authorization = relaySecurity.authorize(request, requestUrl);
+  const clientIp = request.socket?.remoteAddress || 'unknown';
+  if (!authorization.allowed
+    || clients.size >= relaySecurity.maxWsConnections
+    || (wsConnectionsByIp.get(clientIp) || 0) >= relaySecurity.maxWsConnectionsPerIp) {
+    const status = authorization.allowed ? 429 : authorization.status;
+    socket.write(`HTTP/1.1 ${status} ${status === 401 ? 'Unauthorized' : status === 403 ? 'Forbidden' : 'Too Many Requests'}\r\nConnection: close\r\n\r\n`);
+    socket.destroy();
+    return;
+  }
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);
   });
 });
 
+const heartbeat = setInterval(() => {
+  for (const client of clients) {
+    if (client.isAlive === false) {
+      client.terminate();
+      continue;
+    }
+    client.isAlive = false;
+    client.ping();
+  }
+}, 30_000);
+heartbeat.unref();
+
 failInterruptedRecordingsOnStartup().catch(error => {
   console.error(`Interrupted recording sweep failed: ${error.message}`);
 });
 
-server.listen(3001, () => {
-  console.log('Log Relay Server (HTTP + WS) started on http://localhost:3001');
+server.listen(relaySecurity.port, relaySecurity.host, () => {
+  console.log(`Log Relay Server (HTTP + WS) started on http://${relaySecurity.host}:${relaySecurity.port}`);
 });
 
 if (devlogStore) {

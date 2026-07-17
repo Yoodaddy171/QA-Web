@@ -4,17 +4,18 @@
 
 ```powershell
 npm run db:export-sqlite
+$env:POSTGRES_PASSWORD="<strong-local-password>"
 docker compose up -d postgres
-$env:DATABASE_URL="postgresql://qa_web:qa_web@127.0.0.1:5432/qa_web"
-$env:POSTGRES_DATABASE_URL=$env:DATABASE_URL
-npx prisma migrate deploy
+$env:POSTGRES_DATABASE_URL="postgresql://qa_web:<password>@127.0.0.1:5432/qa_web"
+npm run db:migrate:postgres
 npm run db:import-postgres
 npm run db:import-devlog
 ```
 
-Keep `POSTGRES_DATABASE_URL` available to Next.js and
-`node mini-services/ws-server.js`. During migration, `DATABASE_URL` may still
-point to SQLite for the main application.
+Keep `POSTGRES_DATABASE_URL` available to the relay and migration tools. During
+migration, `DATABASE_URL` may still point to SQLite. Before building the
+PostgreSQL deployment, set `DATABASE_URL` to the PostgreSQL URL and run
+`npm run db:generate:postgres`.
 
 ## External PostgreSQL
 
@@ -22,7 +23,8 @@ Set both `DATABASE_URL` and `POSTGRES_DATABASE_URL` to the external PostgreSQL
 connection string, then run:
 
 ```powershell
-npx prisma migrate deploy
+npm run db:migrate:postgres
+npm run db:generate:postgres
 npm run db:import-postgres
 npm run db:import-devlog
 ```

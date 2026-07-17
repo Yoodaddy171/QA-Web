@@ -118,7 +118,7 @@ export function useTestCases(selectedProject: string) {
   useEffect(() => {
     if (!selectedProject) return;
     const controller = new AbortController();
-    fetch(`/api/test-runs?projectId=${encodeURIComponent(selectedProject)}`, { signal: controller.signal })
+    fetch(`/api/test-runs?projectId=${encodeURIComponent(selectedProject)}&limit=100`, { signal: controller.signal })
       .then(response => response.json())
       .then(data => setTestRunOptions(data.testRuns || []))
       .catch(error => { if (!(error instanceof DOMException && error.name === 'AbortError')) setTestRunOptions([]); });

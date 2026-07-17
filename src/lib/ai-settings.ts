@@ -13,16 +13,14 @@ export function isLocalHostname(hostname: string) {
   return ['localhost', '127.0.0.1', '::1'].includes(hostname);
 }
 
-export function updateEnvText(source: string, updates: Record<string, string>) {
-  const remaining = new Map(Object.entries(updates));
-  const lines = source.split(/\r?\n/).map(line => {
-    const key = line.match(/^([A-Z][A-Z0-9_]*)=/)?.[1];
-    if (!key || !remaining.has(key)) return line;
-    const value = remaining.get(key) ?? '';
-    remaining.delete(key);
-    return `${key}=${JSON.stringify(value)}`;
-  });
-  while (lines.at(-1) === '') lines.pop();
-  for (const [key, value] of remaining) lines.push(`${key}=${JSON.stringify(value)}`);
-  return `${lines.join('\n')}\n`;
+export function normalizeLocalOllamaUrl(value?: string) {
+  const input = String(value || '').trim();
+  if (!input) return '';
+  const url = new URL(input);
+  if (!['http:', 'https:'].includes(url.protocol) || !isLocalHostname(url.hostname) || url.username || url.password) {
+    throw new Error('OLLAMA_BASE_URL hanya boleh menunjuk ke localhost, 127.0.0.1, atau ::1 tanpa kredensial URL.');
+  }
+  url.hash = '';
+  url.search = '';
+  return url.toString().replace(/\/$/, '');
 }

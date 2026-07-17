@@ -11,6 +11,7 @@ import {
   writeHeaderRow,
   writeTestCaseRows as writeExportTestCaseRows,
 } from '@/lib/services/excel-export-service';
+import { calculatedWeightFor, getCalculatedWeightMap } from '@/lib/services/weight-service';
 import { createNotification } from '@/lib/services/notification-service';
 
 // ============== IMPORT (POST) ==============
@@ -128,11 +129,16 @@ export async function GET(req: NextRequest) {
 
     if (!projectId) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
 
-    const testCases = await db.testCase.findMany({
+    const rawTestCases = await db.testCase.findMany({
       where: { projectId, ...(selectedIds.length ? { id: { in: selectedIds } } : {}) },
       include: { module: true },
       orderBy: { testCaseId: 'asc' },
     });
+    const weightMap = await getCalculatedWeightMap(projectId);
+    const testCases = rawTestCases.map(testCase => ({
+      ...testCase,
+      calculatedWeight: calculatedWeightFor(weightMap, testCase),
+    }));
 
     const project = await db.project.findUnique({
       where: { id: projectId },

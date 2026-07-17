@@ -1,0 +1,85 @@
+name: Quality Gate
+
+on:
+  push:
+    branches: [qa-desk-V0.3]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./db/quality.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:push:sqlite
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:coverage
+
+  sqlite-integration:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./db/integration.db
+      QA_ALLOW_INTEGRATION_DB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:push:sqlite
+      - run: npm run test:integration
+
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: qa_web_test
+          POSTGRES_USER: qa_web
+          POSTGRES_PASSWORD: qa_web_test_password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U qa_web -d qa_web_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://qa_web:qa_web_test_password@127.0.0.1:5432/qa_web_test
+      POSTGRES_DATABASE_URL: postgresql://qa_web:qa_web_test_password@127.0.0.1:5432/qa_web_test
+      QA_ALLOW_INTEGRATION_DB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate:postgres
+      - run: npm run db:migrate:postgres
+      - run: npm run test:integration
+
+  production-e2e:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./db/e2e.db
+      APP_URL: http://127.0.0.1:3000
+      QA_ALLOWED_ORIGINS: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run test:e2e:production

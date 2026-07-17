@@ -282,6 +282,7 @@
       <tbody>
         <tr><td>webQaEnabled</td><td>true</td><td>Mengaktifkan pengiriman event.</td></tr>
         <tr><td>webQaRelayUrl</td><td>http://127.0.0.1:3001/log</td><td>Endpoint ingestion legacy-compatible.</td></tr>
+        <tr><td>webQaRelayToken</td><td>token acak dari <code>npm run relay:token</code></td><td>Bearer token wajib untuk seluruh request relay.</td></tr>
         <tr><td>webQaProjectId</td><td>kosong</td><td>Project QA-Web opsional.</td></tr>
         <tr><td>webQaDefaultTestCaseId</td><td>kosong</td><td>Fallback sementara saja.</td></tr>
         <tr><td>webQaCaptureNetwork</td><td>true</td><td>Mengaktifkan network capture.</td></tr>
@@ -309,7 +310,7 @@
 
     <h2>4. Manual Capture Guide</h2>
     <ol>
-      <li>Jalankan QA-Web dan relay dengan <code>run-web-qa.bat</code>, atau jalankan <code>npm run dev</code> dan <code>node mini-services/ws-server.js</code> secara terpisah.</li>
+      <li>Generate token dengan <code>npm run relay:token</code>, salin nilainya ke <code>.env</code>, lalu jalankan <code>npm run dev</code> dan <code>npm run relay</code>.</li>
       <li>Buka detail test case yang ingin diuji, lalu buka tab <b>Devlog</b>.</li>
       <li>Pastikan status relay aktif. Buka bagian <b>Manual Capture</b>.</li>
       <li>Masukkan URL target, pilih browser atau mode recording bila tersedia, lalu klik <b>Start Capture</b>.</li>
@@ -323,7 +324,7 @@
     <h2>5. Katalon Capture Guide</h2>
     <ol>
       <li>Pastikan project memiliki <code>Keywords/com/utils/DevLog.groovy</code>, <code>Test Listeners/DevLogListener.groovy</code>, dan <code>Include/testcase-map.json</code>.</li>
-      <li>Pilih execution profile yang benar. Set <code>webQaEnabled=true</code> dan <code>webQaRelayUrl=http://127.0.0.1:3001/log</code>.</li>
+      <li>Pilih execution profile yang benar. Set <code>webQaEnabled=true</code>, <code>webQaRelayUrl=http://127.0.0.1:3001/log</code>, dan <code>webQaRelayToken</code> sama dengan <code>QA_RELAY_TOKEN</code>.</li>
       <li>Set <code>webQaCaptureNetwork=true</code> dan screenshot sesuai kebutuhan.</li>
       <li>Tambahkan mapping path test case Katalon ke internal QA-Web <code>testCaseId</code>.</li>
       <li>Jalankan QA-Web dan relay, lalu buka Devlog test case yang sudah dipetakan.</li>

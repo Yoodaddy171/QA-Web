@@ -3,13 +3,13 @@ import { devlogDb } from '@/lib/devlog-db';
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { calculatedWeightFor, getCalculatedWeightMap } from '@/lib/services/weight-service';
 
 const testCaseSelect = {
   id: true,
   testCaseId: true,
   page: true,
   subMenu: true,
-  weight: true,
   testType: true,
   testAction: true,
   steps: true,
@@ -38,8 +38,8 @@ type LegacyFileMeta = {
 // Cache parsed JSONL metadata per file so repeat requests skip the full-file scan.
 const legacyMetaCache = new Map<string, { mtimeMs: number; size: number; meta: LegacyFileMeta }>();
 
-async function legacyHistory(projectId: string) {
-  const logsDir = path.join(process.cwd(), 'mini-services', 'logs');
+async function legacyHistory(projectId: string, weightMap: Awaited<ReturnType<typeof getCalculatedWeightMap>>) {
+  const logsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
   let names: string[] = [];
   try {
     names = await fs.readdir(logsDir);
@@ -107,7 +107,8 @@ async function legacyHistory(projectId: string) {
   return [
     ...testCases.map(testCase => ({
       ...testCase,
-      calculatedWeight: testCase.weight ? Number.parseFloat(testCase.weight) : null,
+      weight: null,
+      calculatedWeight: calculatedWeightFor(weightMap, testCase),
       automationSource: 'testcase',
       automation: automationFor(testCase.id),
     })),
@@ -132,8 +133,9 @@ export async function GET(req: NextRequest) {
     if (!await db.project.findUnique({ where: { id: projectId }, select: { id: true } })) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
+    const weightMap = await getCalculatedWeightMap(projectId);
     if (!devlogDb) {
-      const items = await legacyHistory(projectId);
+      const items = await legacyHistory(projectId, weightMap);
       return NextResponse.json({ items, total: items.length, source: 'legacy-filesystem' });
     }
 
@@ -185,7 +187,8 @@ export async function GET(req: NextRequest) {
     const items = [
       ...testCases.map(testCase => ({
         ...testCase,
-        calculatedWeight: testCase.weight ? Number.parseFloat(testCase.weight) : null,
+        weight: null,
+        calculatedWeight: calculatedWeightFor(weightMap, testCase),
         automationSource: 'testcase',
         automation: automationFor(testCase.id),
       })),

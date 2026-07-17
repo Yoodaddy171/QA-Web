@@ -204,8 +204,10 @@ export function TestCaseDialog({
                 value={formData.testCaseId}
                 onChange={(e) => setFormData({ ...formData, testCaseId: e.target.value })}
                 placeholder="contoh: A-001"
+                disabled={Boolean(editingTestCase)}
                 className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
               />
+              {editingTestCase ? <p className="text-[10px] text-muted-foreground">ID bersifat permanen agar report, evidence, dan relasi tetap konsisten.</p> : null}
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Page / Menu <span className="text-red-500">*</span></Label>

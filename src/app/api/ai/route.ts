@@ -8,6 +8,7 @@ import {
   limitText,
 } from '@/lib/ai-context';
 import { generateCopilotJson } from '@/lib/ai-provider';
+import { z } from 'zod';
 
 interface GeneratedTestCase {
   testCaseId: string;
@@ -32,6 +33,13 @@ const AI_MODELS = {
 };
 const MAX_CONTEXT_CASES = 12;
 const MAX_OUTPUT_TOKENS = 2200;
+const generatedSchema = z.object({
+  test_cases: z.array(z.object({
+    testCaseId: z.string().min(1).max(80), page: z.string().min(1).max(200), subMenu: z.string().max(200), weight: z.string().max(20),
+    testType: z.enum(['Positive', 'Negative']), testAction: z.string().min(1).max(3000), steps: z.string().min(1).max(8000), expectedResult: z.string().min(1).max(5000),
+    priority: z.enum(['Critical', 'High', 'Medium', 'Low']), moduleId: z.string().nullable(),
+  })).min(1).max(8),
+});
 
 export async function POST(req: NextRequest) {
   try {
@@ -130,6 +138,7 @@ ${prompt}
 Return JSON with "test_cases" key containing exactly ${requestedCount} test cases:`;
 
     let parsed: Record<string, unknown>;
+    let providerMeta = { provider: '', model: '' };
     try {
       const result = await generateCopilotJson({
         system: systemPrompt,
@@ -138,8 +147,17 @@ Return JSON with "test_cases" key containing exactly ${requestedCount} test case
         temperature: 0.4,
         maxTokens: MAX_OUTPUT_TOKENS,
         repairSchemaHint: '{"test_cases":[{"testCaseId":"string","page":"string","subMenu":"string","weight":"string","testType":"Positive or Negative","testAction":"string","steps":"string","expectedResult":"string","priority":"Critical or High or Medium or Low","moduleId":"string or null"}]}',
+        schema: generatedSchema,
+        governance: {
+          projectId,
+          operation: 'GENERATE_TESTCASES',
+          promptVersion: 'generate-testcases-v2',
+          contextIds: [...existingTestCases.map(item => item.testCaseId), ...projectSummary.modules.map(item => item.id)],
+          dataCategories: ['project-summary', 'testcase-inventory', 'project-knowledge', 'active-bugs', 'user-prompt'],
+        },
       });
       parsed = result.parsed;
+      providerMeta = { provider: result.provider, model: result.model };
     } catch (aiError: unknown) {
       console.error('AI generate provider call failed:', aiError);
       return NextResponse.json({
@@ -169,7 +187,7 @@ Return JSON with "test_cases" key containing exactly ${requestedCount} test case
       moduleId: selectedModuleId || (tc.moduleId && projectModules.some(m => m.id === tc.moduleId) ? tc.moduleId : null),
     })).filter(tc => tc.testCaseId && tc.page && tc.testAction);
 
-    return NextResponse.json({ generated: cleanedCases });
+    return NextResponse.json({ generated: cleanedCases, draft: true, provider: providerMeta.provider, model: providerMeta.model });
   } catch (error) {
     console.error('POST /api/ai error:', error);
     return NextResponse.json({ error: 'Gagal generate test case' }, { status: 500 });

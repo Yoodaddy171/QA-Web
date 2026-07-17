@@ -2,8 +2,6 @@ import { db } from '@/lib/db';
 import { getProgressFromStatus } from '@/lib/domain/progress';
 import { resolveTestCaseStatusTransition, TESTCASE_ACTUAL_RESULT, TESTCASE_STATUS } from '@/lib/domain/testcase';
 import { syncBugFixForTestCaseStatus, type BugFixSourceSnapshot } from '@/lib/services/bugfix-sync-service';
-import type { WeightRecalculationTarget } from '@/lib/services/weight-service';
-import { resequenceTestCaseIds } from '@/lib/domain/testcase-id';
 import { recordActivity } from '@/lib/services/activity-history-service';
 import type { Prisma } from '@prisma/client';
 
@@ -11,7 +9,6 @@ export interface CreateTestCaseInput {
   testCaseId: string;
   page: string;
   subMenu: string | null;
-  weight: string | null;
   testType: string;
   testAction: string;
   steps: string;
@@ -146,18 +143,9 @@ export async function deleteTestCasesByIds(ids: string[]) {
       await recordActivity({ projectId: testCase.projectId, entityType: 'TestCase', entityId: testCase.id, action: 'DELETED', beforeValue: { testCaseId: testCase.testCaseId } }, tx);
     }
     await tx.testCase.deleteMany({ where: { id: { in: ids } } });
-    await resequenceDeletedTestCaseGroups(tx, casesToDelete);
     return {
       deleted: casesToDelete.length,
-      weightTargets: casesToDelete.map(toWeightTarget),
     };
-  });
-}
-
-export async function resequenceTestCaseIdsForProject(projectId: string) {
-  return db.$transaction(async tx => {
-    const result = await resequenceTestCaseGroupsForProject(tx, projectId);
-    return { resequenced: result };
   });
 }
 
@@ -171,56 +159,13 @@ export async function deleteTestCaseById(id: string) {
 
     await recordActivity({ projectId: testCase.projectId, entityType: 'TestCase', entityId: testCase.id, action: 'DELETED', beforeValue: { testCaseId: testCase.testCaseId } }, tx);
     await tx.testCase.delete({ where: { id } });
-    await resequenceDeletedTestCaseGroups(tx, [testCase]);
     return {
       deleted: 1,
-      weightTargets: [toWeightTarget(testCase)],
     };
   });
 }
 
-async function resequenceDeletedTestCaseGroups(
-  tx: Prisma.TransactionClient,
-  deletedCases: Array<{ id: string; projectId: string; testCaseId: string }>,
-) {
-  const projectIds = [...new Set(deletedCases.map(testCase => testCase.projectId))];
-
-  for (const projectId of projectIds) {
-    await resequenceTestCaseGroupsForProject(tx, projectId);
-  }
-}
-
-async function resequenceTestCaseGroupsForProject(tx: Prisma.TransactionClient, projectId: string) {
-  const remainingCases = await tx.testCase.findMany({
-    where: { projectId },
-    select: { id: true, testCaseId: true },
-  });
-  const updates = resequenceTestCaseIds(remainingCases);
-
-  for (const update of updates) {
-    await tx.testCase.update({
-      where: { id: update.id },
-      data: { testCaseId: update.newTestCaseId },
-    });
-    await recordActivity({
-      projectId,
-      entityType: 'TestCase',
-      entityId: update.id,
-      action: 'RESEQUENCED',
-      field: 'testCaseId',
-      beforeValue: update.oldTestCaseId,
-      afterValue: update.newTestCaseId,
-    }, tx);
-    await tx.bugFix.updateMany({
-      where: { sourceTestCaseId: update.id },
-      data: { testCaseId: update.newTestCaseId },
-    });
-  }
-
-  return updates.length;
-}
-
-async function recordTestCaseChanges(tx: Prisma.TransactionClient, input: UpdateTestCaseInput, testCase: { id: string; projectId: string; testCaseId: string; page: string; subMenu: string | null; status: string; actualResult: string | null; testType: string; testAction: string; steps: string; expectedResult: string; priority: string; moduleId: string | null; remarks: string | null; tags: string | null; weight: string | null }) {
+async function recordTestCaseChanges(tx: Prisma.TransactionClient, input: UpdateTestCaseInput, testCase: { id: string; projectId: string; testCaseId: string; page: string; subMenu: string | null; status: string; actualResult: string | null; testType: string; testAction: string; steps: string; expectedResult: string; priority: string; moduleId: string | null; remarks: string | null; tags: string | null }) {
   const fields: Array<[string, unknown, unknown]> = [
     ['testCaseId', input.current.testCaseId, testCase.testCaseId],
     ['page', input.current.page, testCase.page],
@@ -235,7 +180,6 @@ async function recordTestCaseChanges(tx: Prisma.TransactionClient, input: Update
     ['moduleId', input.current.moduleId, testCase.moduleId],
     ['remarks', input.current.remarks, testCase.remarks],
     ['tags', input.current.tags, testCase.tags],
-    ['weight', input.current.weight, testCase.weight],
   ];
   for (const [field, beforeValue, afterValue] of fields) {
     if (Object.is(beforeValue, afterValue)) continue;
@@ -246,10 +190,8 @@ async function recordTestCaseChanges(tx: Prisma.TransactionClient, input: Update
 function buildTestCaseUpdateData(input: UpdateTestCaseInput): Prisma.TestCaseUncheckedUpdateInput {
   const data = input.data;
   return {
-    ...(data.testCaseId !== undefined && { testCaseId: cleanText(data.testCaseId) }),
     ...(data.page !== undefined && { page: cleanText(data.page) }),
     ...(data.subMenu !== undefined && { subMenu: input.finalSubMenu }),
-    ...(data.weight !== undefined && { weight: data.weight }),
     ...(data.testType !== undefined && { testType: data.testType }),
     ...(data.testAction !== undefined && { testAction: cleanText(data.testAction) }),
     ...(data.steps !== undefined && { steps: cleanText(data.steps) }),
@@ -267,12 +209,4 @@ function buildTestCaseUpdateData(input: UpdateTestCaseInput): Prisma.TestCaseUnc
 
 function cleanText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function toWeightTarget(testCase: WeightRecalculationTarget): WeightRecalculationTarget {
-  return {
-    projectId: testCase.projectId,
-    page: testCase.page,
-    subMenu: testCase.subMenu,
-  };
 }

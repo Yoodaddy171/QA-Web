@@ -1,59 +1,26 @@
 import { db } from '@/lib/db';
 import { TESTCASE_STATUS } from '@/lib/domain/testcase';
-import type { Prisma } from '@prisma/client';
 
-type DbClient = typeof db | Prisma.TransactionClient;
-
-export interface WeightRecalculationTarget {
-  projectId: string;
-  page: string;
-  subMenu: string | null;
+function groupKey(projectId: string, page: string, subMenu: string | null) {
+  return `${projectId}\0${page}\0${subMenu || ''}`;
 }
 
-export function weightTargetKey(target: WeightRecalculationTarget) {
-  return `${target.projectId}|||${target.page}|||${target.subMenu || ''}`;
+export async function getCalculatedWeightMap(projectId?: string) {
+  const groups = await db.testCase.groupBy({
+    by: ['projectId', 'page', 'subMenu'],
+    where: { ...(projectId ? { projectId } : {}), status: { not: TESTCASE_STATUS.TBA } },
+    _count: { _all: true },
+  });
+  return new Map(groups.map(group => [
+    groupKey(group.projectId, group.page, group.subMenu),
+    group._count._all > 0 ? 100 / group._count._all : null,
+  ]));
 }
 
-export function parseWeightTargetKey(key: string): WeightRecalculationTarget {
-  const [projectId, page, subMenu] = key.split('|||');
-  return { projectId, page, subMenu: subMenu === '' ? null : subMenu };
-}
-
-export function uniqueWeightTargets(targets: WeightRecalculationTarget[]) {
-  return Array.from(new Set(targets.map(weightTargetKey))).map(parseWeightTargetKey);
-}
-
-export async function recalculateWeights(
-  projectId: string,
-  page: string,
-  subMenu: string | null,
-  client: DbClient = db
+export function calculatedWeightFor(
+  weights: Map<string, number | null>,
+  testCase: { projectId: string; page: string; subMenu: string | null; status: string },
 ) {
-  const casesInMenu = await client.testCase.findMany({
-    where: { projectId, page, subMenu: subMenu || null, status: { not: TESTCASE_STATUS.TBA } },
-    select: { id: true },
-  });
-
-  if (casesInMenu.length === 0) return;
-
-  const weightPerCase = `${(100 / casesInMenu.length).toFixed(2)}%`;
-  const caseIds = casesInMenu.map(tc => tc.id);
-
-  await client.testCase.updateMany({
-    where: { id: { in: caseIds } },
-    data: { weight: weightPerCase },
-  });
-
-  await client.testCase.updateMany({
-    where: { projectId, page, subMenu: subMenu || null, status: TESTCASE_STATUS.TBA },
-    data: { weight: null },
-  });
-}
-
-export function scheduleWeightRecalculation(targets: WeightRecalculationTarget[], reason: string) {
-  for (const target of uniqueWeightTargets(targets)) {
-    recalculateWeights(target.projectId, target.page, target.subMenu).catch(error => {
-      console.error(`[weight-service] Failed to recalculate weights after ${reason}:`, error);
-    });
-  }
+  if (testCase.status === TESTCASE_STATUS.TBA) return null;
+  return weights.get(groupKey(testCase.projectId, testCase.page, testCase.subMenu)) ?? null;
 }

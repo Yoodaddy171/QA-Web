@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { cn } from '@/lib/utils';
+import { buildDevlogRelayUrl } from '@/lib/client/api/devlog-client';
 
 type RecordingVideoPanelProps = Record<string, any>;
 
@@ -99,7 +100,7 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
                     }}
                   >
                     <img
-                      src={`http://127.0.0.1:3001${selectedRecordingFrame.url}`}
+                      src={buildDevlogRelayUrl(selectedRecordingFrame.url)}
                       alt="Manual capture fullscreen frame"
                       draggable={false}
                       className="select-none object-contain shadow-2xl transition-[width,height] duration-150"

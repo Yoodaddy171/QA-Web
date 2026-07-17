@@ -4,6 +4,7 @@ import { Film, Loader2, Maximize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { buildDevlogRelayUrl } from '@/lib/client/api/devlog-client';
 
 type ManualRecordingPreviewProps = Record<string, any>;
 
@@ -44,7 +45,7 @@ export function ManualRecordingPreview(props: ManualRecordingPreviewProps) {
                                   />
                                 ) : selectedRecordingFrame ? (
                                   <img
-                                    src={`http://127.0.0.1:3001${selectedRecordingFrame.url}`}
+                                    src={buildDevlogRelayUrl(selectedRecordingFrame.url)}
                                     alt="Manual capture recording frame"
                                     className="aspect-video w-full bg-black object-contain opacity-80 group-hover:opacity-100 transition-opacity"
                                   />

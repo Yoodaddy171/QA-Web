@@ -696,7 +696,7 @@ export function TestCaseDetailDialog({
 
   const openEvidenceReport = () => {
     if (!viewTestCase) return;
-    window.location.href = `/api/evidence?testCaseId=${encodeURIComponent(viewTestCase.id)}&download=1`;
+    window.location.href = `/api/evidence?testCaseId=${encodeURIComponent(viewTestCase.id)}&projectId=${encodeURIComponent(viewTestCase.projectId)}&download=1`;
   };
   const seekRecordingFromSyncedEvent = (event: SyncedVideoEvent) => {
     if (typeof event.clampedOffsetMs !== 'number') return;

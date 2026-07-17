@@ -1,4 +1,7 @@
 import Groq from 'groq-sdk';
+import { normalizeLocalOllamaUrl } from '@/lib/ai-settings';
+import type { ZodType } from 'zod';
+import { beginGovernedAIRequest, completeGovernedAIRequest, failGovernedAIRequest, type AIGovernanceContext } from '@/lib/ai-governance';
 
 export type AIProviderName = 'groq' | 'gemini' | 'ollama';
 
@@ -10,6 +13,8 @@ export interface AIJsonRequest {
   model?: string;
   models?: Partial<Record<AIProviderName, string>>;
   repairSchemaHint?: string;
+  schema?: ZodType<Record<string, unknown>>;
+  governance?: AIGovernanceContext;
 }
 
 export interface AIJsonResult {
@@ -65,6 +70,7 @@ ${raw}`,
     model: original.model,
     models: original.models,
     repairSchemaHint: original.repairSchemaHint,
+    schema: original.schema,
   };
   const repaired = await callProvider(provider, repairRequest, false);
   return repaired;
@@ -83,7 +89,7 @@ async function callGroq(request: AIJsonRequest) {
       { role: 'system', content: request.system },
       { role: 'user', content: request.user },
     ],
-  });
+  }, { signal: AbortSignal.timeout(Math.max(1000, Number(process.env.AI_REQUEST_TIMEOUT_MS || 30_000))) });
   return { model, raw: completion.choices[0]?.message?.content || '{}' };
 }
 
@@ -107,6 +113,7 @@ async function callGemini(request: AIJsonRequest) {
         responseMimeType: 'application/json',
       },
     }),
+    signal: AbortSignal.timeout(Math.max(1000, Number(process.env.AI_REQUEST_TIMEOUT_MS || 30_000))),
   });
   if (!response.ok) throw new Error(`Gemini error ${response.status}: ${await response.text()}`);
   const payload = await response.json();
@@ -115,7 +122,7 @@ async function callGemini(request: AIJsonRequest) {
 }
 
 async function callOllama(request: AIJsonRequest) {
-  const baseUrl = (process.env.OLLAMA_BASE_URL || '').replace(/\/$/, '');
+  const baseUrl = normalizeLocalOllamaUrl(process.env.OLLAMA_BASE_URL);
   if (!baseUrl) throw new Error('OLLAMA_BASE_URL belum dikonfigurasi.');
   const model = request.models?.ollama || request.model || process.env.OLLAMA_COPILOT_MODEL || process.env.OLLAMA_MODEL || 'llama3.1';
   const response = await fetch(`${baseUrl}/api/chat`, {
@@ -134,6 +141,7 @@ async function callOllama(request: AIJsonRequest) {
         { role: 'user', content: request.user },
       ],
     }),
+    signal: AbortSignal.timeout(Math.max(1000, Number(process.env.AI_REQUEST_TIMEOUT_MS || 30_000))),
   });
   if (!response.ok) throw new Error(`Ollama error ${response.status}: ${await response.text()}`);
   const payload = await response.json();
@@ -152,7 +160,7 @@ async function callProvider(provider: AIProviderName, request: AIJsonRequest, al
       provider,
       model: result.model,
       raw: result.raw,
-      parsed: parseJsonObject(result.raw),
+      parsed: request.schema ? request.schema.parse(parseJsonObject(result.raw)) : parseJsonObject(result.raw),
     };
   } catch (error) {
     if (!allowRepair) throw error;
@@ -161,13 +169,24 @@ async function callProvider(provider: AIProviderName, request: AIJsonRequest, al
 }
 
 export async function generateCopilotJson(request: AIJsonRequest): Promise<AIJsonResult> {
+  if (!request.governance) throw new Error('AI governance context wajib diisi.');
+  const governance = await beginGovernedAIRequest(request.governance, request.system, request.user, request.maxTokens ?? 1600);
+  const governedRequest = { ...request, system: governance.system, user: governance.user, maxTokens: governance.maxOutputTokens };
   const errors: string[] = [];
   for (const provider of getProviderPreference()) {
+    if (provider !== 'ollama' && !governance.allowExternalAi) {
+      errors.push(`${provider}: external AI tidak diizinkan untuk project ini`);
+      continue;
+    }
     try {
-      return await callProvider(provider, request);
+      const result = await callProvider(provider, governedRequest);
+      await completeGovernedAIRequest(governance, result);
+      return result;
     } catch (error) {
       errors.push(`${provider}: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
   }
-  throw new Error(errors.join(' | ') || 'Tidak ada AI provider yang bisa dipakai.');
+  const finalError = new Error(errors.join(' | ') || 'Tidak ada AI provider yang bisa dipakai.');
+  await failGovernedAIRequest(governance, finalError);
+  throw finalError;
 }

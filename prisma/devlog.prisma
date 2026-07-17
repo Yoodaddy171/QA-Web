@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/devlog-client"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id             String          @id
+  automationRuns AutomationRun[]
+}
+
+model TestCase {
+  id        String @id
+  projectId String
+}
+
+model BugFix {
+  id        String @id
+  projectId String
+}
+
+model AutomationRun {
+  id            String            @id @default(cuid())
+  runKey        String            @unique
+  externalRunId String?
+  sessionId     String?
+  projectId     String?
+  project       Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCaseId    String
+  source        String            @default("testcase")
+  mode          String            @default("unknown")
+  status        String            @default("running")
+  startedAt     DateTime
+  endedAt       DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  events        AutomationEvent[]
+  recording     Recording?
+
+  @@index([projectId, startedAt])
+  @@index([testCaseId, startedAt])
+  @@index([status, updatedAt])
+}
+
+model AutomationEvent {
+  sequence   BigInt        @id @default(autoincrement())
+  eventId    String        @unique
+  runId      String
+  run        AutomationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  testCaseId String
+  eventType  String
+  timestamp  DateTime
+  relativeMs Int?
+  payload    Json
+  createdAt  DateTime      @default(now())
+
+  @@index([runId, sequence])
+  @@index([testCaseId, sequence])
+  @@index([timestamp])
+}
+
+model Recording {
+  id          String        @id @default(cuid())
+  recordingId String        @unique
+  runId       String        @unique
+  run         AutomationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  testCaseId  String
+  sessionId   String
+  mode        String
+  status      String
+  targetUrl   String?
+  mediaRoot   String
+  metadata    Json
+  startedAt   DateTime
+  stoppedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([testCaseId, startedAt])
+  @@index([status, updatedAt])
+}

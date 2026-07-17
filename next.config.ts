@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   reactStrictMode: true,
-  serverExternalPackages: ['exceljs'],
+  serverExternalPackages: ['exceljs', '@ffmpeg-installer/ffmpeg'],
   // @ts-ignore
   turbopack: {},
   webpack: (config, { dev }) => {

@@ -260,7 +260,7 @@ function connectDevlogStore() {
   const url = process.env.POSTGRES_DATABASE_URL;
   if (!/^postgres(?:ql)?:\/\//i.test(url || '')) return null;
   try {
-    const { PrismaClient } = require('@prisma/postgresql-client');
+    const { PrismaClient } = require('@prisma/devlog-client');
     const runtimeRoot = process.env.QA_RUNTIME_DIR
       || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
     return createDevlogStore(new PrismaClient({ datasourceUrl: url }), {

@@ -1,10 +1,12 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
+import fs from 'node:fs/promises';
 import path from 'path';
 import os from 'os';
 import { generateCopilotJson } from '@/lib/ai-provider';
 import { compactLogLine, formatClassifiedLogs, IMPORTANT_LOG_PATTERN, limitText, PASS_EVIDENCE_PATTERN } from './summary-log-utils';
+import { z } from 'zod';
+import { beginGovernedAIRequest, completeGovernedAIRequest, failGovernedAIRequest } from '@/lib/ai-governance';
 
 export const maxDuration = 60;
 
@@ -21,10 +23,15 @@ const AI_SUMMARY_MODELS = {
   gemini: process.env.AI_SUMMARY_MODEL || process.env.GEMINI_SUMMARY_MODEL || process.env.GEMINI_MODEL,
   ollama: process.env.AI_SUMMARY_MODEL || process.env.OLLAMA_SUMMARY_MODEL || process.env.OLLAMA_MODEL,
 };
+const summarySchema = z.object({ summary: z.string().min(1).max(12000) });
 const RUNTIME_DIR = process.env.QA_RUNTIME_DIR
   || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
+const LOGS_DIR = path.join(RUNTIME_DIR, 'logs');
 const RECORDINGS_DIR = path.join(RUNTIME_DIR, 'recordings');
-const LEGACY_RECORDINGS_DIR = path.join(process.cwd(), 'mini-services', 'recordings');
+const LEGACY_LOGS_DIR = process.env.QA_LEGACY_LOGS_DIR
+  || path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
+const LEGACY_RECORDINGS_DIR = process.env.QA_LEGACY_RECORDINGS_DIR
+  || path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'recordings');
 
 type SummaryRecord = {
   id: string;
@@ -53,23 +60,20 @@ type RecordingMetadata = {
   frames: RecordingFrame[];
 };
 
-function getRecordingMetadataCandidates(testCaseIds: string[]) {
+async function getRecordingMetadataCandidates(testCaseIds: string[]) {
   const metadataItems: Array<{ metadataPath: string; mtimeMs: number }> = [];
-  const roots = [RECORDINGS_DIR, LEGACY_RECORDINGS_DIR];
+  const roots = [RECORDINGS_DIR, LEGACY_RECORDINGS_DIR].filter(Boolean);
 
   for (const root of roots) {
     for (const testCaseId of testCaseIds) {
       const testCaseDir = path.join(root, encodeURIComponent(testCaseId));
-      if (!fs.existsSync(testCaseDir)) continue;
-
-      const sessionDirs = fs.readdirSync(testCaseDir, { withFileTypes: true })
-        .filter(entry => entry.isDirectory())
-        .map(entry => path.join(testCaseDir, entry.name));
+      let entries;
+      try { entries = await fs.readdir(testCaseDir, { withFileTypes: true }); } catch (error: any) { if (error.code === 'ENOENT') continue; throw error; }
+      const sessionDirs = entries.filter(entry => entry.isDirectory()).map(entry => path.join(testCaseDir, entry.name));
 
       for (const sessionDir of sessionDirs) {
         const metadataPath = path.join(sessionDir, 'metadata.json');
-        if (!fs.existsSync(metadataPath)) continue;
-        metadataItems.push({ metadataPath, mtimeMs: fs.statSync(metadataPath).mtimeMs });
+        try { metadataItems.push({ metadataPath, mtimeMs: (await fs.stat(metadataPath)).mtimeMs }); } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
       }
     }
   }
@@ -77,10 +81,10 @@ function getRecordingMetadataCandidates(testCaseIds: string[]) {
   return metadataItems.sort((a, b) => b.mtimeMs - a.mtimeMs);
 }
 
-function readLatestRecording(testCaseIds: string[]) {
-  for (const item of getRecordingMetadataCandidates(testCaseIds)) {
+async function readLatestRecording(testCaseIds: string[]) {
+  for (const item of await getRecordingMetadataCandidates(testCaseIds)) {
     try {
-      const metadata = JSON.parse(fs.readFileSync(item.metadataPath, 'utf8')) as RecordingMetadata;
+      const metadata = JSON.parse(await fs.readFile(item.metadataPath, 'utf8')) as RecordingMetadata;
       if (!metadata.frames?.length) continue;
       return {
         metadata,
@@ -138,10 +142,10 @@ function formatRelativeTime(relativeMs?: number) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-async function createVisualEvidence(testCaseIds: string[], rawLogs: string) {
+async function createVisualEvidence(projectId: string, testCaseIds: string[], rawLogs: string) {
   if (!process.env.GEMINI_API_KEY) return '';
 
-  const latestRecording = readLatestRecording(testCaseIds);
+  const latestRecording = await readLatestRecording(testCaseIds);
   if (!latestRecording) return '';
 
   const frames = pickVisualFrames(latestRecording.metadata.frames, extractImportantRelativeTimes(rawLogs));
@@ -153,17 +157,26 @@ async function createVisualEvidence(testCaseIds: string[], rawLogs: string) {
 
   for (const frame of frames) {
     const framePath = path.join(latestRecording.framesDir, frame.file);
-    if (!fs.existsSync(framePath)) continue;
-    parts.push({ text: `Frame ${formatRelativeTime(frame.relativeMs)}:` });
-    parts.push({
-      inline_data: {
-        mime_type: 'image/jpeg',
-        data: fs.readFileSync(framePath).toString('base64'),
-      },
-    });
+    try {
+      const frameData = await fs.readFile(framePath);
+      parts.push({ text: `Frame ${formatRelativeTime(frame.relativeMs)}:` });
+      parts.push({ inline_data: { mime_type: 'image/jpeg', data: frameData.toString('base64') } });
+    } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
   }
 
   if (parts.length <= 1) return '';
+
+  const governance = await beginGovernedAIRequest({
+    projectId,
+    operation: 'SUMMARIZE_VISUAL_EVIDENCE',
+    promptVersion: 'visual-evidence-v1',
+    contextIds: testCaseIds,
+    dataCategories: ['recording-frames', 'target-url'],
+  }, 'Analyze QA recording frames.', `${parts.length - 1} image parts will be sent to Gemini Vision.`, 450);
+  if (!governance.allowExternalAi) {
+    await failGovernedAIRequest(governance, new Error('ExternalAINotAllowed'));
+    return '';
+  }
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_VISION_MODEL}:generateContent`, {
@@ -179,12 +192,13 @@ async function createVisualEvidence(testCaseIds: string[], rawLogs: string) {
           maxOutputTokens: 450,
         },
       }),
+      signal: AbortSignal.timeout(Math.max(1000, Number(process.env.AI_REQUEST_TIMEOUT_MS || 30_000))),
     });
 
     if (!response.ok) {
       const text = await response.text();
       console.warn(`[AI Summary] Gemini visual evidence skipped: ${response.status} ${limitText(text, 300)}`);
-      return '';
+      throw new Error(`GeminiVisionHTTP${response.status}`);
     }
 
     const payload = await response.json();
@@ -193,8 +207,11 @@ async function createVisualEvidence(testCaseIds: string[], rawLogs: string) {
       .filter(Boolean)
       .join('\n');
 
-    return text ? limitText(text, MAX_VISUAL_EVIDENCE_CHARS) : '';
+    const output = text ? limitText(text, MAX_VISUAL_EVIDENCE_CHARS) : '';
+    await completeGovernedAIRequest(governance, { provider: 'gemini', model: GEMINI_VISION_MODEL, raw: output });
+    return output;
   } catch (error: any) {
+    await failGovernedAIRequest(governance, error);
     console.warn(`[AI Summary] Gemini visual evidence failed: ${error.message}`);
     return '';
   }
@@ -215,7 +232,7 @@ function compactLogs(rawLogs: string, maxChars: number) {
   return limitText(selected.join('\n'), maxChars);
 }
 
-async function createSummary(systemPrompt: string, userMessage: string) {
+async function createSummary(projectId: string, contextIds: string[], systemPrompt: string, userMessage: string) {
   try {
     const result = await generateCopilotJson({
       system: `${systemPrompt}
@@ -227,6 +244,8 @@ Return ONLY valid JSON object with this schema:
       temperature: 0.3,
       maxTokens: MAX_COMPLETION_TOKENS,
       repairSchemaHint: '{"summary":"markdown string in Indonesian"}',
+      schema: summarySchema,
+      governance: { projectId, operation: 'SUMMARIZE_EXECUTION', promptVersion: 'execution-summary-v2', contextIds, dataCategories: ['testcase-content', 'execution-logs', 'network-logs', 'visual-evidence'] },
     });
     return String(result.parsed.summary || '').trim() || 'Gagal menghasilkan ringkasan.';
   } catch (error: any) {
@@ -252,6 +271,8 @@ Return ONLY valid JSON object with this schema:
       temperature: 0.3,
       maxTokens: MAX_COMPLETION_TOKENS,
       repairSchemaHint: '{"summary":"markdown string in Indonesian"}',
+      schema: summarySchema,
+      governance: { projectId, operation: 'SUMMARIZE_EXECUTION_RETRY', promptVersion: 'execution-summary-v2', contextIds, dataCategories: ['testcase-content', 'reduced-execution-logs', 'visual-evidence'] },
     });
     return String(result.parsed.summary || '').trim() || 'Gagal menghasilkan ringkasan.';
   }
@@ -261,15 +282,17 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { testCaseId } = body;
+    const projectId = String(body.projectId || '').trim();
 
     if (!String(testCaseId || '').trim()) return NextResponse.json({ error: 'Test Case ID is required' }, { status: 400 });
+    if (!projectId) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     const requestedId = String(testCaseId).trim();
 
     console.log(`[AI Summary] Mencari Test Case/BugFix untuk ID: ${requestedId}`);
 
     // Coba cari berdasarkan Database UUID (id)
-    let tc: SummaryRecord | null = await db.testCase.findUnique({
-      where: { id: requestedId },
+    let tc: SummaryRecord | null = await db.testCase.findFirst({
+      where: { id: requestedId, projectId },
     });
     let recordType: 'TestCase' | 'BugFix' = 'TestCase';
 
@@ -277,7 +300,7 @@ export async function POST(req: NextRequest) {
     if (!tc) {
       console.log(`[AI Summary] TestCase tidak ditemukan dengan UUID, mencoba Visual ID: ${requestedId}`);
       tc = await db.testCase.findFirst({
-        where: { testCaseId: requestedId },
+        where: { testCaseId: requestedId, projectId },
       });
     }
 
@@ -286,6 +309,7 @@ export async function POST(req: NextRequest) {
       console.log(`[AI Summary] TestCase tidak ditemukan, mencoba BugFix: ${requestedId}`);
       const bugFix = await db.bugFix.findFirst({
         where: {
+          projectId,
           OR: [
             { id: requestedId },
             { testCaseId: requestedId },
@@ -301,26 +325,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (!tc) {
-      const totalInDb = await db.testCase.count();
-      const totalBugFixInDb = await db.bugFix.count();
-      const dbUrl = process.env.DATABASE_URL || 'Not Set';
-      
-      // Prisma resolves SQLite paths relative to the schema file (prisma/schema.prisma)
-      const prismaDir = path.join(process.cwd(), 'prisma');
-      const resolvedPath = path.resolve(prismaDir, dbUrl.replace('file:', ''));
-      
-      console.error(`[AI Summary] NOT FOUND: "${requestedId}". Total TestCase: ${totalInDb}. Total BugFix: ${totalBugFixInDb}. DB Path: ${resolvedPath}`);
+      const totalInDb = await db.testCase.count({ where: { projectId } });
+      const totalBugFixInDb = await db.bugFix.count({ where: { projectId } });
+      console.error(`[AI Summary] NOT FOUND: "${requestedId}". Total TestCase: ${totalInDb}. Total BugFix: ${totalBugFixInDb}.`);
       
       return NextResponse.json({ 
         error: `Test case atau bug fix "${requestedId}" tidak ditemukan.`,
-        diagnostic: {
-          requestedId,
-          totalTestCases: totalInDb,
-          totalBugFixItems: totalBugFixInDb,
-          dbUrl: dbUrl,
-          dbPath: resolvedPath,
-          serverCwd: process.cwd()
-        }
+        diagnostic: { requestedId }
       }, { status: 404 });
     }
 
@@ -335,16 +346,19 @@ export async function POST(req: NextRequest) {
     const logCandidates = Array.from(new Set([requestedId, tc.id, tc.testCaseId].filter(Boolean)));
     try {
       // Gunakan path absolute yang lebih aman
-      const logsDir = path.join(process.cwd(), 'mini-services', 'logs');
-      
       console.log(`[AI Summary] Mencari log untuk kandidat ID: ${logCandidates.join(', ')}`);
 
-      const foundLogPath = logCandidates
-        .map(id => path.join(logsDir, `${id}.current.jsonl`))
-        .find(candidatePath => fs.existsSync(candidatePath));
+      let foundLogPath = '';
+      let fileContent = '';
+      for (const logsDir of [LOGS_DIR, LEGACY_LOGS_DIR].filter(Boolean)) {
+        for (const id of logCandidates) {
+          const candidatePath = path.join(logsDir, `${encodeURIComponent(id)}.current.jsonl`);
+          try { fileContent = await fs.readFile(candidatePath, 'utf8'); foundLogPath = candidatePath; break; } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
+        }
+        if (foundLogPath) break;
+      }
 
       if (foundLogPath) {
-        const fileContent = fs.readFileSync(foundLogPath, 'utf8');
         const lines = fileContent.split('\n').filter(l => l.trim());
         rawExtraLogs = lines.join('\n');
         extraLogs = formatClassifiedLogs(lines.join('\n'), MAX_EXTRA_LOG_CHARS);
@@ -356,7 +370,7 @@ export async function POST(req: NextRequest) {
       console.error('[AI Summary] Error saat membaca file log:', err.message);
     }
 
-    const visualEvidence = await createVisualEvidence(logCandidates, rawExtraLogs);
+    const visualEvidence = await createVisualEvidence(projectId, logCandidates, rawExtraLogs);
 
     const systemPrompt = `You are a Senior QA Automation Analyst. Summarize an automated/manual QA test result using Indonesian.
 
@@ -397,7 +411,7 @@ ${visualEvidence || 'No visual evidence available.'}`;
     const compactUserMessage = limitText(userMessage, MAX_PROMPT_CHARS);
     console.log(`[AI Summary] Prompt size: system=${systemPrompt.length} chars, user=${compactUserMessage.length} chars`);
 
-    const summary = await createSummary(systemPrompt, compactUserMessage);
+    const summary = await createSummary(projectId, logCandidates, systemPrompt, compactUserMessage);
 
     return NextResponse.json({ summary });
   } catch (error: any) {

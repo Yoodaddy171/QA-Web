@@ -220,30 +220,11 @@ export async function POST(req: NextRequest) {
 
     const figmaFile = payload as FigmaFileResponse;
     const content = buildKnowledgeContent(figmaFile, fileKey, figmaUrl, depth);
-    const id = crypto.randomUUID();
-    const now = new Date().toISOString();
     const title = titleInput || `Figma Import - ${figmaFile.name || fileKey}`;
-
-    await db.$executeRawUnsafe(
-      `INSERT INTO ProjectKnowledge (id, projectId, type, title, content, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      id,
-      projectId,
-      'FEATURE_MAP',
-      title,
-      content,
-      now,
-      now
-    );
+    const item = await db.projectKnowledge.create({ data: { projectId, type: 'FEATURE_MAP', title, content } });
 
     return NextResponse.json({
-      id,
-      projectId,
-      type: 'FEATURE_MAP',
-      title,
-      content,
-      createdAt: now,
-      updatedAt: now,
+      ...item,
       figma: {
         fileKey,
         name: figmaFile.name || null,

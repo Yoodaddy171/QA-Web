@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Bot, Edit3, Eye, EyeOff, FolderOpen, FolderPlus, Layers, Link, Loader2, Plus, RefreshCw, Save, Trash, Upload, X } from 'lucide-react';
+import { BookOpen, Bot, Edit3, Eye, EyeOff, FolderOpen, FolderPlus, Layers, Link, Loader2, Plus, RefreshCw, Save, ServerCog, Trash, Upload, UsersRound, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { AISettingsCard } from '@/components/AISettingsCard';
 import { ProjectKnowledgeCard } from '@/components/ProjectKnowledgeCard';
+import { SystemReadinessCard } from '@/components/SystemReadinessCard';
+import { WorkspaceMembersCard } from '@/components/WorkspaceMembersCard';
 
 interface Project {
   id: string;
@@ -82,14 +84,9 @@ export function SettingsPanel({
   const [figmaSyncing, setFigmaSyncing] = useState(false);
   const [figmaSyncMessage, setFigmaSyncMessage] = useState('');
   const [aiProvider, setAiProvider] = useState('auto');
-  const [groqApiKey, setGroqApiKey] = useState('');
-  const [geminiApiKey, setGeminiApiKey] = useState('');
   const [groqStatus, setGroqStatus] = useState('Not configured');
   const [geminiStatus, setGeminiStatus] = useState('Not configured');
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState('');
-  const [showAiKeys, setShowAiKeys] = useState(false);
-  const [aiKeysLoading, setAiKeysLoading] = useState(false);
-  const [aiSaving, setAiSaving] = useState(false);
   const [aiMessage, setAiMessage] = useState('');
 
   useEffect(() => {
@@ -100,56 +97,10 @@ export function SettingsPanel({
         setGroqStatus(data.groq || 'Not configured');
         setGeminiStatus(data.gemini || 'Not configured');
         setOllamaBaseUrl(data.ollamaBaseUrl || '');
+        setAiMessage(data.ollamaError || '');
       })
       .catch(() => setAiMessage('Gagal membaca konfigurasi AI.'));
   }, []);
-
-  const saveAiSettings = async () => {
-    setAiSaving(true);
-    setAiMessage('');
-    try {
-      const response = await fetch('/api/settings/ai', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: aiProvider, groqApiKey, geminiApiKey, ollamaBaseUrl }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Gagal menyimpan konfigurasi AI.');
-      setGroqStatus(data.groq);
-      setGeminiStatus(data.gemini);
-      setGroqApiKey('');
-      setGeminiApiKey('');
-      setAiMessage('Konfigurasi AI tersimpan dan langsung aktif.');
-    } catch (error) {
-      setAiMessage(error instanceof Error ? error.message : 'Gagal menyimpan konfigurasi AI.');
-    } finally {
-      setAiSaving(false);
-    }
-  };
-
-  const toggleAiKeys = async () => {
-    if (showAiKeys) {
-      setShowAiKeys(false);
-      setGroqApiKey('');
-      setGeminiApiKey('');
-      return;
-    }
-
-    setAiKeysLoading(true);
-    setAiMessage('');
-    try {
-      const response = await fetch('/api/settings/ai?reveal=1', { cache: 'no-store' });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Gagal menampilkan API key.');
-      setGroqApiKey(data.groqApiKey || '');
-      setGeminiApiKey(data.geminiApiKey || '');
-      setShowAiKeys(true);
-    } catch (error) {
-      setAiMessage(error instanceof Error ? error.message : 'Gagal menampilkan API key.');
-    } finally {
-      setAiKeysLoading(false);
-    }
-  };
 
   const loadKnowledge = async () => {
     if (!selectedProject) {
@@ -290,9 +241,11 @@ export function SettingsPanel({
       transition={{ duration: 0.4 }}
       className="space-y-6 pb-8"
     >
-      <Tabs defaultValue="ai" className="gap-5">
+      <Tabs defaultValue="system" className="gap-5">
       <div className="w-full overflow-x-auto rounded-xl scrollbar-thin scrollbar-thumb-border/40">
         <TabsList className="h-auto w-max min-w-full justify-start gap-1 border border-border/60 bg-secondary/35 p-1">
+          <TabsTrigger value="system" className="min-w-max flex-none"><ServerCog className="size-4" />System</TabsTrigger>
+          <TabsTrigger value="team" className="min-w-max flex-none"><UsersRound className="size-4" />Team</TabsTrigger>
           <TabsTrigger value="ai" className="min-w-max flex-none"><Bot className="size-4" />AI</TabsTrigger>
           <TabsTrigger value="projects" className="min-w-max flex-none"><FolderOpen className="size-4" />Projects</TabsTrigger>
           <TabsTrigger value="knowledge" className="min-w-max flex-none"><BookOpen className="size-4" />Knowledge</TabsTrigger>
@@ -300,24 +253,20 @@ export function SettingsPanel({
           <TabsTrigger value="modules" className="min-w-max flex-none"><Layers className="size-4" />Modules</TabsTrigger>
         </TabsList>
       </div>
+      <TabsContent value="system" className="mt-0">
+        <SystemReadinessCard />
+      </TabsContent>
+      <TabsContent value="team" className="mt-0">
+        <WorkspaceMembersCard />
+      </TabsContent>
       <TabsContent value="ai" className="mt-0">
       <AISettingsCard
+        projectId={selectedProject}
         provider={aiProvider}
-        setProvider={setAiProvider}
         ollamaBaseUrl={ollamaBaseUrl}
-        setOllamaBaseUrl={setOllamaBaseUrl}
-        groqApiKey={groqApiKey}
-        setGroqApiKey={setGroqApiKey}
-        geminiApiKey={geminiApiKey}
-        setGeminiApiKey={setGeminiApiKey}
         groqStatus={groqStatus}
         geminiStatus={geminiStatus}
-        showKeys={showAiKeys}
-        keysLoading={aiKeysLoading}
-        saving={aiSaving}
         message={aiMessage}
-        onToggleKeys={toggleAiKeys}
-        onSave={saveAiSettings}
       />
       </TabsContent>
 

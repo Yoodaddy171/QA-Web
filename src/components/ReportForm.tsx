@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,8 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
   const { toast } = useToast();
   const [reportType, setReportType] = useState<ReportType>(report?.reportType || 'TEST_STATUS_REPORT');
   const [documentId, setDocumentId] = useState(report?.documentId || '');
+  const [testRunId, setTestRunId] = useState(report?.testRunId || '');
+  const [testRuns, setTestRuns] = useState<Array<{ id: string; name: string; status: string }>>([]);
   const [version, setVersion] = useState(report?.version || '1.0');
   const [author, setAuthor] = useState(report?.author || '');
   const [approvedBy, setApprovedBy] = useState(report?.approvedBy || '');
@@ -40,6 +42,20 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
   const [sections, setSections] = useState<ReportSections>(report?.sections || {});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`/api/test-runs?projectId=${encodeURIComponent(projectId)}&limit=100`, { signal: controller.signal })
+      .then(async response => ({ response, data: await response.json() }))
+      .then(({ response, data }) => {
+        if (!response.ok) throw new Error(data.error || 'Test Cycle gagal dimuat.');
+        const runs = Array.isArray(data.runs) ? data.runs : [];
+        setTestRuns(runs);
+        setTestRunId(current => current || runs[0]?.id || '');
+      })
+      .catch(error => { if (error instanceof Error && error.name !== 'AbortError') toast({ title: 'Test Cycle gagal dimuat', description: error.message, variant: 'destructive' }); });
+    return () => controller.abort();
+  }, [projectId, toast]);
+
   const setSection = (key: keyof ReportSections, value: string) => setSections(current => ({ ...current, [key]: value }));
   const textarea = (key: keyof ReportSections, label: string, placeholder = '') => (
     <div>
@@ -52,10 +68,12 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      if (reportType === 'TEST_STATUS_REPORT' && !testRunId) throw new Error('Pilih Source Test Cycle untuk Test Status Report.');
       const payload = {
         projectId,
         reportType,
         documentId,
+        testRunId: reportType === 'TEST_STATUS_REPORT' ? testRunId : undefined,
         version,
         author,
         approvedBy,
@@ -111,6 +129,7 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
               </Select>
             </div>
             <div><Label>Document ID</Label><Input value={documentId} onChange={(e) => setDocumentId(e.target.value)} placeholder="01 / 02 / TSR-001" /></div>
+            {!isPlanning ? <div><Label>Source Test Cycle</Label><Select value={testRunId || 'none'} onValueChange={value => setTestRunId(value === 'none' ? '' : value)} disabled={Boolean(report)}><SelectTrigger><SelectValue placeholder="Pilih Test Cycle" /></SelectTrigger><SelectContent><SelectItem value="none">Pilih Test Cycle</SelectItem>{testRuns.map(run => <SelectItem key={run.id} value={run.id}>{run.name} · {run.status}</SelectItem>)}</SelectContent></Select><p className="mt-1 text-[10px] text-muted-foreground">Headline report diambil dari execution terbaru pada cycle ini.</p></div> : null}
             <div><Label>Version</Label><Input value={version} onChange={(e) => setVersion(e.target.value)} required /></div>
             <div><Label>Document Status</Label><Input value={documentStatus} onChange={(e) => setDocumentStatus(e.target.value)} /></div>
             <div><Label>Author</Label><Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tim Pengujian" /></div>

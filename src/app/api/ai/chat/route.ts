@@ -1,24 +1,25 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
+import { generateCopilotJson } from '@/lib/ai-provider';
+import { z } from 'zod';
 
 export const maxDuration = 60;
 
-const AI_MODEL = process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 const MAX_OUTPUT_TOKENS = 1600;
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_HISTORY_CHARS = 3000;
 const MAX_CONTEXT_CHARS = 4000;
-function getGroq() {
-  return new Groq({ apiKey: process.env.GROQ_API_KEY });
-}
+const chatSchema = z.object({
+  answer: z.string().max(20000).default(''),
+  test_cases: z.array(z.record(z.string(), z.unknown())).max(12).default([]),
+}).passthrough();
 
 type KnowledgeRow = {
   id: string;
   type: string;
   title: string;
   content: string;
-  updatedAt: string;
+  updatedAt: Date;
 };
 
 import { MAX_DRAFT_TEST_CASES, buildAgenticSafetyContext, buildDeterministicCoverageAnswer, buildDraftQuestion, extractActionableTasksFromHistory, isActionableQaTask, isCoverageQuestion, isCreateFollowUpRequest, isCreateTestCaseRequest, isShortCreateIntent, keywordCandidates, limitText, normalizeCoverageAnswer, parseTestCaseId, removeHallucinatedTestCaseIds } from './chat-logic';
@@ -53,14 +54,12 @@ function knowledgeScore(item: KnowledgeRow, keywords: string[]) {
 
 async function readRelevantKnowledge(projectId: string, question: string) {
   const keywords = keywordCandidates(question);
-  const rows = await db.$queryRawUnsafe<KnowledgeRow[]>(
-    `SELECT id, type, title, content, updatedAt
-     FROM ProjectKnowledge
-     WHERE projectId = ?
-     ORDER BY updatedAt DESC
-     LIMIT 40`,
-    projectId
-  );
+  const rows: KnowledgeRow[] = await db.projectKnowledge.findMany({
+    where: { projectId },
+    select: { id: true, type: true, title: true, content: true, updatedAt: true },
+    orderBy: { updatedAt: 'desc' },
+    take: 40,
+  });
 
   const relevant = rows
     .map(item => ({ item, score: knowledgeScore(item, keywords) }))
@@ -377,23 +376,22 @@ STRICT DATA RULES:
 - If asked to create after a coverage answer, create drafts only from "Actionable QA tasks eligible for testcase drafts".
 - When you don't know something, say so honestly. Don't make up data.`;
 
-    const completion = await getGroq().chat.completions.create({
-      model: AI_MODEL,
-      // Low temperature: answers must stay grounded in PROJECT CONTEXT facts.
+    const result = await generateCopilotJson({
+      system: systemPrompt,
+      user: [`PROJECT CONTEXT:\n${context}`, safetyContext, history.map(message => `${message.role.toUpperCase()}: ${message.content}`).join('\n'), `USER: ${question}`].filter(Boolean).join('\n\n'),
       temperature: 0.2,
-      max_tokens: MAX_OUTPUT_TOKENS,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `PROJECT CONTEXT:\n${context}` },
-        { role: 'user', content: safetyContext },
-        ...history,
-        { role: 'user', content: question },
-      ],
+      maxTokens: MAX_OUTPUT_TOKENS,
+      schema: chatSchema,
+      repairSchemaHint: '{"answer":"string","test_cases":[]}',
+      governance: {
+        projectId,
+        operation: 'LEGACY_QA_CHAT',
+        promptVersion: 'legacy-chat-v2',
+        contextIds: selectedTestCaseId ? [selectedTestCaseId] : [],
+        dataCategories: ['conversation-history', 'project-context', 'testcases', 'bugs'],
+      },
     });
-
-    const raw = completion.choices[0]?.message?.content || '{}';
-    const parsed = JSON.parse(raw);
+    const parsed = result.parsed;
 
     const rawDrafts: AgentDraft[] = Array.isArray(parsed.test_cases) ? parsed.test_cases.slice(0, MAX_DRAFT_TEST_CASES) : [];
     const allPrefixes = ['A-', 'B-', 'C-', 'D-', 'E-'];
@@ -446,7 +444,7 @@ STRICT DATA RULES:
       answer = normalizeCoverageAnswer(await removeHallucinatedTestCaseIds(projectId, answer));
     }
 
-    return NextResponse.json({ answer, drafts });
+    return NextResponse.json({ answer, drafts, provider: result.provider, model: result.model });
   } catch (error) {
     console.error('POST /api/ai/chat error:', error);
     return NextResponse.json({ error: 'Gagal memproses chat AI.' }, { status: 500 });

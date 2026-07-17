@@ -7,6 +7,7 @@ import {
   limitText,
 } from '@/lib/ai-context';
 import { generateCopilotJson } from '@/lib/ai-provider';
+import { z } from 'zod';
 
 export const maxDuration = 60;
 
@@ -16,6 +17,10 @@ const AI_MODELS = {
   ollama: process.env.AI_REFINE_MODEL || process.env.OLLAMA_REFINE_MODEL || process.env.OLLAMA_MODEL,
 };
 const MAX_OUTPUT_TOKENS = 1400;
+const refinedSchema = z.object({ refined: z.object({
+  testAction: z.string().min(1).max(3000), steps: z.string().min(1).max(8000), expectedResult: z.string().min(1).max(5000), remarks: z.string().max(2000),
+  priority: z.enum(['Critical', 'High', 'Medium', 'Low']), testType: z.enum(['Positive', 'Negative']),
+}) });
 
 const REFINE_MODES = {
   format: 'Rewrite generic or rough content into a clearer QA format. Replace vague phrases such as "Functional Test", "Open Page", "Interact with feature", and "Feature works as expected" with feature-specific Indonesian wording.',
@@ -111,10 +116,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const mode = (body.mode || 'format') as RefineMode;
     const testCase = body.testCase;
+    const projectId = String(body.projectId || '').trim();
 
     if (!testCase?.id) {
       return NextResponse.json({ error: 'Test case is required' }, { status: 400 });
     }
+    if (!projectId) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     const refineInstruction = REFINE_MODES[mode] || REFINE_MODES.format;
     const compactCase = {
       testCaseId: sanitizeText(testCase.testCaseId, 80),
@@ -131,10 +138,11 @@ export async function POST(req: NextRequest) {
     // ===== NEW: Fetch project context + sibling test cases + knowledge =====
     // Look up the test case in DB to get projectId
     const dbTestCase = await db.testCase.findFirst({
-      where: { OR: [{ id: testCase.id }, { testCaseId: testCase.testCaseId }] },
+      where: { projectId, OR: [{ id: testCase.id }, { testCaseId: testCase.testCaseId }] },
       select: { id: true, projectId: true, page: true, subMenu: true, moduleId: true, module: { select: { name: true } } },
     });
 
+    if (!dbTestCase) return NextResponse.json({ error: 'Test case tidak ditemukan pada project ini.' }, { status: 404 });
     let projectContext = '';
     let siblingContext = '';
     let knowledgeContext = '';
@@ -211,6 +219,14 @@ Return JSON now. Make every field useful for manual QA execution.`;
         temperature: 0.25,
         maxTokens: MAX_OUTPUT_TOKENS,
         repairSchemaHint: '{"refined":{"testAction":"string","steps":"string","expectedResult":"string","remarks":"string","priority":"Critical or High or Medium or Low","testType":"Positive or Negative"}}',
+        schema: refinedSchema,
+        governance: {
+          projectId,
+          operation: 'REFINE_TESTCASE',
+          promptVersion: 'refine-testcase-v2',
+          contextIds: [dbTestCase.id],
+          dataCategories: ['testcase-content', 'sibling-testcases', 'project-knowledge'],
+        },
       });
       parsed = result.parsed;
     } catch (aiError) {

@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
+import { getRequestActor } from '@/lib/request-actor';
 
 export async function recordActivity(input: {
   projectId: string;
@@ -11,6 +12,7 @@ export async function recordActivity(input: {
   afterValue?: unknown;
   actor?: string | null;
 }, client: typeof db | Prisma.TransactionClient = db) {
+  const requestActor = await getRequestActor();
   return client.activityHistory.create({
     data: {
       projectId: input.projectId,
@@ -20,7 +22,8 @@ export async function recordActivity(input: {
       field: input.field || null,
       beforeValue: input.beforeValue === undefined ? undefined : toJsonValue(input.beforeValue),
       afterValue: input.afterValue === undefined ? undefined : toJsonValue(input.afterValue),
-      actor: input.actor || 'local-user',
+      actor: requestActor?.name || input.actor || 'system',
+      actorUserId: requestActor?.userId || null,
     },
   });
 }

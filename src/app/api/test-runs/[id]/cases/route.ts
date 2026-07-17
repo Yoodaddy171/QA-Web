@@ -1,4 +1,4 @@
-import { addTestCasesToRun, getTestRun, removeTestCaseFromRun } from '@/lib/services/test-run-service';
+import { addTestCasesToRun, getTestRunCasesPage, removeTestCaseFromRun } from '@/lib/services/test-run-service';
 import { NextRequest, NextResponse } from 'next/server';
 
 function errorResponse(message: string, status = 400) {
@@ -10,9 +10,12 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   const projectId = req.nextUrl.searchParams.get('projectId')?.trim();
   if (!projectId) return errorResponse('projectId wajib diisi.');
 
-  const testRun = await getTestRun(projectId, id);
-  if (!testRun) return errorResponse('Test Run tidak ditemukan.', 404);
-  return NextResponse.json({ testCases: testRun.testCases, progress: testRun.progress, summary: testRun.summary });
+  const page = await getTestRunCasesPage(projectId, id, {
+    cursor: req.nextUrl.searchParams.get('cursor') || undefined,
+    limit: Number(req.nextUrl.searchParams.get('limit') || 100),
+  });
+  if (!page) return errorResponse('Test Run tidak ditemukan.', 404);
+  return NextResponse.json({ testCases: page.items, hasMore: page.hasMore, nextCursor: page.nextCursor });
 }
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {

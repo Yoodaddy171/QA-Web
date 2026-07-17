@@ -11,6 +11,7 @@ import {
   runCopilotTools,
 } from '@/lib/ai-copilot-tools';
 import { limitText } from '@/lib/ai-context';
+import { z } from 'zod';
 import { buildDeterministicAnswer, fallbackAnswer, isLowQualityAnswer } from './copilot-answer';
 import {
   buildToolQuestion, cleanText, extractFollowUpTarget, inferIntentFromQuestion, normalizeForIntent,
@@ -32,6 +33,11 @@ type IntentDecision = {
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_HISTORY_CHARS = 1000;
 const MAX_PROMPT_CHARS = 16000;
+const copilotSchema = z.object({
+  answer: z.string().max(20000).default(''),
+  drafts: z.array(z.record(z.string(), z.unknown())).max(12).default([]),
+  actionDrafts: z.array(z.record(z.string(), z.unknown())).max(20).default([]),
+}).passthrough();
 async function resolveScope(projectId: string, toolQuestion: string, selectedTestCaseId?: string): Promise<CopilotScope> {
   const followUpTarget = extractFollowUpTarget(toolQuestion);
   const normalizedQuestion = normalizeForIntent(followUpTarget || toolQuestion);
@@ -273,6 +279,14 @@ export async function POST(req: NextRequest) {
           user: userPrompt,
           temperature: 0.1,
           maxTokens: 1200,
+          schema: copilotSchema,
+          governance: {
+            projectId,
+            operation: 'QA_COPILOT',
+            promptVersion: 'qa-copilot-v2',
+            contextIds: [selectedTestCaseId, intentDecision.scope.moduleId].filter((value): value is string => Boolean(value)),
+            dataCategories: ['conversation-history', 'project-metrics', 'testcases', 'bugs', 'traceability'],
+          },
         });
         providerMeta = { provider: result.provider, model: result.model };
         const providerAnswer = cleanText(result.parsed.answer);

@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Clock, Layers, RefreshCw, ShieldAlert } fr
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { DashboardStats } from './DashboardPanel';
+import { cn } from '@/lib/utils';
 
 type DashboardQueuesAndRisksProps = {
   stats: DashboardStats;
@@ -29,16 +30,16 @@ const getAgeClass = (days: number) => {
 };
 
 export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick }: DashboardQueuesAndRisksProps) {
-  const [retestAtBottom, setRetestAtBottom] = React.useState(false);
-  const [bugAgingAtBottom, setBugAgingAtBottom] = React.useState(false);
-  const [moduleRiskAtBottom, setModuleRiskAtBottom] = React.useState(false);
+  const [, setRetestAtBottom] = React.useState(false);
+  const [, setBugAgingAtBottom] = React.useState(false);
+  const [, setModuleRiskAtBottom] = React.useState(false);
   const handleScroll = (event: React.UIEvent<HTMLDivElement>, setter: (value: boolean) => void) => {
     const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
     setter(scrollTop + clientHeight >= scrollHeight - 5);
   };
 
   return (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
             <CardHeader className="border-b border-border/40 pb-3">
               <div className="flex items-center gap-2">
@@ -58,12 +59,12 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                 </div>
               ) : (
                 <>
-                  {(stats.retestQueue || []).map((item) => (
+                  {(stats.retestQueue || []).slice(0, 3).map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => onOpenDetail(item, stats.retestQueue || [])}
-                      className="w-full rounded-xl border border-border/50 bg-secondary/30 p-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/60 focus-visible:ring-2 focus-visible:ring-primary/40"
+                      className="w-full rounded-lg border border-border/50 bg-secondary/20 p-3 text-left transition-colors duration-150 hover:border-primary/30 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-primary/40"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -75,9 +76,7 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                       <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Menunggu {item.waitingDays} hari</p>
                     </button>
                   ))}
-                  {(stats.retestQueue || []).length > 4 && !retestAtBottom && (
-                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll untuk lainnya</p>
-                  )}
+                  {(stats.retestQueue || []).length > 3 && <p className="pt-1 text-center text-[10px] font-semibold text-muted-foreground">3 prioritas tertinggi dari {(stats.retestQueue || []).length}</p>}
                 </>
               )}
             </CardContent>
@@ -102,12 +101,12 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                 </div>
               ) : (
                 <>
-                  {(stats.bugAging || []).map((item) => (
+                  {(stats.bugAging || []).slice(0, 3).map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => onOpenDetail(item, stats.bugAging || [])}
-                      className="w-full rounded-xl border border-border/50 bg-secondary/30 p-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/60 focus-visible:ring-2 focus-visible:ring-primary/40"
+                      className="w-full rounded-lg border border-border/50 bg-secondary/20 p-3 text-left transition-colors duration-150 hover:border-primary/30 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-primary/40"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -119,9 +118,7 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                       <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-amber-500">{item.status}</p>
                     </button>
                   ))}
-                  {(stats.bugAging || []).length > 4 && !bugAgingAtBottom && (
-                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll untuk lainnya</p>
-                  )}
+                  {(stats.bugAging || []).length > 3 && <p className="pt-1 text-center text-[10px] font-semibold text-muted-foreground">3 bug tertua dari {(stats.bugAging || []).length}</p>}
                 </>
               )}
             </CardContent>
@@ -146,12 +143,12 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                 </div>
               ) : (
                 <>
-                  {(stats.moduleRisks || []).map((item) => (
+                  {(stats.moduleRisks || []).slice(0, 3).map((item) => (
                     <button
                       key={item.moduleId || 'ungrouped'}
                       type="button"
                       onClick={() => onModuleRiskClick?.(item)}
-                      className="w-full rounded-xl border border-border/50 bg-secondary/30 p-3 text-left transition-colors hover:border-primary/30 hover:bg-secondary/60 focus-visible:ring-2 focus-visible:ring-primary/40"
+                      className="w-full rounded-lg border border-border/50 bg-secondary/20 p-3 text-left transition-colors duration-150 hover:border-primary/30 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-primary/40"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -167,11 +164,12 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                         {item.blocked > 0 && <span className="text-rose-500">{item.blocked} blocked</span>}
                         {item.readyToRetest > 0 && <span className="text-cyan-500">{item.readyToRetest} retest</span>}
                       </div>
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" aria-label={`Risk heat ${Math.min(item.riskScore, 100)}%`}>
+                        <span className={cn('block h-full origin-left rounded-full', item.riskScore >= 70 ? 'bg-red-500' : item.riskScore >= 40 ? 'bg-orange-500' : item.riskScore >= 20 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ transform: `scaleX(${Math.min(item.riskScore, 100) / 100})` }} />
+                      </div>
                     </button>
                   ))}
-                  {(stats.moduleRisks || []).length > 4 && !moduleRiskAtBottom && (
-                    <p className="sticky bottom-0 bg-gradient-to-t from-card via-card to-transparent py-3 text-center text-[9px] font-bold uppercase tracking-wider text-primary">Scroll untuk lainnya</p>
-                  )}
+                  {(stats.moduleRisks || []).length > 3 && <p className="pt-1 text-center text-[10px] font-semibold text-muted-foreground">3 module berisiko dari {(stats.moduleRisks || []).length}</p>}
                 </>
               )}
             </CardContent>

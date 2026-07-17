@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const cardVariants = cva(
-  "flex flex-col gap-6 rounded-xl border transition-colors duration-200",
+  "flex flex-col gap-5 rounded-xl border transition-[border-color,background-color,transform] duration-150",
   {
     variants: {
       variant: {

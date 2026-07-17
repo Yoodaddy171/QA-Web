@@ -31,21 +31,21 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
     isLoading, hasActiveFilters, resetFilters, toggleSelectAll, toggleSort, getColumnClass,
     openViewDialog, openEditDialog, handleDuplicate, requestDelete, toggleSelect, onQuickStatusChange,
     celebrateId, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant,
-    getPriorityColor, getTestTypeColor, handleLimitChange, setPage,
+    getPriorityColor, getTestTypeColor, handleLimitChange, setPage, rowClassName,
   } = props;
 
   return (
     <>
-      <div className="relative max-h-[70vh] overflow-auto rounded-2xl border border-border/40 bg-card shadow-sm">
-      {isLoading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/50 backdrop-blur-[1px]">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />  
+      <div className="relative max-h-[70vh] overflow-auto rounded-xl border border-border/70 bg-card/95 shadow-sm" aria-busy={Boolean(isLoading)}>
+      {isLoading && testCases.length > 0 && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/45 backdrop-blur-[1px]" role="status" aria-label="Memperbarui test cases">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none" />
         </div>
       )}
       <Table className="w-full table-auto">
         <TableHeader className="sticky top-0 z-10 bg-secondary/95">
           <TableRow className="border-border/30 hover:bg-transparent">
-            <TableHead className="w-10 pl-4">
+            <TableHead className="sticky left-0 z-20 w-10 bg-secondary/95 pl-4">
               <Checkbox
                 aria-label="Pilih semua di halaman ini"
                 checked={testCases.length > 0 && selectedIds.size === testCases.length
@@ -55,8 +55,8 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                 className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary/60 data-[state=indeterminate]:border-primary rounded"
               />
             </TableHead>
-            <TableHead className="w-10 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
-            <TableHead className="w-[80px] cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
+            <TableHead className="sticky left-10 z-20 w-10 bg-secondary/95 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
+            <TableHead className="sticky left-[72px] z-20 w-[120px] min-w-[120px] cursor-pointer select-none bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
               <div className="flex items-center gap-1">ID <ArrowUpDown className="w-3 h-3 text-primary" /></div>
             </TableHead>
             <TableHead className="w-[110px] cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('page')}>
@@ -71,11 +71,25 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
             <TableHead className={getColumnClass('result', 'w-[120px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Result</TableHead>
             <TableHead className={getColumnClass('record', 'w-[140px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Test Record</TableHead>
             <TableHead className={getColumnClass('progress', 'w-[88px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Progress</TableHead>
-            <TableHead className="w-[52px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
+            <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-              {testCases.length === 0 ? (
+              {isLoading && testCases.length === 0 ? (
+                Array.from({ length: Math.min(limit, 8) }, (_, index) => (
+                  <TableRow key={`skeleton-${index}`} className="h-14 border-border/25 hover:bg-transparent">
+                    <TableCell colSpan={tableColSpan} className="px-4 py-3">
+                      <div className="grid grid-cols-[24px_48px_100px_minmax(120px,1fr)_100px] items-center gap-4" aria-hidden="true">
+                        <span className="h-4 w-4 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
+                        <span className="h-3 w-8 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
+                        <span className="h-3 w-20 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
+                        <span className="h-3 w-full max-w-80 animate-pulse rounded bg-secondary motion-reduce:animate-none" />
+                        <span className="h-6 w-24 animate-pulse rounded-md bg-secondary motion-reduce:animate-none" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : testCases.length === 0 ? (
                 <TableRow className="border-border/30 hover:bg-transparent">
                   <TableCell colSpan={tableColSpan} className="h-44 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -106,10 +120,10 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                   <TableRow
                     key={tc.id}
                     className={cn(
-                      'group cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300',
+                      'group cursor-pointer border-border/30 transition-colors duration-150 hover:bg-secondary/40 animate-in fade-in slide-in-from-bottom-1 fill-mode-backwards', rowClassName,
                       selectedIds.has(tc.id) && 'bg-primary/[0.06] hover:bg-primary/10'
                     )}
-                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                    style={{ animationDelay: `${Math.min(index, 10) * 18}ms`, animationDuration: '180ms' }}
                     title="Klik untuk melihat detail"
                     onClick={(e) => {
                       // Ignore clicks on interactive controls inside the row.
@@ -117,17 +131,17 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                       openViewDialog(tc);
                     }}
                   >
-                    <TableCell className="pl-4">
+                    <TableCell className="sticky left-0 z-10 bg-card pl-4 group-hover:bg-secondary">
                       <Checkbox
                         checked={selectedIds.has(tc.id)}
                         onCheckedChange={() => toggleSelect(tc.id)}
                         className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
                       />
                     </TableCell>
-                    <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">
+                    <TableCell className="sticky left-10 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">
                       {(page - 1) * limit + index + 1}
                     </TableCell>
-                    <TableCell className="font-mono text-sm font-semibold text-foreground whitespace-nowrap">{tc.testCaseId}</TableCell>
+                    <TableCell className="sticky left-[72px] z-10 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden truncate whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary" title={tc.testCaseId}>{tc.testCaseId}</TableCell>
                     <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={tc.page}>{tc.page}</TableCell>
                     <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[100px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>
                     <TableCell className={getColumnClass('weight')}>
@@ -136,7 +150,7 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                           {tc.calculatedWeight.toFixed(2)}%
                         </Badge>
                       ) : (
-                        <span className="text-xs font-semibold text-muted-foreground">-</span>
+                      <span className="text-xs font-semibold text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell className={getColumnClass('type')}>
@@ -218,10 +232,10 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                         <span className="text-[10px] font-bold text-muted-foreground">{tc.progress}%</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button aria-label={`Actions for ${tc.testCaseId}`} title={`Actions for ${tc.testCaseId}`} variant="ghost" size="sm" className="h-7 w-7 rounded-md p-0 text-muted-foreground hover:text-foreground hover:bg-secondary">
+                          <Button aria-label={`Actions for ${tc.testCaseId}`} title={`Actions for ${tc.testCaseId}`} variant="ghost" size="sm" className="h-7 w-7 rounded-md p-0 text-muted-foreground opacity-45 transition-opacity duration-150 hover:bg-secondary hover:text-foreground hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -271,7 +285,7 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)} className="h-8 border-border/60 bg-secondary/50 text-muted-foreground">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)} className="h-8 border-border/60 bg-secondary/50 text-muted-foreground" aria-label="Halaman sebelumnya">
               <ChevronLeft className="w-4 h-4" />
             </Button>
             {totalPages > 1 && Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -286,14 +300,14 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                   key={pageNum}
                   variant={page === pageNum ? 'default' : 'outline'}
                   size="sm"
-                  className={`w-8 h-8 p-0 text-[11px] font-bold ${page === pageNum ? 'bg-teal-600 text-foreground border-teal-500 shadow-[0_0_10px_rgba(13,148,136,0.3)]' : 'border-border/60 bg-secondary/50 text-muted-foreground'}`}
+                  className={`h-8 w-8 p-0 text-[11px] font-bold ${page === pageNum ? 'border-primary bg-primary text-primary-foreground' : 'border-border/60 bg-secondary/50 text-muted-foreground'}`}
                   onClick={() => setPage(pageNum)}
                 >
                   {pageNum}
                 </Button>
               );
             })}
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="h-8 border-border/60 bg-secondary/50 text-muted-foreground">
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="h-8 border-border/60 bg-secondary/50 text-muted-foreground" aria-label="Halaman berikutnya">
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>

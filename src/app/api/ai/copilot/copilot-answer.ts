@@ -188,7 +188,7 @@ export function buildDeterministicAnswer(tools: Array<{ name: string; data: unkn
     const lines = [
       `Saya menemukan **${rows.length} testcase** yang expected result-nya terlihat terlalu generic atau kurang measurable.`,
       '',
-      'Yang perlu diperbaiki biasanya expected result yang hanya bilang â€œberjalan dengan baikâ€, â€œdata sesuaiâ€, atau terlalu pendek tanpa menyebut output yang harus diverifikasi.',
+      'Yang perlu diperbaiki biasanya expected result yang hanya bilang “berjalan dengan baik”, “data sesuai”, atau terlalu pendek tanpa menyebut output yang harus diverifikasi.',
       '',
       '| TC | Area | Expected Saat Ini | Kenapa Lemah |',
       '| --- | --- | --- | --- |',
@@ -213,7 +213,7 @@ export function buildDeterministicAnswer(tools: Array<{ name: string; data: unkn
     const lines = [
       `Saya menemukan **${rows.length} testcase** yang steps-nya kurang jelas untuk manual QA.`,
       '',
-      'Indikasinya antara lain steps terlalu pendek, tidak numbered, atau memakai kalimat generic seperti â€œjalankan aksi utamaâ€ tanpa data uji dan tombol yang spesifik.',
+      'Indikasinya antara lain steps terlalu pendek, tidak numbered, atau memakai kalimat generic seperti “jalankan aksi utama” tanpa data uji dan tombol yang spesifik.',
       '',
       '| TC | Area | Masalah Steps | Potongan Steps Saat Ini |',
       '| --- | --- | --- | --- |',
@@ -264,4 +264,3 @@ export function isLowQualityAnswer(answer: string) {
     'review dulu sebelum disimpan',
   ].some(phrase => lower === phrase || (lower.includes(phrase) && text.length < 160));
 }
-

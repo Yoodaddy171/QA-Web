@@ -83,15 +83,15 @@ export function ImportExcelDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden border-border/60 bg-card text-foreground elevation-3 rounded-2xl sm:max-w-5xl p-0">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
+        <div className="absolute left-0 top-0 h-px w-full bg-primary/70" />
 
-        <DialogHeader className="px-6 py-5 border-b border-border/40 bg-gradient-to-r from-primary/5 via-indigo-500/5 to-cyan-500/5 shrink-0">
+        <DialogHeader className="shrink-0 border-b border-border/60 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/15 text-primary shadow-sm">
               <Upload className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Import Excel</DialogTitle>
+              <DialogTitle className="text-xl font-semibold tracking-tight">Import Excel</DialogTitle>
               <DialogDescription className="text-muted-foreground text-[11px] font-medium leading-relaxed">Preview dan validasi data Excel Anda sebelum diintegrasikan ke database.</DialogDescription>
             </div>
           </div>

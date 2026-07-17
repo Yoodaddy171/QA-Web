@@ -17,6 +17,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { canTransitionBugFixStatus } from '@/lib/domain/bugfix';
+import { DataTableDensityToggle } from '@/components/DataTableDensityToggle';
+import { useTableDensity } from '@/hooks/use-table-density';
 import { cn } from '@/lib/utils';
 import { BugFixStatsCards } from '@/components/BugFixStatsCards';
 
@@ -28,7 +30,7 @@ const BUGFIX_COLUMN_OPTIONS: Array<{ key: BugFixColumnKey; label: string; respon
   { key: 'priority', label: 'Priority', responsiveClass: 'hidden sm:table-cell' },
   { key: 'status', label: 'Status' },
   { key: 'reportedAt', label: 'Dilaporkan', responsiveClass: 'hidden xl:table-cell' },
-  { key: 'timing', label: 'Timing', responsiveClass: 'hidden lg:table-cell' },
+  { key: 'timing', label: 'Timing', responsiveClass: 'hidden xl:table-cell' },
 ];
 
 const DEFAULT_BUGFIX_COLUMNS = BUGFIX_COLUMN_OPTIONS.reduce<Record<BugFixColumnKey, boolean>>((columns, option) => {
@@ -113,10 +115,10 @@ const formatDate = (dateStr: string | null) => {
 
 const getBugFixStatusColor = (status: string) => {
   switch (status) {
-    case 'SUDAH DILAPORKAN': return 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-400 font-semibold';
-    case 'SEDANG DI FIX': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400 font-semibold';
-    case 'READY TO RETEST': return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-400 font-semibold';
-    case 'VERIFIED & FIXED': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 font-semibold';
+    case 'SUDAH DILAPORKAN': return 'border-bug-open/30 bg-bug-open/10 text-bug-open font-semibold';
+    case 'SEDANG DI FIX': return 'border-bug-fixing/30 bg-bug-fixing/10 text-bug-fixing font-semibold';
+    case 'READY TO RETEST': return 'border-bug-ready/30 bg-bug-ready/10 text-bug-ready font-semibold';
+    case 'VERIFIED & FIXED': return 'border-bug-fixed/30 bg-bug-fixed/10 text-bug-fixed font-semibold';
     default: return 'border-border/60 bg-muted text-muted-foreground font-semibold';
   }
 };
@@ -140,6 +142,7 @@ export function BugFixPanel({
   onOpenDetail,
 }: BugFixPanelProps) {
   const [visibleColumns, setVisibleColumns] = useState<Record<BugFixColumnKey, boolean>>(getInitialBugFixColumns);
+  const { density, setDensity, rowClassName } = useTableDensity();
   const isColumnVisible = (key: BugFixColumnKey) => visibleColumns[key];
   const getColumnClass = (key: BugFixColumnKey, baseClass = '') => {
     const option = BUGFIX_COLUMN_OPTIONS.find((column) => column.key === key);
@@ -173,7 +176,7 @@ export function BugFixPanel({
 
 
       {/* Toolbar */}
-      <div className="flex min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border border-border/40 bg-card p-4 shadow-sm lg:flex-row lg:items-center">
+      <div className="flex min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border border-border/40 bg-card p-4 shadow-sm 2xl:flex-row 2xl:items-center">
         <Tabs
           value={bugFixTab}
           onValueChange={(v) => setBugFixTab(v as 'active' | 'resolved')}
@@ -189,10 +192,11 @@ export function BugFixPanel({
           </TabsList>
         </Tabs>
 
-        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto xl:grid-cols-5">
+        <div className="grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 2xl:w-auto 2xl:grid-cols-[auto_auto_minmax(220px,1fr)_180px_180px]">
           <Badge variant="outline" className="h-9.5 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Menampilkan {visibleBugFixItems.length} data
           </Badge>
+          <DataTableDensityToggle value={density} onValueChange={setDensity} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-9.5 justify-center rounded-xl border border-border/50 bg-secondary/35 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:bg-secondary/65 transition">
@@ -219,7 +223,7 @@ export function BugFixPanel({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="relative flex-1 sm:w-64">
+          <div className="relative col-span-2 min-w-0 lg:col-span-1 2xl:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
             <Input
               placeholder="Cari bug..."
@@ -274,8 +278,8 @@ export function BugFixPanel({
             <Table className="w-full table-auto">
               <TableHeader className="sticky top-0 z-10 bg-secondary/95">
                 <TableRow className="border-border/30 hover:bg-transparent">
-                  <TableHead className="w-10 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
-                  <TableHead className="w-[90px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
+                  <TableHead className="sticky left-0 z-20 w-10 bg-secondary/95 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
+                  <TableHead className="sticky left-10 z-20 w-[130px] min-w-[130px] bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
                   <TableHead className="w-[110px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
                   <TableHead className={getColumnClass('subMenu', 'w-[100px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>
                   <TableHead className={getColumnClass('action', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
@@ -287,14 +291,14 @@ export function BugFixPanel({
                   ) : (
                     <TableHead className={getColumnClass('timing', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Di Fix / Retest</TableHead>
                   )}
-                  <TableHead className="w-[52px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Aksi</TableHead>
+                  <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleBugFixItems.map((bf, index) => (
                   <TableRow
                     key={bf.id}
-                    className="cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors group animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300"
+                    className={cn("cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors group animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300", rowClassName)}
                     style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                     title="Klik untuk melihat detail"
                     onClick={(e) => {
@@ -302,10 +306,10 @@ export function BugFixPanel({
                       onOpenDetail(bf);
                     }}
                   >
-                    <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-sm font-semibold text-foreground">{bf.testCaseId}</TableCell>
+                    <TableCell className="sticky left-0 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">{index + 1}</TableCell>
+                    <TableCell className="sticky left-10 z-10 w-[130px] min-w-[130px] max-w-[130px] overflow-hidden whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary">{bf.testCaseId}</TableCell>
                     <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={bf.page}>{bf.page}</TableCell>
-                    <TableCell className={getColumnClass('subMenu', 'max-w-[100px] truncate text-[13px] font-medium text-muted-foreground')} title={bf.subMenu || ''}>{bf.subMenu || '-'}</TableCell>
+                    <TableCell className={getColumnClass('subMenu', 'max-w-[100px] truncate text-[13px] font-medium text-muted-foreground')} title={bf.subMenu || ''}>{bf.subMenu || '—'}</TableCell>
                     <TableCell className={getColumnClass('action', 'max-w-[180px]')} title={bf.testAction}>
                       <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{bf.testAction}</p>
                     </TableCell>
@@ -340,7 +344,7 @@ export function BugFixPanel({
                           ? formatDate(bf.readyAt)
                           : formatDate(bf.fixingAt)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
                       <Button
                         aria-label={`View bug ${bf.testCaseId}`}
                         title={`View bug ${bf.testCaseId}`}

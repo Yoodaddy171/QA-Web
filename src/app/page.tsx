@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { AppShell } from '@/components/AppShell';
-import { ReportsPanel } from '@/components/ReportsPanel';
 import type { BugFixItem } from '@/components/BugFixPanel';
 import type { TestCaseDraftInput } from '@/components/TestCaseDialog';
 import type { TestCaseDraft } from '@/components/FloatingAIChat';
@@ -51,13 +50,9 @@ function PanelFallback() {
   );
 }
 
-const DashboardPanel = dynamic(() => import('@/components/DashboardPanel').then(module => module.DashboardPanel), { loading: PanelFallback });
-const TestCaseTable = dynamic(() => import('@/components/TestCaseTable').then(module => module.TestCaseTable), { loading: PanelFallback });
-const BugFixPanel = dynamic(() => import('@/components/BugFixPanel').then(module => module.BugFixPanel), { loading: PanelFallback });
-const AutomatedPanel = dynamic(() => import('@/components/AutomatedPanel').then(module => module.AutomatedPanel), { loading: PanelFallback });
 const TestRunsPanel = dynamic(() => import('@/components/TestRunsPanel').then(module => module.TestRunsPanel), { loading: PanelFallback });
 const TraceabilityPanel = dynamic(() => import('@/components/TraceabilityPanel').then(module => module.TraceabilityPanel), { loading: PanelFallback });
-const SettingsPanel = dynamic(() => import('@/components/SettingsPanel').then(module => module.SettingsPanel), { loading: PanelFallback });
+const ReportsPanel = dynamic(() => import('@/components/ReportsPanel').then(module => module.ReportsPanel), { loading: PanelFallback });
 const ProjectModuleDialogs = dynamic(() => import('@/components/ProjectModuleDialogs').then(module => module.ProjectModuleDialogs));
 const TestCaseDialog = dynamic(() => import('@/components/TestCaseDialog').then(module => module.TestCaseDialog));
 const TestCaseDetailDialog = dynamic(() => import('@/components/TestCaseDetailDialog').then(module => module.TestCaseDetailDialog));
@@ -81,6 +76,7 @@ export default function TestCaseManager() {
 
   const {
     projects,
+    isLoadingProjects,
     modules,
     selectedProject,
     newProjectName,
@@ -620,6 +616,30 @@ export default function TestCaseManager() {
     setShowDetailDialog(true);
   };
 
+  useEffect(() => {
+    const openNotificationTarget = (event: Event) => {
+      const target = (event as CustomEvent<{ entityType?: string; entityId?: string }>).detail;
+      if (target?.entityType !== 'TestCase' || !target.entityId || !selectedProject) return;
+      const entityId = target.entityId;
+      window.setTimeout(async () => {
+        try {
+          const params = new URLSearchParams({ projectId: selectedProject, search: entityId, limit: '1', sortBy: 'testCaseId', sortOrder: 'asc' });
+          const response = await fetch(`/api/testcases?${params}`);
+          const data = await response.json();
+          const testCase = response.ok ? data.testCases?.find((item: TestCase) => item.id === entityId) : null;
+          if (!testCase) return;
+          setViewTestCase(testCase);
+          setNavigationContextList([testCase]);
+          setShowDetailDialog(true);
+        } catch {
+          toast({ title: 'Gagal membuka notifikasi', description: 'Testcase target tidak dapat dimuat.', variant: 'destructive' });
+        }
+      }, 0);
+    };
+    window.addEventListener('qa-desk:navigate-entity', openNotificationTarget);
+    return () => window.removeEventListener('qa-desk:navigate-entity', openNotificationTarget);
+  }, [selectedProject, toast]);
+
   const handleNavigate = async (tc: any) => {
     // Re-use logic from handleOpenDetail but without resetting contextLis
     if (!tc.steps || !tc.expectedResult) {
@@ -690,6 +710,7 @@ export default function TestCaseManager() {
     setFilterSubMenu, setPage, setLimit, setShowBulkAction, setShowBulkExecution, setShowBulkAssign, setShowDeleteConfirm, openCreateDialog, openAIDialog,
     setShowImportDialog, handleImportExcel, handleExportExcel, isLoadingTestCases, handleQuickStatusChange,
     toggleSelectAll, toggleSelect, toggleSort, openEditDialog, handleDuplicate, setEditingTestCase,
+    clearSelection: () => setSelectedIds(new Set()),
     getStatusColor, getStatusIcon, getStatusBadgeVariant, getPriorityColor, getTestTypeColor,
     bugFixFilterModules, hasUnassignedBugFixItems, visibleBugFixItems, bugFixSearch, bugFixFilterStatus,
     bugFixFilterModule, bugFixTab, setBugFixSearch, setBugFixFilterStatus, setBugFixFilterModule, setBugFixTab,
@@ -712,6 +733,7 @@ export default function TestCaseManager() {
     <div>
       <AppShell
         projects={projects}
+        projectsLoading={isLoadingProjects}
         selectedProject={selectedProject}
         activeTab={activeTab}
         projectHealth={stats?.overallProgress ?? null}

@@ -13,9 +13,9 @@ export function getStatusColor(status: string) {
     case TESTCASE_STATUS.NOT_DONE:
       return 'bg-slate-50 text-slate-600 border border-slate-200/60 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20';
     case TESTCASE_STATUS.IN_PROGRESS:
-      return 'bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
+      return 'bg-indigo-50 text-indigo-700 border border-indigo-200/60 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20';
     case TESTCASE_STATUS.BLOCKED:
-      return 'bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20';
+      return 'bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
     case TESTCASE_STATUS.FAILED:
       return 'bg-red-50 text-red-700 border border-red-200/60 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20';
     case TESTCASE_STATUS.READY_TO_RETEST:

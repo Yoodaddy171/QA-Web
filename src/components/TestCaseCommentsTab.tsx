@@ -15,7 +15,7 @@ function commentText(value: unknown) {
   return typeof text === 'string' ? text : '';
 }
 
-export function TestCaseCommentsTab({ projectId, testCaseId }: { projectId: string; testCaseId: string }) {
+export function TestCaseCommentsTab({ projectId, testCaseId, onDirtyChange }: { projectId: string; testCaseId: string; onDirtyChange?: (dirty: boolean) => void }) {
   const [comments, setComments] = useState<CommentActivity[]>([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
@@ -38,6 +38,18 @@ export function TestCaseCommentsTab({ projectId, testCaseId }: { projectId: stri
   };
 
   useEffect(() => { const timer = window.setTimeout(() => { void loadComments(); }, 0); return () => window.clearTimeout(timer); }, [projectId, testCaseId]);
+  useEffect(() => {
+    onDirtyChange?.(Boolean(draft.trim()));
+    return () => onDirtyChange?.(false);
+  }, [draft, onDirtyChange]);
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!draft.trim()) return;
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [draft]);
 
   const addComment = async () => {
     const comment = draft.trim();

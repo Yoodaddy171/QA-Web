@@ -3,10 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpDown, Bookmark, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
-  FileSpreadsheet, MoreHorizontal, Plus, RefreshCw, Search, Settings2,
+  FileSpreadsheet, MoreHorizontal, Plus, RefreshCw, Search, Settings2, SlidersHorizontal,
   Sparkles, Trash2, Upload, UserRound, X
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -20,23 +20,27 @@ import {
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';
+import { DateRangePicker } from '@/components/ui/date-picker';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { TestCase, TestCaseTableProps } from './TestCaseTable.types';
 import { TestCaseTableBody } from './TestCaseTableBody';
+import { DataTableDensityToggle } from '@/components/DataTableDensityToggle';
+import { useTableDensity } from '@/hooks/use-table-density';
 export type { TestCase } from './TestCaseTable.types';
 
 type TestCaseColumnKey = 'subMenu' | 'weight' | 'type' | 'priority' | 'action' | 'status' | 'result' | 'record' | 'progress';
 
 const TESTCASE_COLUMN_OPTIONS: Array<{ key: TestCaseColumnKey; label: string; responsiveClass?: string }> = [
   { key: 'subMenu', label: 'Sub Menu', responsiveClass: 'hidden lg:table-cell' },
-  { key: 'weight', label: 'Bobot', responsiveClass: 'hidden xl:table-cell' },
+  { key: 'weight', label: 'Bobot', responsiveClass: 'hidden 2xl:table-cell' },
   { key: 'type', label: 'Tipe', responsiveClass: 'hidden lg:table-cell' },
   { key: 'priority', label: 'Prioritas', responsiveClass: 'hidden md:table-cell' },
   { key: 'action', label: 'Test Action', responsiveClass: 'hidden md:table-cell' },
   { key: 'status', label: 'Status' },
   { key: 'result', label: 'Hasil', responsiveClass: 'hidden xl:table-cell' },
-  { key: 'record', label: 'Test Record', responsiveClass: 'hidden lg:table-cell' },
-  { key: 'progress', label: 'Progress', responsiveClass: 'hidden lg:table-cell' },
+  { key: 'record', label: 'Test Record', responsiveClass: 'hidden 2xl:table-cell' },
+  { key: 'progress', label: 'Progress', responsiveClass: 'hidden 2xl:table-cell' },
 ];
 
 const DEFAULT_TESTCASE_COLUMNS = TESTCASE_COLUMN_OPTIONS.reduce<Record<TestCaseColumnKey, boolean>>((columns, option) => {
@@ -123,6 +127,7 @@ export function TestCaseTable({
   refreshList,
   toggleSelectAll,
   toggleSelect,
+  clearSelection,
   toggleSort,
   openViewDialog,
   openEditDialog,
@@ -140,6 +145,7 @@ export function TestCaseTable({
   // "Quest complete": row id that just got flipped to DONE, celebrated briefly.
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [savedViewsVersion, setSavedViewsVersion] = useState(0);
+  const { density, setDensity, rowClassName } = useTableDensity();
   useEffect(() => {
     if (!celebrateId) return;
     const timer = window.setTimeout(() => setCelebrateId(null), 1100);
@@ -197,6 +203,17 @@ export function TestCaseTable({
     setFilterCreatedTo('');
     setPage(1);
   };
+  const activeFilterChips = [
+    search ? { key: 'search', label: `Search: ${search}`, clear: () => setSearch('') } : null,
+    filterStatus !== 'all' ? { key: 'status', label: `Status: ${filterStatus}`, clear: () => setFilterStatus('all') } : null,
+    filterTestType !== 'all' ? { key: 'type', label: `Type: ${filterTestType}`, clear: () => setFilterTestType('all') } : null,
+    filterPriority !== 'all' ? { key: 'priority', label: `Priority: ${filterPriority}`, clear: () => setFilterPriority('all') } : null,
+    filterModule !== 'all' ? { key: 'module', label: `Module: ${filterModule === 'unassigned' ? 'No Module' : modules.find(module => module.id === filterModule)?.name || filterModule}`, clear: () => setFilterModule('all') } : null,
+    filterSubMenu !== 'all' ? { key: 'submenu', label: `Sub Menu: ${filterSubMenu === '__empty__' ? 'None' : filterSubMenu}`, clear: () => setFilterSubMenu('all') } : null,
+    filterTestRun !== 'all' ? { key: 'run', label: `Run: ${testRunOptions.find(run => run.id === filterTestRun)?.name || filterTestRun}`, clear: () => setFilterTestRun('all') } : null,
+    filterBug !== 'all' ? { key: 'bug', label: filterBug === 'yes' ? 'Has bug' : 'No bug', clear: () => setFilterBug('all') } : null,
+    filterTag ? { key: 'tag', label: `Tag: ${filterTag}`, clear: () => setFilterTag('') } : null,
+  ].filter((item): item is { key: string; label: string; clear: () => void } => Boolean(item));
   const selectTriggerClass = 'h-9 rounded-md border-border/60 bg-secondary/50 text-foreground text-sm shadow-sm';
   const toolbarButtonClass = 'h-9 rounded-md gap-1.5 font-semibold';
   const formatLastRun = (dateStr: string | null) => {
@@ -230,7 +247,7 @@ export function TestCaseTable({
     isLoading, hasActiveFilters, resetFilters, toggleSelectAll, toggleSort, getColumnClass,
     openViewDialog, openEditDialog, handleDuplicate, requestDelete, toggleSelect, onQuickStatusChange,
     celebrateId, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant,
-    getPriorityColor, getTestTypeColor, handleLimitChange, setPage,
+    getPriorityColor, getTestTypeColor, handleLimitChange, setPage, rowClassName,
   };
 
   useEffect(() => {
@@ -241,23 +258,41 @@ export function TestCaseTable({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       className="min-w-0 space-y-4"
-    >      <div className="rounded-2xl border border-border/40 bg-card p-4 shadow-sm">
-        <div className="flex min-w-0 flex-col gap-3 lg:flex-row">
-        <div className="relative min-w-0 flex-1">
+    >
+      <div className="rounded-xl border border-border/70 bg-card p-3 shadow-xs sm:p-4">
+        <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(260px,1fr)_auto_minmax(220px,auto)_auto]">
+        <div className="relative min-w-0">
           <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary', isLoading && 'animate-bounce [animation-duration:0.7s] motion-reduce:animate-none')} />
           <Input
             data-search-input
-            placeholder="Cari test case... (ID, Page, Action, Steps)  [/]"
+            placeholder="Cari ID, page, action, atau steps..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-            className="h-9.5 rounded-xl border border-border/50 bg-secondary/35 text-foreground placeholder:text-muted-foreground pl-9 shadow-xs hover:border-border transition duration-200 focus-visible:ring-2 focus-visible:ring-primary/20 text-xs font-medium"
+            className="h-10 rounded-lg border-border/70 bg-background pl-9 pr-9 text-sm shadow-none"
           />
+          <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground sm:block">/</kbd>
         </div>
-        <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" className="h-10 justify-center gap-2 rounded-lg border-border/70 bg-background px-3 font-semibold">
+              <SlidersHorizontal /> Filter
+              {activeFilterChips.filter(chip => !['search', 'from', 'to'].includes(chip.key)).length > 0 ? (
+                <Badge variant="secondary" className="min-w-5 justify-center px-1.5 font-mono text-[10px]">
+                  {activeFilterChips.filter(chip => !['search', 'from', 'to'].includes(chip.key)).length}
+                </Badge>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[min(680px,calc(100vw-2rem))] p-4">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div><p className="text-sm font-semibold">Filter testcase</p><p className="mt-0.5 text-xs text-muted-foreground">Persempit daftar berdasarkan atribut QA.</p></div>
+              <Button type="button" variant="ghost" size="sm" onClick={resetFilters} disabled={!hasActiveFilters}>Reset</Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); resetPage(); }}>
-            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition duration-200 sm:w-[145px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Status</SelectItem>
               <SelectItem value="DONE" className="rounded-lg text-xs font-medium">Done</SelectItem>
@@ -270,7 +305,7 @@ export function TestCaseTable({
             </SelectContent>
           </Select>
           <Select value={filterTestType} onValueChange={(v) => { setFilterTestType(v); resetPage(); }}>
-            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition duration-200 sm:w-[135px]"><SelectValue placeholder="Test Type" /></SelectTrigger>
+            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Test Type" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Types</SelectItem>
               <SelectItem value="Positive" className="rounded-lg text-xs font-medium">Positive</SelectItem>
@@ -278,7 +313,7 @@ export function TestCaseTable({
             </SelectContent>
           </Select>
           <Select value={filterPriority} onValueChange={(v) => { setFilterPriority(v); resetPage(); }}>
-            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition duration-200 sm:w-[145px]"><SelectValue placeholder="Priority" /></SelectTrigger>
+            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Priority" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Priorities</SelectItem>
               <SelectItem value="Critical" className="rounded-lg text-xs font-medium">Critical</SelectItem>
@@ -289,7 +324,7 @@ export function TestCaseTable({
           </Select>
           {(modules.length > 0 || hasUnassignedModule || filterModule === 'unassigned') && (
             <Select value={filterModule} onValueChange={(v) => { setFilterModule(v); resetPage(); }}>
-              <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition duration-200 sm:w-[165px]"><SelectValue placeholder="Module" /></SelectTrigger>
+              <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Module" /></SelectTrigger>
               <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
                 <SelectItem value="all" className="rounded-lg text-xs font-medium">All Modules</SelectItem>
                 {modules.map((m) => (
@@ -302,7 +337,7 @@ export function TestCaseTable({
             </Select>
           )}
           <Select value={filterSubMenu} onValueChange={(v) => { setFilterSubMenu(v); resetPage(); }}>
-            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition duration-200 sm:w-[165px]">
+            <SelectTrigger className="h-10 w-full">
               <SelectValue placeholder="Sub Menu" />
             </SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
@@ -315,85 +350,79 @@ export function TestCaseTable({
             </SelectContent>
           </Select>
           <Select value={filterTestRun} onValueChange={(v) => { setFilterTestRun(v); resetPage(); }}>
-            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition duration-200 sm:w-[165px]"><SelectValue placeholder="Test Run" /></SelectTrigger>
+            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Test Run" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Test Runs</SelectItem>
               {testRunOptions.map(run => <SelectItem key={run.id} value={run.id} className="rounded-lg text-xs font-medium">{run.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterBug} onValueChange={(v) => { setFilterBug(v); resetPage(); }}>
-            <SelectTrigger className="h-9.5 w-full border border-border/50 bg-secondary/35 text-foreground rounded-xl text-xs font-semibold shadow-xs hover:bg-secondary/65 transition duration-200 sm:w-[135px]"><SelectValue placeholder="Bug" /></SelectTrigger>
+            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Bug" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Bugs</SelectItem>
               <SelectItem value="yes" className="rounded-lg text-xs font-medium">Has Bug</SelectItem>
               <SelectItem value="no" className="rounded-lg text-xs font-medium">No Bug</SelectItem>
             </SelectContent>
           </Select>
-          <Input value={filterTag} onChange={(event) => { setFilterTag(event.target.value); resetPage(); }} placeholder="Tag" aria-label="Filter tag" className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold sm:w-[135px]" />
-          <Input type="date" value={filterCreatedFrom} onChange={(event) => { setFilterCreatedFrom(event.target.value); resetPage(); }} aria-label="Tanggal mulai" className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold sm:w-[145px]" />
-          <Input type="date" value={filterCreatedTo} onChange={(event) => { setFilterCreatedTo(event.target.value); resetPage(); }} aria-label="Tanggal akhir" className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold sm:w-[145px]" />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={resetFilters}
-            disabled={!hasActiveFilters}
-            className="h-9.5 rounded-xl gap-1.5 border border-border/50 bg-secondary/35 text-xs font-bold text-foreground shadow-xs hover:bg-secondary disabled:opacity-40 transition duration-200"
-          >
-            <X className="h-3.5 w-3.5" />
-            Reset
-          </Button>
-          <DropdownMenu>
+          <Input value={filterTag} onChange={(event) => { setFilterTag(event.target.value); resetPage(); }} placeholder="Tag" aria-label="Filter tag" className="h-10" />
+            </div>
+          </PopoverContent>
+        </Popover>
+        <DateRangePicker
+          from={filterCreatedFrom}
+          to={filterCreatedTo}
+          onFromChange={(value) => { setFilterCreatedFrom(value); resetPage(); }}
+          onToChange={(value) => { setFilterCreatedTo(value); resetPage(); }}
+          label="Tanggal dibuat"
+        />
+        <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className="h-9.5 rounded-xl gap-1.5 border border-border/50 bg-secondary/35 text-xs font-bold">
-                <Bookmark className="h-3.5 w-3.5" /> Views{savedViews.length ? ` (${savedViews.length})` : ''}
+              <Button type="button" variant="outline" className="h-10 w-full justify-center gap-2 rounded-lg border-border/70 bg-background px-3 font-semibold">
+                <Bookmark /> Views{savedViews.length ? ` (${savedViews.length})` : ''}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64 rounded-xl bg-card">
               <DropdownMenuItem onClick={saveCurrentView} className="font-semibold"><Bookmark className="mr-2 h-4 w-4" />Save current filters</DropdownMenuItem>
               {savedViews.length > 0 && <DropdownMenuSeparator />}
-              {savedViews.map(view => <div key={view.name} className="flex items-center gap-1 px-1"><DropdownMenuItem onClick={() => applySavedView(view)} className="min-w-0 flex-1 truncate text-xs">{view.name}</DropdownMenuItem><button type="button" aria-label={`Delete saved view ${view.name}`} onClick={() => deleteSavedView(view.name)} className="px-2 text-xs text-muted-foreground hover:text-destructive">×</button></div>)}
+              {savedViews.map(view => <div key={view.name} className="flex items-center gap-1 px-1"><DropdownMenuItem onClick={() => applySavedView(view)} className="min-w-0 flex-1 truncate text-xs">{view.name}</DropdownMenuItem><button type="button" aria-label={`Delete saved view ${view.name}`} onClick={() => deleteSavedView(view.name)} className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="h-3.5 w-3.5" /></button></div>)}
               {!savedViews.length && <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Belum ada saved view.</DropdownMenuLabel>}
             </DropdownMenuContent>
-          </DropdownMenu>
+        </DropdownMenu>
         </div>
-        </div>
+
+        <AnimatePresence initial={false}>
+          {activeFilterChips.length > 0 && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/35 pt-3" aria-label="Active filters">
+                <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Active</span>
+                {activeFilterChips.map(chip => (
+                  <button key={chip.key} type="button" onClick={() => { chip.clear(); resetPage(); }} className="group inline-flex max-w-56 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/7 px-2.5 py-1 text-[10px] font-semibold text-primary transition-colors duration-150 hover:border-primary/40 hover:bg-primary/12" aria-label={`Remove filter ${chip.label}`}>
+                    <span className="truncate">{chip.label}</span><X className="h-3 w-3 opacity-60 group-hover:opacity-100" />
+                  </button>
+                ))}
+                <button type="button" onClick={resetFilters} className="text-[10px] font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Clear all</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       <div className="mt-3 flex min-w-0 flex-col gap-3 border-t border-border/40 pt-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-9 rounded-xl gap-1.5 font-bold shadow-sm transition duration-200">
-            <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90 motion-reduce:group-hover:transform-none" /> Add Test Case
+          <Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-9 rounded-lg gap-1.5 font-bold shadow-sm transition duration-150">
+            <Plus className="w-4 h-4" /> Add Test Case
             <kbd className="ml-0.5 hidden rounded border border-primary-foreground/30 px-1 font-mono text-[9px] leading-4 opacity-70 lg:inline-block">N</kbd>
           </Button>
           {aiEnabled && (
-            <Button onClick={openAIDialog} size="sm" className="group h-9 rounded-xl gap-1.5 font-bold bg-violet-500/10 text-violet-500 border border-violet-500/20 hover:bg-violet-500/20 dark:text-violet-400 transition duration-200">
-              <Sparkles className="w-4 h-4 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12 motion-reduce:group-hover:transform-none" /> Generate AI
+            <Button onClick={openAIDialog} size="sm" className="group h-9 rounded-lg gap-1.5 border border-violet-500/20 bg-violet-500/10 font-bold text-violet-500 transition duration-150 hover:bg-violet-500/20 dark:text-violet-400">
+              <Sparkles className="w-4 h-4" /> Generate AI
             </Button>
-          )}
-          {selectedIds.size > 0 && (
-            <>
-              <Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
-                <Settings2 className="w-4 h-4" /> Update Status ({selectedIds.size})
-              </Button>
-              <Button onClick={() => setShowBulkExecution(true)} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
-                <CalendarClock className="w-4 h-4" /> Execute ({selectedIds.size})
-              </Button>
-              <Button onClick={() => setShowBulkAssign(true)} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
-                <UserRound className="w-4 h-4" /> Assign ({selectedIds.size})
-              </Button>
-              <Button onClick={() => handleExportExcel('xlsx', [...selectedIds])} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
-                <FileDown className="w-4 h-4" /> Export ({selectedIds.size})
-              </Button>
-              <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-9 rounded-xl gap-1.5 font-bold shadow-md shadow-red-900/10 transition duration-200">
-                <Trash2 className="w-4 h-4" /> Delete ({selectedIds.size})
-              </Button>
-            </>
           )}
         </div>
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
           <Badge key={showingLabel} variant="outline" className="col-span-2 h-9 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-1 animate-in zoom-in-95 duration-200 tabular-nums">
             {showingLabel}
           </Badge>
+          <DataTableDensityToggle value={density} onValueChange={setDensity} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
@@ -455,6 +484,25 @@ export function TestCaseTable({
         </div>
       </div>
       </div>
+
+      <AnimatePresence initial={false}>
+        {selectedIds.size > 0 && (
+          <motion.div initial={{ opacity: 0, y: -8, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.99 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} className="sticky top-[72px] z-30 flex flex-col gap-3 rounded-xl border border-primary/25 bg-card/95 p-3 shadow-[0_16px_50px_-28px_rgba(99,102,241,.45)] backdrop-blur-md lg:flex-row lg:items-center">
+            <div className="flex min-w-40 items-center gap-3">
+              <span className="font-mono text-sm font-bold text-primary">{selectedIds.size}</span>
+              <span className="text-xs font-semibold text-foreground">testcase selected</span>
+              <button type="button" onClick={clearSelection} className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground lg:ml-0" aria-label="Clear selection"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="flex flex-1 flex-wrap gap-2 lg:justify-end">
+              <Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-8 gap-1.5"><Settings2 className="h-3.5 w-3.5" /> Status</Button>
+              <Button onClick={() => setShowBulkExecution(true)} variant="outline" size="sm" className="h-8 gap-1.5"><CalendarClock className="h-3.5 w-3.5" /> Execute</Button>
+              <Button onClick={() => setShowBulkAssign(true)} variant="outline" size="sm" className="h-8 gap-1.5"><UserRound className="h-3.5 w-3.5" /> Assign</Button>
+              <Button onClick={() => handleExportExcel('xlsx', [...selectedIds])} variant="outline" size="sm" className="h-8 gap-1.5"><FileDown className="h-3.5 w-3.5" /> Export</Button>
+              <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-8 gap-1.5"><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <TestCaseTableBody {...tableBodyProps} />
 

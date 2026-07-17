@@ -53,7 +53,7 @@ export function ManualRecordingPreview(props: ManualRecordingPreviewProps) {
                                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 text-white">
                                     <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
                                     <span className="text-[10px] font-semibold uppercase tracking-wider">
-                                      Memproses video{videoProcessingPercent !== null && isVideoFinalizing ? ` â€” ${videoProcessingPercent}%` : ''}
+                                      Memproses video{videoProcessingPercent !== null && isVideoFinalizing ? ` — ${videoProcessingPercent}%` : ''}
                                     </span>
                                     {videoProcessingPercent !== null && isVideoFinalizing ? (
                                       <div className="h-1.5 w-44 overflow-hidden rounded-full bg-white/15">

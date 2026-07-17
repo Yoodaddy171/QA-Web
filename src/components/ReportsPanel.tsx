@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowLeft, FileText, Plus } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { fetchReports } from '@/lib/client/api/reports-client';
 import { ReportForm } from './ReportForm';
@@ -21,18 +22,27 @@ export function ReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
   const [selectedReport, setSelectedReport] = useState<ReportData | null>(null);
   const [editingReport, setEditingReport] = useState<ReportData | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const isLoading = loadedProjectId !== projectId;
 
   useEffect(() => {
     let active = true;
-    // setState happens after the await (not synchronously in the effect body),
-    // and is guarded so a project switch can't apply stale results.
     fetchReports(projectId)
-      .then((data) => { if (active) setReports(data); })
-      .catch((error) => {
-        if (active) toast({ title: 'Gagal memuat report', description: error instanceof Error ? error.message : 'Terjadi kesalahan.', variant: 'destructive' });
+      .then((data) => {
+        if (active) {
+          setReports(data);
+          setLoadError(null);
+        }
       })
-      .finally(() => { if (active) setIsLoading(false); });
+      .catch((error) => {
+        if (active) {
+          const message = error instanceof Error ? error.message : 'Terjadi kesalahan.';
+          setLoadError(message);
+          toast({ title: 'Gagal memuat report', description: message, variant: 'destructive' });
+        }
+      })
+      .finally(() => { if (active) setLoadedProjectId(projectId); });
     return () => { active = false; };
   }, [projectId, toast]);
 
@@ -49,9 +59,9 @@ export function ReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
 
   if (isCreating || editingReport) {
     return (
-      <div className="p-6">
+      <div>
         <Button variant="ghost" onClick={closeForm} className="mb-4 gap-2">
-          <ArrowLeft className="h-4 w-4" /> Back to Reports
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Reports
         </Button>
         <ReportForm projectId={projectId} report={editingReport || undefined} onReportSaved={upsertReport} onCancel={closeForm} />
       </div>
@@ -60,9 +70,9 @@ export function ReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
 
   if (selectedReport) {
     return (
-      <div className="p-6">
+      <div>
         <Button variant="ghost" onClick={() => setSelectedReport(null)} className="mb-4 gap-2">
-          <ArrowLeft className="h-4 w-4" /> Back to Reports
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Reports
         </Button>
         <ReportViewer
           report={selectedReport}
@@ -78,23 +88,19 @@ export function ReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileText className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Reports</h1>
-            <p className="text-sm text-muted-foreground">Create Test Status Report and Test Planning documents</p>
-          </div>
-        </div>
+    <div>
+      <div className="signal-surface mb-4 flex flex-col gap-3 rounded-xl border border-border/70 bg-card/95 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">Buat dan tinjau Test Status Report maupun dokumen Test Planning.</p>
         <Button onClick={() => setIsCreating(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Create Report
+          Buat Report
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="py-12 text-center text-muted-foreground">Loading reports...</div>
+        <div className="flex flex-col gap-3" aria-label="Memuat report"><Skeleton className="h-36 w-full rounded-xl" /><Skeleton className="h-36 w-full rounded-xl" /></div>
+      ) : loadError ? (
+        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center"><p className="font-semibold text-destructive">Report gagal dimuat</p><p className="mt-1 text-sm text-muted-foreground">{loadError}</p></div>
       ) : (
         <ReportHistory reports={reports} onViewReport={setSelectedReport} />
       )}

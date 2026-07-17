@@ -26,8 +26,8 @@ const AUTOMATED_COLUMN_OPTIONS: Array<{ key: AutomatedColumnKey; label: string; 
   { key: 'priority', label: 'Priority', responsiveClass: 'hidden sm:table-cell' },
   { key: 'status', label: 'Status' },
   { key: 'lastRun', label: 'Last Run', responsiveClass: 'hidden xl:table-cell' },
-  { key: 'source', label: 'Source', responsiveClass: 'hidden lg:table-cell' },
-  { key: 'history', label: 'History', responsiveClass: 'hidden lg:table-cell' },
+  { key: 'source', label: 'Source', responsiveClass: 'hidden 2xl:table-cell' },
+  { key: 'history', label: 'History', responsiveClass: 'hidden 2xl:table-cell' },
 ];
 
 const DEFAULT_AUTOMATED_COLUMNS = AUTOMATED_COLUMN_OPTIONS.reduce<Record<AutomatedColumnKey, boolean>>((columns, option) => {
@@ -301,8 +301,8 @@ export function AutomatedPanel({
               <Table className="w-full table-auto">
                 <TableHeader className="sticky top-0 z-10 bg-secondary/95">
                    <TableRow className="border-border/30 hover:bg-transparent">
-                    <TableHead className="w-10 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
-                    <TableHead className="w-[90px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
+                    <TableHead className="sticky left-0 z-20 w-10 bg-secondary/95 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
+                    <TableHead className="sticky left-10 z-20 w-[130px] min-w-[130px] bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
                     <TableHead className="w-[130px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
                     <TableHead className={getColumnClass('module', 'w-[110px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Module</TableHead>
                     <TableHead className={getColumnClass('action', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
@@ -312,7 +312,7 @@ export function AutomatedPanel({
                     <TableHead className={getColumnClass('lastRun', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Last Run</TableHead>
                     <TableHead className={getColumnClass('source', 'w-[100px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Source</TableHead>
                     <TableHead className={getColumnClass('history', 'w-[160px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>History</TableHead>
-                    <TableHead className="w-[52px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
+                    <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -327,8 +327,8 @@ export function AutomatedPanel({
                         onOpenDetail(item);
                       }}
                     >
-                      <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
-                      <TableCell className="whitespace-nowrap font-mono text-sm font-semibold text-foreground">{item.testCaseId}</TableCell>
+                      <TableCell className="sticky left-0 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">{index + 1}</TableCell>
+                      <TableCell className="sticky left-10 z-10 w-[130px] min-w-[130px] max-w-[130px] overflow-hidden whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary">{item.testCaseId}</TableCell>
                       <TableCell className="max-w-[130px]" title={`${item.page}${item.subMenu ? ` / ${item.subMenu}` : ''}`}>
                         <div className="min-w-0">
                           <div className="flex min-w-0 items-center gap-2">
@@ -377,7 +377,7 @@ export function AutomatedPanel({
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
                         <Button
                           aria-label={`View run ${item.testCaseId}`}
                           title={`View run ${item.testCaseId}`}

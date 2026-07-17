@@ -20,8 +20,10 @@ export function useProjects() {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
   const [newModuleName, setNewModuleName] = useState('');
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
 
   const loadProjects = useCallback(async () => {
+    setIsLoadingProjects(true);
     try {
       const data = await fetchProjects();
       setProjects(data);
@@ -47,6 +49,8 @@ export function useProjects() {
         description: error?.data?.error || 'Failed to load projects',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoadingProjects(false);
     }
   }, [toast]);
 
@@ -128,6 +132,7 @@ export function useProjects() {
 
   return {
     projects,
+    isLoadingProjects,
     modules,
     selectedProject,
     newProjectName,

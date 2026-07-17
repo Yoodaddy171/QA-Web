@@ -23,15 +23,15 @@ export function ReportHistory({ reports, onViewReport }: ReportHistoryProps) {
     return (
       <div className="rounded-lg border border-border/60 bg-card py-12 text-center shadow-sm">
         <FileText className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
-        <h3 className="mb-2 text-lg font-semibold text-foreground">No Reports Yet</h3>
-        <p className="text-muted-foreground">Generate your first test report to get started</p>
+        <h3 className="mb-2 text-lg font-semibold text-foreground">Belum ada report</h3>
+        <p className="text-muted-foreground">Buat report pertama untuk memulai.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <h2 className="mb-4 text-lg font-semibold text-foreground">Report History</h2>
+      <h2 className="mb-4 text-lg font-semibold text-foreground">Riwayat Report</h2>
       
       {reports.map((report) => (
         <div
@@ -54,11 +54,11 @@ export function ReportHistory({ reports, onViewReport }: ReportHistoryProps) {
                   <span className="font-medium">Project:</span> {report.projectName}
                 </p>
                 <p>
-                  <span className="font-medium">Period:</span>{' '}
+                  <span className="font-medium">Periode:</span>{' '}
                   {formatDate(report.reportingPeriodStart)} - {formatDate(report.reportingPeriodEnd)}
                 </p>
                 <p>
-                  <span className="font-medium">Generated:</span> {formatDate(report.generatedAt)}
+                  <span className="font-medium">Dibuat:</span> {formatDate(report.generatedAt)}
                 </p>
                 <div className="mt-2 flex gap-4">
                   <span className="rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-500">
@@ -68,7 +68,7 @@ export function ReportHistory({ reports, onViewReport }: ReportHistoryProps) {
                     {report.metrics.totalFailed} Failed
                   </span>
                   <span className="rounded bg-secondary px-2 py-1 text-xs text-muted-foreground">
-                    {report.metrics.passRate.toFixed(1)}% Pass Rate
+                    {report.metrics.passRate.toFixed(1)}% pass rate
                   </span>
                 </div>
               </div>
@@ -80,7 +80,7 @@ export function ReportHistory({ reports, onViewReport }: ReportHistoryProps) {
               onClick={() => onViewReport(report)}
             >
               <Eye className="w-4 h-4 mr-2" />
-              View
+              Lihat
             </Button>
           </div>
         </div>

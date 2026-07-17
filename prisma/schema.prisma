@@ -25,6 +25,7 @@ model Project {
   requirements      Requirement[]
   testPlans         TestPlan[]
   reports           Report[]
+  notifications     Notification[]
 
   @@index([updatedAt])
 }
@@ -182,6 +183,27 @@ model ActivityHistory {
 
   @@index([projectId, createdAt])
   @@index([entityType, entityId, createdAt])
+}
+
+model Notification {
+  id           String    @id @default(cuid())
+  projectId    String
+  recipientKey String    @default("local-user")
+  type         String
+  severity     String    @default("info")
+  title        String
+  message      String
+  entityType   String?
+  entityId     String?
+  metadata     Json?
+  dedupeKey    String?
+  readAt       DateTime?
+  createdAt    DateTime  @default(now())
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, recipientKey, dedupeKey])
+  @@index([projectId, recipientKey, readAt, createdAt])
+  @@index([entityType, entityId])
 }
 
 model TestRunCase {

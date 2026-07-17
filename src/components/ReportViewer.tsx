@@ -35,6 +35,17 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
     : pending > 0 || runSummary.unfinishedRuns > 0 || metrics.bugSummary.open > 0
       ? 'READY WITH RISK'
       : 'READY';
+  const riskiestModule = metrics.byModule.reduce<(typeof metrics.byModule)[number] | null>((highest, module) => {
+    if (!highest) return module;
+    const moduleRisk = module.totalFailed * 3 + Math.max(0, module.totalPlanned - module.totalExecuted);
+    const highestRisk = highest.totalFailed * 3 + Math.max(0, highest.totalPlanned - highest.totalExecuted);
+    return moduleRisk > highestRisk ? module : highest;
+  }, null);
+  const decisionReason = recommendation === 'NOT READY'
+    ? `${metrics.bugSummary.critical} critical bugs, ${failed} failed cases, dan ${blocked} blocked cases harus diselesaikan.`
+    : recommendation === 'READY WITH RISK'
+      ? `${pending} testcase belum dijalankan, ${runSummary.unfinishedRuns} Test Run belum selesai, dan ${metrics.bugSummary.open} bug masih terbuka.`
+      : 'Seluruh execution selesai tanpa failed, blocked, atau critical bug terbuka.';
 
   async function postAction(action: ReportAction) {
     try {
@@ -63,8 +74,8 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
   ) : null;
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-lg border border-border/60 bg-card p-6 shadow-sm">
+    <div className="space-y-4">
+      <div className="signal-surface rounded-xl border border-border/70 bg-card p-6 shadow-sm">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <FileText className="h-8 w-8 text-primary" />
@@ -101,12 +112,14 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
         <p className="whitespace-pre-wrap text-sm text-muted-foreground">{metadata.documentInformation || `Dokumen untuk project ${report.projectName}.`}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {[
           ['Planned', runSummary.totalPlanned || metrics.totalPlanned, 'text-cyan-500'],
           ['Executed', runSummary.totalPlanned ? `${runSummary.totalCompleted} (${Math.round((runSummary.totalCompleted / runSummary.totalPlanned) * 100)}%)` : `${metrics.totalExecuted} (${metrics.executionRate}%)`, 'text-violet-500'],
           ['Passed', runSummary.totalPlanned ? runSummary.totalPassed : metrics.totalPassed, 'text-emerald-500'],
           ['Failed', failed, 'text-red-500'],
+          ['Blocked', blocked, 'text-amber-500'],
+          ['Not run', pending, 'text-slate-400'],
         ].map(([label, value, color]) => (
           <div key={label} className="rounded-lg border border-border/60 bg-card p-4 shadow-sm">
             <div className={`text-2xl font-bold ${color}`}>{value}</div>
@@ -115,15 +128,21 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
         ))}
       </div>
 
-      <div className="rounded-lg border border-primary/20 bg-primary/5 p-5">
+      <div className="signal-surface rounded-xl border border-primary/25 bg-primary/5 p-5 shadow-[0_16px_50px_-38px_rgba(99,102,241,.8)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Release decision summary</p>
             <p className="mt-1 text-xl font-bold">Release recommendation: {recommendation}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{failed} failed, {blocked} blocked, {pending} not run, {metrics.bugSummary.open} open bugs, {metrics.bugSummary.critical} critical, {metrics.bugSummary.overdue} overdue.</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{decisionReason}</p>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+              <span><strong className="text-foreground">{metrics.bugSummary.overdue}</strong> overdue bugs</span>
+              <span><strong className="text-foreground">{runSummary.unfinishedRuns}</strong> unfinished runs</span>
+              {riskiestModule && <span>Highest risk: <strong className="text-foreground">{riskiestModule.moduleName}</strong> · {riskiestModule.totalFailed} failed</span>}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {onNavigate && <Button size="sm" variant="outline" onClick={() => onNavigate('testRuns')}>Open Test Runs</Button>}
+            {onNavigate && failed > 0 && <Button size="sm" variant="ghost" onClick={() => onNavigate('testcases')}>Open Failed Cases</Button>}
             {onNavigate && <Button size="sm" variant="ghost" onClick={() => onNavigate('traceability')}>Open Traceability</Button>}
             {onNavigate && metrics.bugSummary.open > 0 && <Button size="sm" variant="ghost" onClick={() => onNavigate('bugfix')}>Open Bugs</Button>}
           </div>

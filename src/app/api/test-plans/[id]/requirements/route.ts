@@ -21,3 +21,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Gagal menghubungkan requirement.' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: testPlanId } = await context.params;
+  try {
+    const body = await req.json();
+    const projectId = typeof body.projectId === 'string' ? body.projectId.trim() : '';
+    const requirementIds: string[] = Array.isArray(body.requirementIds) ? body.requirementIds.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0).map((value: string) => value.trim()) : [];
+    const plan = await db.testPlan.findFirst({ where: { id: testPlanId, projectId }, select: { id: true } });
+    if (!plan || requirementIds.length === 0) return NextResponse.json({ error: 'Test Plan atau requirement tidak valid.' }, { status: 400 });
+    const result = await db.testPlanRequirement.deleteMany({ where: { testPlanId, requirementId: { in: requirementIds }, requirement: { projectId } } });
+    return NextResponse.json({ unlinked: result.count });
+  } catch (error) {
+    console.error('DELETE test plan requirement link error:', error);
+    return NextResponse.json({ error: 'Gagal melepas relasi Test Plan.' }, { status: 500 });
+  }
+}

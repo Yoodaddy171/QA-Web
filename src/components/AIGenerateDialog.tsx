@@ -141,15 +141,15 @@ export function AIGenerateDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-border/60 bg-card text-foreground elevation-3 rounded-2xl p-0">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
+        <div className="absolute left-0 top-0 h-px w-full bg-primary/70" />
 
-        <DialogHeader className="px-6 py-5 border-b border-border/40 bg-gradient-to-r from-primary/5 via-indigo-500/5 to-cyan-500/5">
+        <DialogHeader className="border-b border-border/60 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/15 text-primary">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">AI Test Case Generator</DialogTitle>
+              <DialogTitle className="text-xl font-semibold tracking-tight">AI Test Case Generator</DialogTitle>
               <DialogDescription className="text-muted-foreground text-[11px] font-medium leading-relaxed">AI akan menganalisis project patterns dan menghasilkan test case baru yang akurat.</DialogDescription>
             </div>
           </div>

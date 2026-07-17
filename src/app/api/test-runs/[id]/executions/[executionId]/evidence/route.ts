@@ -3,6 +3,7 @@ import { recordActivity } from '@/lib/services/activity-history-service';
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createNotification } from '@/lib/services/notification-service';
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'application/pdf']);
@@ -72,6 +73,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
   } catch (error) {
     console.error('POST execution evidence error:', error);
+    await createNotification({
+      projectId,
+      type: 'EVIDENCE_UPLOAD_FAILED',
+      severity: 'critical',
+      title: 'Upload evidence gagal',
+      message: 'Evidence tidak berhasil disimpan. Coba ulangi upload.',
+      entityType: 'TestExecution',
+      entityId: executionId,
+      metadata: { tab: 'testRuns', testRunId: id },
+      dedupeKey: `evidence-upload-failed:${executionId}:${Date.now()}`,
+    }).catch(() => undefined);
     return errorResponse('Gagal menyimpan evidence.', 500);
   }
 }

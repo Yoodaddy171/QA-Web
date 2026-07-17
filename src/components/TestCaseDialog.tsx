@@ -188,7 +188,7 @@ export function TestCaseDialog({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-border/60 bg-card text-foreground elevation-3 rounded-2xl scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent p-6">
         <DialogHeader className="mb-4">
-          <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+          <DialogTitle className="text-xl font-semibold tracking-tight">
             {editingTestCase ? 'Edit Test Case' : 'Tambah Test Case Baru'}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground text-sm">

@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -75,6 +76,7 @@ export function SettingsPanel({
   const [knowledgeUploading, setKnowledgeUploading] = useState(false);
   const [knowledgeFile, setKnowledgeFile] = useState<File | null>(null);
   const [knowledgeForm, setKnowledgeForm] = useState(EMPTY_KNOWLEDGE_FORM);
+  const [knowledgeMessage, setKnowledgeMessage] = useState('');
   const [figmaUrl, setFigmaUrl] = useState('');
   const [figmaDepth, setFigmaDepth] = useState('3');
   const [figmaSyncing, setFigmaSyncing] = useState(false);
@@ -178,6 +180,7 @@ export function SettingsPanel({
   const saveKnowledge = async () => {
     if (!selectedProject || !knowledgeForm.title.trim() || !knowledgeForm.content.trim()) return;
     setKnowledgeSaving(true);
+    setKnowledgeMessage('');
     try {
       const response = await fetch('/api/project-knowledge', {
         method: knowledgeForm.id ? 'PUT' : 'POST',
@@ -190,29 +193,36 @@ export function SettingsPanel({
           content: knowledgeForm.content,
         }),
       });
-      if (!response.ok) throw new Error('Failed to save knowledge');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Gagal menyimpan knowledge.');
       setKnowledgeForm(EMPTY_KNOWLEDGE_FORM);
+      setKnowledgeMessage('Knowledge berhasil disimpan.');
       loadKnowledge();
-    } catch {
-      // Keep the form content so the user can retry.
+    } catch (error) {
+      setKnowledgeMessage(error instanceof Error ? error.message : 'Gagal menyimpan knowledge.');
     } finally {
       setKnowledgeSaving(false);
     }
   };
 
   const deleteKnowledge = async (id: string) => {
+    setKnowledgeMessage('');
     try {
-      await fetch(`/api/project-knowledge?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const response = await fetch(`/api/project-knowledge?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Gagal menghapus knowledge.');
       if (knowledgeForm.id === id) setKnowledgeForm(EMPTY_KNOWLEDGE_FORM);
+      setKnowledgeMessage('Knowledge berhasil dihapus.');
       loadKnowledge();
-    } catch {
-      // Non-blocking in settings.
+    } catch (error) {
+      setKnowledgeMessage(error instanceof Error ? error.message : 'Gagal menghapus knowledge.');
     }
   };
 
   const uploadKnowledgeFile = async () => {
     if (!selectedProject || !knowledgeFile) return;
     setKnowledgeUploading(true);
+    setKnowledgeMessage('');
     try {
       const formData = new FormData();
       formData.append('projectId', selectedProject);
@@ -224,12 +234,14 @@ export function SettingsPanel({
         method: 'POST',
         body: formData,
       });
-      if (!response.ok) throw new Error('Failed to upload knowledge file');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Gagal mengunggah file knowledge.');
       setKnowledgeFile(null);
       setKnowledgeForm(EMPTY_KNOWLEDGE_FORM);
+      setKnowledgeMessage('File knowledge berhasil diunggah.');
       loadKnowledge();
-    } catch {
-      // Keep selected file so the user can retry.
+    } catch (error) {
+      setKnowledgeMessage(error instanceof Error ? error.message : 'Gagal mengunggah file knowledge.');
     } finally {
       setKnowledgeUploading(false);
     }
@@ -251,7 +263,7 @@ export function SettingsPanel({
         }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'Failed to sync Figma file');
+      if (!response.ok) throw new Error(data.error || 'Gagal menyinkronkan file Figma.');
 
       setFigmaUrl('');
       setKnowledgeForm(EMPTY_KNOWLEDGE_FORM);
@@ -268,7 +280,7 @@ export function SettingsPanel({
     selectedProject, setKnowledgeForm, knowledgeForm, knowledgeItems, knowledgeLoading,
     setKnowledgeFile, knowledgeFile, uploadKnowledgeFile, knowledgeUploading,
     figmaUrl, setFigmaUrl, figmaDepth, setFigmaDepth, syncFigmaKnowledge,
-    figmaSyncing, figmaSyncMessage, saveKnowledge, knowledgeSaving, deleteKnowledge,
+    figmaSyncing, figmaSyncMessage, saveKnowledge, knowledgeSaving, deleteKnowledge, knowledgeMessage,
   };
 
   return (
@@ -278,6 +290,17 @@ export function SettingsPanel({
       transition={{ duration: 0.4 }}
       className="space-y-6 pb-8"
     >
+      <Tabs defaultValue="ai" className="gap-5">
+      <div className="w-full overflow-x-auto rounded-xl scrollbar-thin scrollbar-thumb-border/40">
+        <TabsList className="h-auto w-max min-w-full justify-start gap-1 border border-border/60 bg-secondary/35 p-1">
+          <TabsTrigger value="ai" className="min-w-max flex-none"><Bot className="size-4" />AI</TabsTrigger>
+          <TabsTrigger value="projects" className="min-w-max flex-none"><FolderOpen className="size-4" />Projects</TabsTrigger>
+          <TabsTrigger value="knowledge" className="min-w-max flex-none"><BookOpen className="size-4" />Knowledge</TabsTrigger>
+          <TabsTrigger value="integrations" className="min-w-max flex-none"><Link className="size-4" />Integrations</TabsTrigger>
+          <TabsTrigger value="modules" className="min-w-max flex-none"><Layers className="size-4" />Modules</TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value="ai" className="mt-0">
       <AISettingsCard
         provider={aiProvider}
         setProvider={setAiProvider}
@@ -296,12 +319,14 @@ export function SettingsPanel({
         onToggleKeys={toggleAiKeys}
         onSave={saveAiSettings}
       />
+      </TabsContent>
 
       {/* Projects Card */}
+      <TabsContent value="projects" className="mt-0">
       <Card variant="majestic">
         <CardHeader className="pb-3 border-b border-border/40 mb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Project</CardTitle>
+            <CardTitle className="text-lg font-semibold tracking-tight">Projects</CardTitle>
             <Button onClick={onCreateProject} size="sm" variant="majestic" className="gap-1.5 rounded-xl bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-white font-medium shadow-md hover:shadow-cyan-500/10 transition duration-200 text-[11px] uppercase">
               <FolderPlus className="w-3.5 h-3.5" /> Project Baru
             </Button>
@@ -318,7 +343,7 @@ export function SettingsPanel({
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05, duration: 0.2 }}
-                  className={`flex items-center justify-between rounded-xl border p-4 transition duration-200 ${
+                  className={`flex flex-col items-stretch justify-between gap-3 rounded-xl border p-4 transition duration-200 sm:flex-row sm:items-center ${
                     selectedProject === project.id
                       ? 'border-primary/40 bg-primary/5'
                       : 'border-border/60 bg-secondary/30 hover:bg-secondary/60 hover:border-border'
@@ -341,7 +366,7 @@ export function SettingsPanel({
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-end gap-2">
                     <Button
                       variant={selectedProject === project.id ? 'default' : 'outline'}
                       size="sm"
@@ -378,17 +403,25 @@ export function SettingsPanel({
           )}
         </CardContent>
       </Card>
+      </TabsContent>
 
-      <ProjectKnowledgeCard {...knowledgeCardProps} />
+      <TabsContent value="knowledge" className="mt-0">
+      <ProjectKnowledgeCard {...knowledgeCardProps} mode="knowledge" />
+      </TabsContent>
+
+      <TabsContent value="integrations" className="mt-0">
+      <ProjectKnowledgeCard {...knowledgeCardProps} mode="integrations" />
+      </TabsContent>
 
       {/* Modules Card */}
+      <TabsContent value="modules" className="mt-0">
       <Card variant="majestic" className="overflow-hidden border-border/40 shadow-sm">
-        <CardHeader className="pb-3 border-b border-border/10 bg-gradient-to-r from-primary/5 via-indigo-500/5 to-cyan-500/5">
+        <CardHeader className="border-b border-border/60 pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Project Modules</CardTitle>
+              <CardTitle className="text-lg font-semibold tracking-tight">Modules</CardTitle>
               <p className="mt-1 text-[11px] text-muted-foreground font-medium">
-                Organize your test cases into functional areas.
+                Kelompokkan test case berdasarkan area fungsi.
               </p>
             </div>
             <Button
@@ -435,7 +468,7 @@ export function SettingsPanel({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-lg text-muted-foreground/40 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 opacity-0 group-hover/mod:opacity-100 transition"
+                    className="h-8 w-8 rounded-lg text-muted-foreground/40 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 opacity-100 sm:opacity-0 sm:group-hover/mod:opacity-100 transition"
                     onClick={() => onDeleteModule(module.id)}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -446,6 +479,8 @@ export function SettingsPanel({
           )}
         </CardContent>
       </Card>
+      </TabsContent>
+      </Tabs>
     </motion.div>
   );
 }

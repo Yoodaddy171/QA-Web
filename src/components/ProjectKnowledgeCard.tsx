@@ -9,6 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const KNOWLEDGE_TYPE_OPTIONS = [
   { value: 'API_DOCS', label: 'API Docs' },
@@ -26,22 +31,86 @@ const KNOWLEDGE_TYPE_OPTIONS = [
 
 const EMPTY_KNOWLEDGE_FORM = { id: '', type: 'QA_RULES', title: '', content: '' };
 
-type ProjectKnowledgeCardProps = Record<string, any>;
+type ProjectKnowledgeCardProps = Record<string, any> & {
+  mode?: 'knowledge' | 'integrations';
+};
 
 export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
   const {
     selectedProject, setKnowledgeForm, knowledgeForm, knowledgeItems, knowledgeLoading,
     setKnowledgeFile, knowledgeFile, uploadKnowledgeFile, knowledgeUploading,
     figmaUrl, setFigmaUrl, figmaDepth, setFigmaDepth, syncFigmaKnowledge,
-    figmaSyncing, figmaSyncMessage, saveKnowledge, knowledgeSaving, deleteKnowledge,
+    figmaSyncing, figmaSyncMessage, saveKnowledge, knowledgeSaving, deleteKnowledge, knowledgeMessage,
+    mode = 'knowledge',
   } = props;
+
+  if (mode === 'integrations') {
+    return (
+      <Card variant="majestic" className="overflow-hidden border-border/40 shadow-sm">
+        <CardHeader className="border-b border-border/60 pb-3">
+          <CardTitle className="text-lg font-semibold tracking-tight">
+            Integrations
+          </CardTitle>
+          <p className="mt-1 text-[11px] font-medium text-muted-foreground">
+            Hubungkan sumber eksternal untuk memperkaya konteks QA project.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {!selectedProject ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-4 rounded-full bg-secondary/50 p-4">
+                <FolderOpen className="h-8 w-8 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm font-semibold text-muted-foreground">Pilih project terlebih dahulu untuk mengatur integrasi.</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-border/40 bg-secondary/20 p-5 shadow-inner">
+              <div className="flex flex-col gap-4">
+                <div className="min-w-0 space-y-1">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Figma Synchronization</Label>
+                  <p className="text-[10px] font-medium leading-relaxed text-muted-foreground">
+                    Ambil frame dan teks sebagai Feature Map knowledge secara otomatis.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_80px_auto]">
+                  <Input
+                    value={figmaUrl}
+                    onChange={(event) => setFigmaUrl(event.target.value)}
+                    placeholder="Tempel URL atau key file Figma"
+                    className="h-9 rounded-xl border-border/60 bg-secondary/40 text-[11px] font-medium"
+                  />
+                  <Select value={figmaDepth} onValueChange={setFigmaDepth}>
+                    <SelectTrigger className="h-9 rounded-xl border-border/60 bg-secondary/40 text-[11px] font-bold"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-border/60 bg-card shadow-xl">
+                      {['1', '2', '3', '4', '5', '6'].map(depth => <SelectItem key={depth} value={depth} className="text-xs">{depth}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    onClick={syncFigmaKnowledge}
+                    disabled={!figmaUrl.trim() || figmaSyncing}
+                    title={!figmaUrl.trim() ? 'Masukkan URL atau key Figma terlebih dahulu.' : undefined}
+                    className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-primary to-cyan-500 px-4 text-[10px] font-bold uppercase text-white"
+                  >
+                    {figmaSyncing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Link className="h-3.5 w-3.5" />}
+                    Sinkronkan
+                  </Button>
+                </div>
+                {figmaSyncMessage && <p className="text-[10px] font-bold text-primary" role="status">{figmaSyncMessage}</p>}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
       <Card variant="majestic" className="overflow-hidden border-border/40 shadow-sm">
-        <CardHeader className="pb-3 border-b border-border/10 bg-gradient-to-r from-primary/5 via-indigo-500/5 to-cyan-500/5">
+        <CardHeader className="border-b border-border/60 pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Project Knowledge</CardTitle>
+              <CardTitle className="text-lg font-semibold tracking-tight">Project Knowledge</CardTitle>
               <p className="mt-1 text-[11px] text-muted-foreground font-medium">
                 Context for QA Copilot intelligence.
               </p>
@@ -101,7 +170,7 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                 />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div>
                 <div className="rounded-2xl border border-border/40 bg-secondary/20 p-5 shadow-inner">
                   <div className="flex flex-col gap-4">
                     <div className="min-w-0">
@@ -135,46 +204,6 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border/40 bg-secondary/20 p-5 shadow-inner">
-                  <div className="flex flex-col gap-4">
-                    <div className="min-w-0 space-y-1">
-                      <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Figma Synchronization</Label>
-                      <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
-                        Fetch frames & text menjadi Feature Map knowledge otomatis.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={figmaUrl}
-                        onChange={(event) => setFigmaUrl(event.target.value)}
-                        placeholder="Paste Figma file URL atau key"
-                        className="h-9 rounded-xl border-border/60 bg-secondary/40 text-[11px] font-medium text-foreground placeholder:text-muted-foreground/40 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
-                      />
-                      <div className="w-[80px] shrink-0">
-                        <Select value={figmaDepth} onValueChange={setFigmaDepth}>
-                          <SelectTrigger className="h-9 rounded-xl border-border/60 bg-secondary/40 text-[11px] font-bold focus:ring-primary/20 transition duration-200"><SelectValue /></SelectTrigger>
-                          <SelectContent className="border-border/60 bg-card rounded-xl shadow-xl">
-                            {['1', '2', '3', '4', '5', '6'].map(depth => (
-                              <SelectItem key={depth} value={depth} className="text-xs">{depth}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={syncFigmaKnowledge}
-                        disabled={!figmaUrl.trim() || figmaSyncing}
-                        className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-white font-bold shadow-md hover:shadow-cyan-500/20 transition duration-200 text-[10px] uppercase px-4"
-                      >
-                        {figmaSyncing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Link className="h-3.5 w-3.5" />}
-                        Sync
-                      </Button>
-                    </div>
-                    {figmaSyncMessage && (
-                      <p className="text-[10px] font-bold text-primary animate-pulse">{figmaSyncMessage}</p>
-                    )}
-                  </div>
-                </div>
               </div>
 
               <div className="flex items-center gap-3 pt-2">
@@ -192,6 +221,7 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                   </Button>
                 )}
               </div>
+              {knowledgeMessage && <p className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs text-foreground" role="status">{knowledgeMessage}</p>}
 
               <div className="border-t border-border/10 pt-8 mt-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -230,7 +260,7 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                               Terakhir diperbarui: {new Date(item.updatedAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
                             </p>
                           </div>
-                          <div className="flex shrink-0 items-center gap-1.5 opacity-0 group-hover:opacity-100 transition duration-300 translate-x-2 group-hover:translate-x-0">
+                          <div className="flex shrink-0 items-center gap-1.5 opacity-100 transition duration-300 sm:translate-x-2 sm:opacity-0 sm:group-hover:translate-x-0 sm:group-hover:opacity-100">
                             <Button
                               variant="outline"
                               size="icon"
@@ -244,14 +274,28 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                             >
                               <Edit3 className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-9 w-9 rounded-xl border-border/60 bg-background/80 text-muted-foreground hover:text-red-600 hover:border-red-500/40 hover:bg-red-50 shadow-sm"
-                              onClick={() => deleteKnowledge(item.id)}
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-9 w-9 rounded-xl border-border/60 bg-background/80 text-muted-foreground hover:border-red-500/40 hover:bg-red-50 hover:text-red-600 shadow-sm"
+                                  aria-label={`Hapus knowledge ${item.title}`}
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Hapus knowledge?</AlertDialogTitle>
+                                  <AlertDialogDescription>Knowledge “{item.title}” akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteKnowledge(item.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       </motion.div>
@@ -267,4 +311,3 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
 
   );
 }
-

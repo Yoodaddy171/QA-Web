@@ -377,7 +377,7 @@ export function FloatingAIChat({
               setMinimized(false);
               setChatFrame((current) => current || getDefaultFrame());
             }}
-            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition duration-300 elevation-3 focus:outline-none focus:ring-4 focus:ring-primary/30"
+            className="fixed bottom-4 right-4 z-30 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition duration-300 elevation-3 focus:outline-none focus:ring-4 focus:ring-primary/30 sm:bottom-6 sm:right-6 sm:size-14"
             aria-label="Open QA AI chat"
           >
             <MessageCircle className="h-6 w-6" />
@@ -401,7 +401,7 @@ export function FloatingAIChat({
             }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200, mass: 1 }}
-            className="fixed z-50 flex overflow-hidden rounded-2xl border border-border/60 bg-card elevation-3 overscroll-contain"
+            className="fixed z-[45] flex overflow-hidden rounded-2xl border border-border/60 bg-card elevation-3 overscroll-contain"
             onPointerMove={moveChatFrame}
             onPointerUp={stopChatFrameDrag}
             onPointerCancel={stopChatFrameDrag}

@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { DatePicker, DateRangePicker } from '@/components/ui/date-picker';
+import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { saveReport } from '@/lib/client/api/reports-client';
 import type { ReportData, ReportSections, ReportType } from '@/lib/services/report-types';
@@ -18,7 +20,7 @@ interface ReportFormProps {
   onCancel: () => void;
 }
 
-const today = new Date().toISOString().slice(0, 10);
+const today = format(new Date(), 'yyyy-MM-dd');
 const dateInput = (value?: Date) => value ? new Date(value).toISOString().slice(0, 10) : '';
 
 export function ReportForm({ projectId, report, onReportSaved, onCancel }: ReportFormProps) {
@@ -113,11 +115,8 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
             <div><Label>Document Status</Label><Input value={documentStatus} onChange={(e) => setDocumentStatus(e.target.value)} /></div>
             <div><Label>Author</Label><Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tim Pengujian" /></div>
             <div><Label>Approved By</Label><Input value={approvedBy} onChange={(e) => setApprovedBy(e.target.value)} placeholder="Project Manager" /></div>
-            <div><Label>Date of Issue</Label><Input type="date" value={dateOfIssue} onChange={(e) => setDateOfIssue(e.target.value)} required /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Period Start</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required /></div>
-              <div><Label>Period End</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required /></div>
-            </div>
+            <div className="flex flex-col gap-2"><Label>Tanggal penerbitan</Label><DatePicker value={dateOfIssue} onChange={setDateOfIssue} label="Pilih tanggal penerbitan" required /></div>
+            <div className="flex flex-col gap-2"><Label>Periode report</Label><DateRangePicker from={startDate} to={endDate} onFromChange={setStartDate} onToChange={setEndDate} label="Pilih periode report" required /></div>
           </AccordionContent>
         </AccordionItem>
 

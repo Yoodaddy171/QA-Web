@@ -11,13 +11,16 @@ import {
   writeHeaderRow,
   writeTestCaseRows as writeExportTestCaseRows,
 } from '@/lib/services/excel-export-service';
+import { createNotification } from '@/lib/services/notification-service';
 
 // ============== IMPORT (POST) ==============
 export async function POST(req: NextRequest) {
+  let notificationProjectId = '';
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const projectId = formData.get('projectId') as string;
+    notificationProjectId = projectId;
     const createModules = formData.get('createModules') === 'true';
     const mode = String(formData.get('mode') || 'import');
     const mappingRaw = String(formData.get('mapping') || '');
@@ -65,6 +68,18 @@ export async function POST(req: NextRequest) {
 
     const importResult = await importWorkbook(workbook, projectId, createModules, undefined, mappings);
 
+    await createNotification({
+      projectId,
+      type: 'IMPORT_COMPLETED',
+      severity: 'success',
+      title: 'Import Excel selesai',
+      message: `${importResult.imported} testcase berhasil diimport dari ${importResult.totalSheets} sheet.`,
+      entityType: 'ImportBatch',
+      entityId: importResult.batchId,
+      metadata: { tab: 'testcases', imported: importResult.imported },
+      dedupeKey: `import-completed:${importResult.batchId}`,
+    });
+
     return NextResponse.json({
       imported: importResult.imported,
       sheets: importResult.sheets,
@@ -73,6 +88,18 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('POST /api/excel/import error:', error);
+    if (notificationProjectId) {
+      await createNotification({
+        projectId: notificationProjectId,
+        type: 'IMPORT_FAILED',
+        severity: 'critical',
+        title: 'Import Excel gagal',
+        message: 'Workbook tidak berhasil diimport. Periksa file dan validasi baris lalu coba lagi.',
+        entityType: 'ImportBatch',
+        metadata: { tab: 'testcases' },
+        dedupeKey: `import-failed:${Date.now()}`,
+      }).catch(() => undefined);
+    }
     return NextResponse.json({ error: 'Failed to import Excel file' }, { status: 500 });
   }
 }

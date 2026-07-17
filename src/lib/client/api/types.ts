@@ -158,6 +158,11 @@ export interface Stats {
     recommendation: 'READY' | 'READY WITH RISK' | 'NOT READY';
     testRunId: string | null;
     testRunName: string | null;
+    testRunStatus: string | null;
+    totalCases: number;
+    completedCases: number;
+    passedCases: number;
+    progress: number;
     failedCases: number;
     blockedCases: number;
     notRunCases: number;
@@ -165,4 +170,14 @@ export interface Stats {
     openBugs: number;
     reason: string;
   };
+  recentActivities?: {
+    id: string;
+    entityType: string;
+    entityId: string;
+    action: string;
+    field: string | null;
+    afterValue: unknown;
+    actor: string | null;
+    createdAt: string;
+  }[];
 }

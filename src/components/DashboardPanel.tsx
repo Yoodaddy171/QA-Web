@@ -2,8 +2,8 @@
 
 import React from 'react';
 import {
-  AlertTriangle, BarChart3, Bug, CheckCircle2, ChevronDown, ChevronUp,
-  Clock, HelpCircle, Layers, Percent, RefreshCw, XCircle, ShieldAlert
+  AlertTriangle, ArrowUpRight, BarChart3, Bug, CheckCircle2, ChevronDown, ChevronUp,
+  Clock, HelpCircle, Layers, Percent, Play, RefreshCw, XCircle, ShieldAlert
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Collapse } from '@/components/ui/collapse';
@@ -24,6 +24,8 @@ import { cn } from '@/lib/utils';
 import { DashboardStatsCards } from '@/components/DashboardStatsCards';
 import { DashboardQueuesAndRisks } from '@/components/DashboardQueuesAndRisks';
 import { DashboardModuleProgress } from '@/components/DashboardModuleProgress';
+import { DashboardActivityTimeline } from '@/components/DashboardActivityTimeline';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Module {
   id: string;
@@ -156,6 +158,11 @@ export interface DashboardStats {
     recommendation: 'READY' | 'READY WITH RISK' | 'NOT READY';
     testRunId: string | null;
     testRunName: string | null;
+    testRunStatus: string | null;
+    totalCases: number;
+    completedCases: number;
+    passedCases: number;
+    progress: number;
     failedCases: number;
     blockedCases: number;
     notRunCases: number;
@@ -163,6 +170,16 @@ export interface DashboardStats {
     openBugs: number;
     reason: string;
   };
+  recentActivities?: {
+    id: string;
+    entityType: string;
+    entityId: string;
+    action: string;
+    field: string | null;
+    afterValue: unknown;
+    actor: string | null;
+    createdAt: string;
+  }[];
 }
 
 interface DashboardPanelProps {
@@ -177,7 +194,8 @@ interface DashboardPanelProps {
   isLoading?: boolean;
   lastRefreshed?: Date | null;
   onRefresh?: () => void;
-  onNavigate?: (tab: 'testRuns' | 'reports') => void;
+  onNavigate?: (tab: 'testRuns' | 'reports' | 'testcases' | 'bugfix') => void;
+  onOpenFailedCases?: () => void;
 }
 
 export function DashboardPanel({
@@ -193,11 +211,15 @@ export function DashboardPanel({
   lastRefreshed,
   onRefresh,
   onNavigate,
+  onOpenFailedCases,
 }: DashboardPanelProps) {
+  const [showMobileInsights, setShowMobileInsights] = React.useState(false);
+  const isMobile = useIsMobile();
+  const showAdvancedInsights = !isMobile || showMobileInsights;
   const statusDistribution = stats ? [
     { name: 'Done', value: stats.doneCount, color: '#10b981' },
-    { name: 'Active', value: stats.inProgressCount, color: '#f59e0b' },
-    { name: 'Blocked', value: stats.blockedCount, color: '#ec4899' },
+    { name: 'Active', value: stats.inProgressCount, color: '#6366f1' },
+    { name: 'Blocked', value: stats.blockedCount, color: '#f59e0b' },
     { name: 'Failed', value: stats.failedCount, color: '#ef4444' },
     { name: 'Retest', value: stats.readyToRetestCount, color: '#06b6d4' },
     { name: 'TBA', value: stats.tbaCount || 0, color: '#8b5cf6' },
@@ -213,12 +235,22 @@ export function DashboardPanel({
       </div>
     );
 
+    const release = stats.releaseReadiness;
+    const overdueBugs = (stats.bugAging || []).filter(item => item.ageDays >= 7).length;
+    const runTotal = Math.max(1, release?.totalCases || 0);
+    const runSegments = release ? [
+      { label: 'Passed', value: release.passedCases, color: 'bg-status-passed' },
+      { label: 'Failed', value: release.failedCases, color: 'bg-status-failed' },
+      { label: 'Blocked', value: release.blockedCases, color: 'bg-status-blocked' },
+      { label: 'Not run', value: release.notRunCases, color: 'bg-status-not-run' },
+    ] : [];
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="space-y-6"
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        className="space-y-4"
       >
         {/* Refresh indicator */}
         {(onRefresh || lastRefreshed) && (
@@ -230,98 +262,120 @@ export function DashboardPanel({
             )}
             {onRefresh && (
               <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading} className="h-7 px-2.5 gap-1.5 rounded-lg text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition">
-                <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
+                <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} /> Muat ulang
               </Button>
             )}
           </div>
         )}
 
-        {/* Overall Progress - Hero Card with readiness ring */}
-        <Card>
-          <CardContent className="p-6 sm:p-8">
-            <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-10">
-              {/* Animated readiness ring */}
-              <div className="relative h-36 w-36 shrink-0 transition-transform duration-300 hover:scale-105 motion-reduce:hover:transform-none">
-                {stats.overallProgress === 100 && <ConfettiBurst radius={72} />}
-                <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-                  <circle cx="60" cy="60" r="52" fill="none" strokeWidth="10" className="stroke-secondary" />
-                  <motion.circle
-                    cx="60" cy="60" r="52" fill="none" strokeWidth="10" strokeLinecap="round"
-                    className="stroke-primary"
-                    strokeDasharray={2 * Math.PI * 52}
-                    initial={{ strokeDashoffset: 2 * Math.PI * 52 }}
-                    animate={{ strokeDashoffset: 2 * Math.PI * 52 * (1 - stats.overallProgress / 100) }}
-                    transition={{ type: 'spring', stiffness: 60, damping: 18 }}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <AnimatedNumber value={stats.overallProgress} suffix="%" className="text-3xl font-bold tracking-tight text-foreground tabular-nums" />
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">verified</span>
+        {/* Release decision command surface */}
+        <Card className="signal-surface border-primary/35 bg-card shadow-sm">
+          <CardContent className="p-0">
+            <div className="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,.65fr)]">
+              <div className="flex flex-col gap-6 p-5 sm:flex-row sm:items-center sm:p-7">
+                <div className="relative h-28 w-28 shrink-0">
+                  {stats.overallProgress === 100 && <ConfettiBurst radius={56} />}
+                  <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
+                    <circle cx="60" cy="60" r="52" fill="none" strokeWidth="8" className="stroke-secondary" />
+                    <motion.circle cx="60" cy="60" r="52" fill="none" strokeWidth="8" strokeLinecap="round" className="stroke-primary"
+                      strokeDasharray={2 * Math.PI * 52}
+                      initial={{ strokeDashoffset: 2 * Math.PI * 52 }}
+                      animate={{ strokeDashoffset: 2 * Math.PI * 52 * (1 - stats.overallProgress / 100) }}
+                      transition={{ type: 'spring', stiffness: 90, damping: 22 }} />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <AnimatedNumber value={stats.overallProgress} suffix="%" className="font-mono text-2xl font-bold tracking-tight text-foreground tabular-nums" />
+                    <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">readiness</span>
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Release decision</span>
+                    {stats.releaseReadiness && <Badge variant={stats.releaseReadiness.recommendation === 'READY' ? 'success' : stats.releaseReadiness.recommendation === 'NOT READY' ? 'failed' : 'warning'}>{stats.releaseReadiness.recommendation}</Badge>}
+                  </div>
+                  <h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                    {stats.releaseReadiness?.recommendation === 'NOT READY' ? 'Release belum siap' : stats.releaseReadiness?.recommendation === 'READY' ? 'Release siap diluncurkan' : 'Release siap dengan risiko'}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    {stats.releaseReadiness
+                      ? `${stats.releaseReadiness.reason}. Status inventori saat ini: ${stats.failedCount} failed, ${stats.blockedCount} blocked.`
+                      : `${stats.doneCount} dari ${stats.totalTestCases} skenario telah terverifikasi.`}
+                  </p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {onNavigate && <Button size="sm" onClick={() => onNavigate('testRuns')} className="gap-2"><Play className="h-3.5 w-3.5" /> Buka run aktif</Button>}
+                    {onNavigate && <Button size="sm" variant="outline" onClick={() => onNavigate('reports')} className="gap-2">Lihat report <ArrowUpRight className="h-3.5 w-3.5" /></Button>}
+                    {stats.failedCount > 0 && <Button size="sm" variant="ghost" onClick={onOpenFailedCases || (() => onNavigate?.('testcases'))} className="text-red-500">Testcase gagal</Button>}
+                    {onNavigate && stats.bugFixReported > 0 && <Button size="sm" variant="ghost" onClick={() => onNavigate('bugfix')} className="text-orange-500">Buka bugs</Button>}
+                  </div>
                 </div>
               </div>
-
-              <div className="min-w-0 flex-1 space-y-3 text-center sm:text-left">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Project readiness
-                </p>
-                <p className="text-2xl font-semibold tracking-tight text-foreground">
-                  <AnimatedNumber value={stats.doneCount} className="tabular-nums" /> dari {stats.totalTestCases} scenario terverifikasi
-                </p>
-                <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-                  {stats.failedCount > 0 && (
-                    <Badge variant="failed" className="gap-1 text-[11px]"><XCircle className="h-3 w-3" /> {stats.failedCount} failed</Badge>
-                  )}
-                  {stats.blockedCount > 0 && (
-                    <Badge variant="blocked" className="gap-1 text-[11px]"><AlertTriangle className="h-3 w-3" /> {stats.blockedCount} blocked</Badge>
-                  )}
-                  {stats.readyToRetestCount > 0 && (
-                    <Badge variant="readyretest" className="gap-1 text-[11px]"><RefreshCw className="h-3 w-3" /> {stats.readyToRetestCount} retest</Badge>
-                  )}
-                  {stats.failedCount === 0 && stats.blockedCount === 0 && stats.readyToRetestCount === 0 && (
-                    <Badge variant="success" className="gap-1 text-[11px]"><CheckCircle2 className="h-3 w-3" /> Tidak ada blocker</Badge>
-                  )}
-                </div>
+              <div className="grid grid-cols-2 border-t border-border/60 bg-secondary/15 lg:border-l lg:border-t-0">
+                {[
+                  ['Failed in run', stats.releaseReadiness?.failedCases ?? 0, 'text-red-500'],
+                  ['Blocked in run', stats.releaseReadiness?.blockedCases ?? 0, 'text-amber-500'],
+                  ['Not run in run', stats.releaseReadiness?.notRunCases ?? 0, 'text-muted-foreground'],
+                  ['Open bugs', stats.releaseReadiness?.openBugs ?? stats.bugFixReported, 'text-rose-500'],
+                  ['Critical bugs', stats.releaseReadiness?.criticalBugs ?? 0, 'text-red-500'],
+                  ['Overdue bugs', overdueBugs, 'text-bug-open'],
+                ].map(([label, value, tone]) => (
+                  <div key={String(label)} className="border-b border-r border-border/50 p-4 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0">
+                    <p className={cn('font-mono text-2xl font-semibold tabular-nums', tone)}>{value}</p>
+                    <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {stats.releaseReadiness && (
-          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
-            <CardHeader className="border-b border-border/40 pb-3">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"><ShieldAlert className="h-4 w-4 text-primary" /> Release readiness</CardTitle>
-                <Badge variant={stats.releaseReadiness.recommendation === 'READY' ? 'success' : stats.releaseReadiness.recommendation === 'NOT READY' ? 'failed' : 'warning'}>{stats.releaseReadiness.recommendation}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-5">
-              <p className="text-sm font-semibold">{stats.releaseReadiness.testRunName || 'Belum ada Test Run aktif'}</p>
-              <p className="text-xs text-muted-foreground">{stats.releaseReadiness.reason}</p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                {[
-                  ['Failed', stats.releaseReadiness.failedCases],
-                  ['Blocked', stats.releaseReadiness.blockedCases],
-                  ['Not run', stats.releaseReadiness.notRunCases],
-                  ['Critical bugs', stats.releaseReadiness.criticalBugs],
-                  ['Open bugs', stats.releaseReadiness.openBugs],
-                ].map(([label, value]) => <div key={String(label)} className="rounded-lg border border-border/50 bg-secondary/25 p-3"><p className="font-mono text-lg font-bold">{value}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p></div>)}
-              </div>
-              <div className="flex flex-wrap gap-2 border-t border-border/50 pt-3">
-                {onNavigate && <Button size="sm" variant="outline" onClick={() => onNavigate('testRuns')}>Open Test Runs</Button>}
-                {onNavigate && <Button size="sm" variant="ghost" onClick={() => onNavigate('reports')}>Open Reports</Button>}
+        {release?.testRunName && (
+          <Card className="border-border/70 bg-card shadow-none">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+                <div className="min-w-0 lg:w-64">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2" aria-hidden="true"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 motion-reduce:animate-none" /><span className="relative inline-flex h-2 w-2 rounded-full bg-primary" /></span>
+                    <span className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-primary">Test Run terbaru</span>
+                  </div>
+                  <p className="mt-1 truncate text-sm font-semibold text-foreground">{release.testRunName}</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">{release.testRunStatus} · {release.completedCases}/{release.totalCases} executed</p>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
+                    <span>Execution progress</span><span className="font-mono text-foreground">{release.progress}%</span>
+                  </div>
+                  <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="flex h-2 origin-left overflow-hidden rounded-full bg-secondary" aria-label={`Test Run progress ${release.progress}%`}>
+                    {runSegments.map(segment => segment.value > 0 ? <span key={segment.label} className={segment.color} style={{ width: `${(segment.value / runTotal) * 100}%` }} title={`${segment.label}: ${segment.value}`} /> : null)}
+                  </motion.div>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                    {runSegments.map(segment => <span key={segment.label} className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className={cn('h-1.5 w-1.5 rounded-full', segment.color)} />{segment.label} <strong className="font-mono text-foreground">{segment.value}</strong></span>)}
+                  </div>
+                </div>
+                {onNavigate && <Button size="sm" variant="outline" onClick={() => onNavigate('testRuns')} className="shrink-0 gap-2">Lanjutkan run <ArrowUpRight className="h-3.5 w-3.5" /></Button>}
               </div>
             </CardContent>
           </Card>
         )}
 
-        <div className="space-y-6">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-between md:hidden"
+          aria-expanded={showMobileInsights}
+          onClick={() => setShowMobileInsights(value => !value)}
+        >
+          {showMobileInsights ? 'Sembunyikan analitik lanjutan' : 'Tampilkan analitik lanjutan'}
+          {showMobileInsights ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </Button>
+
+        {showAdvancedInsights && <div className="space-y-4">
 
             <DashboardStatsCards stats={stats} />
 
 
 
         {/* Visual Analytics Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Status Distribution */}
           <Card variant="majestic" className="border-border/40 hover:border-primary/20 shadow-sm transition duration-300 bg-card">
             <CardHeader className="pb-3 border-b border-border/40">
@@ -443,6 +497,11 @@ export function DashboardPanel({
           </Card>
         </div>
 
+        <DashboardActivityTimeline
+          activities={stats.recentActivities || []}
+          onNavigate={onNavigate ? (tab) => onNavigate(tab) : undefined}
+        />
+
         {stats.bugFixTotal > 0 && (
           <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
             <CardHeader className="border-b border-border/40 pb-3">
@@ -453,10 +512,10 @@ export function DashboardPanel({
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3 pt-5 sm:grid-cols-4">
               {[
-                { label: 'Open', value: stats.bugFixReported, color: 'text-orange-500', surface: 'bg-orange-500/10' },
-                { label: 'Fixing', value: stats.bugFixFixing, color: 'text-amber-500', surface: 'bg-amber-500/10' },
-                { label: 'Ready', value: stats.bugFixReadyRetest, color: 'text-cyan-500', surface: 'bg-cyan-500/10' },
-                { label: 'Resolved', value: stats.bugFixFixed, color: 'text-emerald-500', surface: 'bg-emerald-500/10' },
+                { label: 'Open', value: stats.bugFixReported, color: 'text-bug-open', surface: 'bg-bug-open/10' },
+                { label: 'Fixing', value: stats.bugFixFixing, color: 'text-bug-fixing', surface: 'bg-bug-fixing/10' },
+                { label: 'Ready', value: stats.bugFixReadyRetest, color: 'text-bug-ready', surface: 'bg-bug-ready/10' },
+                { label: 'Resolved', value: stats.bugFixFixed, color: 'text-bug-fixed', surface: 'bg-bug-fixed/10' },
               ].map((item) => (
                 <div key={item.label} className={cn('rounded-xl border border-border/40 p-4', item.surface)}>
                   <p className={cn('font-mono text-2xl font-semibold', item.color)}>{item.value}</p>
@@ -492,7 +551,7 @@ export function DashboardPanel({
             </CardContent>
           </Card>
         )}
-        </div>
+        </div>}
       </motion.div>
     );
 }

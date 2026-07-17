@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, Bot, Bug, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
-  FileDown, Filter, Globe2, Layers, Link2, Loader2, Maximize2, MessageSquare, Minus, MonitorDot, Paperclip, Play, PlayCircle, Plus, RefreshCw, Search, Sparkles, Square, Trash2, UserRound, Wrench, X
+  FileDown, Filter, Globe2, Layers, Link2, ListChecks, Loader2, Maximize2, MessageSquare, Minus, MonitorDot, Paperclip, Play, PlayCircle, Plus, RefreshCw, Search, Sparkles, Square, Trash2, UserRound, Wrench, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
@@ -189,6 +189,7 @@ export function TestCaseDetailDialog({
   const [syncedEventFilters, setSyncedEventFilters] = useState(DEFAULT_VIDEO_EVENT_FILTERS);
   const [syncedNetworkLogIds, setSyncedNetworkLogIds] = useState<string[]>([]);
   const [copiedEvidence, setCopiedEvidence] = useState(false);
+  const [hasUnsavedComment, setHasUnsavedComment] = useState(false);
   const recordingViewportRef = useRef<HTMLDivElement>(null);
   const recordingVideoRef = useRef<HTMLVideoElement>(null);
   const fullscreenRecordingVideoRef = useRef<HTMLVideoElement>(null);
@@ -794,15 +795,19 @@ export function TestCaseDetailDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen && hasUnsavedComment && !window.confirm('Komentar belum disimpan. Tutup detail dan buang draft?')) return;
+      onOpenChange(nextOpen);
+    }}>
       <DialogContent
+        overlayClassName="bg-black/25 backdrop-blur-[2px]"
         className={cn(
-          "max-h-[90vh] flex flex-col p-0 overflow-hidden bg-card text-foreground border-border/60 elevation-3",
+          "signal-surface test-case-detail-dialog inset-y-0 !left-auto !right-0 h-dvh max-h-dvh w-screen !max-w-none !translate-x-0 translate-y-0 flex flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 border-l border-border/60 bg-card p-0 text-foreground shadow-2xl data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full lg:w-[72vw] lg:min-w-[760px] lg:max-w-[1100px]",
           isSystemDevLogFullscreen
-            ? "h-screen max-h-screen w-screen max-w-none translate-x-[-50%] translate-y-[-50%] rounded-none border-0 sm:max-w-none"
+            ? "left-[50%] right-auto top-[50%] h-screen max-h-screen w-screen max-w-none translate-x-[-50%] translate-y-[-50%] rounded-none border-0 sm:top-[50%] sm:max-h-screen sm:max-w-none"
             : isRecordingFullscreen
               ? "w-[96vw] sm:max-w-[96vw]"
-              : "sm:max-w-4xl rounded-2xl"
+              : "rounded-2xl"
         )}
       >
         <TestCaseDetailDialogHeader
@@ -815,33 +820,37 @@ export function TestCaseDetailDialog({
         />
 
         {viewTestCase && (
-          <div className="flex-1 overflow-y-auto outline-none scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
-            <div className="p-6 pt-4">
-              <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
-                <TabsList className={cn("grid w-full mb-6 border border-border/60 bg-secondary/50 p-1 rounded-xl", isBugFixDetail ? 'grid-cols-9' : 'grid-cols-8')}>
-                  <TabsTrigger value="details" className="gap-2">
-                    <ClipboardList className="w-4 h-4" /> Informasi Utama
+          <div className="min-h-0 flex-1 overflow-hidden outline-none">
+            <div className="flex h-full min-h-0 flex-col p-4 pt-3 sm:p-6 sm:pt-4">
+              <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="min-h-0 w-full flex-1 gap-0">
+                <div className="sticky top-0 z-10 mb-4 w-full shrink-0 overflow-x-auto rounded-xl bg-card pb-1 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
+                  <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 rounded-xl border border-border/60 bg-secondary/50 p-1">
+                  <TabsTrigger value="details" className="min-w-max flex-none gap-2">
+                    <ClipboardList className="w-4 h-4" /> Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="steps" className="min-w-max flex-none gap-2">
+                    <ListChecks className="w-4 h-4" /> Steps
                   </TabsTrigger>
                   {isBugFixDetail && (
-                    <TabsTrigger value="lifecycle" className="gap-2">
+                    <TabsTrigger value="lifecycle" className="min-w-max flex-none gap-2">
                       <History className="w-4 h-4" /> Lifecycle
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="traceability" className="gap-2">
+                  <TabsTrigger value="traceability" className="min-w-max flex-none gap-2">
                     <Link2 className="w-4 h-4" /> Traceability
                   </TabsTrigger>
-                  <TabsTrigger value="execution" className="gap-2">
+                  <TabsTrigger value="execution" className="min-w-max flex-none gap-2">
                     <PlayCircle className="w-4 h-4" /> Execution
                   </TabsTrigger>
-                  <TabsTrigger value="evidence" className="gap-2">
+                  <TabsTrigger value="evidence" className="min-w-max flex-none gap-2">
                     <Paperclip className="w-4 h-4" /> Evidence
                   </TabsTrigger>
-                  <TabsTrigger value="bugs" className="gap-2"><Bug className="w-4 h-4" /> Bugs</TabsTrigger>
-                  <TabsTrigger value="history" className="gap-2"><History className="w-4 h-4" /> History</TabsTrigger>
-                  <TabsTrigger value="comments" className="gap-2">
+                  <TabsTrigger value="bugs" className="min-w-max flex-none gap-2"><Bug className="w-4 h-4" /> Bugs</TabsTrigger>
+                  <TabsTrigger value="history" className="min-w-max flex-none gap-2"><History className="w-4 h-4" /> History</TabsTrigger>
+                  <TabsTrigger value="comments" className="min-w-max flex-none gap-2">
                     <MessageSquare className="w-4 h-4" /> Comments
                   </TabsTrigger>
-                  <TabsTrigger value="logs" className="gap-2">
+                  <TabsTrigger value="logs" className="min-w-max flex-none gap-2">
                     <div className="relative">
                       <Wrench className="w-4 h-4" />
                       {socketReady && (
@@ -851,11 +860,13 @@ export function TestCaseDetailDialog({
                         </span>
                       )}
                     </div>
-                    DevLog
+                    Automation
                   </TabsTrigger>
                 </TabsList>
+                </div>
 
-                <AnimatePresence mode="wait">
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1 outline-none scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
+                  <AnimatePresence mode="wait">
                   {activeMainTab === 'details' && (
                     <TestCaseDetailsTab
                       viewTestCase={viewTestCase}
@@ -863,6 +874,12 @@ export function TestCaseDetailDialog({
                       getTestTypeColor={getTestTypeColor}
                       getPriorityColor={getPriorityColor}
                     />
+                  )}
+                  {activeMainTab === 'steps' && (
+                    <motion.div key="steps" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} className="grid gap-4 md:grid-cols-2">
+                      <section className="rounded-xl border border-border/70 bg-secondary/20 p-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test steps</p><pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-7 text-foreground">{viewTestCase.steps || '—'}</pre></section>
+                      <section className="rounded-xl border border-border/70 bg-secondary/20 p-5"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expected result</p><p className="mt-4 text-sm leading-7 text-foreground">{viewTestCase.expectedResult || '—'}</p></section>
+                    </motion.div>
                   )}
                   {isBugFixDetail && activeMainTab === 'lifecycle' && (
                     <TestCaseLifecycleTab
@@ -890,7 +907,7 @@ export function TestCaseDetailDialog({
                     <TestCaseHistoryTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
                   )}
                   {activeMainTab === 'comments' && (
-                    <TestCaseCommentsTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                    <TestCaseCommentsTab key={viewTestCase.id} projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} onDirtyChange={setHasUnsavedComment} />
                   )}
                   {activeMainTab === 'logs' && (
                     <TabsContent value="logs" className="space-y-4 mt-0 outline-none h-full flex flex-col">
@@ -1428,7 +1445,8 @@ export function TestCaseDetailDialog({
                       </motion.div>
                     </TabsContent>
                   )}
-                </AnimatePresence>
+                  </AnimatePresence>
+                </div>
               </Tabs>
             </div>
           </div>

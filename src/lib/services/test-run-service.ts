@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { TEST_EXECUTION_STATUS, TEST_RUN_STATUS } from '@/lib/domain/test-run';
 import { recordActivity } from '@/lib/services/activity-history-service';
+import { createNotification } from '@/lib/services/notification-service';
 import type { Prisma } from '@prisma/client';
 
 type DbClient = typeof db;
@@ -103,6 +104,19 @@ export async function updateTestRun(projectId: string, id: string, data: {
       await recordActivity({ projectId, entityType: 'TestRun', entityId: id, action: 'UPDATED', field, beforeValue: existing[field], afterValue: data[field] });
     }
   }
+  if (data.status === TEST_RUN_STATUS.COMPLETED && existing.status !== TEST_RUN_STATUS.COMPLETED) {
+    await createNotification({
+      projectId,
+      type: 'TEST_RUN_COMPLETED',
+      severity: 'success',
+      title: 'Test Run selesai',
+      message: `${updated.name} telah selesai dan siap direview.`,
+      entityType: 'TestRun',
+      entityId: updated.id,
+      metadata: { tab: 'testRuns' },
+      dedupeKey: `test-run-completed:${updated.id}`,
+    });
+  }
   return updated;
 }
 
@@ -140,7 +154,7 @@ export async function addTestCasesToRun(projectId: string, testRunId: string, te
 export async function bulkExecuteTestCases(input: { projectId: string; testRunId: string; testCaseIds: string[]; status: string; tester?: string | null; notes?: string | null }) {
   return db.$transaction(async tx => {
     const run = await assertTestRun(tx, input.projectId, input.testRunId);
-    const testCases = await tx.testCase.findMany({ where: { projectId: input.projectId, id: { in: input.testCaseIds } }, select: { id: true } });
+    const testCases = await tx.testCase.findMany({ where: { projectId: input.projectId, id: { in: input.testCaseIds } }, select: { id: true, testCaseId: true } });
     if (testCases.length !== input.testCaseIds.length) throw new Error('Satu atau lebih testcase tidak ditemukan pada project ini.');
     const now = new Date();
     const tester = input.tester || run.assignedTo || 'local-user';
@@ -149,6 +163,14 @@ export async function bulkExecuteTestCases(input: { projectId: string; testRunId
       const membership = await tx.testRunCase.upsert({ where: { testRunId_testCaseId: { testRunId: input.testRunId, testCaseId: testCase.id } }, create: { testRunId: input.testRunId, testCaseId: testCase.id }, update: {} });
       const execution = await tx.testExecution.create({ data: { testRunId: input.testRunId, testCaseId: testCase.id, testRunCaseId: membership.id, tester, status: input.status, notes: input.notes || null, startedAt: now, completedAt: now } });
       await recordActivity({ projectId: input.projectId, entityType: 'TestExecution', entityId: execution.id, action: 'CREATED', afterValue: { testRunId: input.testRunId, testCaseId: testCase.id, status: input.status }, actor: tester }, tx);
+      await createExecutionNotification({
+        projectId: input.projectId,
+        executionId: execution.id,
+        testRunId: input.testRunId,
+        testCaseId: testCase.id,
+        displayId: testCase.testCaseId,
+        status: input.status,
+      }, tx);
       executions.push({ id: execution.id, status: execution.status });
     }
     return { executed: executions.length, executions };
@@ -180,7 +202,7 @@ export async function createTestExecution(input: {
 }) {
   return db.$transaction(async tx => {
     const run = await assertTestRun(tx, input.projectId, input.testRunId);
-    const testCase = await tx.testCase.findFirst({ where: { id: input.testCaseId, projectId: input.projectId }, select: { id: true } });
+    const testCase = await tx.testCase.findFirst({ where: { id: input.testCaseId, projectId: input.projectId }, select: { id: true, testCaseId: true } });
     if (!testCase) throw new Error('Testcase tidak ditemukan pada project ini.');
 
     const membership = await tx.testRunCase.upsert({
@@ -214,6 +236,14 @@ export async function createTestExecution(input: {
       },
     });
     await recordActivity({ projectId: input.projectId, entityType: 'TestExecution', entityId: execution.id, action: 'CREATED', afterValue: { testRunId: input.testRunId, testCaseId: input.testCaseId, status: execution.status }, actor: execution.tester }, tx);
+    await createExecutionNotification({
+      projectId: input.projectId,
+      executionId: execution.id,
+      testRunId: input.testRunId,
+      testCaseId: input.testCaseId,
+      displayId: testCase.testCaseId,
+      status: execution.status,
+    }, tx);
     return execution;
   });
 }
@@ -252,4 +282,30 @@ function summarizeStatuses(statuses: string[]) {
     blocked: statuses.filter(status => status === TEST_EXECUTION_STATUS.BLOCKED).length,
     notRun: statuses.filter(status => status === TEST_EXECUTION_STATUS.NOT_RUN).length,
   };
+}
+
+export async function createExecutionNotification(input: {
+  projectId: string;
+  executionId: string;
+  testRunId: string;
+  testCaseId: string;
+  displayId: string;
+  status: string;
+}, client: TransactionClient) {
+  const config = input.status === TEST_EXECUTION_STATUS.FAILED
+    ? { severity: 'critical' as const, type: 'TESTCASE_FAILED', title: `${input.displayId} gagal`, message: 'Execution gagal dan membutuhkan investigasi atau pembuatan bug.' }
+    : input.status === TEST_EXECUTION_STATUS.BLOCKED
+      ? { severity: 'warning' as const, type: 'TESTCASE_BLOCKED', title: `${input.displayId} terblokir`, message: 'Execution tidak dapat dilanjutkan karena blocker.' }
+      : input.status === TEST_EXECUTION_STATUS.RETEST
+        ? { severity: 'info' as const, type: 'RETEST_READY', title: `${input.displayId} siap retest`, message: 'Testcase masuk antrean retest.' }
+        : null;
+  if (!config) return;
+  await createNotification({
+    projectId: input.projectId,
+    ...config,
+    entityType: 'TestCase',
+    entityId: input.testCaseId,
+    metadata: { tab: 'testRuns', testRunId: input.testRunId, executionId: input.executionId },
+    dedupeKey: `${config.type.toLowerCase()}:${input.executionId}`,
+  }, client);
 }

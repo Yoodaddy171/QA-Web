@@ -51,13 +51,55 @@
   --color-surface-container-highest: var(--surface-container-highest);
   --color-outline: var(--outline);
   --color-outline-variant: var(--outline-variant);
+  --color-status-not-run: var(--status-not-run);
+  --color-status-in-progress: var(--status-in-progress);
+  --color-status-passed: var(--status-passed);
+  --color-status-failed: var(--status-failed);
+  --color-status-blocked: var(--status-blocked);
+  --color-status-retest: var(--status-retest);
+  --color-status-verified: var(--status-verified);
+  --color-bug-open: var(--bug-open);
+  --color-bug-fixing: var(--bug-fixing);
+  --color-bug-ready: var(--bug-ready);
+  --color-bug-fixed: var(--bug-fixed);
 }
 
 /* ===== LIGHT MODE - Quiet Professional: neutral zinc + indigo ===== */
 :root {
   --radius: 0.625rem;
-  --motion-duration: 300ms;
-  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --motion-fast: 120ms;
+  --motion-duration: 180ms;
+  --motion-slow: 240ms;
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Product spacing and typography scales. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --text-micro: 0.625rem;
+  --text-caption: 0.75rem;
+  --text-body: 0.875rem;
+  --text-title: 1.25rem;
+  --text-display: 1.875rem;
+
+  /* Test execution states. */
+  --status-not-run: #64748b;
+  --status-in-progress: #6366f1;
+  --status-passed: #10b981;
+  --status-failed: #ef4444;
+  --status-blocked: #f59e0b;
+  --status-retest: #06b6d4;
+  --status-verified: #22c55e;
+
+  /* Defect lifecycle states deliberately use a separate palette. */
+  --bug-open: #f97316;
+  --bug-fixing: #a855f7;
+  --bug-ready: #0ea5e9;
+  --bug-fixed: #14b8a6;
 
   /* Core surfaces */
   --background: #fafafa;
@@ -121,16 +163,79 @@
   --outline-variant: #d4d4d8;
 }
 
-/* Keep interaction transitions on one rhythm; keyframe loaders remain independent. */
-[class*="transition"] {
-  transition-duration: var(--motion-duration) !important;
-  transition-timing-function: var(--motion-ease) !important;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  [class*="transition"] {
-    transition-duration: 0.01ms !important;
-  }
+/* QADesk command surfaces: fast, restrained, and readable. */
+.command-canvas {
+  background-image: radial-gradient(circle at 70% -16%, color-mix(in srgb, var(--primary) 5%, transparent), transparent 30%);
+}
+
+/* Shared QA operations surfaces: hierarchy comes from rhythm, not decoration. */
+.qa-toolbar {
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--card) 96%, var(--primary) 4%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+.qa-command-bar {
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.qa-selected-row {
+  box-shadow: inset 3px 0 0 var(--primary);
+  background: color-mix(in srgb, var(--primary) 7%, var(--card));
+}
+
+.qa-interactive {
+  transition: transform var(--motion-duration) var(--motion-ease), opacity var(--motion-duration) var(--motion-ease), border-color var(--motion-duration) var(--motion-ease), background-color var(--motion-duration) var(--motion-ease);
+}
+
+.qa-interactive:active {
+  transform: scale(0.985);
+}
+
+.qa-content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
+}
+
+.signal-surface {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.signal-surface::before {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 35%, transparent) 55%, transparent);
+}
+
+.test-case-detail-dialog {
+  position: fixed;
+}
+
+.signal-sweep::after {
+  content: none;
+}
+
+@keyframes signal-sweep {
+  0%, 30% { transform: translateX(0); opacity: 0; }
+  42% { opacity: 1; }
+  72%, 100% { transform: translateX(570%); opacity: 0; }
 }
 
 /* ===== DARK MODE - Quiet Professional: near-black zinc + indigo ===== */
@@ -252,7 +357,7 @@
     box-shadow: none;
   }
   .elevation-1 {
-    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   }
   .elevation-2 {
     box-shadow: 0 2px 6px 2px rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.1);
@@ -265,7 +370,7 @@
   }
 
   .dark .elevation-1 {
-    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.25), 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
   }
   .dark .elevation-2 {
     box-shadow: 0 2px 6px 2px rgba(0, 0, 0, 0.25), 0 1px 2px 0 rgba(0, 0, 0, 0.4);

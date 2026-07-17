@@ -22,15 +22,15 @@ const badgeVariants = cva(
         warning:
           "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
         failed:
-          "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400",
+          "border-status-failed/30 bg-status-failed/10 text-red-700 dark:text-red-400",
         info:
           "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400",
         notdone:
           "border-slate-400/30 bg-slate-300/50 text-slate-600 dark:text-slate-400",
         inprogress:
-          "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+          "border-status-in-progress/30 bg-status-in-progress/10 text-indigo-700 dark:text-indigo-300",
         blocked:
-          "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400",
+          "border-status-blocked/30 bg-status-blocked/10 text-amber-700 dark:text-amber-400",
         readyretest:
           "border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400",
         verifiedfixed:

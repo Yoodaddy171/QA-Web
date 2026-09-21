@@ -1,0 +1,24 @@
+QA-WEB SKILL PLAYWRIGHT UPDATE
+================================
+
+Files:
+- SKILL.md
+- references/api.md
+- references/workflows.md
+
+Main changes:
+- QA automation is runner-agnostic: Katalon / Playwright / Manual.
+- qa_browser is documented as a Playwright runner.
+- First qa_browser action binds to testcase internal database id T via testCaseId.
+- Playwright MCP sends Execution / Console / Network DevLog to the existing relay.
+- Playwright MCP and Manual Capture remain separate browser sessions.
+- Manual Capture video/frames must not be attributed to MCP Chromium.
+- DevLog schemaVersion 2 / category / event / runner / source / sessionId documented.
+- current/previous run rotation compatibility documented.
+- redaction and best-effort relay behavior documented.
+- screenshots remain execution evidence uploads; they are not automatic Manual Capture frames.
+- source code remains the source of truth; do not overwrite newer files from stale skill text.
+
+Validation note:
+The original workflow ledger says it was validated on 2026-09-18.
+The Playwright-MCP DevLog additions were introduced after that validation and should be re-smoke-tested locally after deployment.

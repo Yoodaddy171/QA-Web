@@ -8,7 +8,7 @@ export type FullscreenLogFilter = 'all' | 'errors' | 'api';
 
 export type SelectedFullscreenLog = {
   id: string;
-  kind: 'network' | 'console';
+  kind: 'network' | 'console' | 'execution';
   relativeMs?: number;
   text: string;
   detail: unknown;
@@ -26,8 +26,10 @@ export interface LogEntry {
   eventType?: string;
   log?: unknown;
   message?: unknown;
+  isExecution?: boolean;
   isConsole?: boolean;
   isNetwork?: boolean;
+  metadata?: Record<string, unknown>;
   network?: {
     event?: string;
     method?: string;
@@ -38,6 +40,14 @@ export interface LogEntry {
     data?: unknown;
     success?: boolean;
   };
+}
+
+export interface ExecutionInteraction {
+  type?: string;
+  message?: string;
+  target?: string;
+  value?: unknown;
+  url?: string;
 }
 
 export type NetworkCategory = 'business' | 'preflight' | 'document' | 'script' | 'image' | 'static' | 'telemetry' | 'data' | 'other';
@@ -170,6 +180,29 @@ export const getImageDataUrl = async (url: string) => {
 
 export const asRecord = (value: unknown): Record<string, unknown> | null => (
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+);
+
+export const getExecutionInteraction = (log: LogEntry): ExecutionInteraction | null => {
+  const metadata = asRecord(log.metadata);
+  const legacy = asRecord(metadata?.legacy);
+  const raw = asRecord(metadata?.raw);
+  const interaction = asRecord(metadata?.interaction)
+    ?? asRecord(legacy?.interaction)
+    ?? asRecord(raw?.interaction);
+  return interaction as ExecutionInteraction | null;
+};
+
+export const getExecutionLogText = (log: LogEntry) => {
+  const interaction = getExecutionInteraction(log);
+  const value = interaction?.message ?? log.log ?? log.message ?? 'Execution event';
+  return typeof value === 'string' ? value : formatPrettyValue(value);
+};
+
+export const isExecutionLog = (log: LogEntry) => (
+  log.isExecution === true
+  || log.eventType === 'step'
+  || log.eventType === 'run.started'
+  || log.eventType === 'run.finished'
 );
 
 export const getRequestPayload = (data: unknown) => {

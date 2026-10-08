@@ -1,0 +1,21 @@
+{
+  "name": "qa-web-playwright-automation",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report",
+    "test:relay": "node --env-file-if-exists=../../.env ./node_modules/@playwright/test/cli.js test",
+    "test:relay:headed": "node --env-file-if-exists=../../.env ./node_modules/@playwright/test/cli.js test --headed",
+    "test:068": "npm run test:relay -- tests/ikf-web-068-qna-concurrent.spec.ts",
+    "test:068:headed": "npm run test:relay:headed -- tests/ikf-web-068-qna-concurrent.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "latest",
+    "@types/node": "latest",
+    "typescript": "latest"
+  }
+}

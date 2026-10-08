@@ -9,6 +9,7 @@ import { ResizablePanel } from '@/components/ui/resizable';
 import { cn } from '@/lib/utils';
 import type { FullscreenLogFilter } from '@/components/TestCaseDetailDialog.helpers';
 import { SyncedVideoEventsPanel } from '@/components/SyncedVideoEventsPanel';
+import { ExecutionLogView } from '@/components/ExecutionLogView';
 
 type RecordingEvidencePanelProps = Record<string, any>;
 
@@ -17,7 +18,7 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
     isClosingRecordingFullscreen, activeDevLogTab, setActiveDevLogTab, fullscreenLogFilter,
     setFullscreenLogFilter, selectedFullscreenLog, setSelectedFullscreenLog, networkCodeWrap,
     setNetworkCodeWrap, copyFullscreenEvidence, copiedEvidence, fullscreenNetworkGroups,
-    fullscreenConsoleGroups, getNetworkMethod, getNetworkCategoryClass, getNetworkStatusClass,
+    fullscreenConsoleGroups, executionLogs, getNetworkMethod, getNetworkCategoryClass, getNetworkStatusClass,
     getNetworkStatus, getNetworkDuration, formatLogRecordingTime, formatRelativeTime, selectFullscreenNetworkLog,
     selectFullscreenConsoleLog, networkCodeWhitespaceClass, networkFullscreenCodePanelClass,
     networkCodePanelClass, formatPrettyValue, getRequestPayload, getResponsePayload,
@@ -30,9 +31,16 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
     selectedRecordingFrame, manualRecording, hasManualRecordingVideo, syncedNetworkLogIdSet,
     fullscreenNetworkRowRefs, setExpandedLogId, expandedLogId,
   } = props;
+
+  const toggleNetworkRow = (net: any, logId: string) => {
+    seekRecordingFromLog(net);
+    setSelectedFullscreenLog(null);
+    setExpandedLogId((current: string | null) => current === logId ? null : logId);
+  };
+
   return (
-            <ResizablePanel defaultSize={42} minSize={26} className={cn("min-w-[420px] border-l border-border bg-background transition duration-200", isClosingRecordingFullscreen ? 'translate-x-4' : 'translate-x-0')}>
-            <div className="flex h-full min-w-0 flex-col">
+            <ResizablePanel defaultSize={42} minSize={26} className={cn("min-h-0 min-w-[420px] overflow-hidden border-l border-border bg-background transition duration-200", isClosingRecordingFullscreen ? 'translate-x-4' : 'translate-x-0')}>
+            <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
               <div className="flex min-h-[116px] shrink-0 flex-col justify-end gap-3 border-b border-border px-4 pb-3 pt-4 pr-16">
                 <div className="flex items-end justify-between gap-4">
                   <div className="min-w-0">
@@ -40,6 +48,20 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                     <p className="mt-0.5 truncate text-[10px] text-muted-foreground">Klik log untuk loncat ke timestamp record.</p>
                   </div>
                   <div className="flex shrink-0 rounded-md bg-muted p-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-7 px-2 text-[10px] font-bold",
+                        activeDevLogTab === 'execution'
+                          ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-100 dark:hover:bg-teal-500/20'
+                          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      )}
+                      onClick={() => setActiveDevLogTab('execution')}
+                    >
+                      EXECUTION
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
@@ -114,7 +136,16 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.18 }}
-                    className="shrink-0 overflow-hidden border-b border-border bg-background"
+                    className="max-h-[48%] shrink-0 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain border-b border-border bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                    onWheelCapture={(event) => {
+                      const panel = event.currentTarget;
+                      if (!event.deltaY || panel.scrollHeight <= panel.clientHeight) return;
+                      const maxScrollTop = panel.scrollHeight - panel.clientHeight;
+                      const nextScrollTop = Math.max(0, Math.min(maxScrollTop, panel.scrollTop + event.deltaY));
+                      event.preventDefault();
+                      event.stopPropagation();
+                      panel.scrollTop = nextScrollTop;
+                    }}
                   >
                     <div className="m-3 space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3 shadow-sm dark:border-indigo-500/20 dark:bg-indigo-950/20">
                       <div className="flex items-start justify-between gap-3">
@@ -181,6 +212,16 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                           </div>
                         </div>
                       )}
+                      {selectedFullscreenLog.kind !== 'network' && (
+                        <div className="rounded-lg border border-border bg-background p-3">
+                          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {selectedFullscreenLog.kind === 'execution' ? 'Execution detail' : 'Console detail'}
+                          </p>
+                          <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-foreground">
+                            {formatPrettyValue(selectedFullscreenLog.detail)}
+                          </pre>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between gap-2">
                         <Button
                           type="button"
@@ -215,9 +256,35 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                 selectedSyncedVideoEvent={selectedSyncedVideoEvent}
               />
 
-              <div className="min-h-0 flex-1 overflow-y-auto bg-muted/25">
-                {activeDevLogTab === 'network' ? (
-                  <div className="space-y-2 p-3">
+              <div className="min-h-0 flex flex-1 flex-col overflow-hidden bg-muted/25">
+                {activeDevLogTab === 'execution' ? (
+                  <div
+                    className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                    onWheelCapture={(event) => {
+                      const target = event.currentTarget;
+                      if (target.scrollHeight <= target.clientHeight) return;
+                      event.preventDefault();
+                      target.scrollTop += event.deltaY;
+                    }}
+                  >
+                    <ExecutionLogView
+                      evidenceLogs={props.evidenceLogs}
+                      logs={executionLogs}
+                      compact
+                      formatLogTime={formatLogRecordingTime}
+                      onSelectLog={seekRecordingFromLog}
+                    />
+                  </div>
+                ) : activeDevLogTab === 'network' ? (
+                  <div
+                    className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                    onWheelCapture={(event) => {
+                      const target = event.currentTarget;
+                      if (target.scrollHeight <= target.clientHeight) return;
+                      event.preventDefault();
+                      target.scrollTop += event.deltaY;
+                    }}
+                  >
                     {fullscreenNetworkGroups.length === 0 ? (
                       <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
                         <RefreshCw className="mb-3 h-8 w-8 opacity-20" />
@@ -246,13 +313,11 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                               role="button"
                               tabIndex={0}
                               className="grid w-full cursor-pointer grid-cols-12 items-center gap-2 p-2 text-left"
-                              onClick={() => {
-                                setExpandedLogId(expandedLogId === logId ? null : logId);
-                              }}
+                              onClick={() => toggleNetworkRow(net, logId)}
                               onKeyDown={(event) => {
                                 if (event.key === 'Enter' || event.key === ' ') {
                                   event.preventDefault();
-                                  setExpandedLogId(expandedLogId === logId ? null : logId);
+                                  toggleNetworkRow(net, logId);
                                 }
                               }}
                             >
@@ -338,7 +403,15 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-2 p-3">
+                  <div
+                    className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                    onWheelCapture={(event) => {
+                      const target = event.currentTarget;
+                      if (target.scrollHeight <= target.clientHeight) return;
+                      event.preventDefault();
+                      target.scrollTop += event.deltaY;
+                    }}
+                  >
                     {fullscreenConsoleGroups.length === 0 ? (
                       <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
                         <Clock className="mb-3 h-8 w-8 opacity-20" />

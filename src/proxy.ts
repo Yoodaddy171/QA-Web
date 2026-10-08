@@ -98,7 +98,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !isAllowedRequestOrigin(req.nextUrl, req.headers.get('origin'))) {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !isAllowedRequestOrigin(req.nextUrl, req.headers.get('origin'), req.headers.get('host'))) {
     return jsonError('Origin request tidak diizinkan.', 403);
   }
 

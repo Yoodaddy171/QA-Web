@@ -5,6 +5,7 @@
   var sessionId = params.get('qaSessionId') || '';
   var relay = params.get('qaRelay') || 'http://127.0.0.1:3001';
   var relayToken = params.get('qaToken') || '';
+  var showSensitive = params.get('qaRaw') === '1';
   var maxTextLength = 4000;
 
   if (!enabled || !testCaseId || !sessionId || window.__qaManualCaptureInstalled) return;
@@ -35,6 +36,10 @@
 
   function redactValue(key, value) {
     var sensitive = /authorization|cookie|token|password|secret|apikey|api-key|access_token|refresh_token/i;
+    if (showSensitive) {
+      if (value && typeof value === 'object') return redactObject(value);
+      return value;
+    }
     if (sensitive.test(String(key))) return '[REDACTED]';
     if (value && typeof value === 'object') return redactObject(value);
     return value;
@@ -107,6 +112,67 @@
       if (arg && typeof arg === 'object') return truncate(redactObject(arg));
       return truncate(String(arg));
     }).join(' ');
+  }
+
+  function cleanLabel(value, fallback) {
+    var text = String(value || '').replace(/\s+/g, ' ').trim();
+    return truncate(text || fallback || 'elemen');
+  }
+
+  function getAriaLabelledBy(element) {
+    var ids = element && element.getAttribute && element.getAttribute('aria-labelledby');
+    if (!ids) return '';
+    return ids.split(/\s+/).map(function (id) {
+      var label = document.getElementById(id);
+      return label ? label.textContent : '';
+    }).filter(Boolean).join(' ');
+  }
+
+  function getFieldLabel(element) {
+    if (!element) return 'field';
+    var label = '';
+    try {
+      label = element.getAttribute('aria-label') || getAriaLabelledBy(element);
+      if (!label && element.labels && element.labels.length) label = element.labels[0].textContent;
+      if (!label) {
+        var wrappingLabel = element.closest && element.closest('label');
+        if (wrappingLabel) label = wrappingLabel.textContent;
+      }
+      label = label || element.getAttribute('placeholder') || element.getAttribute('name') || element.id;
+    } catch (_) {}
+    return cleanLabel(label, 'field');
+  }
+
+  function getControlLabel(element) {
+    if (!element) return 'elemen';
+    var label = '';
+    try {
+      label = element.getAttribute('aria-label') || getAriaLabelledBy(element) || element.getAttribute('title');
+      label = label || element.textContent || element.getAttribute('value') || element.getAttribute('name') || element.id;
+    } catch (_) {}
+    return cleanLabel(label, String(element.tagName || 'elemen').toLowerCase());
+  }
+
+  function getPageEndpoint() {
+    return window.location.pathname + window.location.search + window.location.hash;
+  }
+
+  function getInputValue(element) {
+    var value = element && 'value' in element ? String(element.value || '') : '';
+    if (!showSensitive && element && element.type === 'password') return '[REDACTED]';
+    return cleanLabel(value, '(kosong)');
+  }
+
+  function sendInteraction(interactionType, message, details) {
+    var interaction = Object.assign({ type: interactionType, message: message }, details || {});
+    sendLog({
+      eventType: 'step',
+      stepName: message,
+      message: message,
+      log: message,
+      interaction: interaction,
+      metadata: { interaction: interaction },
+    });
   }
 
   ['log', 'info', 'warn', 'error'].forEach(function (level) {
@@ -225,36 +291,131 @@
     };
   }
 
+  var inputTimers = new WeakMap();
+  var lastInputValues = new WeakMap();
+
+  function recordTextInput(element) {
+    var value = getInputValue(element);
+    if (lastInputValues.get(element) === value) return;
+    lastInputValues.set(element, value);
+    var field = getFieldLabel(element);
+    sendInteraction('input', 'Memasukkan "' + value + '" ke field "' + field + '"', {
+      target: field,
+      value: value,
+    });
+  }
+
+  window.addEventListener('input', function (event) {
+    var element = event.target;
+    if (!element || !element.matches || !element.matches('input:not([type="checkbox"]):not([type="radio"]), textarea')) return;
+    var activeTimer = inputTimers.get(element);
+    if (activeTimer) window.clearTimeout(activeTimer);
+    inputTimers.set(element, window.setTimeout(function () {
+      inputTimers.delete(element);
+      recordTextInput(element);
+    }, 600));
+  }, true);
+
+  window.addEventListener('change', function (event) {
+    var element = event.target;
+    if (!element || !element.matches) return;
+
+    if (element.matches('select')) {
+      var selectField = getFieldLabel(element);
+      var selectedText = Array.prototype.map.call(element.selectedOptions || [], function (option) {
+        return option.textContent || option.value;
+      }).join(', ');
+      selectedText = cleanLabel(selectedText || element.value, '(kosong)');
+      sendInteraction('select', 'Memilih "' + selectedText + '" untuk field "' + selectField + '"', {
+        target: selectField,
+        value: selectedText,
+      });
+      return;
+    }
+
+    if (element.matches('input[type="checkbox"]')) {
+      var checkboxField = getFieldLabel(element);
+      sendInteraction('checkbox', (element.checked ? 'Mencentang' : 'Menghapus centang pada') + ' field "' + checkboxField + '"', {
+        target: checkboxField,
+        value: Boolean(element.checked),
+      });
+      return;
+    }
+
+    if (element.matches('input[type="radio"]')) {
+      var radioField = getFieldLabel(element);
+      var radioValue = cleanLabel(element.value, getControlLabel(element));
+      sendInteraction('radio', 'Memilih opsi "' + radioValue + '" untuk field "' + radioField + '"', {
+        target: radioField,
+        value: radioValue,
+      });
+      return;
+    }
+
+    if (element.matches('input, textarea')) {
+      var timer = inputTimers.get(element);
+      if (timer) window.clearTimeout(timer);
+      inputTimers.delete(element);
+      recordTextInput(element);
+    }
+  }, true);
+
   window.addEventListener('click', function (event) {
     var target = event.target;
-    var targetLabel = '';
-    try {
-      targetLabel = target && target.closest
-        ? target.closest('button,a,input,select,textarea,[role="button"],[data-testid],[aria-label]') || target
-        : target;
-      targetLabel = targetLabel
-        ? [
-            targetLabel.tagName,
-            targetLabel.getAttribute && (targetLabel.getAttribute('aria-label') || targetLabel.getAttribute('data-testid') || targetLabel.id || targetLabel.name),
-            targetLabel.textContent && targetLabel.textContent.trim().slice(0, 80),
-          ].filter(Boolean).join(' ')
-        : '';
-    } catch (_) {}
+    var element = target && target.closest
+      ? target.closest('button,a,[role="button"],[role="option"],[role="menuitem"],[role="tab"],input[type="button"],input[type="submit"],[data-testid],[aria-label]') || target
+      : target;
+    if (!element || !element.matches || element.matches('select,textarea,input:not([type="button"]):not([type="submit"])')) return;
 
-    sendLog({
-      level: 'INFO',
-      console: false,
-      log: 'Manual Click',
-      interaction: {
-        type: 'click',
-        x: event.clientX,
-        y: event.clientY,
-        viewportWidth: window.innerWidth || document.documentElement.clientWidth || 0,
-        viewportHeight: window.innerHeight || document.documentElement.clientHeight || 0,
-        target: truncate(targetLabel),
-      },
-    });
+    var targetLabel = getControlLabel(element);
+    var isLink = element.matches('a[href]');
+    var role = element.getAttribute && element.getAttribute('role');
+    var interactionType = isLink ? 'link' : role === 'option' ? 'select' : role === 'menuitem' ? 'menu' : role === 'tab' ? 'tab' : 'click';
+    var message = isLink ? 'Membuka tautan "' + targetLabel + '"'
+      : role === 'option' ? 'Memilih opsi "' + targetLabel + '"'
+      : role === 'menuitem' ? 'Memilih menu "' + targetLabel + '"'
+      : role === 'tab' ? 'Membuka tab "' + targetLabel + '"'
+      : 'Menekan tombol "' + targetLabel + '"';
+    var interaction = {
+      target: targetLabel,
+      x: event.clientX,
+      y: event.clientY,
+      viewportWidth: window.innerWidth || document.documentElement.clientWidth || 0,
+      viewportHeight: window.innerHeight || document.documentElement.clientHeight || 0,
+    };
+    if (isLink) interaction.href = element.href;
+    sendInteraction(interactionType, message, interaction);
   }, true);
+
+  window.addEventListener('submit', function (event) {
+    var form = event.target;
+    var formLabel = getControlLabel(form);
+    sendInteraction('submit', 'Mengirim form "' + formLabel + '"', { target: formLabel });
+  }, true);
+
+  var lastPageEndpoint = '';
+  function recordNavigation() {
+    var endpoint = getPageEndpoint();
+    if (!endpoint || endpoint === lastPageEndpoint) return;
+    lastPageEndpoint = endpoint;
+    sendInteraction('navigation', 'Menuju halaman "' + endpoint + '"', {
+      target: endpoint,
+      url: window.location.href,
+    });
+  }
+
+  ['pushState', 'replaceState'].forEach(function (method) {
+    var original = window.history && window.history[method];
+    if (!original) return;
+    window.history[method] = function () {
+      var result = original.apply(this, arguments);
+      window.setTimeout(recordNavigation, 0);
+      return result;
+    };
+  });
+  window.addEventListener('popstate', recordNavigation);
+  window.addEventListener('hashchange', recordNavigation);
+  recordNavigation();
 
   sendLog({
     level: 'INFO',

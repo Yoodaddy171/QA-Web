@@ -8,7 +8,7 @@ function slugify(value: string) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAllowedRequestOrigin(req.nextUrl, req.headers.get('origin'))) return NextResponse.json({ error: 'Origin request tidak diizinkan.' }, { status: 403 });
+  if (!isAllowedRequestOrigin(req.nextUrl, req.headers.get('origin'), req.headers.get('host'))) return NextResponse.json({ error: 'Origin request tidak diizinkan.' }, { status: 403 });
   if (await db.user.count()) return NextResponse.json({ error: 'Bootstrap sudah dinonaktifkan karena user telah tersedia.' }, { status: 409 });
   const expectedToken = process.env.QA_BOOTSTRAP_TOKEN || '';
   const body = await req.json().catch(() => ({}));

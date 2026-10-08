@@ -3,13 +3,18 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { PrismaClient } from '@prisma/devlog-client';
+import { parseEnv } from 'node:util';
 
 const require = createRequire(import.meta.url);
+const localEnv = parseEnv((await fs.readFile('.env', 'utf8')).replace(/^\uFEFF/, ''));
+for (const [key, value] of Object.entries(localEnv)) if (process.env[key] === undefined) process.env[key] = value;
+const url = process.env.POSTGRES_DATABASE_URL || process.env.DATABASE_URL;
+if (!url) throw new Error('DATABASE_URL or POSTGRES_DATABASE_URL is required');
+const { PrismaClient } = require(url.startsWith('file:') ? '@prisma/client' : '@prisma/devlog-client');
 const { normalizeAutomationEvent } = require('../mini-services/automation-event');
 const { createDevlogStore } = require('../mini-services/devlog-store');
-const db = new PrismaClient({ datasourceUrl: process.env.POSTGRES_DATABASE_URL || process.env.DATABASE_URL });
-const store = createDevlogStore(db, { allowOrphans: true });
+const db = new PrismaClient({ datasourceUrl: url });
+const store = createDevlogStore(db, { allowOrphans: true, sqlite: url.startsWith('file:') });
 const root = path.resolve('.');
 const logsDir = path.join(root, 'mini-services', 'logs');
 const recordingRoots = [

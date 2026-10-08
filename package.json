@@ -35,11 +35,11 @@
     "db:generate": "npm run db:generate:sqlite",
     "db:generate:sqlite": "prisma generate --schema prisma/sqlite.prisma && prisma generate --schema prisma/devlog.prisma",
     "db:generate:postgres": "prisma generate --schema prisma/schema.prisma && prisma generate --schema prisma/devlog.prisma",
-    "db:migrate": "npm run db:migrate:postgres",
+    "db:migrate": "npm run db:push:sqlite",
     "db:reset:sqlite": "prisma db push --force-reset --schema prisma/sqlite.prisma",
     "db:export-sqlite": "python scripts/export-sqlite.py",
     "db:import-postgres": "npm run db:generate:postgres && node scripts/import-postgres.mjs",
-    "db:import-devlog": "node scripts/import-devlog.mjs"
+    "db:import-devlog": "node --env-file-if-exists=.env scripts/import-devlog.mjs"
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",

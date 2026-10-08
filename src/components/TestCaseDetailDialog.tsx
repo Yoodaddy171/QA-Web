@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle, Bot, Bug, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
   FileDown, Filter, Globe2, Layers, Link2, ListChecks, Loader2, Maximize2, MessageSquare, Minus, MonitorDot, Paperclip, Play, PlayCircle, Plus, RefreshCw, Search, Sparkles, Square, Trash2, UserRound, Wrench, X
@@ -59,6 +60,7 @@ import {
   getBugLifecycleItems,
   getConsoleLogText,
   getImageDataUrl,
+  isExecutionLog,
   getLifecycleIndex,
   getManualFrameUrl,
   getManualVideoUrl,
@@ -199,6 +201,7 @@ export function TestCaseDetailDialog({
   const recordingFullscreenTimerRef = useRef<number | null>(null);
   const consoleLogs = useMemo(() => filterConsoleLogs(liveLogs), [filterConsoleLogs, liveLogs]);
   const groupedConsoleLogs = useMemo(() => groupConsoleLogs(consoleLogs), [consoleLogs]);
+  const executionLogs = useMemo(() => liveLogs.filter(isExecutionLog), [liveLogs]);
   const navigationIndex = useMemo(() => {
     if (!testCaseList?.length || !viewTestCase) return -1;
     return testCaseList.findIndex(tc => tc.id === viewTestCase.id);
@@ -284,6 +287,11 @@ export function TestCaseDetailDialog({
       ? fullscreenConsoleGroups.find((group) => `system-console-${group.id}` === selectedSystemDevLogId) ?? null
       : null
   ), [fullscreenConsoleGroups, selectedSystemDevLogId]);
+  const selectedSystemExecutionLog = useMemo(() => (
+    selectedSystemDevLogId
+      ? executionLogs.find((log, index) => `system-execution-${log.eventId || log.id || index}` === selectedSystemDevLogId) ?? null
+      : null
+  ), [executionLogs, selectedSystemDevLogId]);
   const networkCodeWhitespaceClass = networkCodeWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre';
   const hiddenNetworkCount = Math.max(0, networkLogItems.length - networkLogs.length);
   const isBugFixDetail = viewTestCase?.detailSource === 'bugfix' || Boolean(viewTestCase?.sourceTestCaseId && viewTestCase?.reportedAt);
@@ -588,8 +596,19 @@ export function TestCaseDetailDialog({
     recordingFullscreenTimerRef.current = null;
   };
 
+  const enterBrowserFullscreen = () => {
+    if (typeof document === 'undefined' || document.fullscreenElement || typeof document.documentElement.requestFullscreen !== 'function') return;
+    void document.documentElement.requestFullscreen().catch(() => undefined);
+  };
+
+  const exitBrowserFullscreen = () => {
+    if (typeof document === 'undefined' || !document.fullscreenElement || typeof document.exitFullscreen !== 'function') return;
+    void document.exitFullscreen().catch(() => undefined);
+  };
+
   const openRecordingFullscreen = () => {
     if (isVideoLoading) return;
+    enterBrowserFullscreen();
     clearRecordingFullscreenTimer();
     setRecordingZoom(1);
     setFullscreenLogFilter('all');
@@ -615,7 +634,6 @@ export function TestCaseDetailDialog({
   const openSystemDevLogFullscreen = () => {
     setFullscreenLogFilter('all');
     setSelectedSystemDevLogId(null);
-    if (activeDevLogTab === 'execution') setActiveDevLogTab('network');
     setIsSystemDevLogFullscreen(true);
   };
 
@@ -674,6 +692,7 @@ export function TestCaseDetailDialog({
   };
 
   const closeRecordingFullscreen = () => {
+    exitBrowserFullscreen();
     clearRecordingFullscreenTimer();
     setIsRecordingFullscreenContentVisible(false);
 
@@ -703,15 +722,68 @@ export function TestCaseDetailDialog({
     setSelectedSyncedEventId(event.id);
     setRecordingSeekMs(event.clampedOffsetMs);
     setRecordingSeekApprox(event.isBeforeVideo || event.isAfterVideo);
-    if (!manualRecording?.video || !hasManualRecordingVideo) return;
-    const durationSeconds = getRecordingVideoDurationMs() / 1000;
-    const targetSeconds = Math.max(0, Math.min(durationSeconds || Number.POSITIVE_INFINITY, event.clampedOffsetMs / 1000));
-    for (const player of [recordingVideoRef.current, fullscreenRecordingVideoRef.current]) {
-      if (!player) continue;
-      try {
-        player.currentTime = targetSeconds;
-      } catch {}
+    if (manualRecording?.video && hasManualRecordingVideo) {
+      const durationSeconds = getRecordingVideoDurationMs() / 1000;
+      const targetSeconds = Math.max(0, Math.min(durationSeconds || Number.POSITIVE_INFINITY, event.clampedOffsetMs / 1000));
+      for (const player of [recordingVideoRef.current, fullscreenRecordingVideoRef.current]) {
+        if (!player) continue;
+        try {
+          player.currentTime = targetSeconds;
+        } catch {}
+      }
     }
+
+    const sourceLog = event.originalEvent as unknown as LogEntry;
+    const matchesSourceLog = (candidate: LogEntry) => (
+      candidate === sourceLog
+      || Boolean(sourceLog.eventId && candidate.eventId === sourceLog.eventId)
+      || Boolean(sourceLog.id && candidate.id === sourceLog.id)
+    );
+
+    if (sourceLog.network || event.category.startsWith('api.')) {
+      if (!sourceLog.network) return;
+      const matchingGroup = fullscreenNetworkGroups.find((group) => (
+        group.entries.some((entry) => matchesSourceLog(entry.log))
+      ));
+      const logId = matchingGroup ? `fullscreen-${matchingGroup.id}` : `fullscreen-event-${event.id}`;
+      setActiveDevLogTab('network');
+      selectFullscreenNetworkLog(
+        sourceLog as LogEntry & { network: NonNullable<LogEntry['network']> },
+        getNetworkMeta(sourceLog.network),
+        logId
+      );
+      window.setTimeout(() => {
+        fullscreenNetworkRowRefs.current.get(logId)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 0);
+      return;
+    }
+
+    if (event.category.startsWith('console.') || event.category === 'javascript.error' || sourceLog.isConsole) {
+      const matchingGroup = fullscreenConsoleGroups.find((group) => (
+        group.entries.some(matchesSourceLog)
+      ));
+      const logId = matchingGroup ? `fullscreen-${matchingGroup.id}` : `fullscreen-event-${event.id}`;
+      setActiveDevLogTab('console');
+      selectFullscreenConsoleLog(sourceLog, logId);
+      return;
+    }
+
+    setActiveDevLogTab('execution');
+    setSelectedFullscreenLog({
+      id: `fullscreen-execution-${event.id}`,
+      kind: 'execution',
+      relativeMs: event.clampedOffsetMs,
+      text: event.summary,
+      detail: {
+        category: event.category,
+        severity: event.severity,
+        label: event.label,
+        timestamp: event.eventTimestampMs ? new Date(event.eventTimestampMs).toISOString() : '-',
+        offset: formatRelativeTime(event.clampedOffsetMs),
+        message: event.summary,
+        metadata: sourceLog.metadata,
+      },
+    });
   };
 
   useEffect(() => {
@@ -730,6 +802,21 @@ export function TestCaseDetailDialog({
   }, [isRecordingFullscreen]);
 
   useEffect(() => () => clearRecordingFullscreenTimer(), []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!isRecordingFullscreen || document.fullscreenElement) return;
+      clearRecordingFullscreenTimer();
+      setIsRecordingFullscreen(false);
+      setIsRecordingFullscreenExpanded(false);
+      setIsRecordingFullscreenContentVisible(false);
+      setIsClosingRecordingFullscreen(false);
+      setSyncedNetworkLogIds([]);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [isRecordingFullscreen]);
 
   const manualCaptureCommandProps = {
     socketReady, manualCaptureSessionId, isManualCaptureActive, manualCaptureMode, setManualCaptureMode,
@@ -754,10 +841,10 @@ export function TestCaseDetailDialog({
   };
 
   const systemDevLogFullscreenProps = {
-    isSystemDevLogFullscreen, activeDevLogTab, fullscreenNetworkGroups, fullscreenConsoleGroups, viewTestCase,
+    isSystemDevLogFullscreen, activeDevLogTab, fullscreenNetworkGroups, fullscreenConsoleGroups, executionLogs, viewTestCase, evidenceLogs: liveLogs,
     setActiveDevLogTab, setSelectedSystemDevLogId, selectedSystemDevLogId, setIsSystemDevLogFullscreen,
     fullscreenLogFilter, setFullscreenLogFilter, networkCodeWrap, setNetworkCodeWrap, closeSystemDevLogFullscreen,
-    selectedSystemNetworkGroup, selectedSystemConsoleGroup, formatRelativeTime, getNetworkMethod,
+    selectedSystemNetworkGroup, selectedSystemConsoleGroup, selectedSystemExecutionLog, formatRelativeTime, getNetworkMethod,
     getNetworkCategoryClass, getNetworkStatusClass, getNetworkStatus, getNetworkDuration,
     networkCodePanelClass, networkFullscreenCodePanelClass, networkCodeWhitespaceClass, formatPrettyValue,
     getRequestPayload, getResponsePayload, seekRecordingFromLog, getConsoleLogText,
@@ -777,10 +864,10 @@ export function TestCaseDetailDialog({
   };
 
   const recordingEvidencePanelProps = {
-    isClosingRecordingFullscreen, activeDevLogTab, setActiveDevLogTab, fullscreenLogFilter,
+    isClosingRecordingFullscreen, activeDevLogTab, setActiveDevLogTab, fullscreenLogFilter, evidenceLogs: liveLogs,
     setFullscreenLogFilter, selectedFullscreenLog, setSelectedFullscreenLog, networkCodeWrap,
     setNetworkCodeWrap, copyFullscreenEvidence, copiedEvidence, fullscreenNetworkGroups,
-    fullscreenConsoleGroups, getNetworkMethod, getNetworkCategoryClass, getNetworkStatusClass,
+    fullscreenConsoleGroups, executionLogs, getNetworkMethod, getNetworkCategoryClass, getNetworkStatusClass,
     getNetworkStatus, getNetworkDuration, formatLogRecordingTime, formatRelativeTime,
     selectFullscreenNetworkLog, selectFullscreenConsoleLog, networkCodeWhitespaceClass,
     networkFullscreenCodePanelClass, networkCodePanelClass, formatPrettyValue, getRequestPayload,
@@ -1354,7 +1441,7 @@ export function TestCaseDetailDialog({
                           */}
                           <SystemDevLogHeader {...systemDevLogHeaderProps} />
 
-                          <div className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-300 shadow-xl overflow-hidden flex flex-col font-mono text-[11.5px] dark:bg-background dark:border-border dark:shadow-2xl">
+                          <div className="flex h-[min(680px,calc(100dvh-8rem))] min-h-[360px] max-h-[680px] min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white font-mono text-[11.5px] shadow-xl dark:border-border dark:bg-background dark:shadow-2xl">
                             {aiSummary && (
                               <div className="border-b border-indigo-100 bg-indigo-50 p-4 animate-in fade-in slide-in-from-top-2 duration-500 dark:border-indigo-900/50 dark:bg-indigo-950/30">
                                 <div className="flex items-center justify-between mb-2">
@@ -1371,9 +1458,16 @@ export function TestCaseDetailDialog({
                                 </div>
                               </div>
                             )}
-                            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent dark:scrollbar-thumb-slate-700">
+                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent dark:scrollbar-thumb-slate-700">
                               {activeDevLogTab === 'execution' ? (
-                                <ExecutionLogView stepLogs={viewTestCase.stepLogs} logEndRef={logEndRef} />
+                                <ExecutionLogView
+                                  stepLogs={viewTestCase.stepLogs}
+                                  logs={executionLogs}
+                                  evidenceLogs={liveLogs}
+                                  logEndRef={logEndRef}
+                                  formatRelativeTime={formatRelativeTime}
+                                  onSelectLog={seekRecordingFromLog}
+                                />
                               ) : activeDevLogTab === 'console' ? (
                                 <ConsoleLogView
                                   groupedConsoleLogs={groupedConsoleLogs}
@@ -1456,16 +1550,16 @@ export function TestCaseDetailDialog({
           {/*
                       {viewTestCase?.testCaseId || '-'} · {viewTestCase?.testAction || 'Execution telemetry'}
         */}
-        {isRecordingFullscreen && (manualRecording?.frames?.length || hasManualRecordingVideo) && (
+        {isRecordingFullscreen && (manualRecording?.frames?.length || hasManualRecordingVideo) && typeof document !== 'undefined' && createPortal(
           <div
             className={cn(
-              "fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4 text-foreground transition-opacity duration-200",
+              "pointer-events-auto fixed inset-0 z-[80] flex h-[100dvh] w-[100vw] items-stretch justify-stretch overflow-hidden bg-black text-foreground transition-opacity duration-200",
               isClosingRecordingFullscreen ? 'opacity-0' : 'opacity-100'
             )}
           >
             <div
               className={cn(
-                "relative flex h-full w-full max-w-[96vw] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl transition duration-200 ease-out",
+                "relative flex h-full w-full overflow-hidden border-0 bg-background shadow-2xl transition duration-200 ease-out",
                 isRecordingFullscreenExpanded && !isClosingRecordingFullscreen ? 'scale-100 opacity-100' : 'scale-95 opacity-95'
               )}
             >
@@ -1484,7 +1578,7 @@ export function TestCaseDetailDialog({
               {!isRecordingFullscreenContentVisible ? (
                 <div className="flex h-full w-full bg-background" />
               ) : (
-                <ResizablePanelGroup direction="horizontal" className="h-full w-full">
+                <ResizablePanelGroup direction="horizontal" className="h-full min-h-0 w-full overflow-hidden">
                   <RecordingVideoPanel {...recordingVideoPanelProps} />
                   <ResizableHandle withHandle />
             <RecordingEvidencePanel {...recordingEvidencePanelProps} />{/*
@@ -1493,7 +1587,8 @@ export function TestCaseDetailDialog({
                 </ResizablePanelGroup>
               )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         <TestCaseDetailDialogFooter

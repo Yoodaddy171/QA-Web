@@ -5,7 +5,7 @@ import { createSession, isAllowedRequestOrigin, normalizeEmail, SESSION_COOKIE, 
 import { db } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
-  if (!isAllowedRequestOrigin(req.nextUrl, req.headers.get('origin'))) return NextResponse.json({ error: 'Origin request tidak diizinkan.' }, { status: 403 });
+  if (!isAllowedRequestOrigin(req.nextUrl, req.headers.get('origin'), req.headers.get('host'))) return NextResponse.json({ error: 'Origin request tidak diizinkan.' }, { status: 403 });
   const body = await req.json().catch(() => ({}));
   const email = normalizeEmail(body.email);
   const password = typeof body.password === 'string' ? body.password : '';

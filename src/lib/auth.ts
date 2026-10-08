@@ -98,11 +98,12 @@ export function safeEqualText(actual: string, expected: string) {
   return actualBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
-export function isAllowedRequestOrigin(requestUrl: URL, origin: string | null) {
+export function isAllowedRequestOrigin(requestUrl: URL, origin: string | null, requestHost?: string | null) {
   if (!origin) return false;
   const configured = [process.env.APP_URL, ...(process.env.QA_ALLOWED_ORIGINS || '').split(',')]
     .map(value => String(value || '').trim().replace(/\/$/, ''))
     .filter(Boolean);
-  const allowed = new Set([requestUrl.origin, ...configured]);
+  const sameHostOrigin = requestHost ? `${requestUrl.protocol}//${requestHost.trim()}`.replace(/\/$/, '') : null;
+  const allowed = new Set([requestUrl.origin, sameHostOrigin, ...configured].filter(Boolean));
   return allowed.has(origin.replace(/\/$/, ''));
 }

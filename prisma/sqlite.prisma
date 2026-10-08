@@ -427,7 +427,7 @@ model AutomationRun {
 }
 
 model AutomationEvent {
-  sequence   BigInt        @id @default(autoincrement())
+  sequence   Int           @id @default(autoincrement())
   eventId    String        @unique
   runId      String
   run        AutomationRun @relation(fields: [runId], references: [id], onDelete: Cascade)

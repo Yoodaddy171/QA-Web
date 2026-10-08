@@ -1,13 +1,105 @@
 'use client';
 
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Film, Loader2, Maximize2, Minus, Pause, Play, Plus, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { cn } from '@/lib/utils';
 import { buildDevlogRelayUrl } from '@/lib/client/api/devlog-client';
+import type { GroupedVideoEventMarker, SyncedVideoEvent } from '@/lib/client/automation/video-event-sync';
 
 type RecordingVideoPanelProps = Record<string, any>;
+
+type TimelineEventMarkerProps = {
+  marker: GroupedVideoEventMarker;
+  selectedSyncedEventId?: string | null;
+  currentSyncedVideoEvent?: SyncedVideoEvent | null;
+  formatRelativeTime: (relativeMs?: number) => string;
+  getSyncedMarkerClass: (event: SyncedVideoEvent) => string;
+  getSyncedEventSeverityClass: (event: SyncedVideoEvent) => string;
+  onSelectEvent: (event: SyncedVideoEvent) => void;
+};
+
+function TimelineEventMarker({
+  marker,
+  selectedSyncedEventId,
+  currentSyncedVideoEvent,
+  formatRelativeTime,
+  getSyncedMarkerClass,
+  getSyncedEventSeverityClass,
+  onSelectEvent,
+}: TimelineEventMarkerProps) {
+  const [open, setOpen] = useState(false);
+  const primaryEvent = marker.events[0];
+  const selected = marker.events.some((event) => (
+    selectedSyncedEventId === event.id || currentSyncedVideoEvent?.id === event.id
+  ));
+  const markerButton = (
+    <button
+      type="button"
+      title={marker.count > 1 ? `${marker.count} events pada ${formatRelativeTime(primaryEvent.clampedOffsetMs)}` : `${primaryEvent.label} - ${primaryEvent.summary}`}
+      className={cn(
+        "absolute top-1/2 flex h-4 min-w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 px-1 text-[8px] font-semibold text-white shadow-lg transition hover:scale-125",
+        getSyncedMarkerClass(primaryEvent),
+        selected && "ring-2 ring-white ring-offset-2 ring-offset-background"
+      )}
+      style={{ left: `${marker.leftPercent}%` }}
+      onClick={marker.count === 1 ? () => onSelectEvent(primaryEvent) : undefined}
+    >
+      {marker.count > 1 ? marker.count : ''}
+    </button>
+  );
+
+  if (marker.count === 1) return markerButton;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{markerButton}</PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="center"
+        sideOffset={10}
+        className="z-[120] w-[min(380px,calc(100vw-32px))] rounded-xl border-border bg-background p-3 shadow-2xl"
+      >
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Event pada timestamp ini</p>
+            <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{formatRelativeTime(primaryEvent.clampedOffsetMs)}</p>
+          </div>
+          <Badge variant="outline" className="rounded-md text-[10px] font-semibold">{marker.count} events</Badge>
+        </div>
+        <div className="max-h-64 space-y-1.5 overflow-y-auto overscroll-contain pr-1 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+          {marker.events.map((event, index) => (
+            <button
+              key={event.id}
+              type="button"
+              className={cn(
+                "grid w-full grid-cols-[28px_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition hover:translate-x-0.5",
+                getSyncedEventSeverityClass(event),
+                selectedSyncedEventId === event.id && "ring-2 ring-indigo-300 ring-offset-1 ring-offset-background"
+              )}
+              onClick={() => {
+                setOpen(false);
+                onSelectEvent(event);
+              }}
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-md border border-current/20 bg-background/50 text-[9px] font-bold">
+                {index + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[9px] font-semibold uppercase tracking-wider">{event.label}</span>
+                <span className="mt-0.5 block line-clamp-2 text-[10px] font-semibold leading-snug">{event.summary}</span>
+              </span>
+              <span className="font-mono text-[9px] font-semibold">{formatRelativeTime(event.clampedOffsetMs)}</span>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
   const {
@@ -175,28 +267,18 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
                     </div>
                     <div className="relative h-8 rounded-md border border-border bg-background">
                       <div className="absolute left-2 right-2 top-1/2 h-1 -translate-y-1/2 rounded-full bg-muted" />
-                      {groupedSyncedVideoMarkers.map((marker) => {
-                        const primaryEvent = marker.events[0];
-                        const selected = marker.events.some((event) => (
-                          selectedSyncedEventId === event.id || currentSyncedVideoEvent?.id === event.id
-                        ));
-                        return (
-                          <button
-                            key={`marker-${marker.id}`}
-                            type="button"
-                            title={marker.count > 1 ? `${marker.count} events near ${primaryEvent.label}` : `${primaryEvent.label} - ${primaryEvent.summary}`}
-                            className={cn(
-                              "absolute top-1/2 flex h-4 min-w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 px-1 text-[8px] font-semibold text-white shadow-lg transition hover:scale-125",
-                              getSyncedMarkerClass(primaryEvent),
-                              selected && "ring-2 ring-white ring-offset-2 ring-offset-background"
-                            )}
-                            style={{ left: `${marker.leftPercent}%` }}
-                            onClick={() => seekRecordingFromSyncedEvent(primaryEvent)}
-                          >
-                            {marker.count > 1 ? marker.count : ''}
-                          </button>
-                        );
-                      })}
+                      {groupedSyncedVideoMarkers.map((marker) => (
+                        <TimelineEventMarker
+                          key={`marker-${marker.id}`}
+                          marker={marker}
+                          selectedSyncedEventId={selectedSyncedEventId}
+                          currentSyncedVideoEvent={currentSyncedVideoEvent}
+                          formatRelativeTime={formatRelativeTime}
+                          getSyncedMarkerClass={getSyncedMarkerClass}
+                          getSyncedEventSeverityClass={getSyncedEventSeverityClass}
+                          onSelectEvent={seekRecordingFromSyncedEvent}
+                        />
+                      ))}
                     </div>
                   </div>
                 )}

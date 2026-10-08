@@ -44,7 +44,7 @@ function createRecordingId() {
 
 const RUNTIME_DIR = process.env.QA_RUNTIME_DIR
   || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
-const LOGS_DIR = path.join(__dirname, 'logs');
+const LOGS_DIR = process.env.QA_RELAY_LOGS_DIR || path.join(__dirname, 'logs');
 const RECORDINGS_DIR = path.join(RUNTIME_DIR, 'recordings');
 const LEGACY_RECORDINGS_DIR = path.join(__dirname, 'recordings');
 const logStore = createRelayLogStore({ directory: LOGS_DIR });
@@ -225,6 +225,7 @@ function redactDeep(value) {
 function redactPayload(value) {
   if (value == null) return value;
   const text = typeof value === 'string' ? value : JSON.stringify(value);
+  if (process.env.QA_REDACT_SENSITIVE_LOGS === '0') return truncateText(text);
 
   try {
     return truncateText(JSON.stringify(redactDeep(JSON.parse(text))));
@@ -248,6 +249,7 @@ function redactPayload(value) {
 }
 
 function redactHeaders(headers = {}) {
+  if (process.env.QA_REDACT_SENSITIVE_LOGS === '0') return headers;
   const output = {};
   for (const [key, value] of Object.entries(headers || {})) {
     output[key] = isSensitiveKey(key)
@@ -456,43 +458,165 @@ async function installCdpClickTracker(cdp, session) {
     window.__qaCdpClickTrackerInstalled = true;
     const testCaseId = ${JSON.stringify(session.testCaseId)};
     const sessionId = ${JSON.stringify(session.sessionId)};
+    const showSensitive = ${JSON.stringify(process.env.QA_REDACT_SENSITIVE_LOGS === '0')};
     const truncate = (value) => {
       const text = value == null ? '' : String(value);
       return text.length > 400 ? text.slice(0, 400) + '... [truncated]' : text;
     };
-    document.addEventListener('click', (event) => {
-      let targetLabel = '';
+    const cleanLabel = (value, fallback = 'elemen') => {
+      const text = String(value || '').replace(/\\s+/g, ' ').trim();
+      return truncate(text || fallback);
+    };
+    const getAriaLabelledBy = (element) => {
+      const ids = element?.getAttribute?.('aria-labelledby');
+      if (!ids) return '';
+      return ids.split(/\\s+/).map((id) => document.getElementById(id)?.textContent || '').filter(Boolean).join(' ');
+    };
+    const getFieldLabel = (element) => {
+      if (!element) return 'field';
+      let label = '';
       try {
-        const target = event.target;
-        const element = target?.closest?.('button,a,input,select,textarea,[role="button"],[data-testid],[aria-label]') || target;
-        targetLabel = element ? [
-          element.tagName,
-          element.getAttribute?.('aria-label') || element.getAttribute?.('data-testid') || element.id || element.name,
-          element.textContent?.trim().slice(0, 80),
-        ].filter(Boolean).join(' ') : '';
+        label = element.getAttribute?.('aria-label') || getAriaLabelledBy(element);
+        if (!label && element.labels?.length) label = element.labels[0].textContent;
+        if (!label) label = element.closest?.('label')?.textContent || '';
+        label = label || element.getAttribute?.('placeholder') || element.getAttribute?.('name') || element.id;
       } catch (_) {}
+      return cleanLabel(label, 'field');
+    };
+    const getControlLabel = (element) => {
+      if (!element) return 'elemen';
+      let label = '';
+      try {
+        label = element.getAttribute?.('aria-label') || getAriaLabelledBy(element) || element.getAttribute?.('title');
+        label = label || element.textContent || element.getAttribute?.('value') || element.getAttribute?.('name') || element.id;
+      } catch (_) {}
+      return cleanLabel(label, String(element.tagName || 'elemen').toLowerCase());
+    };
+    const getInputValue = (element) => {
+      const value = element && 'value' in element ? String(element.value || '') : '';
+      if (!showSensitive && element?.type === 'password') return '[REDACTED]';
+      return cleanLabel(value, '(kosong)');
+    };
+    const emitInteraction = (interactionType, message, details = {}) => {
+      const interaction = { type: interactionType, message, ...details };
       const payload = {
         type: 'log',
-        source: 'manual-cdp-click',
+        source: 'manual-cdp-interaction',
         testCaseId,
         sessionId,
         timestamp: new Date().toISOString(),
-        level: 'INFO',
-        console: false,
-        log: 'Manual Click',
-        interaction: {
-          type: 'click',
-          x: event.clientX,
-          y: event.clientY,
-          viewportWidth: window.innerWidth || document.documentElement.clientWidth || 0,
-          viewportHeight: window.innerHeight || document.documentElement.clientHeight || 0,
-          target: truncate(targetLabel),
-        },
+        eventType: 'step',
+        stepName: message,
+        message,
+        log: message,
+        interaction,
+        metadata: { interaction },
       };
       try {
         window.__qaRelayClick?.(JSON.stringify(payload));
       } catch (_) {}
+    };
+    const inputTimers = new WeakMap();
+    const lastInputValues = new WeakMap();
+    const recordTextInput = (element) => {
+      const value = getInputValue(element);
+      if (lastInputValues.get(element) === value) return;
+      lastInputValues.set(element, value);
+      const field = getFieldLabel(element);
+      emitInteraction('input', 'Memasukkan "' + value + '" ke field "' + field + '"', { target: field, value });
+    };
+
+    document.addEventListener('input', (event) => {
+      const element = event.target;
+      if (!element?.matches?.('input:not([type="checkbox"]):not([type="radio"]), textarea')) return;
+      const activeTimer = inputTimers.get(element);
+      if (activeTimer) window.clearTimeout(activeTimer);
+      inputTimers.set(element, window.setTimeout(() => {
+        inputTimers.delete(element);
+        recordTextInput(element);
+      }, 600));
     }, true);
+
+    document.addEventListener('change', (event) => {
+      const element = event.target;
+      if (!element?.matches) return;
+      if (element.matches('select')) {
+        const field = getFieldLabel(element);
+        const value = cleanLabel(Array.from(element.selectedOptions || []).map((option) => option.textContent || option.value).join(', ') || element.value, '(kosong)');
+        emitInteraction('select', 'Memilih "' + value + '" untuk field "' + field + '"', { target: field, value });
+        return;
+      }
+      if (element.matches('input[type="checkbox"]')) {
+        const field = getFieldLabel(element);
+        emitInteraction('checkbox', (element.checked ? 'Mencentang' : 'Menghapus centang pada') + ' field "' + field + '"', { target: field, value: Boolean(element.checked) });
+        return;
+      }
+      if (element.matches('input[type="radio"]')) {
+        const field = getFieldLabel(element);
+        const value = cleanLabel(element.value, getControlLabel(element));
+        emitInteraction('radio', 'Memilih opsi "' + value + '" untuk field "' + field + '"', { target: field, value });
+        return;
+      }
+      if (element.matches('input, textarea')) {
+        const timer = inputTimers.get(element);
+        if (timer) window.clearTimeout(timer);
+        inputTimers.delete(element);
+        recordTextInput(element);
+      }
+    }, true);
+
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      const element = target?.closest?.('button,a,[role="button"],[role="option"],[role="menuitem"],[role="tab"],input[type="button"],input[type="submit"],[data-testid],[aria-label]') || target;
+      if (!element?.matches || element.matches('select,textarea,input:not([type="button"]):not([type="submit"])')) return;
+      const targetLabel = getControlLabel(element);
+      const isLink = element.matches('a[href]');
+      const role = element.getAttribute?.('role');
+      const interactionType = isLink ? 'link' : role === 'option' ? 'select' : role === 'menuitem' ? 'menu' : role === 'tab' ? 'tab' : 'click';
+      const message = isLink ? 'Membuka tautan "' + targetLabel + '"'
+        : role === 'option' ? 'Memilih opsi "' + targetLabel + '"'
+        : role === 'menuitem' ? 'Memilih menu "' + targetLabel + '"'
+        : role === 'tab' ? 'Membuka tab "' + targetLabel + '"'
+        : 'Menekan tombol "' + targetLabel + '"';
+      const details = {
+        target: targetLabel,
+        x: event.clientX,
+        y: event.clientY,
+        viewportWidth: window.innerWidth || document.documentElement.clientWidth || 0,
+        viewportHeight: window.innerHeight || document.documentElement.clientHeight || 0,
+      };
+      if (isLink) details.href = element.href;
+      emitInteraction(
+        interactionType,
+        message,
+        details
+      );
+    }, true);
+
+    document.addEventListener('submit', (event) => {
+      const formLabel = getControlLabel(event.target);
+      emitInteraction('submit', 'Mengirim form "' + formLabel + '"', { target: formLabel });
+    }, true);
+
+    let lastPageEndpoint = '';
+    const recordNavigation = () => {
+      const endpoint = window.location.pathname + window.location.search + window.location.hash;
+      if (!endpoint || endpoint === lastPageEndpoint) return;
+      lastPageEndpoint = endpoint;
+      emitInteraction('navigation', 'Menuju halaman "' + endpoint + '"', { target: endpoint, url: window.location.href });
+    };
+    ['pushState', 'replaceState'].forEach((method) => {
+      const original = window.history?.[method];
+      if (!original) return;
+      window.history[method] = function () {
+        const result = original.apply(this, arguments);
+        window.setTimeout(recordNavigation, 0);
+        return result;
+      };
+    });
+    window.addEventListener('popstate', recordNavigation);
+    window.addEventListener('hashchange', recordNavigation);
+    recordNavigation();
   })();`;
   try {
     await cdp.send('Runtime.addBinding', { name: '__qaRelayClick' });
@@ -1237,12 +1361,14 @@ async function startCdpCapture(session, targetUrl, options = {}) {
 
     if (message.method === 'Runtime.bindingCalled' && message.params?.name === '__qaRelayClick') {
       try {
-        const clickLog = JSON.parse(message.params.payload);
-        if (clickLog.sessionId !== session.sessionId || clickLog.testCaseId !== session.testCaseId) return;
-        sessionInfo.recording?.noteClick?.(clickLog.interaction);
-        await emitLog(clickLog);
+        const interactionLog = JSON.parse(message.params.payload);
+        if (interactionLog.sessionId !== session.sessionId || interactionLog.testCaseId !== session.testCaseId) return;
+        if (Number.isFinite(interactionLog.interaction?.x) && Number.isFinite(interactionLog.interaction?.y)) {
+          sessionInfo.recording?.noteClick?.(interactionLog.interaction);
+        }
+        await emitLog(interactionLog);
       } catch (error) {
-        console.warn('Rejected invalid CDP click payload:', error.message);
+        console.warn('Rejected invalid CDP interaction payload:', error.message);
       }
     }
 
@@ -1294,6 +1420,15 @@ async function startCdpCapture(session, targetUrl, options = {}) {
         requestTimestamp: message.params.timestamp,
       });
       if (sessionInfo.recording?.mode === 'frame') sessionInfo.recording.captureNow?.('network-request');
+      const request = sessionInfo.requestMeta.get(message.params.requestId);
+      emitLog({
+        type: 'log', source: 'manual-cdp', sessionId: session.sessionId,
+        testCaseId: session.testCaseId, log: 'Network Request',
+        network: { event: 'Request', method: request.method, url: request.url,
+          data: { requestHeaders: request.headers, requestBody: request.requestBody } },
+        timestamp: new Date(currentSession.startedAtMs + requestRelativeMs).toISOString(),
+        relativeMs: requestRelativeMs,
+      });
     }
 
     if (message.method === 'Network.responseReceived') {
@@ -1599,6 +1734,19 @@ const server = http.createServer(async (req, res) => {
 
       sendJson(res, 200, { success: true, session: publicManualSession(session), mode: captureMode, browserMode: requestedBrowserMode, captureMode: requestedCaptureMode, profileDir });
     });
+  } else if (req.method === 'POST' && /^\/manual\/[^/]+\/exec$/.test(requestUrl.pathname)) {
+    let sessionId;
+    try { sessionId = decodeURIComponent(requestUrl.pathname.split('/')[2]); }
+    catch (_) { return sendJson(res, 400, { success: false, error: 'Invalid session ID' }); }
+    readJsonBody(req, async (error, body) => {
+      if (error) return sendJson(res, 400, { success: false, error: 'Invalid JSON' });
+      const { executeManual } = require('./manual-exec');
+      const result = await executeManual({
+        session: getManualSession(sessionId), sessionInfo: cdpSessions.get(sessionId),
+        ownerKey: relaySecurity.ownerKey(req), body,
+      });
+      sendJson(res, result.status, result.payload);
+    });
   } else if (req.method === 'POST' && requestUrl.pathname === '/manual/stop') {
     readJsonBody(req, async (error, data) => {
       if (error) return sendJson(res, 400, { success: false, error: 'Invalid JSON' });
@@ -1637,7 +1785,7 @@ const server = http.createServer(async (req, res) => {
   } else if (req.method === 'GET' && requestUrl.pathname.startsWith('/runs/')) {
     const testCaseId = decodeURIComponent(requestUrl.pathname.split('/').pop());
     if (!devlogStore) {
-      return sendJson(res, 503, { success: false, error: 'PostgreSQL DevLog store is unavailable' });
+      return sendJson(res, 503, { success: false, error: 'DevLog database is unavailable' });
     }
     const limit = Number(requestUrl.searchParams.get('limit') || 2);
     devlogStore.getRuns(testCaseId, limit)
@@ -1653,7 +1801,7 @@ const server = http.createServer(async (req, res) => {
   } else if (req.method === 'GET' && requestUrl.pathname.startsWith('/events/')) {
     const testCaseId = decodeURIComponent(requestUrl.pathname.split('/').pop());
     if (!devlogStore) {
-      return sendJson(res, 503, { success: false, error: 'PostgreSQL DevLog store is unavailable' });
+      return sendJson(res, 503, { success: false, error: 'DevLog database is unavailable' });
     }
     let after = 0n;
     try {
@@ -1819,8 +1967,11 @@ server.listen(relaySecurity.port, relaySecurity.host, () => {
   console.log(`Log Relay Server (HTTP + WS) started on http://${relaySecurity.host}:${relaySecurity.port}`);
 });
 
-if (devlogStore) {
-  const cleanup = () => devlogStore.cleanup(90)
+// Retention deletes both rows and recording files. Keep it opt-in, especially
+// when enabling SQLite and importing existing historical evidence.
+const retentionDays = Number(process.env.QA_DEVLOG_RETENTION_DAYS);
+if (devlogStore && Number.isInteger(retentionDays) && retentionDays > 0) {
+  const cleanup = () => devlogStore.cleanup(retentionDays)
     .catch(error => console.error(`[DEVLOG DB] Retention cleanup failed: ${error.message}`));
   cleanup();
   setInterval(cleanup, 24 * 60 * 60 * 1000).unref();

@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { FullscreenLogFilter } from '@/components/TestCaseDetailDialog.helpers';
+import { ExecutionLogView } from '@/components/ExecutionLogView';
+import { getExecutionInteraction, getExecutionLogText, type FullscreenLogFilter } from '@/components/TestCaseDetailDialog.helpers';
 
 type SystemDevLogFullscreenProps = Record<string, any>;
 
@@ -17,7 +18,7 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
     fullscreenLogFilter, setFullscreenLogFilter, fullscreenLogSearch, setFullscreenLogSearch,
     networkCodeWrap, setNetworkCodeWrap, closeSystemDevLogFullscreen,
     selectedFullscreenLog, setSelectedFullscreenLog, filteredFullscreenLogs,
-    selectedSystemNetworkGroup, selectedSystemConsoleGroup, formatRelativeTime,
+    selectedSystemNetworkGroup, selectedSystemConsoleGroup, selectedSystemExecutionLog, executionLogs, formatRelativeTime,
     getNetworkMethod, getNetworkCategoryClass, getNetworkStatusClass, getNetworkStatus,
     getNetworkDuration, networkCodePanelClass, networkCodeWhitespaceClass, formatPrettyValue,
     getRequestPayload, getResponsePayload, networkFullscreenCodePanelClass, seekRecordingFromLog, getConsoleLogText,
@@ -32,7 +33,11 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
                       <Wrench className="h-4 w-4 text-teal-500" />
                       <p className="text-xs font-semibold uppercase tracking-wider text-foreground">System DevLog Fullscreen</p>
                       <Badge variant="outline" className="rounded-md border-teal-200 bg-teal-50 text-[10px] font-semibold uppercase tracking-wider text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-200">
-                        {activeDevLogTab === 'network' ? `${fullscreenNetworkGroups.length} network` : `${fullscreenConsoleGroups.length} console`}
+                        {activeDevLogTab === 'execution'
+                          ? `${executionLogs.length} execution`
+                          : activeDevLogTab === 'network'
+                            ? `${fullscreenNetworkGroups.length} network`
+                            : `${fullscreenConsoleGroups.length} console`}
                       </Badge>
                     </div>
                     <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">
@@ -41,6 +46,23 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
                   </div>
                   <div className="flex items-center gap-2 pr-12">
                     <div className="flex rounded-md bg-muted p-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 px-3 text-[10px] font-semibold uppercase tracking-wider",
+                          activeDevLogTab === 'execution'
+                            ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-100'
+                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                        )}
+                        onClick={() => {
+                          setActiveDevLogTab('execution');
+                          setSelectedSystemDevLogId(null);
+                        }}
+                      >
+                        Execution
+                      </Button>
                       <Button
                         type="button"
                         variant="ghost"
@@ -76,7 +98,7 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
                         Network
                       </Button>
                     </div>
-                    <div className="flex rounded-md bg-muted p-1">
+                    {activeDevLogTab !== 'execution' && <div className="flex rounded-md bg-muted p-1">
                       {[
                         { value: 'all', label: 'All' },
                         { value: 'errors', label: 'Errors' },
@@ -101,8 +123,8 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
                           {item.label}
                         </Button>
                       ))}
-                    </div>
-                    <Button
+                    </div>}
+                    {activeDevLogTab !== 'execution' && <Button
                       type="button"
                       variant="ghost"
                       size="sm"
@@ -115,7 +137,7 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
                       onClick={() => setNetworkCodeWrap((current) => !current)}
                     >
                       Wrap {networkCodeWrap ? 'On' : 'Off'}
-                    </Button>
+                    </Button>}
                   </div>
                   <Button
                     type="button"
@@ -130,7 +152,19 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
 
                 <div className="grid min-h-0 flex-1 grid-cols-[minmax(380px,34%)_1fr] bg-muted/25">
                   <div className="min-h-0 overflow-y-auto border-r border-border p-3">
-                    {activeDevLogTab === 'network' ? (
+                    {activeDevLogTab === 'execution' ? (
+                    <ExecutionLogView
+                        evidenceLogs={props.evidenceLogs}
+                        logs={executionLogs}
+                        compact
+                        formatRelativeTime={formatRelativeTime}
+                        onSelectLog={(log) => {
+                          const index = executionLogs.indexOf(log);
+                          setSelectedSystemDevLogId(`system-execution-${log.eventId || log.id || index}`);
+                          seekRecordingFromLog(log);
+                        }}
+                      />
+                    ) : activeDevLogTab === 'network' ? (
                       <div className="space-y-2">
                         {fullscreenNetworkGroups.length === 0 ? (
                           <div className="flex h-full min-h-[420px] flex-col items-center justify-center text-muted-foreground">
@@ -245,7 +279,37 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
                   </div>
 
                   <div className="min-h-0 overflow-y-auto p-4">
-                    {activeDevLogTab === 'network' ? (
+                    {activeDevLogTab === 'execution' ? (
+                      selectedSystemExecutionLog ? (
+                        <div className="space-y-4">
+                          <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 shadow-sm dark:border-indigo-500/20 dark:bg-indigo-950/20">
+                            <div className="mb-3 flex flex-wrap items-center gap-2">
+                              <Badge className="rounded-md border border-indigo-200 bg-indigo-50 text-[10px] font-semibold uppercase tracking-wider text-indigo-700 shadow-none dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+                                {getExecutionInteraction(selectedSystemExecutionLog)?.type || selectedSystemExecutionLog.eventType || 'step'}
+                              </Badge>
+                              <span className="font-mono text-[10px] font-semibold text-muted-foreground">
+                                {formatRelativeTime(selectedSystemExecutionLog.relativeMs)}
+                              </span>
+                            </div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Interaction</p>
+                            <p className="mt-2 text-sm font-semibold leading-relaxed text-foreground">
+                              {getExecutionLogText(selectedSystemExecutionLog)}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+                            <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Structured detail</p>
+                            <pre className="max-h-[62vh] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-muted p-4 text-[11px] leading-relaxed text-foreground">
+                              {formatPrettyValue(getExecutionInteraction(selectedSystemExecutionLog) || selectedSystemExecutionLog.metadata || selectedSystemExecutionLog.log)}
+                            </pre>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex h-full min-h-[520px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background text-muted-foreground">
+                          <Clock className="mb-3 h-8 w-8 opacity-30" />
+                          <p className="text-[10px] font-semibold uppercase tracking-wider">Pilih interaction untuk membuka detail</p>
+                        </div>
+                      )
+                    ) : activeDevLogTab === 'network' ? (
                       selectedSystemNetworkGroup ? (
                         <div className="space-y-4">
                           <div className="rounded-xl border border-border bg-background p-4 shadow-sm">

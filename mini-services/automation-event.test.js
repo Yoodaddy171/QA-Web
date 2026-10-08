@@ -139,6 +139,32 @@ describe('automation event normalizer', () => {
     expect(event.metadata.raw.customValue).toBe('preserved');
   });
 
+  it('preserves structured manual interactions as execution steps', () => {
+    const event = normalizeAutomationEvent({
+      eventType: 'step',
+      source: 'manual-cdp-interaction',
+      testCaseId: 'tc-10',
+      sessionId: 'manual-session-10',
+      message: 'Menekan tombol "Simpan"',
+      metadata: {
+        interaction: {
+          type: 'click',
+          target: 'Simpan',
+        },
+      },
+    });
+
+    expect(event).toMatchObject({
+      eventType: 'step',
+      mode: 'manual',
+      message: 'Menekan tombol "Simpan"',
+      metadata: {
+        interaction: { type: 'click', target: 'Simpan' },
+      },
+    });
+    expect(validateAutomationEvent(event).valid).toBe(true);
+  });
+
   it('creates unique event IDs', () => {
     expect(createEventId()).not.toBe(createEventId());
   });

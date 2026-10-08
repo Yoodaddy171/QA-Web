@@ -3,9 +3,11 @@ const fs = require('fs/promises');
 const os = require('os');
 
 function loadDatabaseUrl() {
-  if (process.env.POSTGRES_DATABASE_URL || typeof process.loadEnvFile !== 'function') return;
+  if (process.env.POSTGRES_DATABASE_URL || process.env.DATABASE_URL) return;
   try {
-    process.loadEnvFile(path.join(__dirname, '..', '.env'));
+    const contents = require('fs').readFileSync(path.join(__dirname, '..', '.env'), 'utf8').replace(/^\uFEFF/, '');
+    const values = require('node:util').parseEnv(contents);
+    for (const [key, value] of Object.entries(values)) if (process.env[key] === undefined) process.env[key] = value;
   } catch (_) {}
 }
 
@@ -163,7 +165,8 @@ function createDevlogStore(db, options = {}) {
   async function getEvents(testCaseId, after = 0n, limit = 500, runId, before) {
     const pageSize = Math.min(500, Math.max(1, limit));
     const newestFirst = after === 0n || before !== undefined;
-    const sequence = before !== undefined ? { lt: before } : { gt: after };
+    const cursorValue = value => options.sqlite ? Number(value) : value;
+    const sequence = before !== undefined ? { lt: cursorValue(before) } : { gt: cursorValue(after) };
     const rows = await db.automationEvent.findMany({
       where: { testCaseId, runId, sequence },
       orderBy: { sequence: newestFirst ? 'desc' : 'asc' },
@@ -257,20 +260,22 @@ function createDevlogStore(db, options = {}) {
 
 function connectDevlogStore() {
   loadDatabaseUrl();
-  const url = process.env.POSTGRES_DATABASE_URL;
-  if (!/^postgres(?:ql)?:\/\//i.test(url || '')) return null;
+  const url = process.env.POSTGRES_DATABASE_URL || process.env.DATABASE_URL;
+  if (!/^(?:file:|postgres(?:ql)?:\/\/)/i.test(url || '')) return null;
   try {
-    const { PrismaClient } = require('@prisma/devlog-client');
+    // SQLite uses the main generated client and its existing Devlog tables.
+    const { PrismaClient } = require(url.startsWith('file:') ? '@prisma/client' : '@prisma/devlog-client');
     const runtimeRoot = process.env.QA_RUNTIME_DIR
       || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
     return createDevlogStore(new PrismaClient({ datasourceUrl: url }), {
+      sqlite: url.startsWith('file:'),
       mediaRoots: [
         path.join(runtimeRoot, 'recordings'),
         path.join(__dirname, 'recordings'),
       ],
     });
   } catch (error) {
-    console.warn(`[DEVLOG DB] PostgreSQL disabled: ${error.message}`);
+    console.warn(`[DEVLOG DB] Database unavailable: ${error.message}`);
     return null;
   }
 }

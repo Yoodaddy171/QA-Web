@@ -318,3 +318,88 @@ Untuk menambah event type baru dengan aman:
    ```
 
 Dokumen teknis tambahan: `docs/automation-event-contract.md`.
+
+## Menjalankan script AI di tab Manual Capture
+
+Gunakan `POST /manual/:sessionId/exec` ketika AI, Playwright, atau script biasa perlu
+menjalankan JavaScript di **tab yang sedang direkam**. Ambil `sessionId` dari hasil
+`POST /manual/start` (gunakan `launchBrowser: true`) atau sesi aktif di aplikasi.
+Relay memakai koneksi CDP sesi tersebut, bukan browser `qa_browser` dan bukan koneksi baru.
+Jangan memulai ulang capture yang masih aktif hanya untuk menjalankan script.
+Sebelum script mutasi, jalankan probe `({url:location.href,ready:document.readyState})`
+dan pastikan URL target benar serta halaman siap; start capture dapat selesai sebelum
+navigasi halaman selesai. Pastikan juga akun target sesuai skenario.
+
+Contoh MCP compact (sessionId wajib diganti dengan ID sesi aktif):
+
+```json
+{
+  "operation": "relay_post_manual_exec",
+  "params": { "sessionId": "ID-SESI-AKTIF" },
+  "body": {
+    "expression": "(async () => { console.log('QA capture check'); const r = await fetch('/health'); return {status:r.status}; })()",
+    "timeoutMs": 30000
+  }
+}
+```
+
+Kirim objek tersebut ke `qa_web_write`. URL fetch relatif mengacu pada origin tab
+target, bukan QA-Web. Sesuaikan `/health` dengan endpoint read-only target yang benar.
+
+Script Node (juga bisa dipanggil dari test Playwright tanpa membuka browser baru):
+
+```js
+const response = await fetch(
+  `http://127.0.0.1:3001/manual/${encodeURIComponent(process.env.QA_CAPTURE_SESSION_ID)}/exec`,
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.QA_RELAY_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      expression: '(async () => { console.log("QA capture check"); return location.href; })()',
+      timeoutMs: 30000,
+    }),
+    signal: AbortSignal.timeout(40000),
+  },
+);
+const execution = await response.json();
+if (!response.ok || execution.exceptionDetails) throw new Error(JSON.stringify(execution));
+console.log(execution.result);
+```
+
+Playwright dapat memakai `request.post(url, { headers, data: { expression, timeoutMs },
+timeout: 40000 })` dengan URL dan Authorization yang sama. Yang terekam adalah
+fetch/console **di dalam expression**; `page` Playwright terpisah, `request.post`
+langsung ke target, atau fetch Node langsung ke target tidak otomatis tertangkap.
+Network/Console masuk pipeline Devlog sesi yang sama; video hanya merekam perubahan
+visual tab, bukan daftar request. Gunakan `GET /logs/:testCaseId?run=current` untuk
+bukti JSONL sesi berjalan (tanpa parameter, pilihan otomatis bisa mengambil history).
+Event normalisasi berada di `automationEvent.eventType` pada tiap baris JSONL.
+Endpoint ini tidak memperbaiki masalah terpisah penyimpanan Devlog PostgreSQL/SQLite.
+
+Keamanan dan hasil:
+
+- Wajib token relay, origin yang diizinkan bila dikirim, dan pemilik sesi yang sama.
+  Sesi berhenti/tanpa CDP: 404; kepemilikan berbeda: 403; input tidak valid: 400.
+- Hanya jalankan kode tepercaya pada target yang diizinkan. Kode memiliki akses
+  sesi login tab dan dapat mengubah data; minta persetujuan sebelum penghapusan bulk.
+  Jangan masukkan credential ke console atau return value.
+- `expression` maksimum 64 KiB. Timeout default 30 detik, rentang 1–120000 ms.
+  Atur timeout client lebih besar dari timeout evaluasi (MCP memberi 130 detik).
+- HTTP 200 / `success:true` berarti evaluasi CDP berhasil dikirim/diselesaikan;
+  periksa `exceptionDetails` untuk error JavaScript. Return value ada di `result`;
+  undefined menjadi null, nilai CDP non-JSON seperti NaN menjadi string.
+- Hasil maksimum 64 KiB; respons besar memakai `truncated:true`, `originalBytes`,
+  dan `preview`, dengan `result:null`. Return ringkasan kecil dari script.
+- HTTP 500 / `outcome:UNKNOWN` berarti koneksi gagal/timeout, **bukan rollback**.
+  Script mungkin masih berjalan. Periksa log dan state target sebelum mencoba ulang.
+
+Pengujian lokal nyata (membuka browser clean milik relay; tidak memakai target eksternal):
+
+```powershell
+$env:QA_RELAY_EXEC_INTEGRATION='1'
+npx vitest run mini-services/manual-exec.test.js mini-services/manual-exec.integration.test.js
+Remove-Item Env:QA_RELAY_EXEC_INTEGRATION
+```

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasMinimumRole, hashPassword, hashSessionToken, normalizeEmail, verifyPassword } from './auth';
+import { hasMinimumRole, hashPassword, hashSessionToken, isAllowedRequestOrigin, normalizeEmail, verifyPassword } from './auth';
 
 describe('authentication primitives', () => {
   it('hashes passwords with a unique salt and verifies without storing plaintext', async () => {
@@ -22,5 +22,10 @@ describe('authentication primitives', () => {
     expect(normalizeEmail('  QA@Example.COM ')).toBe('qa@example.com');
     expect(hashSessionToken('secret')).toBe(hashSessionToken('secret'));
     expect(hashSessionToken('secret')).not.toBe(hashSessionToken('other'));
+  });
+
+  it('accepts the browser origin matching the request Host when Next rewrites the request URL', () => {
+    expect(isAllowedRequestOrigin(new URL('http://localhost:3000/api/auth/bootstrap'), 'http://127.0.0.1:3000', '127.0.0.1:3000')).toBe(true);
+    expect(isAllowedRequestOrigin(new URL('http://localhost:3000/api/auth/bootstrap'), 'http://evil.example', '127.0.0.1:3000')).toBe(false);
   });
 });

@@ -66,6 +66,7 @@ const EXECUTION_ACTIONS = [
   { status: TEST_EXECUTION_STATUS.BLOCKED, label: 'Blocked', shortcut: 'B', icon: CircleAlert, variant: 'secondary' as const },
   { status: TEST_EXECUTION_STATUS.RETEST, label: 'Retest', shortcut: 'R', icon: RefreshCw, variant: 'secondary' as const },
 ];
+const RUN_CASES_PER_PAGE = 10;
 const MAX_EVIDENCE_FILE_SIZE = 25 * 1024 * 1024;
 const ALLOWED_EVIDENCE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'application/pdf']);
 
@@ -95,6 +96,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
   const [availableCases, setAvailableCases] = useState<Array<{ id: string; testCaseId: string; page: string; module?: { name: string } | null }>>([]);
   const [selectedCaseIds, setSelectedCaseIds] = useState<Set<string>>(new Set());
   const [activeCaseIndex, setActiveCaseIndex] = useState(0);
+  const [casePage, setCasePage] = useState(0);
   const [runName, setRunName] = useState('');
   const [runDescription, setRunDescription] = useState('');
   const [runAssignee, setRunAssignee] = useState('');
@@ -374,6 +376,11 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
     });
   }, [projectId, selectedRun]);
 
+  // Daftar testcase dipaginasi, jadi halamannya ikut berpindah mengikuti case aktif.
+  useEffect(() => {
+    setCasePage(Math.floor(activeCaseIndex / RUN_CASES_PER_PAGE));
+  }, [activeCaseIndex]);
+
   useEffect(() => {
     if (!selectedRun || !activeCase || !notesDirty) return;
     const timer = window.setTimeout(() => {
@@ -590,7 +597,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
             <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 p-8 text-center"><span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-primary/20 bg-primary/5"><CircleDot className="h-7 w-7 text-primary/55" /></span><p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Execution workspace</p><h2 className="text-lg font-semibold">Pilih Test Run</h2><p className="max-w-sm text-sm text-muted-foreground">Pilih cycle di sebelah kiri atau buat cycle baru untuk mulai execution.</p></div>
           ) : (
             <>
-              <CardHeader className="sticky top-16 z-20 border-b border-border/70 bg-card/95 py-4 backdrop-blur-md">
+              <CardHeader className="border-b border-border/70 bg-card/95 py-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div><CardTitle>{selectedRun.name}</CardTitle><CardDescription className="mt-1">{selectedRun.description || 'Execution workspace'}{selectedRun.assignedTo ? ` · ${selectedRun.assignedTo}` : ''}</CardDescription><Button size="sm" variant="ghost" className="mt-1 px-0" onClick={() => setEditingRun(true)}>Edit detail</Button></div>
                   <div className="flex flex-wrap items-center gap-2"><Select value={selectedRun.status} onValueChange={value => void updateRunStatus(value)} disabled={isSaving}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value={TEST_RUN_STATUS.DRAFT}>Draft</SelectItem><SelectItem value={TEST_RUN_STATUS.READY}>Ready</SelectItem><SelectItem value={TEST_RUN_STATUS.IN_PROGRESS}>In Progress</SelectItem><SelectItem value={TEST_RUN_STATUS.COMPLETED}>Completed</SelectItem><SelectItem value={TEST_RUN_STATUS.ARCHIVED}>Archived</SelectItem></SelectContent></Select><Badge variant="success">{selectedRun.summary.passed} passed</Badge><Badge variant="failed">{selectedRun.summary.failed} failed</Badge><Badge variant="blocked">{selectedRun.summary.blocked} blocked</Badge><Button variant="outline" size="icon" className="size-9 min-[1440px]:hidden" onClick={() => setContextOpen(true)} aria-label="Buka execution context"><PanelRight /></Button></div>
@@ -607,13 +614,40 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                 <div className="grid gap-3 sm:grid-cols-4"><Metric label="Total" value={selectedRun.summary.total} /><Metric label="Selesai" value={selectedRun.summary.completed} /><Metric label="Belum dijalankan" value={selectedRun.summary.notRun} /><Metric label="Progress" value={`${selectedRun.progress}%`} /></div>
                 <div className="flex flex-wrap items-center gap-2"><Button variant="outline" size="sm" onClick={() => { void loadAvailableCases(); }}><Plus className="h-4 w-4" />Pilih testcase</Button>{selectedRun.testCases.length > 0 && <span className="text-xs text-muted-foreground">Keyboard: P pass · F fail · B blocked · R retest · N next</span>}{activeCaseIndex > 0 && <Badge variant="info">Dilanjutkan dari {activeCaseIndex + 1}/{selectedRun.testCases.length}</Badge>}</div>
                 {availableCases.length > 0 && <div className="space-y-3 rounded-xl border border-border/70 p-4"><div className="flex items-center justify-between"><p className="text-sm font-semibold">Tambah testcase</p><Button size="sm" onClick={() => void addCases()} disabled={isSaving || selectedCaseIds.size === 0}>Tambahkan pilihan ({selectedCaseIds.size})</Button></div><div className="max-h-44 space-y-1 overflow-auto">{selectableCases.map(testCase => <label key={testCase.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-secondary/60"><input type="checkbox" checked={selectedCaseIds.has(testCase.id)} onChange={event => setSelectedCaseIds(previous => { const next = new Set(previous); if (event.target.checked) next.add(testCase.id); else next.delete(testCase.id); return next; })} /><span className="font-mono font-semibold">{testCase.testCaseId}</span><span className="text-muted-foreground">{testCase.page}</span></label>)}{!selectableCases.length && <p className="text-sm text-muted-foreground">Semua testcase sudah dimasukkan.</p>}</div></div>}
-                {selectedRun.testCases.length > 0 && <div className="space-y-2 rounded-xl border border-border/70 p-4"><p className="text-sm font-semibold">Testcase dalam run</p>{selectedRun.testCases.map(testCase => <div key={testCase.id} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/30 px-3 py-2 text-xs"><button type="button" className="min-w-0 truncate text-left hover:text-primary" onClick={() => setActiveCaseIndex(selectedRun.testCases.findIndex(item => item.id === testCase.id))}><span className="font-mono font-semibold">{testCase.testCaseId}</span><span className="ml-2 text-muted-foreground">{testCase.page}</span></button><Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" disabled={isSaving} onClick={async () => { const response = await fetch(`/api/test-runs/${selectedRun.id}/cases?projectId=${encodeURIComponent(projectId)}&testCaseId=${encodeURIComponent(testCase.id)}`, { method: 'DELETE' }); if (!response.ok) { const data = await response.json().catch(() => ({})); setError(data.error || 'Gagal menghapus testcase dari Test Run.'); return; } await openRun(selectedRun.id); }} aria-label={`Hapus ${testCase.testCaseId} dari Test Run`}>Hapus</Button></div>)}</div>}
+                {selectedRun.testCases.length > 0 && (() => {
+                  const totalCasePages = Math.max(1, Math.ceil(selectedRun.testCases.length / RUN_CASES_PER_PAGE));
+                  const page = Math.min(casePage, totalCasePages - 1);
+                  const pageStart = page * RUN_CASES_PER_PAGE;
+                  const pageCases = selectedRun.testCases.slice(pageStart, pageStart + RUN_CASES_PER_PAGE);
+                  return <div className="space-y-2 rounded-xl border border-border/70 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold">Testcase dalam run</p>
+                      <span className="text-[11px] text-muted-foreground">{selectedRun.testCases.length} testcase{totalCasePages > 1 ? ` · halaman ${page + 1}/${totalCasePages}` : ''}</span>
+                    </div>
+                    {pageCases.map(testCase => {
+                      const index = selectedRun.testCases.findIndex(item => item.id === testCase.id);
+                      return <div key={testCase.id} className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs ${index === activeCaseIndex ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/30'}`}>
+                        <button type="button" className="min-w-0 truncate text-left hover:text-primary" onClick={() => setActiveCaseIndex(index)}>
+                          <span className="mr-2 text-muted-foreground">{index + 1}.</span>
+                          <span className="font-mono font-semibold">{testCase.testCaseId}</span>
+                          <span className="ml-2 text-muted-foreground">{testCase.page}</span>
+                        </button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" disabled={isSaving} onClick={async () => { const response = await fetch(`/api/test-runs/${selectedRun.id}/cases?projectId=${encodeURIComponent(projectId)}&testCaseId=${encodeURIComponent(testCase.id)}`, { method: 'DELETE' }); if (!response.ok) { const data = await response.json().catch(() => ({})); setError(data.error || 'Gagal menghapus testcase dari Test Run.'); return; } await openRun(selectedRun.id); }} aria-label={`Hapus ${testCase.testCaseId} dari Test Run`}>Hapus</Button>
+                      </div>;
+                    })}
+                    {totalCasePages > 1 && <div className="flex items-center justify-between gap-2 pt-1">
+                      <Button variant="outline" size="sm" className="h-7 px-2" disabled={page === 0} onClick={() => setCasePage(page - 1)}><ChevronLeft data-icon="inline-start" />Sebelumnya</Button>
+                      <span className="text-[11px] text-muted-foreground">Menampilkan {pageStart + 1}–{pageStart + pageCases.length}</span>
+                      <Button variant="outline" size="sm" className="h-7 px-2" disabled={page >= totalCasePages - 1} onClick={() => setCasePage(page + 1)}>Berikutnya<ChevronRight data-icon="inline-end" /></Button>
+                    </div>}
+                  </div>;
+                })()}
                 {activeCase ? <div key={activeCase.id} className="animate-in fade-in slide-in-from-right-2 duration-150"><div className="rounded-xl border border-border/70 p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-xs font-bold text-primary">{activeCase.testCaseId}</p><h2 className="mt-1 text-lg font-bold">{activeCase.testAction}</h2><p className="mt-1 text-xs text-muted-foreground">{activeCase.module?.name || 'Unassigned'} · {activeCase.page}{activeCase.subMenu ? ` · ${activeCase.subMenu}` : ''}</p></div><Badge key={visibleExecutionStatus} variant={statusVariant(visibleExecutionStatus)} className="animate-in zoom-in-90 duration-150">{visibleExecutionStatus}</Badge></div><div className="mt-5 grid gap-4 md:grid-cols-2"><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Steps</p><pre className="min-h-36 whitespace-pre-wrap rounded-lg bg-secondary/50 p-3 text-sm font-sans leading-6">{activeCase.steps || '—'}</pre></div><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected result</p><p className="min-h-36 rounded-lg bg-secondary/50 p-3 text-sm leading-6">{activeCase.expectedResult || '—'}</p></div></div><div className="mt-4 flex items-center justify-between"><Label htmlFor="execution-notes">Execution notes</Label><span className="text-[10px] text-muted-foreground">{notesDirty ? 'Draft tersimpan lokal' : 'Tersimpan'}</span></div><Textarea id="execution-notes" value={notes} onChange={event => { setNotes(event.target.value); setNotesDirty(true); }} placeholder="Catatan execution..." className="mt-2 min-h-24" /></div><div className="qa-command-bar sticky bottom-0 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-xl p-3"><Button variant="ghost" size="sm" onClick={() => moveCase(-1)} disabled={activeCaseIndex === 0}><ChevronLeft data-icon="inline-start" />Previous</Button><span className="mr-auto text-xs text-muted-foreground">{activeCaseIndex + 1}/{selectedRun.testCases.length}</span>{EXECUTION_ACTIONS.map(action => { const Icon = action.icon; const active = visibleExecutionStatus === action.status; return <Button key={action.status} variant={active ? action.variant : 'outline'} size="sm" onClick={() => void execute(action.status)} disabled={isSaving} aria-pressed={active}><Icon data-icon="inline-start" />{action.label}<kbd className="rounded border border-current/20 px-1 text-[9px]">{action.shortcut}</kbd></Button>; })}<Button size="sm" onClick={() => moveCase(1)} disabled={activeCaseIndex >= selectedRun.testCases.length - 1}>Next Case<ChevronRight data-icon="inline-end" /></Button></div></div> : <div className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">Tambahkan testcase untuk mulai execution.</div>}
               </CardContent>
             </>
           )}
         </Card>
-        <aside className="hidden min-w-0 min-[1440px]:block">{selectedRun ? <ExecutionContextPanel selectedRun={selectedRun} activeCase={activeCase} activeExecution={activeExecution} activeEvidence={activeEvidence} activities={activities} projectId={projectId} isSaving={isSaving} isDraggingEvidence={isDraggingEvidence} uploadEvidence={uploadEvidence} removeEvidence={removeEvidence} createBug={createBug} /> : null}</aside>
+        <aside className="hidden min-w-0 min-[1440px]:block min-[1440px]:sticky min-[1440px]:top-20 min-[1440px]:max-h-[calc(100svh-6rem)] min-[1440px]:self-start min-[1440px]:overflow-y-auto">{selectedRun ? <ExecutionContextPanel selectedRun={selectedRun} activeCase={activeCase} activeExecution={activeExecution} activeEvidence={activeEvidence} activities={activities} projectId={projectId} isSaving={isSaving} isDraggingEvidence={isDraggingEvidence} uploadEvidence={uploadEvidence} removeEvidence={removeEvidence} createBug={createBug} /> : null}</aside>
       </div>
       <Sheet open={contextOpen} onOpenChange={setContextOpen}><SheetContent side="right" className="w-full p-0 sm:max-w-md"><SheetHeader className="border-b border-border/70 p-4"><SheetTitle>Execution context</SheetTitle><SheetDescription>Evidence, bug, tester, dan riwayat case aktif.</SheetDescription></SheetHeader><div className="h-[calc(100dvh-5rem)] overflow-y-auto p-4">{selectedRun ? <ExecutionContextPanel selectedRun={selectedRun} activeCase={activeCase} activeExecution={activeExecution} activeEvidence={activeEvidence} activities={activities} projectId={projectId} isSaving={isSaving} isDraggingEvidence={isDraggingEvidence} uploadEvidence={uploadEvidence} removeEvidence={removeEvidence} createBug={createBug} /> : null}</div></SheetContent></Sheet>
     </div>

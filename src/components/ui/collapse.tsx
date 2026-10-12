@@ -4,15 +4,14 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * GPU-friendly collapse/expand.
+ * Instant collapse/expand for large sections.
  *
- * Instead of animating `height` (which reflows every frame), this animates the
- * CSS grid track between `0fr` and `1fr`. The browser composites this far more
- * cheaply, so open/close stays smooth at 60fps. The inner wrapper hides
+ * The CSS grid track switches between `0fr` and `1fr` without interpolation.
+ * The wrapper hides
  * overflow so content is clipped while collapsed.
  *
  * Children stay mounted (hidden via the collapsed grid track) so they can
- * animate in both directions with no layout thrash and no extra state.
+ * preserve their state. Inert prevents focus reaching collapsed controls.
  */
 export interface CollapseProps extends React.HTMLAttributes<HTMLDivElement> {
   open: boolean;
@@ -24,8 +23,10 @@ export function Collapse({ open, className, innerClassName, children, ...props }
   return (
     <div
       {...props}
+      inert={!open}
+      aria-hidden={!open}
       className={cn(
-        'grid transition-[grid-template-rows] motion-reduce:transition-none',
+        'grid',
         open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
         className,
       )}

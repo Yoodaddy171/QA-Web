@@ -217,13 +217,13 @@ export function DashboardPanel({
   const isMobile = useIsMobile();
   const showAdvancedInsights = !isMobile || showMobileInsights;
   const statusDistribution = stats ? [
-    { name: 'Done', value: stats.doneCount, color: '#10b981' },
-    { name: 'Active', value: stats.inProgressCount, color: '#6366f1' },
-    { name: 'Blocked', value: stats.blockedCount, color: '#f59e0b' },
-    { name: 'Failed', value: stats.failedCount, color: '#ef4444' },
-    { name: 'Retest', value: stats.readyToRetestCount, color: '#06b6d4' },
-    { name: 'TBA', value: stats.tbaCount || 0, color: '#8b5cf6' },
-    { name: 'Backlog', value: stats.notDoneCount, color: '#64748b' },
+    { name: 'Done', value: stats.doneCount, color: 'var(--status-passed)' },
+    { name: 'Active', value: stats.inProgressCount, color: 'var(--status-in-progress)' },
+    { name: 'Blocked', value: stats.blockedCount, color: 'var(--status-blocked)' },
+    { name: 'Failed', value: stats.failedCount, color: 'var(--status-failed)' },
+    { name: 'Retest', value: stats.readyToRetestCount, color: 'var(--status-retest)' },
+    { name: 'TBA', value: stats.tbaCount || 0, color: 'var(--bug-fixing)' },
+    { name: 'Backlog', value: stats.notDoneCount, color: 'var(--status-not-run)' },
   ].filter(item => item.value > 0) : [];
 
   if (!stats) return (
@@ -247,21 +247,21 @@ export function DashboardPanel({
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+      initial={false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0 }}
         className="space-y-4"
       >
         {/* Refresh indicator */}
         {(onRefresh || lastRefreshed) && (
           <div className="flex items-center justify-end gap-3 bg-secondary/20 p-2 rounded-xl border border-border/30 max-w-fit ml-auto">
             {lastRefreshed && (
-              <span className="text-[11px] font-semibold text-muted-foreground">
+              <span className="text-xs font-semibold text-muted-foreground">
                 Terakhir diperbarui: {lastRefreshed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             )}
             {onRefresh && (
-              <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading} className="h-7 px-2.5 gap-1.5 rounded-lg text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition">
+              <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading} className="h-7 px-2.5 gap-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition">
                 <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} /> Muat ulang
               </Button>
             )}
@@ -277,20 +277,18 @@ export function DashboardPanel({
                   {stats.overallProgress === 100 && <ConfettiBurst radius={56} />}
                   <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
                     <circle cx="60" cy="60" r="52" fill="none" strokeWidth="8" className="stroke-secondary" />
-                    <motion.circle cx="60" cy="60" r="52" fill="none" strokeWidth="8" strokeLinecap="round" className="stroke-primary"
+                    <circle cx="60" cy="60" r="52" fill="none" strokeWidth="8" strokeLinecap="round" className="stroke-primary"
                       strokeDasharray={2 * Math.PI * 52}
-                      initial={{ strokeDashoffset: 2 * Math.PI * 52 }}
-                      animate={{ strokeDashoffset: 2 * Math.PI * 52 * (1 - stats.overallProgress / 100) }}
-                      transition={{ type: 'spring', stiffness: 90, damping: 22 }} />
+                      strokeDashoffset={2 * Math.PI * 52 * (1 - stats.overallProgress / 100)} />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <AnimatedNumber value={stats.overallProgress} suffix="%" className="font-mono text-2xl font-bold tracking-tight text-foreground tabular-nums" />
-                    <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">readiness</span>
+                    <span className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">readiness</span>
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Release decision</span>
+                    <span className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-primary">Release decision</span>
                     {stats.releaseReadiness && <Badge variant={stats.releaseReadiness.recommendation === 'READY' ? 'success' : stats.releaseReadiness.recommendation === 'NOT READY' ? 'failed' : 'warning'}>{stats.releaseReadiness.recommendation}</Badge>}
                   </div>
                   <h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
@@ -320,7 +318,7 @@ export function DashboardPanel({
                 ].map(([label, value, tone]) => (
                   <div key={String(label)} className="border-b border-r border-border/50 p-4 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0">
                     <p className={cn('font-mono text-2xl font-semibold tabular-nums', tone)}>{value}</p>
-                    <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
                   </div>
                 ))}
               </div>
@@ -335,20 +333,20 @@ export function DashboardPanel({
                 <div className="min-w-0 lg:w-64">
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2 w-2" aria-hidden="true"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 motion-reduce:animate-none" /><span className="relative inline-flex h-2 w-2 rounded-full bg-primary" /></span>
-                    <span className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-primary">Test Run terbaru</span>
+                    <span className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-primary">Test Run terbaru</span>
                   </div>
                   <p className="mt-1 truncate text-sm font-semibold text-foreground">{release.testRunName}</p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">{release.testRunStatus} · {release.completedCases}/{release.totalCases} executed</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{release.testRunStatus} · {release.completedCases}/{release.totalCases} executed</p>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
+                  <div className="mb-2 flex items-center justify-between text-xs font-semibold text-muted-foreground">
                     <span>Execution progress</span><span className="font-mono text-foreground">{release.progress}%</span>
                   </div>
-                  <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="flex h-2 origin-left overflow-hidden rounded-full bg-secondary" aria-label={`Test Run progress ${release.progress}%`}>
+                  <motion.div initial={false} className="flex h-2 origin-left overflow-hidden rounded-full bg-secondary" aria-label={`Test Run progress ${release.progress}%`}>
                     {runSegments.map(segment => segment.value > 0 ? <span key={segment.label} className={segment.color} style={{ width: `${(segment.value / runTotal) * 100}%` }} title={`${segment.label}: ${segment.value}`} /> : null)}
                   </motion.div>
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                    {runSegments.map(segment => <span key={segment.label} className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className={cn('h-1.5 w-1.5 rounded-full', segment.color)} />{segment.label} <strong className="font-mono text-foreground">{segment.value}</strong></span>)}
+                    {runSegments.map(segment => <span key={segment.label} className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className={cn('h-1.5 w-1.5 rounded-full', segment.color)} />{segment.label} <strong className="font-mono text-foreground">{segment.value}</strong></span>)}
                   </div>
                 </div>
                 {onNavigate && <Button size="sm" variant="outline" onClick={() => onNavigate('testRuns')} className="shrink-0 gap-2">Lanjutkan run <ArrowUpRight className="h-3.5 w-3.5" /></Button>}
@@ -390,6 +388,7 @@ export function DashboardPanel({
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
+                        isAnimationActive={false}
                         data={statusDistribution}
                         cx="50%"
                         cy="50%"
@@ -422,11 +421,11 @@ export function DashboardPanel({
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-3xl font-bold tracking-tight font-mono text-foreground">{stats.totalTestCases}</span>
-                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total</span>
+                    <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Total</span>
                   </div>
                 </div>
                 {/* Custom Legend */}
-                <div className="flex flex-col gap-1.5 min-w-[120px] text-[11px] font-semibold text-muted-foreground">
+                <div className="flex flex-col gap-1.5 min-w-[120px] text-xs font-semibold text-muted-foreground">
                   {statusDistribution.map((entry, idx) => (
                     <div key={idx} className="flex items-center justify-between gap-3 py-0.5 border-b border-border/10 last:border-0">
                       <span className="flex items-center gap-1.5 text-foreground/80">
@@ -454,15 +453,15 @@ export function DashboardPanel({
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={[
-                      { name: 'Critical', count: stats.criticalCount || 0, fill: '#ef4444' },
-                      { name: 'High', count: stats.highCount || 0, fill: '#f59e0b' },
-                      { name: 'Medium', count: stats.mediumCount || 0, fill: '#06b6d4' },
-                      { name: 'Low', count: stats.lowCount || 0, fill: '#10b981' },
+                      { name: 'Critical', count: stats.criticalCount || 0, fill: 'var(--status-failed)' },
+                      { name: 'High', count: stats.highCount || 0, fill: 'var(--status-blocked)' },
+                      { name: 'Medium', count: stats.mediumCount || 0, fill: 'var(--status-retest)' },
+                      { name: 'Low', count: stats.lowCount || 0, fill: 'var(--status-passed)' },
                     ]}
                     margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
                   >
-                    <XAxis dataKey="name" stroke="currentColor" className="text-muted-foreground text-[10px] font-semibold" tickLine={false} axisLine={false} />
-                    <YAxis stroke="currentColor" className="text-muted-foreground text-[10px] font-mono" tickLine={false} axisLine={false} allowDecimals={false} />
+                    <XAxis dataKey="name" stroke="currentColor" className="text-muted-foreground text-xs font-semibold" tickLine={false} axisLine={false} />
+                    <YAxis stroke="currentColor" className="text-muted-foreground text-xs font-mono" tickLine={false} axisLine={false} allowDecimals={false} />
                     <RechartsTooltip
                       cursor={{ fill: 'rgba(255, 255, 255, 0.05)', radius: 8 }}
                       content={({ active, payload }: any) => {
@@ -480,12 +479,12 @@ export function DashboardPanel({
                         return null;
                       }}
                     />
-                    <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={40}>
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={40} isAnimationActive={false}>
                       {[
-                        { name: 'Critical', count: stats.criticalCount || 0, fill: '#ef4444' },
-                        { name: 'High', count: stats.highCount || 0, fill: '#f59e0b' },
-                        { name: 'Medium', count: stats.mediumCount || 0, fill: '#06b6d4' },
-                        { name: 'Low', count: stats.lowCount || 0, fill: '#10b981' },
+                        { name: 'Critical', count: stats.criticalCount || 0, fill: 'var(--status-failed)' },
+                        { name: 'High', count: stats.highCount || 0, fill: 'var(--status-blocked)' },
+                        { name: 'Medium', count: stats.mediumCount || 0, fill: 'var(--status-retest)' },
+                        { name: 'Low', count: stats.lowCount || 0, fill: 'var(--status-passed)' },
                       ].map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
@@ -519,7 +518,7 @@ export function DashboardPanel({
               ].map((item) => (
                 <div key={item.label} className={cn('rounded-xl border border-border/40 p-4', item.surface)}>
                   <p className={cn('font-mono text-2xl font-semibold', item.color)}>{item.value}</p>
-                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
                 </div>
               ))}
             </CardContent>
@@ -543,7 +542,7 @@ export function DashboardPanel({
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {stats.pageGroups.map((pg) => (
-                  <Badge key={pg.page} variant="outline" className="text-[11px] font-medium py-1.5 px-3 bg-secondary/50 border-border/60 text-foreground rounded-xl">
+                  <Badge key={pg.page} variant="outline" className="text-xs font-medium py-1.5 px-3 bg-secondary/50 border-border/60 text-foreground rounded-xl">
                     {pg.page}: {pg._count.id}
                   </Badge>
                 ))}

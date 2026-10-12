@@ -55,23 +55,23 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                 className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary/60 data-[state=indeterminate]:border-primary rounded"
               />
             </TableHead>
-            <TableHead className="sticky left-10 z-20 w-10 bg-secondary/95 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
-            <TableHead className="sticky left-[72px] z-20 w-[120px] min-w-[120px] cursor-pointer select-none bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
+            <TableHead className="sticky left-10 z-20 w-10 bg-secondary/95 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
+            <TableHead className="sticky left-[72px] z-20 w-[120px] min-w-[120px] cursor-pointer select-none bg-secondary/95 text-xs font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
               <div className="flex items-center gap-1">ID <ArrowUpDown className="w-3 h-3 text-primary" /></div>
             </TableHead>
-            <TableHead className="w-[110px] cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('page')}>
+            <TableHead className="w-[110px] cursor-pointer select-none text-xs font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('page')}>
               <div className="flex items-center gap-1">Page <ArrowUpDown className="w-3 h-3 text-primary" /></div>
             </TableHead>
-            <TableHead className={getColumnClass('subMenu', 'w-[100px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>
-            <TableHead className={getColumnClass('weight', 'w-[68px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Weight</TableHead>
-            <TableHead className={getColumnClass('type', 'w-[80px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Type</TableHead>
-            <TableHead className={getColumnClass('priority', 'w-[84px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>
-            <TableHead className={getColumnClass('action', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
-            <TableHead className={getColumnClass('status', 'w-[140px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>
-            <TableHead className={getColumnClass('result', 'w-[120px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Result</TableHead>
-            <TableHead className={getColumnClass('record', 'w-[140px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Test Record</TableHead>
-            <TableHead className={getColumnClass('progress', 'w-[88px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Progress</TableHead>
-            <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
+            <TableHead className={getColumnClass('subMenu', 'w-[100px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>
+            <TableHead className={getColumnClass('weight', 'w-[68px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Weight</TableHead>
+            <TableHead className={getColumnClass('type', 'w-[80px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Type</TableHead>
+            <TableHead className={getColumnClass('priority', 'w-[84px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>
+            <TableHead className={getColumnClass('action', 'text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
+            <TableHead className={getColumnClass('status', 'w-[140px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>
+            <TableHead className={getColumnClass('result', 'w-[120px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Result</TableHead>
+            <TableHead className={getColumnClass('record', 'w-[140px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Test Record</TableHead>
+            <TableHead className={getColumnClass('progress', 'w-[88px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Progress</TableHead>
+            <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -93,11 +93,11 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                 <TableRow className="border-border/30 hover:bg-transparent">
                   <TableCell colSpan={tableColSpan} className="h-44 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      {hasActiveFilters ? <Search className="h-9 w-9 opacity-25 animate-bounce [animation-duration:2.2s] motion-reduce:animate-none" /> : <FileSpreadsheet className="h-9 w-9 opacity-25 animate-bounce [animation-duration:2.2s] motion-reduce:animate-none" />}
+                      {hasActiveFilters ? <Search className="h-9 w-9 opacity-25" /> : <FileSpreadsheet className="h-9 w-9 opacity-25" />}
                       <p className="text-sm font-bold uppercase tracking-wider">
                         {!selectedProject ? 'Pilih project dulu' : hasActiveFilters ? 'Tidak ada hasil' : 'Belum ada test case'}
                       </p>
-                      <p className="max-w-md text-[11px] font-semibold opacity-65">
+                      <p className="max-w-md text-xs font-semibold opacity-65">
                         {!selectedProject
                           ? 'Pilih project dari sidebar untuk melihat data.'
                           : hasActiveFilters
@@ -120,10 +120,10 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                   <TableRow
                     key={tc.id}
                     className={cn(
-                      'group cursor-pointer border-border/30 transition-colors duration-150 hover:bg-secondary/40 animate-in fade-in slide-in-from-bottom-1 fill-mode-backwards', rowClassName,
+                      'group cursor-pointer border-border/30 transition-colors duration-150 hover:bg-secondary/40', rowClassName,
                       selectedIds.has(tc.id) && 'bg-primary/[0.06] hover:bg-primary/10'
                     )}
-                    style={{ animationDelay: `${Math.min(index, 10) * 18}ms`, animationDuration: '180ms' }}
+
                     title="Klik untuk melihat detail"
                     onClick={(e) => {
                       // Ignore clicks on interactive controls inside the row.
@@ -146,7 +146,7 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                     <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[100px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>
                     <TableCell className={getColumnClass('weight')}>
                       {tc.calculatedWeight != null ? (
-                        <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-[10px] font-mono text-muted-foreground">
+                        <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-xs font-mono text-muted-foreground">
                           {tc.calculatedWeight.toFixed(2)}%
                         </Badge>
                       ) : (
@@ -154,12 +154,12 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                       )}
                     </TableCell>
                     <TableCell className={getColumnClass('type')}>
-                      <Badge variant="outline" className={cn("rounded-md text-[10px] font-bold", getTestTypeColor(tc.testType))}>
+                      <Badge variant="outline" className={cn("rounded-md text-xs font-bold", getTestTypeColor(tc.testType))}>
                         {tc.testType}
                       </Badge>
                     </TableCell>
                     <TableCell className={getColumnClass('priority')}>
-                      <Badge variant="outline" className={cn("rounded-md text-[10px] font-bold", getPriorityColor(tc.priority))}>
+                      <Badge variant="outline" className={cn("rounded-md text-xs font-bold", getPriorityColor(tc.priority))}>
                         {tc.priority}
                       </Badge>
                     </TableCell>
@@ -171,29 +171,29 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                         <div className="relative">
                           {celebrateId === tc.id && <ConfettiBurst radius={44} count={14} />}
                         <Select value={tc.status} onValueChange={(val) => { if (val === 'DONE' && tc.status !== 'DONE') setCelebrateId(tc.id); onQuickStatusChange(tc.id, val); }}>
-                          <SelectTrigger key={tc.status} className={cn("h-7 w-[130px] rounded-lg text-[10px] font-bold shadow-none gap-1 px-2 animate-in zoom-in-90 duration-200", getStatusColor(tc.status))}>
+                          <SelectTrigger className={cn("h-8 w-[178px] rounded-lg text-xs font-bold shadow-none gap-1 px-2", getStatusColor(tc.status))}>
                             {getStatusIcon(tc.status)} <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
-                            <SelectItem value="DONE" className="text-[10px] font-bold rounded-lg">DONE</SelectItem>
-                            <SelectItem value="NOT DONE" className="text-[10px] font-bold rounded-lg">NOT DONE</SelectItem>
-                            <SelectItem value="IN PROGRESS" className="text-[10px] font-bold rounded-lg">IN PROGRESS</SelectItem>
-                            <SelectItem value="BLOCKED" className="text-[10px] font-bold rounded-lg">BLOCKED</SelectItem>
-                            <SelectItem value="FAILED" className="text-[10px] font-bold rounded-lg">FAILED</SelectItem>
-                            <SelectItem value="READY TO RETEST" className="text-[10px] font-bold rounded-lg">READY TO RETEST</SelectItem>
-                            <SelectItem value="TBA" className="text-[10px] font-bold rounded-lg">TBA</SelectItem>
+                            <SelectItem value="DONE" className="text-xs font-bold rounded-lg">DONE</SelectItem>
+                            <SelectItem value="NOT DONE" className="text-xs font-bold rounded-lg">NOT DONE</SelectItem>
+                            <SelectItem value="IN PROGRESS" className="text-xs font-bold rounded-lg">IN PROGRESS</SelectItem>
+                            <SelectItem value="BLOCKED" className="text-xs font-bold rounded-lg">BLOCKED</SelectItem>
+                            <SelectItem value="FAILED" className="text-xs font-bold rounded-lg">FAILED</SelectItem>
+                            <SelectItem value="READY TO RETEST" className="text-xs font-bold rounded-lg">READY TO RETEST</SelectItem>
+                            <SelectItem value="TBA" className="text-xs font-bold rounded-lg">TBA</SelectItem>
                           </SelectContent>
                         </Select>
                         </div>
                       ) : (
-                        <Badge variant={getStatusBadgeVariant(tc.status)} className="gap-1 text-[10px] font-semibold">
+                        <Badge variant={getStatusBadgeVariant(tc.status)} className="gap-1 text-xs font-semibold">
                           {getStatusIcon(tc.status)} {tc.status}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className={getColumnClass('result', 'px-3')}>
                       {tc.actualResult ? (
-                        <Badge variant={tc.actualResult === 'As Expected' ? 'success' : tc.actualResult === 'Not As Expected' ? 'failed' : 'outline'} className="text-[10px] font-semibold">
+                        <Badge variant={tc.actualResult === 'As Expected' ? 'success' : tc.actualResult === 'Not As Expected' ? 'failed' : 'outline'} className="text-xs font-semibold">
                           {tc.actualResult}
                         </Badge>
                       ) : (
@@ -205,23 +205,23 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                         <div className="space-y-1">
                           <div className="flex flex-wrap gap-1">
                             {record.hasAutomationRun && (
-                              <Badge className="rounded-md bg-indigo-500/10 text-[9px] font-semibold text-indigo-400 border-indigo-500/20 shadow-none uppercase">
+                              <Badge className="rounded-md bg-indigo-500/10 text-xs font-semibold text-status-in-progress border-indigo-500/20 shadow-none uppercase">
                                 Auto
                               </Badge>
                             )}
                             {record.hasManualCapture && (
-                              <Badge className="rounded-md bg-teal-500/10 text-[9px] font-semibold text-teal-400 border-teal-500/20 shadow-none uppercase">
+                              <Badge className="rounded-md bg-teal-500/10 text-xs font-semibold text-bug-fixed border-teal-500/20 shadow-none uppercase">
                                 Manual
                               </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
+                          <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground uppercase tracking-tighter">
                             <CalendarClock className="h-2.5 w-2.5" />
                             {formatLastRun(record.lastRunAt)}
                           </div>
                         </div>
                       ) : (
-                        <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-[9px] font-semibold text-muted-foreground uppercase">
+                        <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-xs font-semibold text-muted-foreground uppercase">
                           No Records
                         </Badge>
                       )}
@@ -229,7 +229,7 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                     <TableCell className={getColumnClass('progress')}>
                       <div className="flex items-center gap-2">
                         <Progress value={tc.progress} className="h-1 w-12 bg-secondary/50" />
-                        <span className="text-[10px] font-bold text-muted-foreground">{tc.progress}%</span>
+                        <span className="text-xs font-bold text-muted-foreground">{tc.progress}%</span>
                       </div>
                     </TableCell>
                     <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
@@ -249,7 +249,7 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                           <DropdownMenuItem onClick={() => handleDuplicate(tc)}>
                             <Copy className="w-4 h-4 mr-2" /> Duplikasi
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => requestDelete(tc)} className="text-red-400 focus:text-red-300">
+                          <DropdownMenuItem onClick={() => requestDelete(tc)} className="text-status-failed focus:text-status-failed">
                             <Trash2 className="w-4 h-4 mr-2" /> Hapus
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -263,13 +263,13 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
           </Table>
       </div>
       {total > 0 && (
-        <div className="flex flex-col gap-3 rounded-lg border border-white/5 bg-secondary/50 px-3 py-2 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-lg border border-border/50 bg-secondary/50 px-3 py-2 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground tabular-nums">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground tabular-nums">
               Halaman {page} dari {totalPages} <span className="mx-2 opacity-20">|</span> {total} test cases
             </p>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rows</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rows</span>
               <Select value={String(limit)} onValueChange={handleLimitChange}>
                 <SelectTrigger className="h-8 w-[82px] rounded-md border-border/60 bg-secondary/50 text-xs font-bold text-foreground shadow-sm">
                   <SelectValue />
@@ -300,7 +300,7 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                   key={pageNum}
                   variant={page === pageNum ? 'default' : 'outline'}
                   size="sm"
-                  className={`h-8 w-8 p-0 text-[11px] font-bold ${page === pageNum ? 'border-primary bg-primary text-primary-foreground' : 'border-border/60 bg-secondary/50 text-muted-foreground'}`}
+                  className={`h-8 w-8 p-0 text-xs font-bold ${page === pageNum ? 'border-primary bg-primary text-primary-foreground' : 'border-border/60 bg-secondary/50 text-muted-foreground'}`}
                   onClick={() => setPage(pageNum)}
                 >
                   {pageNum}

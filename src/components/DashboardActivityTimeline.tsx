@@ -71,7 +71,7 @@ export function DashboardActivityTimeline({
                       {item.entityType} {ACTION_LABELS[item.action] || item.action.toLowerCase()}
                       {item.field ? <span className="font-normal text-muted-foreground"> · {item.field}</span> : null}
                     </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       <span>{item.actor || 'local-user'}</span>
                       <span aria-hidden="true">·</span>
                       <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</time>

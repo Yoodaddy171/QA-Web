@@ -78,7 +78,7 @@ export function ExecutionLogView({
               key={log.eventId || log.id || `${index}-${message}`}
               type="button"
               className={cn(
-                'group grid w-full grid-cols-[32px_minmax(0,1fr)] items-start gap-3 rounded-lg bg-background px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-ring dark:hover:bg-white/5',
+                'group grid w-full grid-cols-[32px_minmax(0,1fr)] items-start gap-3 rounded-lg bg-background px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-ring dark:hover:bg-secondary/50',
                 isLifecycle && 'border-teal-200 bg-teal-50/60 dark:border-teal-500/20 dark:bg-teal-950/20',
                 !onSelectLog && 'cursor-default'
               )}
@@ -123,9 +123,9 @@ export function ExecutionLogView({
           const isError = normalized.includes('error') || normalized.includes('fail');
           const isWarning = normalized.includes('warn');
           return (
-            <div key={`${index}-${line}`} className="flex gap-4 rounded px-2 py-1 transition-colors hover:bg-secondary/60 dark:hover:bg-white/5">
+            <div key={`${index}-${line}`} className="flex gap-4 rounded px-2 py-1 transition-colors hover:bg-secondary/60 dark:hover:bg-secondary/50">
               <span className="min-w-[24px] select-none text-right font-bold text-muted-foreground opacity-60">{index + 1}</span>
-              <span className={cn(isError ? 'font-bold text-rose-700 dark:text-rose-400' : isWarning ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400/90')}>
+              <span className={cn(isError ? 'font-bold text-rose-700 dark:text-status-failed' : isWarning ? 'text-amber-700 dark:text-status-blocked' : 'text-emerald-700 dark:text-status-passed/90')}>
                 {line}
               </span>
             </div>
@@ -134,7 +134,7 @@ export function ExecutionLogView({
       ) : (
         <div className="h-full flex flex-col items-center justify-center py-20 text-muted-foreground">
           <Clock className="w-8 h-8 mb-3 opacity-20" />
-          <p className="font-bold tracking-wider text-[10px] uppercase">Menunggu interaksi pengguna...</p>
+          <p className="font-bold tracking-wider text-xs uppercase">Menunggu interaksi pengguna...</p>
         </div>
       )}
       <div ref={logEndRef} className="h-8" />

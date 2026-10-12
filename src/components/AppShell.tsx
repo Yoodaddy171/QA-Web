@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { contentTransition } from '@/lib/client/ui-motion';
 
 interface Project {
   id: string;
@@ -94,10 +95,10 @@ function WorkspaceCommandPalette({ open, onOpenChange, setActiveTab }: { open: b
         <div className="flex items-center gap-3 border-b border-border px-4">
           <Search className="size-4 text-muted-foreground" />
           <Input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari menu atau aksi..." className="h-14 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0" />
-          <kbd className="rounded border border-border bg-secondary px-2 py-1 font-mono text-[10px] text-muted-foreground">ESC</kbd>
+          <kbd className="rounded border border-border bg-secondary px-2 py-1 font-mono text-xs text-muted-foreground">ESC</kbd>
         </div>
         <div className="max-h-[420px] overflow-y-auto p-2">
-          <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Navigasi</p>
+          <p className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Navigasi</p>
           <div className="flex flex-col gap-1">
             {filteredItems.map(item => {
               const Icon = item.icon;
@@ -124,7 +125,7 @@ function WorkspaceCommandPalette({ open, onOpenChange, setActiveTab }: { open: b
             {filteredItems.length === 0 && normalizedQuery && !'search test cases add create new testcase'.includes(normalizedQuery) ? <p className="px-3 py-8 text-center text-sm text-muted-foreground">Tidak ada menu atau aksi yang cocok.</p> : null}
           </div>
         </div>
-        <div className="flex items-center justify-between border-t border-border bg-secondary/25 px-4 py-2 text-[10px] text-muted-foreground"><span>Gunakan pencarian untuk berpindah cepat</span><span className="flex items-center gap-1"><Command className="size-3" /> K</span></div>
+        <div className="flex items-center justify-between border-t border-border bg-secondary/25 px-4 py-2 text-xs text-muted-foreground"><span>Gunakan pencarian untuk berpindah cepat</span><span className="flex items-center gap-1"><Command className="size-3" /> K</span></div>
       </DialogContent>
     </Dialog>
   );
@@ -190,7 +191,7 @@ function WorkspaceSidebar({
 
       <SidebarContent className="px-2 py-4">
         <SidebarGroup className="p-0">
-          <SidebarGroupLabel className="px-2 text-[10px] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/45">
+          <SidebarGroupLabel className="px-2 text-xs font-bold uppercase tracking-[0.16em] text-sidebar-foreground/45">
             Workspace
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -227,7 +228,7 @@ function WorkspaceSidebar({
                       <Icon className="relative" />
                       <span className="relative flex min-w-0 flex-col gap-0.5 leading-none transition-[max-width,opacity,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:translate-x-1 group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:opacity-0">
                         <span className="truncate text-[13px] font-bold">{item.label}</span>
-                        <span className="truncate text-[10px] font-medium text-sidebar-foreground/45">
+                        <span className="truncate text-xs font-medium text-sidebar-foreground/45">
                           {item.description}
                         </span>
                       </span>
@@ -250,7 +251,7 @@ function WorkspaceSidebar({
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               className="rounded-lg border border-sidebar-border/70 bg-sidebar-accent/45 p-3"
             >
-              <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/55">
+              <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/55">
                 <span>Project readiness</span>
                 <span className="font-mono text-sidebar-primary">{projectHealth}%</span>
               </div>
@@ -271,7 +272,7 @@ function WorkspaceSidebar({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-                className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45"
+                className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/45"
               >
                 Appearance
               </motion.span>
@@ -344,7 +345,7 @@ export function AppShell({
         />
 
         <SidebarInset className="min-w-0 overflow-x-hidden bg-background">
-          <header className="sticky top-0 z-40 grid min-h-16 grid-cols-[1fr_auto] items-center gap-4 border-b border-border/70 bg-background/95 px-4 backdrop-blur-md sm:px-6 lg:px-8 xl:grid-cols-[1fr_minmax(280px,420px)_1fr]">
+          <header className="sticky top-0 z-40 grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-background px-4 sm:px-6 lg:px-8 xl:grid-cols-[1fr_minmax(280px,420px)_1fr]">
             <div className="flex min-w-0 items-center gap-3">
               <SidebarTrigger className="h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-card text-muted-foreground shadow-sm hover:bg-secondary hover:text-foreground" />
               <div className="min-w-0">
@@ -352,12 +353,12 @@ export function AppShell({
                   <ActiveIcon className="h-4 w-4 shrink-0 text-primary" />
                   <h1 className="truncate text-sm font-bold text-foreground sm:text-base">{activeItem.label}</h1>
                 </div>
-                <p className="hidden truncate text-[11px] font-medium text-muted-foreground sm:block"><span>{selectedProjectName}</span><span className="px-1.5 text-border">/</span><span>{activeItem.description}</span></p>
+                <p className="hidden truncate text-xs font-medium text-muted-foreground sm:block"><span>{selectedProjectName}</span><span className="px-1.5 text-border">/</span><span>{activeItem.description}</span></p>
               </div>
             </div>
             <Button type="button" variant="outline" onClick={() => setCommandOpen(true)} className="hidden h-9 justify-between rounded-lg border-border/70 bg-card px-3 text-muted-foreground shadow-none xl:flex">
               <span className="flex items-center gap-2"><Search className="size-4" />Cari atau pindah menu...</span>
-              <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[9px]">Ctrl K</kbd>
+              <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-xs">Ctrl K</kbd>
             </Button>
             <div className="flex items-center justify-self-end gap-2">
               <Button type="button" variant="outline" size="icon" onClick={() => setCommandOpen(true)} aria-label="Buka command palette" className="size-9 rounded-lg border-border/70 bg-card shadow-none xl:hidden"><Search /></Button>
@@ -384,13 +385,12 @@ export function AppShell({
                 </div>
               ) : (
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <AnimatePresence mode="wait" initial={false}>
+                <AnimatePresence initial={false}>
                   <motion.div
                     key={activeTab}
-                    initial={mounted && !reduceMotion ? { opacity: 0, y: 8 } : false}
+                    initial={mounted && !reduceMotion ? { opacity: 0.8, y: 4 } : false}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                    transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
+                    transition={contentTransition(reduceMotion)}
                   >
                     <TabsContent value="dashboard" className="m-0">{activeTab === 'dashboard' ? children.dashboard : null}</TabsContent>
                     <TabsContent value="testcases" className="m-0">{activeTab === 'testcases' ? children.testcases : null}</TabsContent>

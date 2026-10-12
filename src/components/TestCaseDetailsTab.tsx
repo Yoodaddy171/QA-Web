@@ -51,7 +51,7 @@ export function TestCaseDetailsTab({ viewTestCase, onCopyId, getTestTypeColor, g
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 w-7 border-border/60 bg-secondary/50 p-0 text-muted-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-300"
+                  className="h-7 w-7 border-border/60 bg-secondary/50 p-0 text-muted-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-500/10 dark:hover:text-status-in-progress"
                   onClick={() => onCopyId(viewTestCase.id)}
                 >
                   <Copy className="w-3 h-3" />
@@ -98,7 +98,7 @@ export function TestCaseDetailsTab({ viewTestCase, onCopyId, getTestTypeColor, g
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Bobot Transaksi</p>
-                <Badge variant="secondary" className="border-indigo-200 bg-indigo-50 font-mono text-indigo-700 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300">
+                <Badge variant="secondary" className="border-indigo-200 bg-indigo-50 font-mono text-indigo-700 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-status-in-progress">
                   {viewTestCase.calculatedWeight != null ? `${viewTestCase.calculatedWeight.toFixed(2)}%` : (viewTestCase.weight || '-')}
                 </Badge>
               </div>
@@ -118,7 +118,7 @@ export function TestCaseDetailsTab({ viewTestCase, onCopyId, getTestTypeColor, g
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Actual Result</p>
-              <Badge className={cn(viewTestCase.actualResult === 'As Expected' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300' : viewTestCase.actualResult === 'Not As Expected' ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300' : 'border-border bg-muted text-muted-foreground dark:border-slate-500/20 dark:bg-slate-500/10 dark:text-slate-300')}>
+              <Badge className={cn(viewTestCase.actualResult === 'As Expected' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-status-passed' : viewTestCase.actualResult === 'Not As Expected' ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-status-failed' : 'border-border bg-muted text-muted-foreground dark:border-slate-500/20 dark:bg-slate-500/10 dark:text-foreground')}>
                 {viewTestCase.actualResult || 'BELUM DI-TEST'}
               </Badge>
             </div>

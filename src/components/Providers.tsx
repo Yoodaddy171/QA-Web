@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { MotionConfig } from 'framer-motion';
+import { UI_MOTION } from '@/lib/client/ui-motion';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -68,7 +70,9 @@ export function useAppTheme() {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AppThemeProvider>
-      {children}
+      <MotionConfig reducedMotion="user" transition={{ duration: UI_MOTION.content, ease: UI_MOTION.ease }}>
+        {children}
+      </MotionConfig>
     </AppThemeProvider>
   );
 }

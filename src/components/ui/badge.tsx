@@ -14,27 +14,27 @@ const badgeVariants = cva(
         secondary:
           "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
         destructive:
-          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "border-transparent bg-destructive text-destructive-foreground [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20",
         outline:
           "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         success:
-          "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+          "qa-status qa-status-passed",
         warning:
-          "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+          "qa-status qa-status-blocked",
         failed:
-          "border-status-failed/30 bg-status-failed/10 text-red-700 dark:text-red-400",
+          "qa-status qa-status-failed",
         info:
-          "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400",
+          "qa-status qa-bug-ready",
         notdone:
-          "border-slate-400/30 bg-slate-300/50 text-slate-600 dark:text-slate-400",
+          "qa-status qa-status-not-run",
         inprogress:
-          "border-status-in-progress/30 bg-status-in-progress/10 text-indigo-700 dark:text-indigo-300",
+          "qa-status qa-status-in-progress",
         blocked:
-          "border-status-blocked/30 bg-status-blocked/10 text-amber-700 dark:text-amber-400",
+          "qa-status qa-status-blocked",
         readyretest:
-          "border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400",
+          "qa-status qa-status-retest",
         verifiedfixed:
-          "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+          "qa-status qa-bug-fixed",
         tba:
           "border-purple-400/30 bg-purple-300/20 text-purple-700 dark:text-purple-400",
       },

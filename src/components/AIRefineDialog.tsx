@@ -129,7 +129,7 @@ export function AIRefineDialog({
                   <Bot className="h-10 w-10 text-primary animate-pulse" />
                 </div>
                 <div className="absolute -top-1 -right-1">
-                  <Sparkles className="h-6 w-6 text-cyan-400 animate-bounce" />
+                  <Sparkles className="h-6 w-6 text-status-retest animate-bounce" />
                 </div>
               </div>
               <div className="text-center space-y-2">

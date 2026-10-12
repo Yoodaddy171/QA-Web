@@ -146,7 +146,7 @@ export function ImportExcelDialog({
           {selectedFileName && (
             <div className="flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/5 px-5 py-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-status-passed">
                   <FileSpreadsheet className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
@@ -164,7 +164,7 @@ export function ImportExcelDialog({
                 {[
                   { label: 'Sheets', value: importPreview.totalSheets, color: 'text-foreground' },
                   { label: 'Total Rows', value: importPreview.totalRows, color: 'text-foreground' },
-                  { label: 'Ready to Import', value: importPreview.importableRows, color: 'text-emerald-600 dark:text-emerald-400' },
+                  { label: 'Ready to Import', value: importPreview.importableRows, color: 'text-emerald-600 dark:text-status-passed' },
                   { label: 'Issues Found', value: importPreview.errorCount + importPreview.warningCount, color: importPreview.errorCount > 0 ? 'text-rose-500' : 'text-amber-500' },
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-2xl border border-border/60 bg-secondary/30 p-4 shadow-sm hover:border-primary/30 transition">
@@ -177,8 +177,8 @@ export function ImportExcelDialog({
               <div className={cn(
                 "flex items-start gap-4 rounded-2xl border p-5 shadow-inner transition duration-300",
                 importPreview.canImport
-                  ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300'
-                  : 'border-rose-500/20 bg-rose-500/5 text-rose-700 dark:text-rose-300'
+                  ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-status-passed'
+                  : 'border-rose-500/20 bg-rose-500/5 text-rose-700 dark:text-status-failed'
               )}>
                 {importPreview.canImport ? <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0" /> : <XCircle className="mt-0.5 h-6 w-6 shrink-0" />}
                 <div className="min-w-0">
@@ -224,7 +224,7 @@ export function ImportExcelDialog({
                           </div>
                           <p className="text-[10px] font-bold text-muted-foreground/60 mt-1 uppercase tracking-wider">
                             Header Row {sheet.headerRow ?? '?'} <span className="mx-2 opacity-30">|</span>
-                            <span className="text-emerald-600 dark:text-emerald-400">{sheet.importableRows} / {sheet.totalRows} Ready</span>
+                            <span className="text-emerald-600 dark:text-status-passed">{sheet.importableRows} / {sheet.totalRows} Ready</span>
                           </p>
                         </div>
                         <div className="shrink-0">
@@ -241,13 +241,13 @@ export function ImportExcelDialog({
                       {(errorItems.length > 0 || warningItems.length > 0) && (
                         <div className="space-y-2 border-b border-border/40 bg-secondary/10 p-5 shadow-inner">
                           {errorItems.map((item) => (
-                            <div key={item} className="flex items-start gap-3 text-rose-600 dark:text-rose-400 font-bold text-[11px] leading-tight animate-in fade-in duration-300">
+                            <div key={item} className="flex items-start gap-3 text-rose-600 dark:text-status-failed font-bold text-[11px] leading-tight animate-in fade-in duration-300">
                               <XCircle className="h-4 w-4 shrink-0" />
                               <span>{item}</span>
                             </div>
                           ))}
                           {warningItems.map((item) => (
-                            <div key={item} className="flex items-start gap-3 text-amber-600 dark:text-amber-400 font-bold text-[11px] leading-tight animate-in fade-in duration-300">
+                            <div key={item} className="flex items-start gap-3 text-amber-600 dark:text-status-blocked font-bold text-[11px] leading-tight animate-in fade-in duration-300">
                               <AlertTriangle className="h-4 w-4 shrink-0" />
                               <span>{item}</span>
                             </div>
@@ -303,11 +303,11 @@ export function ImportExcelDialog({
 
           {!hasPreview && (
             <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 flex gap-4 items-start shadow-inner">
-              <div className="mt-1 p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <div className="mt-1 p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-status-blocked">
                 <Target className="h-4 w-4" />
               </div>
               <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
-                <strong className="text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-tight mr-1.5">Auto-Detect:</strong> Header baris otomatis terdeteksi (Sheet dengan header di baris ke-2 atau ke-4 didukung). Pastikan ID unik untuk setiap test case.
+                <strong className="text-amber-600 dark:text-status-blocked font-semibold uppercase tracking-tight mr-1.5">Auto-Detect:</strong> Header baris otomatis terdeteksi (Sheet dengan header di baris ke-2 atau ke-4 didukung). Pastikan ID unik untuk setiap test case.
               </p>
             </div>
           )}

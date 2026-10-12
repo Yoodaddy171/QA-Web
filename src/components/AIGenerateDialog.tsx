@@ -242,7 +242,7 @@ export function AIGenerateDialog({
                             key={`${area.moduleName}-${area.label}`}
                             type="button"
                             onClick={() => { setPrompt(`Buat missing negative cases untuk ${area.moduleName} - ${area.label}`); setDataPreview(null); }}
-                            className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 text-left text-xs text-amber-600 transition hover:bg-amber-500/10 dark:text-amber-300"
+                            className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 text-left text-xs text-amber-600 transition hover:bg-amber-500/10 dark:text-status-blocked"
                           >
                             <span className="flex min-w-0 items-center gap-2.5 font-bold">
                               <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -314,7 +314,7 @@ export function AIGenerateDialog({
                   <Bot className="h-10 w-10 text-primary animate-pulse" />
                 </div>
                 <div className="absolute -top-1 -right-1">
-                  <Sparkles className="h-6 w-6 text-cyan-400 animate-bounce" />
+                  <Sparkles className="h-6 w-6 text-status-retest animate-bounce" />
                 </div>
               </div>
               <div className="text-center space-y-2">
@@ -381,8 +381,8 @@ export function AIGenerateDialog({
                         <div className="text-[11px] text-foreground/80 font-medium whitespace-pre-line leading-relaxed">{testCase.steps}</div>
                       </div>
                       <div className="flex items-center gap-2 rounded-xl bg-emerald-500/5 border border-emerald-500/20 px-3.5 py-2">
-                        <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 opacity-60 shrink-0">Expected Result</p>
-                        <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 truncate">{testCase.expectedResult}</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-status-passed opacity-60 shrink-0">Expected Result</p>
+                        <p className="text-[11px] font-bold text-emerald-700 dark:text-status-passed truncate">{testCase.expectedResult}</p>
                       </div>
                     </div>
                   </motion.div>

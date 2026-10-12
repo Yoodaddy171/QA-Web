@@ -236,9 +236,9 @@ export function SettingsPanel({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0 }}
       className="space-y-6 pb-8"
     >
       <Tabs defaultValue="system" className="gap-5">
@@ -276,7 +276,7 @@ export function SettingsPanel({
         <CardHeader className="pb-3 border-b border-border/40 mb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold tracking-tight">Projects</CardTitle>
-            <Button onClick={onCreateProject} size="sm" variant="majestic" className="gap-1.5 rounded-xl bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-white font-medium shadow-md hover:shadow-cyan-500/10 transition duration-200 text-[11px] uppercase">
+            <Button onClick={onCreateProject} size="sm">
               <FolderPlus className="w-3.5 h-3.5" /> Project Baru
             </Button>
           </div>
@@ -286,12 +286,12 @@ export function SettingsPanel({
             <p className="text-sm text-muted-foreground text-center py-6 font-medium">Belum ada project. Buat project baru untuk memulai.</p>
           ) : (
             <div className="space-y-2">
-              {projects.map((project, index) => (
+              {projects.map((project) => (
                 <motion.div
                   key={project.id}
-                  initial={{ opacity: 0, x: -10 }}
+                  initial={false}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05, duration: 0.2 }}
+                  transition={{ duration: 0 }}
                   className={`flex flex-col items-stretch justify-between gap-3 rounded-xl border p-4 transition duration-200 sm:flex-row sm:items-center ${
                     selectedProject === project.id
                       ? 'border-primary/40 bg-primary/5'
@@ -306,10 +306,10 @@ export function SettingsPanel({
                       <p className="font-semibold text-foreground">{project.name}</p>
                       {project.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{project.description}</p>}
                       <div className="flex items-center gap-2 mt-1.5">
-                        <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground text-[9px] font-medium uppercase rounded-lg">
+                        <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground text-xs font-medium uppercase rounded-lg">
                           {project._count?.testCases || 0} Test Cases
                         </Badge>
-                        <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground text-[9px] font-medium uppercase rounded-lg">
+                        <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground text-xs font-medium uppercase rounded-lg">
                           {project._count?.modules || 0} Modules
                         </Badge>
                       </div>
@@ -320,13 +320,13 @@ export function SettingsPanel({
                       variant={selectedProject === project.id ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setSelectedProject(project.id)}
-                      className="h-8 px-4 font-semibold text-[10px] uppercase tracking-wide rounded-xl"
+                      className="h-8 px-4 font-semibold text-xs uppercase tracking-wide rounded-xl"
                     >
                       {selectedProject === project.id ? 'Aktif' : 'Pilih'}
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 rounded-xl text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 rounded-xl text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:text-status-failed dark:hover:bg-red-500/10">
                           <Trash className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -369,7 +369,7 @@ export function SettingsPanel({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg font-semibold tracking-tight">Modules</CardTitle>
-              <p className="mt-1 text-[11px] text-muted-foreground font-medium">
+              <p className="mt-1 text-xs text-muted-foreground font-medium">
                 Kelompokkan test case berdasarkan area fungsi.
               </p>
             </div>
@@ -377,7 +377,7 @@ export function SettingsPanel({
               onClick={onCreateModule}
               size="sm"
               disabled={!selectedProject}
-              className="gap-1.5 rounded-xl bg-secondary/50 hover:bg-secondary/80 text-foreground font-bold text-[10px] uppercase border border-border/50 shadow-sm transition duration-200"
+              className="gap-1.5 rounded-xl bg-secondary/50 hover:bg-secondary/80 text-foreground font-bold text-xs uppercase border border-border/50 shadow-sm transition duration-200"
             >
               <FolderPlus className="w-3.5 h-3.5 text-primary" /> Module Baru
             </Button>
@@ -397,12 +397,12 @@ export function SettingsPanel({
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {modules.map((module, index) => (
+              {modules.map((module) => (
                 <motion.div
                   key={module.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  initial={false}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.03, duration: 0.2 }}
+                  transition={{ duration: 0 }}
                   className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-secondary/30 pl-4 pr-2 py-2.5 hover:bg-secondary/50 hover:border-primary/30 transition duration-200 group/mod"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -411,13 +411,13 @@ export function SettingsPanel({
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-foreground truncate">{module.name}</p>
-                      <p className="text-[9px] font-semibold text-muted-foreground/60 uppercase">{module._count?.testCases || 0} Cases</p>
+                      <p className="text-xs font-semibold text-muted-foreground/60 uppercase">{module._count?.testCases || 0} Cases</p>
                     </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-lg text-muted-foreground/40 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 opacity-100 sm:opacity-0 sm:group-hover/mod:opacity-100 transition"
+                    className="h-8 w-8 rounded-lg text-muted-foreground/40 hover:text-red-600 hover:bg-red-50 dark:hover:text-status-failed dark:hover:bg-red-500/10 opacity-100 sm:opacity-0 sm:group-hover/mod:opacity-100 transition"
                     onClick={() => onDeleteModule(module.id)}
                   >
                     <X className="w-3.5 h-3.5" />

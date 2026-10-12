@@ -41,7 +41,7 @@ function TimelineEventMarker({
       type="button"
       title={marker.count > 1 ? `${marker.count} events pada ${formatRelativeTime(primaryEvent.clampedOffsetMs)}` : `${primaryEvent.label} - ${primaryEvent.summary}`}
       className={cn(
-        "absolute top-1/2 flex h-4 min-w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 px-1 text-[8px] font-semibold text-white shadow-lg transition hover:scale-125",
+        "absolute top-1/2 flex h-4 min-w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 px-1 text-xs font-semibold text-white shadow-lg transition hover:scale-125",
         getSyncedMarkerClass(primaryEvent),
         selected && "ring-2 ring-white ring-offset-2 ring-offset-background"
       )}
@@ -65,10 +65,10 @@ function TimelineEventMarker({
       >
         <div className="mb-2 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Event pada timestamp ini</p>
-            <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{formatRelativeTime(primaryEvent.clampedOffsetMs)}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-foreground">Event pada timestamp ini</p>
+            <p className="mt-0.5 font-mono text-xs text-muted-foreground">{formatRelativeTime(primaryEvent.clampedOffsetMs)}</p>
           </div>
-          <Badge variant="outline" className="rounded-md text-[10px] font-semibold">{marker.count} events</Badge>
+          <Badge variant="outline" className="rounded-md text-xs font-semibold">{marker.count} events</Badge>
         </div>
         <div className="max-h-64 space-y-1.5 overflow-y-auto overscroll-contain pr-1 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
           {marker.events.map((event, index) => (
@@ -85,14 +85,14 @@ function TimelineEventMarker({
                 onSelectEvent(event);
               }}
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-md border border-current/20 bg-background/50 text-[9px] font-bold">
+              <span className="flex h-6 w-6 items-center justify-center rounded-md border border-current/20 bg-background/50 text-xs font-bold">
                 {index + 1}
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-[9px] font-semibold uppercase tracking-wider">{event.label}</span>
-                <span className="mt-0.5 block line-clamp-2 text-[10px] font-semibold leading-snug">{event.summary}</span>
+                <span className="block truncate text-xs font-semibold uppercase tracking-wider">{event.label}</span>
+                <span className="mt-0.5 block line-clamp-2 text-xs font-semibold leading-snug">{event.summary}</span>
               </span>
-              <span className="font-mono text-[9px] font-semibold">{formatRelativeTime(event.clampedOffsetMs)}</span>
+              <span className="font-mono text-xs font-semibold">{formatRelativeTime(event.clampedOffsetMs)}</span>
             </button>
           ))}
         </div>
@@ -122,16 +122,16 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
                   <div className="flex flex-wrap items-center gap-2">
                     <Film className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
                     <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-wider text-foreground">Screen Record Review</p>
-                    <Badge variant="outline" className="rounded-md border-indigo-200 bg-indigo-50 text-[10px] font-bold text-indigo-700 dark:border-indigo-400/30 dark:bg-indigo-950 dark:text-indigo-200">
+                    <Badge variant="outline" className="rounded-md border-indigo-200 bg-indigo-50 text-xs font-bold text-indigo-700 dark:border-indigo-400/30 dark:bg-indigo-950 dark:text-indigo-200">
                       {formatRelativeTime(recordingDisplayMs)}
                     </Badge>
                     {recordingSeekApprox && (
-                      <Badge variant="outline" className="rounded-md border-amber-200 bg-amber-50 text-[10px] font-bold text-amber-700 dark:border-amber-400/30 dark:bg-amber-950 dark:text-amber-200">
+                      <Badge variant="outline" className="rounded-md border-amber-200 bg-amber-50 text-xs font-bold text-amber-700 dark:border-amber-400/30 dark:bg-amber-950 dark:text-amber-200">
                         Approx
                       </Badge>
                     )}
                   </div>
-                  <p className="mt-1 truncate text-[11px] text-muted-foreground">{manualRecordingTargetUrl}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{manualRecordingTargetUrl}</p>
                 </div>
                 <div className="mr-12 flex items-center gap-1 rounded-md bg-muted p-1">
                   <Button
@@ -143,7 +143,7 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
                   >
                     <Minus className="h-3.5 w-3.5" />
                   </Button>
-                  <span className="min-w-[42px] text-center text-[10px] font-bold text-muted-foreground">
+                  <span className="min-w-[42px] text-center text-xs font-bold text-muted-foreground">
                     {Math.round(recordingZoom * 100)}%
                   </span>
                   <Button
@@ -163,7 +163,7 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
               <div
                 ref={recordingViewportRef}
                 className={cn(
-                  "relative flex h-full min-h-0 overflow-auto bg-slate-950 p-4",
+                  "relative flex h-full min-h-0 overflow-auto bg-background p-4",
                   recordingZoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'items-center justify-center'
                 )}
                 onPointerDown={startRecordingPan}
@@ -195,7 +195,7 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
                       src={buildDevlogRelayUrl(selectedRecordingFrame.url)}
                       alt="Manual capture fullscreen frame"
                       draggable={false}
-                      className="select-none object-contain shadow-2xl transition-[width,height] duration-150"
+                      className="select-none object-contain shadow-2xl "
                       style={{
                         maxWidth: recordingZoom <= 1 ? '100%' : 'none',
                         maxHeight: recordingZoom <= 1 ? '100%' : 'none',
@@ -208,21 +208,21 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
                 {hasManualRecordingVideo && (
                   <div className="pointer-events-none absolute left-5 top-5 max-w-[360px] rounded-xl border border-white/15 bg-black/70 p-3 text-white shadow-2xl backdrop-blur">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="rounded-md border-white/20 bg-white/10 text-[10px] font-semibold text-white">
+                      <Badge variant="outline" className="rounded-md border-white/20 bg-white/10 text-xs font-semibold text-white">
                         {formatRelativeTime(recordingDisplayMs)}
                       </Badge>
                       {currentSyncedVideoEvent && (
-                        <Badge variant="outline" className={cn("rounded-md text-[9px] font-semibold uppercase tracking-wider", getSyncedEventSeverityClass(currentSyncedVideoEvent))}>
+                        <Badge variant="outline" className={cn("rounded-md text-xs font-semibold uppercase tracking-wider", getSyncedEventSeverityClass(currentSyncedVideoEvent))}>
                           {currentSyncedVideoEvent.severity}
                         </Badge>
                       )}
                     </div>
                     {currentSyncedVideoEvent && (
                       <div className="mt-2 min-w-0">
-                        <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-white/70">
+                        <p className="truncate text-xs font-semibold uppercase tracking-wider text-white/70">
                           {currentSyncedVideoEvent.label} / {currentSyncedVideoEvent.category}
                         </p>
-                        <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-white">
+                        <p className="mt-1 line-clamp-2 text-xs font-semibold leading-snug text-white">
                           {currentSyncedVideoEvent.summary}
                         </p>
                       </div>
@@ -235,7 +235,7 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
 
               <ResizablePanel defaultSize={18} minSize={12} maxSize={45} className="min-h-[86px]">
               <div className="h-full overflow-hidden border-t border-border bg-background p-3">
-                <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   <span>Timeline</span>
                   <div className="flex items-center gap-2">
                     <span>{manualRecordingMode === 'video' && manualRecordingFrames.length === 0 ? 'Video only' : `${manualRecordingFrames.length} keyframes`}</span>
@@ -261,7 +261,7 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
                 </div>
                 {hasManualRecordingVideo && (
                   <div className="mb-3 rounded-lg border border-border bg-muted/40 p-2">
-                    <div className="mb-1 flex items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <span>Event Markers</span>
                       <span>{groupedSyncedVideoMarkers.length} groups</span>
                     </div>
@@ -297,7 +297,7 @@ export function RecordingVideoPanel(props: RecordingVideoPanelProps) {
                         variant={selectedRecordingFrame?.file === frame.file ? 'default' : 'ghost'}
                         size="sm"
                         className={cn(
-                          "h-8 shrink-0 rounded-md px-2 text-[10px] font-bold",
+                          "h-8 shrink-0 rounded-md px-2 text-xs font-bold",
                           selectedRecordingFrame?.file === frame.file
                             ? 'bg-indigo-500 text-white hover:bg-indigo-500'
                             : 'border border-border bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground'

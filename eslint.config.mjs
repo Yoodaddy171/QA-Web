@@ -44,6 +44,12 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
+  files: ['automation/playwright/**/*.ts'],
+  rules: { 'react-hooks/rules-of-hooks': 'off' },
+}, {
+  files: ['mcp-qa-web/**/*.mjs'],
+  rules: { '@next/next/no-assign-module-variable': 'off' },
+}, {
   ignores: [
     "node_modules/**",
     ".next/**",
@@ -52,6 +58,9 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    "**/playwright-report/**",
+    "**/test-results/**",
+    "graphify-out/**",
     "e2e/.auth/**",
     "next-env.d.ts",
     "examples/**",

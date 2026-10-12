@@ -115,10 +115,10 @@ const formatDate = (dateStr: string | null) => {
 
 const getBugFixStatusColor = (status: string) => {
   switch (status) {
-    case 'SUDAH DILAPORKAN': return 'border-bug-open/30 bg-bug-open/10 text-bug-open font-semibold';
-    case 'SEDANG DI FIX': return 'border-bug-fixing/30 bg-bug-fixing/10 text-bug-fixing font-semibold';
-    case 'READY TO RETEST': return 'border-bug-ready/30 bg-bug-ready/10 text-bug-ready font-semibold';
-    case 'VERIFIED & FIXED': return 'border-bug-fixed/30 bg-bug-fixed/10 text-bug-fixed font-semibold';
+    case 'SUDAH DILAPORKAN': return 'qa-status qa-bug-open';
+    case 'SEDANG DI FIX': return 'qa-status qa-bug-fixing';
+    case 'READY TO RETEST': return 'qa-status qa-bug-ready';
+    case 'VERIFIED & FIXED': return 'qa-status qa-bug-fixed';
     default: return 'border-border/60 bg-muted text-muted-foreground font-semibold';
   }
 };
@@ -166,9 +166,9 @@ export function BugFixPanel({
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 10 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0 }}
       className="min-w-0 space-y-6 overflow-x-hidden"
     >
       {stats && <BugFixStatsCards stats={stats} />}
@@ -183,29 +183,29 @@ export function BugFixPanel({
           className="w-full sm:w-auto"
         >
           <TabsList className="h-10 rounded-xl border border-border/50 bg-secondary/35 p-1 shadow-inner">
-            <TabsTrigger value="active" className="gap-2 rounded-lg px-4 text-[11px] font-semibold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+            <TabsTrigger value="active" className="gap-2 rounded-lg px-4 text-xs font-semibold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Bug className="w-3.5 h-3.5" /> Bug Aktif
             </TabsTrigger>
-            <TabsTrigger value="resolved" className="gap-2 rounded-lg px-4 text-[11px] font-semibold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+            <TabsTrigger value="resolved" className="gap-2 rounded-lg px-4 text-xs font-semibold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <CheckCircle2 className="w-3.5 h-3.5" /> Riwayat Fixed
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
         <div className="grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 2xl:w-auto 2xl:grid-cols-[auto_auto_minmax(220px,1fr)_180px_180px]">
-          <Badge variant="outline" className="h-9.5 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <Badge variant="outline" className="h-9.5 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Menampilkan {visibleBugFixItems.length} data
           </Badge>
           <DataTableDensityToggle value={density} onValueChange={setDensity} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9.5 justify-center rounded-xl border border-border/50 bg-secondary/35 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:bg-secondary/65 transition">
+              <Button variant="outline" size="sm" className="h-9.5 justify-center rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold uppercase tracking-wider text-foreground hover:bg-secondary/65 transition">
                 <Settings2 className="h-3.5 w-3.5 text-primary" />
                 Columns
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 rounded-xl bg-card border border-border/50 shadow-lg text-foreground">
-              <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">Kolom Tabel</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">Kolom Tabel</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-border/40" />
               {BUGFIX_COLUMN_OPTIONS.map((column) => (
                 <DropdownMenuCheckboxItem
@@ -278,28 +278,28 @@ export function BugFixPanel({
             <Table className="w-full table-auto">
               <TableHeader className="sticky top-0 z-10 bg-secondary/95">
                 <TableRow className="border-border/30 hover:bg-transparent">
-                  <TableHead className="sticky left-0 z-20 w-10 bg-secondary/95 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
-                  <TableHead className="sticky left-10 z-20 w-[130px] min-w-[130px] bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
-                  <TableHead className="w-[110px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
-                  <TableHead className={getColumnClass('subMenu', 'w-[100px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>
-                  <TableHead className={getColumnClass('action', 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
-                  <TableHead className={getColumnClass('priority', 'w-[94px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>
-                  <TableHead className={getColumnClass('status', 'w-[150px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>
-                  <TableHead className={getColumnClass('reportedAt', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Dilaporkan</TableHead>
+                  <TableHead className="sticky left-0 z-20 w-10 bg-secondary/95 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
+                  <TableHead className="sticky left-10 z-20 w-[130px] min-w-[130px] bg-secondary/95 text-xs font-semibold uppercase tracking-wider text-muted-foreground">TC ID</TableHead>
+                  <TableHead className="w-[110px] text-xs font-semibold uppercase tracking-wider text-muted-foreground">Page</TableHead>
+                  <TableHead className={getColumnClass('subMenu', 'w-[100px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>
+                  <TableHead className={getColumnClass('action', 'text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
+                  <TableHead className={getColumnClass('priority', 'w-[94px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>
+                  <TableHead className={getColumnClass('status', 'w-[150px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>
+                  <TableHead className={getColumnClass('reportedAt', 'w-[132px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Dilaporkan</TableHead>
                   {bugFixTab === 'resolved' ? (
-                    <TableHead className={getColumnClass('timing', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Fixed At</TableHead>
+                    <TableHead className={getColumnClass('timing', 'w-[132px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Fixed At</TableHead>
                   ) : (
-                    <TableHead className={getColumnClass('timing', 'w-[132px] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground')}>Di Fix / Retest</TableHead>
+                    <TableHead className={getColumnClass('timing', 'w-[132px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Di Fix / Retest</TableHead>
                   )}
-                  <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Aksi</TableHead>
+                  <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleBugFixItems.map((bf, index) => (
                   <TableRow
                     key={bf.id}
-                    className={cn("cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors group animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300", rowClassName)}
-                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                    className={cn("cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors group", rowClassName)}
+
                     title="Klik untuk melihat detail"
                     onClick={(e) => {
                       if ((e.target as HTMLElement).closest('button, a, input, select, [role="checkbox"], [role="combobox"], [role="menu"]')) return;
@@ -314,30 +314,30 @@ export function BugFixPanel({
                       <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{bf.testAction}</p>
                     </TableCell>
                     <TableCell className={getColumnClass('priority')}>
-                      <Badge variant="outline" className={cn("text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 shadow-xs", getPriorityColor(bf.priority))}>
+                      <Badge variant="outline" className={cn("text-xs font-bold tracking-wide uppercase px-2 py-0.5 shadow-xs", getPriorityColor(bf.priority))}>
                         {bf.priority}
                       </Badge>
                     </TableCell>
                     <TableCell className={getColumnClass('status')}>
                       {bugFixTab === 'resolved' ? (
-                        <Badge variant="success" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5">
+                        <Badge variant="success" className="text-xs font-bold uppercase tracking-wider px-2 py-0.5">
                           {bf.status}
                         </Badge>
                       ) : (
                         <Select value={bf.status} onValueChange={(val) => onStatusChange(bf.id, val)}>
-                          <SelectTrigger className={cn("h-7 w-[140px] rounded-lg border px-2 text-[9px] font-bold uppercase tracking-wider shadow-none", getBugFixStatusColor(bf.status))}>
+                          <SelectTrigger className={cn("h-7 w-[140px] rounded-lg border px-2 text-xs font-bold uppercase tracking-wider shadow-none", getBugFixStatusColor(bf.status))}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl bg-card border border-border/50 shadow-lg text-foreground">
-                            <SelectItem value="SUDAH DILAPORKAN" disabled={!canTransitionBugFixStatus(bf.status, 'SUDAH DILAPORKAN')} className="text-[9px] font-bold rounded-lg my-0.5 mx-1">DILAPORKAN</SelectItem>
-                            <SelectItem value="SEDANG DI FIX" disabled={!canTransitionBugFixStatus(bf.status, 'SEDANG DI FIX')} className="text-[9px] font-bold rounded-lg my-0.5 mx-1">SEDANG DI FIX</SelectItem>
-                            <SelectItem value="READY TO RETEST" disabled={!canTransitionBugFixStatus(bf.status, 'READY TO RETEST')} className="text-[9px] font-bold rounded-lg my-0.5 mx-1">READY TO RETEST</SelectItem>
+                            <SelectItem value="SUDAH DILAPORKAN" disabled={!canTransitionBugFixStatus(bf.status, 'SUDAH DILAPORKAN')} className="text-xs font-bold rounded-lg my-0.5 mx-1">DILAPORKAN</SelectItem>
+                            <SelectItem value="SEDANG DI FIX" disabled={!canTransitionBugFixStatus(bf.status, 'SEDANG DI FIX')} className="text-xs font-bold rounded-lg my-0.5 mx-1">SEDANG DI FIX</SelectItem>
+                            <SelectItem value="READY TO RETEST" disabled={!canTransitionBugFixStatus(bf.status, 'READY TO RETEST')} className="text-xs font-bold rounded-lg my-0.5 mx-1">READY TO RETEST</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
                     </TableCell>
-                    <TableCell className={getColumnClass('reportedAt', 'text-[11px] font-semibold text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
-                    <TableCell className={getColumnClass('timing', 'whitespace-nowrap text-[11px] font-semibold text-muted-foreground')}>
+                    <TableCell className={getColumnClass('reportedAt', 'text-xs font-semibold text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
+                    <TableCell className={getColumnClass('timing', 'whitespace-nowrap text-xs font-semibold text-muted-foreground')}>
                       {bugFixTab === 'resolved'
                         ? formatDate(bf.fixedAt)
                         : bf.status === 'READY TO RETEST'

@@ -17,8 +17,8 @@ export function DevLogGuide({ expandedGuide, setExpandedGuide }: DevLogGuideProp
         <div className="p-1.5 rounded-lg bg-primary/10">
           <MonitorDot className="h-4 w-4 text-primary" />
         </div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary dark:text-cyan-400">Panduan DevLog</p>
-        <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/10 text-[10px] font-bold text-primary uppercase tracking-tighter dark:bg-black/40 dark:text-cyan-300">
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary dark:text-status-retest">Panduan DevLog</p>
+        <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/10 text-[10px] font-bold text-primary uppercase tracking-tighter dark:bg-black/40 dark:text-status-retest">
           Automation & Manual Capture
         </Badge>
       </div>

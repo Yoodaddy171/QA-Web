@@ -52,7 +52,7 @@ export function ManualRecordingPreview(props: ManualRecordingPreviewProps) {
                                 ) : null}
                                 {isVideoLoading ? (
                                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 text-white">
-                                    <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                                    <Loader2 className="h-6 w-6 animate-spin text-status-retest" />
                                     <span className="text-[10px] font-semibold uppercase tracking-wider">
                                       Memproses video{videoProcessingPercent !== null && isVideoFinalizing ? ` — ${videoProcessingPercent}%` : ''}
                                     </span>
@@ -80,13 +80,13 @@ export function ManualRecordingPreview(props: ManualRecordingPreviewProps) {
                                 <div>
                                   <div className="flex flex-wrap items-center gap-2.5">
                                     <div className="p-1.5 rounded-lg bg-indigo-500/10">
-                                      <Film className="h-4 w-4 text-indigo-400" />
+                                      <Film className="h-4 w-4 text-status-in-progress" />
                                     </div>
                                     <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Screen Analytics</p>
-                                    <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-semibold text-indigo-400 uppercase tracking-tighter">
+                                    <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-semibold text-status-in-progress uppercase tracking-tighter">
                                       {manualRecordingMode}
                                     </Badge>
-                                    <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-semibold text-indigo-400 uppercase tracking-tighter">
+                                    <Badge variant="outline" className="rounded-md border-indigo-500/20 bg-indigo-500/10 text-[9px] font-semibold text-status-in-progress uppercase tracking-tighter">
                                       {manualRecordingMode === 'video' && manualRecordingFrames.length === 0 ? 'Video only' : `${manualRecordingFrames.length} keyframes`}
                                     </Badge>
                                     {manualRecordingVideoStatus && (
@@ -95,7 +95,7 @@ export function ManualRecordingPreview(props: ManualRecordingPreviewProps) {
                                       </Badge>
                                     )}
                                     {isVideoLoading && (
-                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-semibold text-amber-600 uppercase tracking-tighter dark:text-amber-300">
+                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-semibold text-amber-600 uppercase tracking-tighter dark:text-status-blocked">
                                         <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                                         Processing
                                       </Badge>
@@ -104,7 +104,7 @@ export function ManualRecordingPreview(props: ManualRecordingPreviewProps) {
                                       {formatRelativeTime(recordingDisplayMs)}
                                     </Badge>
                                     {recordingSeekApprox && (
-                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-semibold text-amber-600 uppercase tracking-tighter dark:text-amber-300">
+                                      <Badge variant="outline" className="rounded-md border-amber-500/20 bg-amber-500/10 text-[9px] font-semibold text-amber-600 uppercase tracking-tighter dark:text-status-blocked">
                                         Approx
                                       </Badge>
                                     )}
@@ -112,7 +112,7 @@ export function ManualRecordingPreview(props: ManualRecordingPreviewProps) {
                                       type="button"
                                       variant="outline"
                                       size="sm"
-                                      className="ml-auto h-8 gap-2 rounded-lg border-border/60 bg-secondary/50 px-3 text-[9px] font-semibold uppercase tracking-wider text-foreground hover:bg-secondary dark:text-slate-400 dark:hover:text-white"
+                                      className="ml-auto h-8 gap-2 rounded-lg border-border/60 bg-secondary/50 px-3 text-[9px] font-semibold uppercase tracking-wider text-foreground hover:bg-secondary dark:text-muted-foreground dark:hover:text-white"
                                       disabled={isVideoLoading}
                                       onClick={openRecordingFullscreen}
                                     >
@@ -144,7 +144,7 @@ export function ManualRecordingPreview(props: ManualRecordingPreviewProps) {
                                           "h-8 rounded-lg px-2.5 text-[10px] font-bold",
                                           selectedRecordingFrame?.file === frame.file
                                             ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/40'
-                                            : 'border-border/50 bg-secondary/30 text-muted-foreground hover:text-foreground dark:text-slate-500 dark:hover:text-slate-200'
+                                            : 'border-border/50 bg-secondary/30 text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground'
                                         )}
                                         onClick={() => {
                                           setRecordingSeekMs(frame.relativeMs);

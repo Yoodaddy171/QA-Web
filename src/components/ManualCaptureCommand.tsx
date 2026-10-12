@@ -23,7 +23,7 @@ export function ManualCaptureCommand(props: ManualCaptureCommandProps) {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2.5">
                                   <div className="p-1.5 rounded-lg bg-teal-500/10">
-                                    <Play className="h-4 w-4 text-teal-400" />
+                                    <Play className="h-4 w-4 text-bug-fixed" />
                                   </div>
                                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Manual Capture Command</p>
                                   <Badge
@@ -31,14 +31,14 @@ export function ManualCaptureCommand(props: ManualCaptureCommandProps) {
                                     className={cn(
                                       "rounded-md text-[10px] font-bold uppercase tracking-wider shadow-none",
                                       socketReady
-                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400'
-                                        : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400'
+                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-status-passed'
+                                        : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-status-blocked'
                                     )}
                                   >
                                     {socketReady ? 'Relay Live' : 'Relay Offline'}
                                   </Badge>
                                   {isManualCaptureActive && (
-                                    <Badge className="rounded-md border border-teal-200 bg-teal-50 text-[10px] font-semibold uppercase tracking-tighter text-teal-700 shadow-none dark:border-teal-500/30 dark:bg-teal-500/20 dark:text-teal-400">
+                                    <Badge className="rounded-md border border-teal-200 bg-teal-50 text-[10px] font-semibold uppercase tracking-tighter text-teal-700 shadow-none dark:border-teal-500/30 dark:bg-teal-500/20 dark:text-bug-fixed">
                                       {manualCaptureSessionId?.slice(0, 18)}
                                     </Badge>
                                   )}
@@ -109,7 +109,7 @@ export function ManualCaptureCommand(props: ManualCaptureCommandProps) {
                                       type="button"
                                       variant="outline"
                                       size="sm"
-                                      className="h-10 min-w-[150px] shrink-0 gap-2 rounded-xl border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-semibold uppercase tracking-wider text-[10px] dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
+                                      className="h-10 min-w-[150px] shrink-0 gap-2 rounded-xl border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-semibold uppercase tracking-wider text-[10px] dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-status-failed dark:hover:bg-rose-500/20"
                                       onClick={stopManualCapture}
                                       disabled={isStoppingManualCapture}
                                     >
@@ -134,7 +134,7 @@ export function ManualCaptureCommand(props: ManualCaptureCommandProps) {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="h-10 shrink-0 gap-2 rounded-xl border-border/60 bg-secondary/50 text-[10px] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-secondary dark:text-slate-400 dark:hover:text-white"
+                                className="h-10 shrink-0 gap-2 rounded-xl border-border/60 bg-secondary/50 text-[10px] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-secondary dark:text-muted-foreground dark:hover:text-white"
                                 onClick={() => navigator.clipboard.writeText(captureScriptTag)}
                               >
                                 <Code2 className="h-4 w-4" />

@@ -63,7 +63,7 @@ export function DashboardModuleProgress(props: DashboardModuleProgressProps) {
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-foreground truncate">{mod.name}</p>
-                            <p className="text-[11px] text-muted-foreground">{mod.totalCases} cases · {mod.totalMenus} menus</p>
+                            <p className="text-xs text-muted-foreground">{mod.totalCases} cases · {mod.totalMenus} menus</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -77,11 +77,11 @@ export function DashboardModuleProgress(props: DashboardModuleProgressProps) {
                             <Table>
                               <TableHeader>
                                 <TableRow className="hover:bg-transparent border-border/50">
-                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Page</TableHead>
-                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Sub Menu</TableHead>
-                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Cases</TableHead>
-                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Progress</TableHead>
-                                  <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground h-9">Status</TableHead>
+                                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground h-9">Page</TableHead>
+                                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground h-9">Sub Menu</TableHead>
+                                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Cases</TableHead>
+                                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground h-9 text-center">Progress</TableHead>
+                                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground h-9">Status</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -93,16 +93,16 @@ export function DashboardModuleProgress(props: DashboardModuleProgressProps) {
                                     <TableCell className="py-3">
                                       <div className="flex items-center justify-center gap-2">
                                         <Progress value={mp.progressPercent} className="h-1.5 w-16 bg-secondary" />
-                                        <span className="text-[10px] font-semibold text-muted-foreground w-8">{mp.progressPercent}%</span>
+                                        <span className="text-xs font-semibold text-muted-foreground w-8">{mp.progressPercent}%</span>
                                       </div>
                                     </TableCell>
                                     <TableCell className="py-3">
                                       <div className="flex flex-wrap gap-1.5">
-                                        {mp.doneCount > 0 && (<Badge className="gap-1 border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 shadow-none dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 className="w-3 h-3" /> {mp.doneCount}</Badge>)}
-                                        {mp.inProgressCount > 0 && (<Badge className="gap-1 border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700 shadow-none dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"><Clock className="w-3 h-3" /> {mp.inProgressCount}</Badge>)}
-                                        {mp.notDoneCount > 0 && (<Badge className="gap-1 border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground shadow-none"><XCircle className="w-3 h-3" /> {mp.notDoneCount}</Badge>)}
-                                        {mp.blockedCount > 0 && (<Badge className="gap-1 border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 shadow-none dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="w-3 h-3" /> {mp.blockedCount}</Badge>)}
-                                        {mp.failedCount > 0 && (<Badge className="gap-1 border-red-200 bg-red-50 px-2 py-0.5 text-[10px] text-red-700 shadow-none dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"><XCircle className="w-3 h-3" /> {mp.failedCount}</Badge>)}
+                                        {mp.doneCount > 0 && (<Badge className="gap-1 border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 shadow-none dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-status-passed"><CheckCircle2 className="w-3 h-3" /> {mp.doneCount}</Badge>)}
+                                        {mp.inProgressCount > 0 && (<Badge className="gap-1 border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700 shadow-none dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-status-blocked"><Clock className="w-3 h-3" /> {mp.inProgressCount}</Badge>)}
+                                        {mp.notDoneCount > 0 && (<Badge className="gap-1 border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground shadow-none"><XCircle className="w-3 h-3" /> {mp.notDoneCount}</Badge>)}
+                                        {mp.blockedCount > 0 && (<Badge className="gap-1 border-rose-200 bg-rose-50 px-2 py-0.5 text-xs text-rose-700 shadow-none dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-status-failed"><AlertTriangle className="w-3 h-3" /> {mp.blockedCount}</Badge>)}
+                                        {mp.failedCount > 0 && (<Badge className="gap-1 border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 shadow-none dark:border-red-500/20 dark:bg-red-500/10 dark:text-status-failed"><XCircle className="w-3 h-3" /> {mp.failedCount}</Badge>)}
                                       </div>
                                     </TableCell>
                                   </TableRow>

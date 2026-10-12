@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Loader2, MessageCircle, Minimize2, Plus, RotateCcw, Send, Sparkles, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { UI_MOTION } from '@/lib/client/ui-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -147,6 +148,7 @@ export function FloatingAIChat({
 }: FloatingAIChatProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
   const [minimized, setMinimized] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
@@ -389,18 +391,15 @@ export function FloatingAIChat({
         {open && (
           <motion.div
             key="chat-window"
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0.8, scale: 0.98, y: 8 }}
             animate={{ 
               opacity: 1, 
               scale: 1, 
               y: 0,
-              left: frame.left,
-              top: frame.top,
-              width: frame.width,
-              height: minimized ? 66 : frame.height,
             }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200, mass: 1 }}
+            style={{ left: frame.left, top: frame.top, width: frame.width, height: minimized ? 66 : frame.height }}
+            exit={{ opacity: 0, scale: 0.98, y: 8 }}
+            transition={{ duration: reduceMotion ? 0 : UI_MOTION.overlay, ease: UI_MOTION.ease }}
             className="fixed z-[45] flex overflow-hidden rounded-2xl border border-border/60 bg-card elevation-3 overscroll-contain"
             onPointerMove={moveChatFrame}
             onPointerUp={stopChatFrameDrag}
@@ -428,7 +427,7 @@ export function FloatingAIChat({
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">QA Copilot</p>
+                        <p className="truncate text-sm font-bold tracking-tight text-foreground">QA Copilot</p>
                         <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[9px] font-semibold text-primary uppercase">Active</Badge>
                       </div>
                       <p className="truncate text-[10px] font-medium text-muted-foreground">{contextLabel}</p>
@@ -462,7 +461,7 @@ export function FloatingAIChat({
                     size="icon"
                     variant="ghost"
                     onClick={() => setOpen(false)}
-                    className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400"
+                    className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-status-failed"
                     aria-label="Close chat"
                   >
                     <X className="h-4 w-4" />
@@ -473,9 +472,9 @@ export function FloatingAIChat({
               <AnimatePresence>
                 {!minimized && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
+                    initial={false}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                     className="flex min-h-0 flex-1 flex-col overflow-hidden"
                   >
                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-transparent px-4 py-4 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">

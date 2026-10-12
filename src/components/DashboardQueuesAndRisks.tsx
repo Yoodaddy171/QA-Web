@@ -15,17 +15,17 @@ type DashboardQueuesAndRisksProps = {
 
 const getPriorityBadgeClass = (priority: string) => {
   switch (priority) {
-    case 'Critical': return 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300';
-    case 'High': return 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300';
-    case 'Medium': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300';
-    case 'Low': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300';
+    case 'Critical': return 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-status-failed';
+    case 'High': return 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-bug-open';
+    case 'Medium': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-status-blocked';
+    case 'Low': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-status-passed';
     default: return 'border-border bg-muted text-muted-foreground';
   }
 };
 
 const getAgeClass = (days: number) => {
-  if (days >= 7) return 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300';
-  if (days >= 3) return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300';
+  if (days >= 7) return 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-status-failed';
+  if (days >= 3) return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-status-blocked';
   return 'border-border bg-muted text-muted-foreground';
 };
 
@@ -69,14 +69,14 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-mono text-xs font-semibold text-foreground">{item.testCaseId}</p>
-                          <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">{item.moduleName || item.page}</p>
+                          <p className="mt-1 truncate text-xs font-medium text-muted-foreground">{item.moduleName || item.page}</p>
                         </div>
                         <Badge variant="outline" className={getPriorityBadgeClass(item.priority)}>{item.priority}</Badge>
                       </div>
-                      <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Menunggu {item.waitingDays} hari</p>
+                      <p className="mt-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Menunggu {item.waitingDays} hari</p>
                     </button>
                   ))}
-                  {(stats.retestQueue || []).length > 3 && <p className="pt-1 text-center text-[10px] font-semibold text-muted-foreground">3 prioritas tertinggi dari {(stats.retestQueue || []).length}</p>}
+                  {(stats.retestQueue || []).length > 3 && <p className="pt-1 text-center text-xs font-semibold text-muted-foreground">3 prioritas tertinggi dari {(stats.retestQueue || []).length}</p>}
                 </>
               )}
             </CardContent>
@@ -111,14 +111,14 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-mono text-xs font-semibold text-foreground">{item.testCaseId}</p>
-                          <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">{item.testAction}</p>
+                          <p className="mt-1 truncate text-xs font-medium text-muted-foreground">{item.testAction}</p>
                         </div>
                         <Badge variant="outline" className={getAgeClass(item.ageDays)}>{item.ageDays} hari</Badge>
                       </div>
-                      <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-amber-500">{item.status}</p>
+                      <p className="mt-3 text-xs font-bold uppercase tracking-wider text-amber-500">{item.status}</p>
                     </button>
                   ))}
-                  {(stats.bugAging || []).length > 3 && <p className="pt-1 text-center text-[10px] font-semibold text-muted-foreground">3 bug tertua dari {(stats.bugAging || []).length}</p>}
+                  {(stats.bugAging || []).length > 3 && <p className="pt-1 text-center text-xs font-semibold text-muted-foreground">3 bug tertua dari {(stats.bugAging || []).length}</p>}
                 </>
               )}
             </CardContent>
@@ -153,13 +153,13 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-xs font-semibold text-foreground">{item.moduleName}</p>
-                          <p className="mt-1 text-[10px] font-medium text-muted-foreground">{item.total} test case</p>
+                          <p className="mt-1 text-xs font-medium text-muted-foreground">{item.total} test case</p>
                         </div>
                         <Badge variant="outline" className={getPriorityBadgeClass(item.riskScore >= 70 ? 'Critical' : item.riskScore >= 40 ? 'High' : item.riskScore >= 20 ? 'Medium' : 'Low')}>
                           Risiko {item.riskScore}
                         </Badge>
                       </div>
-                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold">
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
                         {item.failed > 0 && <span className="text-red-500">{item.failed} failed</span>}
                         {item.blocked > 0 && <span className="text-rose-500">{item.blocked} blocked</span>}
                         {item.readyToRetest > 0 && <span className="text-cyan-500">{item.readyToRetest} retest</span>}
@@ -169,7 +169,7 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
                       </div>
                     </button>
                   ))}
-                  {(stats.moduleRisks || []).length > 3 && <p className="pt-1 text-center text-[10px] font-semibold text-muted-foreground">3 module berisiko dari {(stats.moduleRisks || []).length}</p>}
+                  {(stats.moduleRisks || []).length > 3 && <p className="pt-1 text-center text-xs font-semibold text-muted-foreground">3 module berisiko dari {(stats.moduleRisks || []).length}</p>}
                 </>
               )}
             </CardContent>

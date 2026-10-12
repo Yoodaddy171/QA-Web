@@ -119,8 +119,8 @@ export const DOCUMENT_EXTENSIONS = ['.html', '.htm'];
 export const SCRIPT_EXTENSIONS = ['.js', '.mjs'];
 export const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.ico', '.avif'];
 
-export const networkCodePanelClass = "overflow-auto rounded border border-border bg-muted p-3 font-mono text-[10px] leading-relaxed [tab-size:2]";
-export const networkFullscreenCodePanelClass = "min-h-[420px] min-w-[280px] max-h-[64vh] resize overflow-auto rounded-xl border border-border bg-background p-4 font-mono text-[11px] leading-relaxed shadow-sm [tab-size:2]";
+export const networkCodePanelClass = "overflow-auto rounded border border-border bg-muted p-3 font-mono text-xs leading-relaxed [tab-size:2]";
+export const networkFullscreenCodePanelClass = "min-h-[420px] min-w-[280px] max-h-[64vh] resize overflow-auto rounded-xl border border-border bg-background p-4 font-mono text-xs leading-relaxed shadow-sm [tab-size:2]";
 
 export const formatPrettyValue = (value: unknown) => {
   if (value === undefined || value === null || value === '') return '-';
@@ -366,15 +366,15 @@ export const groupNetworkLogs = (items: NetworkLogItem[]): NetworkLogGroup[] => 
 
 export const getNetworkCategoryClass = (category: NetworkCategory) => {
   switch (category) {
-    case 'business': return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/30 dark:bg-cyan-950/60 dark:text-cyan-300';
-    case 'preflight': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-950/60 dark:text-amber-300';
+    case 'business': return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/30 dark:bg-cyan-950/60 dark:text-status-retest';
+    case 'preflight': return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-950/60 dark:text-status-blocked';
     case 'document': return 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-950/60 dark:text-blue-300';
     case 'script': return 'border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-500/30 dark:bg-yellow-950/60 dark:text-yellow-300';
-    case 'image': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-950/60 dark:text-emerald-300';
-    case 'static': return 'border-border bg-muted text-muted-foreground dark:border-slate-600 dark:text-slate-400';
-    case 'telemetry': return 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-950/60 dark:text-violet-300';
+    case 'image': return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-950/60 dark:text-status-passed';
+    case 'static': return 'border-border bg-muted text-muted-foreground dark:border-slate-600 dark:text-muted-foreground';
+    case 'telemetry': return 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-950/60 dark:text-bug-fixing';
     case 'data': return 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-500/30 dark:bg-fuchsia-950/60 dark:text-fuchsia-300';
-    default: return 'border-border bg-muted text-muted-foreground dark:border-slate-500/30 dark:bg-slate-800 dark:text-slate-300';
+    default: return 'border-border bg-muted text-muted-foreground dark:border-slate-500/30 dark:bg-slate-800 dark:text-foreground';
   }
 };
 

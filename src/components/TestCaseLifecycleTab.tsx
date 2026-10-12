@@ -71,7 +71,7 @@ export function TestCaseLifecycleTab({ viewTestCase, lifecycleItems, lifecycleIn
                       ? 'bg-emerald-600 text-white'
                       : isCurrent
                         ? 'bg-cyan-600 text-white'
-                        : 'bg-muted text-muted-foreground dark:bg-slate-700 dark:text-slate-400'
+                        : 'bg-muted text-muted-foreground dark:bg-slate-700 dark:text-muted-foreground'
                   )}>
                     {isDone ? <CheckCircle2 className="h-4 w-4" /> : isCurrent ? <Clock className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                   </div>
@@ -95,7 +95,7 @@ export function TestCaseLifecycleTab({ viewTestCase, lifecycleItems, lifecycleIn
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Actual Result</p>
-              <p className="font-semibold text-red-700 dark:text-red-300">{viewTestCase.actualResult || 'Not As Expected'}</p>
+              <p className="font-semibold text-red-700 dark:text-status-failed">{viewTestCase.actualResult || 'Not As Expected'}</p>
             </div>
           </div>
         </div>

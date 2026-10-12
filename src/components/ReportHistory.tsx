@@ -36,11 +36,11 @@ export function ReportHistory({ reports, onViewReport }: ReportHistoryProps) {
       {reports.map((report) => (
         <div
           key={report.id}
-          className="rounded-lg border border-border/60 bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+          className="rounded-xl border border-border bg-card p-4"
         >
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold text-foreground">
                   {report.reportType === 'TEST_STATUS_REPORT' ? 'Test Status Report FDS' : 'Test Planning FDS'}
@@ -60,11 +60,11 @@ export function ReportHistory({ reports, onViewReport }: ReportHistoryProps) {
                 <p>
                   <span className="font-medium">Dibuat:</span> {formatDate(report.generatedAt)}
                 </p>
-                <div className="mt-2 flex gap-4">
-                  <span className="rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-500">
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className="qa-status qa-status-passed rounded-md px-2 py-1 text-xs">
                     {report.metrics.totalPassed} Passed
                   </span>
-                  <span className="rounded bg-red-500/10 px-2 py-1 text-xs text-red-500">
+                  <span className="qa-status qa-status-failed rounded-md px-2 py-1 text-xs">
                     {report.metrics.totalFailed} Failed
                   </span>
                   <span className="rounded bg-secondary px-2 py-1 text-xs text-muted-foreground">

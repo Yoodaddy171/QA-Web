@@ -14,7 +14,7 @@ interface AnimatedNumberProps {
 export function AnimatedNumber({ value, className, suffix = '' }: AnimatedNumberProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const reduceMotion = useReducedMotion();
-  const motionValue = useMotionValue(0);
+  const motionValue = useMotionValue(value);
   const spring = useSpring(motionValue, { stiffness: 110, damping: 22 });
 
   useEffect(() => {

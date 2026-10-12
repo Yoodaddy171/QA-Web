@@ -29,7 +29,7 @@ export function ThemeToggle() {
           <Sun className="h-4 w-4 text-amber-500" /> Light
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme('dark')} className="cursor-pointer gap-2.5 rounded-xl text-sm focus:bg-secondary">
-          <Moon className="h-4 w-4 text-indigo-400" /> Dark
+          <Moon className="h-4 w-4 text-status-in-progress" /> Dark
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme('system')} className="cursor-pointer gap-2.5 rounded-xl text-sm focus:bg-secondary">
           <Monitor className="h-4 w-4 text-muted-foreground" /> System

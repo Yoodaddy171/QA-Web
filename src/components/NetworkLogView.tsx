@@ -27,13 +27,13 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                           value={networkFilters.search}
                                           onChange={(event) => updateNetworkFilters({ search: event.target.value })}
                                           placeholder="Search URL, host, method, status..."
-                                          className="h-8 border-border bg-background pl-8 text-[11px] text-foreground placeholder:text-muted-foreground dark:border-border dark:bg-muted dark:text-slate-200 dark:placeholder:text-slate-600"
+                                          className="h-8 border-border bg-background pl-8 text-xs text-foreground placeholder:text-muted-foreground dark:border-border dark:bg-muted dark:text-foreground dark:placeholder:text-muted-foreground"
                                         />
                                       </div>
                                       <select
                                         value={networkFilters.host}
                                         onChange={(event) => updateNetworkFilters({ host: event.target.value })}
-                                        className="h-8 min-w-[150px] rounded-md border border-border bg-background px-2 text-[11px] font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-slate-300"
+                                        className="h-8 min-w-[150px] rounded-md border border-border bg-background px-2 text-xs font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-foreground"
                                       >
                                         <option value="all">All hosts ({networkLogItems.length})</option>
                                         {networkHosts.map((host) => (
@@ -43,7 +43,7 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                       <select
                                         value={networkFilters.method}
                                         onChange={(event) => updateNetworkFilters({ method: event.target.value })}
-                                        className="h-8 rounded-md border border-border bg-background px-2 text-[11px] font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-slate-300"
+                                        className="h-8 rounded-md border border-border bg-background px-2 text-xs font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-foreground"
                                       >
                                         <option value="all">All methods</option>
                                         {networkMethods.map((method) => (
@@ -53,7 +53,7 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                       <select
                                         value={networkFilters.status}
                                         onChange={(event) => updateNetworkFilters({ status: event.target.value })}
-                                        className="h-8 rounded-md border border-border bg-background px-2 text-[11px] font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-slate-300"
+                                        className="h-8 rounded-md border border-border bg-background px-2 text-xs font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-foreground"
                                       >
                                         <option value="all">All status</option>
                                         <option value="2xx">2xx</option>
@@ -66,14 +66,14 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 gap-1.5 px-2 text-[10px] font-bold text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:text-white"
+                                        className="h-8 gap-1.5 px-2 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-foreground dark:text-muted-foreground dark:hover:text-white"
                                         onClick={() => setNetworkFilters(DEFAULT_NETWORK_FILTERS)}
                                       >
                                         <Filter className="h-3.5 w-3.5" />
                                         Reset
                                       </Button>
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                                    <div className="flex flex-wrap items-center gap-2 text-xs">
                                       {[
                                         { key: 'showPreflight' as const, label: `Preflight ${networkCategoryCounts.preflight}` },
                                         { key: 'showDocument' as const, label: `Document ${networkCategoryCounts.document}` },
@@ -90,17 +90,17 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                           variant="ghost"
                                           size="sm"
                                           className={cn(
-                                            "h-7 rounded-full border px-3 text-[10px] font-bold",
+                                            "h-7 rounded-full border px-3 text-xs font-bold",
                                             networkFilters[filter.key]
                                               ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-500/40 dark:bg-indigo-950/60 dark:text-indigo-200 dark:hover:bg-indigo-900/60'
-                                              : 'border-border bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500'
+                                              : 'border-border bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-muted-foreground'
                                           )}
                                           onClick={() => toggleNetworkFilter(filter.key)}
                                         >
                                           {filter.label}
                                         </Button>
                                       ))}
-                                      <span className="ml-auto rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 font-bold text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-950/40 dark:text-cyan-300">
+                                      <span className="ml-auto rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 font-bold text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-950/40 dark:text-status-retest">
                                         API {networkCategoryCounts.business}
                                       </span>
                                       {hiddenNetworkCount > 0 && (
@@ -110,7 +110,7 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="grid grid-cols-12 gap-2 p-2 bg-muted/70 border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0 dark:bg-muted dark:border-border dark:text-slate-500">
+                                  <div className="grid grid-cols-12 gap-2 p-2 bg-muted/70 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-tighter shrink-0 dark:bg-muted dark:border-border dark:text-muted-foreground">
                                     <div className="col-span-1">Method</div>
                                     <div className="col-span-1">Type</div>
                                     <div className="col-span-5">Name / URL</div>
@@ -122,7 +122,7 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                     {groupedNetworkLogs.length === 0 ? (
                                       <div className="h-full flex flex-col items-center justify-center py-20 text-muted-foreground">
                                         <RefreshCw className="w-8 h-8 mb-3 opacity-20 animate-spin-slow" />
-                                        <p className="font-bold tracking-wider text-[10px] uppercase">Waiting for Network Traffic...</p>
+                                        <p className="font-bold tracking-wider text-xs uppercase">Waiting for Network Traffic...</p>
                                       </div>
                                     ) : (
                                       groupedNetworkLogs.map((group) => {
@@ -130,7 +130,7 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                         const logId = group.id;
 
                                         return (
-                                          <div key={logId} className="group hover:bg-secondary/60 dark:hover:bg-white/5">
+                                          <div key={logId} className="group hover:bg-secondary/60 dark:hover:bg-secondary/50">
                                             <div
                                               className="grid grid-cols-12 gap-2 p-2 cursor-pointer items-center transition-colors"
                                               onClick={() => {
@@ -138,30 +138,30 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                                 setExpandedLogId(expandedLogId === logId ? null : logId);
                                               }}
                                             >
-                                              <div className="col-span-1 font-semibold text-indigo-700 truncate dark:text-indigo-400">{getNetworkMethod(net.network)}</div>
+                                              <div className="col-span-1 font-semibold text-indigo-700 truncate dark:text-status-in-progress">{getNetworkMethod(net.network)}</div>
                                               <div className="col-span-1 truncate">
-                                                <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
+                                                <span className={`rounded border px-1.5 py-0.5 text-xs font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
                                                   {meta.label}
                                                 </span>
                                               </div>
                                               <div className="col-span-5 min-w-0">
-                                                <div className="truncate text-foreground dark:text-slate-300">{meta.pathname.split('/').pop() || meta.pathname || net.network.url}</div>
-                                                <div className="truncate text-[9px] text-muted-foreground">{meta.host}</div>
+                                                <div className="truncate text-foreground dark:text-foreground">{meta.pathname.split('/').pop() || meta.pathname || net.network.url}</div>
+                                                <div className="truncate text-xs text-muted-foreground">{meta.host}</div>
                                               </div>
                                               <div className="col-span-2 text-center">
-                                                <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold", getNetworkStatusClass(net.network))}>
+                                                <span className={cn("px-1.5 py-0.5 rounded text-xs font-bold", getNetworkStatusClass(net.network))}>
                                                   {getNetworkStatus(net.network)}
                                                 </span>
                                               </div>
                                               <div className="col-span-2 text-right text-muted-foreground">
                                                 <span>{getNetworkDuration(net.network)}</span>
                                                 {typeof net.relativeMs === 'number' && (
-                                                  <span className="ml-2 text-indigo-700 dark:text-indigo-300">{formatRelativeTime(net.relativeMs)}</span>
+                                                  <span className="ml-2 text-indigo-700 dark:text-status-in-progress">{formatRelativeTime(net.relativeMs)}</span>
                                                 )}
                                               </div>
                                               <div className="col-span-1 flex items-center justify-end gap-1.5">
                                                 {count > 1 && (
-                                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
+                                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-xs font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                                     x{count}
                                                   </span>
                                                 )}
@@ -171,26 +171,26 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                             <AnimatePresence>
                                               {expandedLogId === logId && (
                                                 <motion.div
-                                                  initial={{ height: 0, opacity: 0 }}
-                                                  animate={{ height: 'auto', opacity: 1 }}
-                                                  exit={{ height: 0, opacity: 0 }}
+                                                  initial={false}
+                                                  animate={{ opacity: 1 }}
+                                                  exit={{ opacity: 0 }}
                                                   transition={{ duration: 0.2 }}
                                                   className="overflow-hidden"
                                                 >
                                                   <div className="p-4 bg-muted/50 border-t border-border dark:bg-muted/50 dark:border-border">
                                                     {count > 1 && (
                                                       <div className="mb-3 rounded-lg border border-border bg-background p-3 dark:border-border dark:bg-card/70">
-                                                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Repeated {count} times</p>
+                                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Repeated {count} times</p>
                                                         <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
                                                           {entries.map((entry, entryIndex) => (
                                                             <button
                                                               key={entry.log.id ?? `${logId}-repeat-${entryIndex}`}
                                                               type="button"
-                                                              className="grid w-full grid-cols-[54px_72px_72px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-left text-[10px] hover:bg-secondary"
+                                                              className="grid w-full grid-cols-[54px_72px_72px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-left text-xs hover:bg-secondary"
                                                               onClick={() => seekRecordingFromLog(entry.log)}
                                                             >
                                                               <span className="font-semibold text-muted-foreground">#{entryIndex + 1}</span>
-                                                              <span className="font-mono text-indigo-700 dark:text-indigo-300">{formatRelativeTime(entry.log.relativeMs)}</span>
+                                                              <span className="font-mono text-indigo-700 dark:text-status-in-progress">{formatRelativeTime(entry.log.relativeMs)}</span>
                                                               <span className={cn("rounded px-1.5 py-0.5 text-center font-bold", getNetworkStatusClass(entry.log.network))}>
                                                                 {getNetworkStatus(entry.log.network)}
                                                               </span>
@@ -201,26 +201,26 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                                       </div>
                                                     )}
                                                     <div className="mb-3 rounded-lg border border-border bg-background p-3 dark:border-border dark:bg-card/70">
-                                                      <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Full URL</p>
-                                                      <pre className={cn("overflow-auto rounded border border-border bg-muted/40 p-2 font-mono text-[10px] leading-relaxed text-foreground dark:text-slate-300", networkCodeWhitespaceClass)}>
+                                                      <p className="mb-1 text-xs font-bold uppercase text-muted-foreground">Full URL</p>
+                                                      <pre className={cn("overflow-auto rounded border border-border bg-muted/40 p-2 font-mono text-xs leading-relaxed text-foreground dark:text-foreground", networkCodeWhitespaceClass)}>
                                                         {net.network.url}
                                                       </pre>
                                                     </div>
                                                     <div className="grid grid-cols-1 items-start gap-4 overflow-x-auto xl:grid-cols-3">
                                                       <div className="space-y-3">
-                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Headers</p>
-                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[320px] min-h-[180px] resize-y text-foreground dark:text-slate-400")}>
+                                                        <p className="text-xs font-bold text-muted-foreground uppercase">Headers</p>
+                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[320px] min-h-[180px] resize-y text-foreground dark:text-muted-foreground")}>
                                                           {formatPrettyValue(net.network.headers)}
                                                         </pre>
                                                       </div>
                                                       <div className="space-y-3">
-                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Request Payload</p>
-                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[420px] min-h-[180px] resize-y text-cyan-700 dark:text-cyan-300/90")}>
+                                                        <p className="text-xs font-bold text-muted-foreground uppercase">Request Payload</p>
+                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[420px] min-h-[180px] resize-y text-cyan-700 dark:text-status-retest/90")}>
                                                           {formatPrettyValue(getRequestPayload(net.network.data))}
                                                         </pre>
                                                       </div>
                                                       <div className="space-y-3">
-                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Response</p>
+                                                        <p className="text-xs font-bold text-muted-foreground uppercase">Response</p>
                                                         <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[420px] min-h-[180px] resize-y text-emerald-700 dark:text-emerald-500/80")}>
                                                           {formatPrettyValue(getResponsePayload(net.network.data))}
                                                         </pre>

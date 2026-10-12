@@ -30,7 +30,7 @@ export function TestCaseDetailDialogFooter({
         <Button
           variant="outline"
           onClick={() => onRefine(viewTestCase)}
-          className="h-10 gap-2 border-violet-200 px-6 font-bold text-violet-700 hover:bg-violet-50 dark:border-violet-500/30 dark:text-violet-300 dark:hover:bg-violet-500/10"
+          className="h-10 gap-2 border-violet-200 px-6 font-bold text-violet-700 hover:bg-violet-50 dark:border-violet-500/30 dark:text-bug-fixing dark:hover:bg-violet-500/10"
         >
           <Sparkles className="h-4 w-4" /> Refine AI
         </Button>
@@ -39,7 +39,7 @@ export function TestCaseDetailDialogFooter({
         <Button
           variant="outline"
           onClick={openEvidenceReport}
-          className="h-10 gap-2 border-sky-200 px-6 font-bold text-sky-700 hover:bg-sky-50 dark:border-sky-500/30 dark:text-sky-300 dark:hover:bg-sky-500/10"
+          className="h-10 gap-2 border-sky-200 px-6 font-bold text-sky-700 hover:bg-sky-50 dark:border-sky-500/30 dark:text-bug-ready dark:hover:bg-sky-500/10"
         >
           <FileDown className="h-4 w-4" /> Evidence Report
         </Button>

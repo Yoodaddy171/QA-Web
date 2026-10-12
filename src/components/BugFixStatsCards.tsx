@@ -13,10 +13,10 @@ interface BugFixStats {
 
 export function BugFixStatsCards({ stats }: { stats: BugFixStats }) {
   const cards = [
-    { value: stats.bugFixReported, label: 'Reported', card: 'border-l-orange-500 hover:bg-orange-500/[0.03]', iconBox: 'bg-orange-500/10 dark:bg-orange-500/15', iconColor: 'text-orange-600 dark:text-orange-400', icon: AlertTriangle },
-    { value: stats.bugFixFixing, label: 'Fixing', card: 'border-l-amber-500 hover:bg-amber-500/[0.03]', iconBox: 'bg-amber-500/10 dark:bg-amber-500/15', iconColor: 'text-amber-600 dark:text-amber-400', icon: Clock },
-    { value: stats.bugFixReadyRetest, label: 'Ready', card: 'border-l-cyan-500 hover:bg-cyan-500/[0.03]', iconBox: 'bg-cyan-500/10 dark:bg-cyan-500/15', iconColor: 'text-cyan-600 dark:text-cyan-400', icon: RefreshCw },
-    { value: stats.bugFixFixed, label: 'Fixed', card: 'border-l-emerald-500 hover:bg-emerald-500/[0.03]', iconBox: 'bg-emerald-500/10 dark:bg-emerald-500/15', iconColor: 'text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
+    { value: stats.bugFixReported, label: 'Reported', card: 'border-l-orange-500 hover:bg-orange-500/[0.03]', iconBox: 'bg-orange-500/10 dark:bg-orange-500/15', iconColor: 'text-orange-600 dark:text-bug-open', icon: AlertTriangle },
+    { value: stats.bugFixFixing, label: 'Fixing', card: 'border-l-amber-500 hover:bg-amber-500/[0.03]', iconBox: 'bg-amber-500/10 dark:bg-amber-500/15', iconColor: 'text-amber-600 dark:text-status-blocked', icon: Clock },
+    { value: stats.bugFixReadyRetest, label: 'Ready', card: 'border-l-cyan-500 hover:bg-cyan-500/[0.03]', iconBox: 'bg-cyan-500/10 dark:bg-cyan-500/15', iconColor: 'text-cyan-600 dark:text-status-retest', icon: RefreshCw },
+    { value: stats.bugFixFixed, label: 'Fixed', card: 'border-l-emerald-500 hover:bg-emerald-500/[0.03]', iconBox: 'bg-emerald-500/10 dark:bg-emerald-500/15', iconColor: 'text-emerald-600 dark:text-status-passed', icon: CheckCircle2 },
   ] as const;
 
   return (

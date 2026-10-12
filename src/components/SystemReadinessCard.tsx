@@ -18,9 +18,9 @@ interface ReadinessResponse {
 }
 
 const statusMeta: Record<CheckStatus, { label: string; className: string; icon: typeof CheckCircle2 }> = {
-  ready: { label: 'Ready', className: 'border-emerald-500/25 bg-emerald-500/8 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
-  warning: { label: 'Warning', className: 'border-amber-500/25 bg-amber-500/8 text-amber-600 dark:text-amber-400', icon: AlertTriangle },
-  blocked: { label: 'Blocked', className: 'border-red-500/25 bg-red-500/8 text-red-600 dark:text-red-400', icon: ShieldAlert },
+  ready: { label: 'Ready', className: 'border-emerald-500/25 bg-emerald-500/8 text-emerald-600 dark:text-status-passed', icon: CheckCircle2 },
+  warning: { label: 'Warning', className: 'border-amber-500/25 bg-amber-500/8 text-amber-600 dark:text-status-blocked', icon: AlertTriangle },
+  blocked: { label: 'Blocked', className: 'border-red-500/25 bg-red-500/8 text-red-600 dark:text-status-failed', icon: ShieldAlert },
   skipped: { label: 'N/A', className: 'border-border bg-secondary/50 text-muted-foreground', icon: CircleDashed },
 };
 
@@ -69,7 +69,7 @@ export function SystemReadinessCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-5 pt-5">
-        {error && <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/8 p-4 text-sm text-red-600 dark:text-red-400">{error}</div>}
+        {error && <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/8 p-4 text-sm text-red-600 dark:text-status-failed">{error}</div>}
         {loading && !data ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-xl bg-secondary/60" />)}

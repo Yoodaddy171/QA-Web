@@ -119,7 +119,7 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
           ['Passed', runSummary.totalPlanned ? runSummary.totalPassed : metrics.totalPassed, 'text-emerald-500'],
           ['Failed', failed, 'text-red-500'],
           ['Blocked', blocked, 'text-amber-500'],
-          ['Not run', pending, 'text-slate-400'],
+          ['Not run', pending, 'text-muted-foreground'],
         ].map(([label, value, color]) => (
           <div key={label} className="rounded-lg border border-border/60 bg-card p-4 shadow-sm">
             <div className={`text-2xl font-bold ${color}`}>{value}</div>
@@ -134,7 +134,7 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Release decision summary</p>
             <p className="mt-1 text-xl font-bold">Release recommendation: {recommendation}</p>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{decisionReason}</p>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span><strong className="text-foreground">{metrics.bugSummary.overdue}</strong> overdue bugs</span>
               <span><strong className="text-foreground">{runSummary.unfinishedRuns}</strong> unfinished runs</span>
               {riskiestModule && <span>Highest risk: <strong className="text-foreground">{riskiestModule.moduleName}</strong> · {riskiestModule.totalFailed} failed</span>}

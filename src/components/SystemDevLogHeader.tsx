@@ -12,8 +12,8 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
   return (
                           <div className="flex flex-wrap items-center justify-between gap-4 mb-4 shrink-0">
                             <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white shadow-xl border border-border dark:bg-muted dark:border-white/5 dark:shadow-2xl">
-                                <Wrench className="w-5 h-5 text-teal-400" />
+                              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white shadow-xl border border-border dark:bg-muted dark:border-border/50 dark:shadow-2xl">
+                                <Wrench className="w-5 h-5 text-bug-fixed" />
                               </div>
                               <div>
                                 <h4 className="text-sm font-semibold text-foreground leading-tight uppercase tracking-tight dark:text-foreground">System DevLog</h4>
@@ -25,7 +25,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                   </span>
-                                  <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-tighter dark:text-emerald-400">Live Relay</span>
+                                  <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-tighter dark:text-status-passed">Live Relay</span>
                                 </div>
                               )}
                             </div>
@@ -33,7 +33,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-wider gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300"
+                                className="h-8 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-wider gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground"
                                 onClick={openSystemDevLogFullscreen}
                               >
                                 <Maximize2 className="h-3.5 w-3.5" />
@@ -46,7 +46,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 className={cn(
                                   "h-8 px-2.5 text-[10px] font-semibold uppercase tracking-wider gap-2 rounded-lg",
                                   isSummarizing && "animate-pulse",
-                                  "border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-500/30 dark:bg-gradient-to-r dark:from-violet-600/20 dark:to-indigo-600/20 dark:text-violet-300 dark:hover:from-violet-600/30 dark:hover:to-indigo-600/30"
+                                  "border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-500/30 dark:bg-gradient-to-r dark:from-violet-600/20 dark:to-indigo-600/20 dark:text-bug-fixing dark:hover:from-violet-600/30 dark:hover:to-indigo-600/30"
                                 )}
                                 onClick={generateAISummary}
                                 disabled={isSummarizing}
@@ -60,7 +60,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 size="sm"
                                 className={cn(
                                   "h-8 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-wider",
-                                  activeDevLogTab === 'execution' ? 'bg-teal-50 text-teal-700 shadow-sm hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:shadow-xl dark:hover:bg-teal-500/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300'
+                                  activeDevLogTab === 'execution' ? 'bg-teal-50 text-teal-700 shadow-sm hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:shadow-xl dark:hover:bg-teal-500/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground'
                                 )}
                                 onClick={() => setActiveDevLogTab('execution')}
                               >
@@ -71,7 +71,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 size="sm"
                                 className={cn(
                                   "h-8 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-wider",
-                                  activeDevLogTab === 'console' ? 'bg-teal-50 text-teal-700 shadow-sm hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:shadow-xl dark:hover:bg-teal-500/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300'
+                                  activeDevLogTab === 'console' ? 'bg-teal-50 text-teal-700 shadow-sm hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:shadow-xl dark:hover:bg-teal-500/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground'
                                 )}
                                 onClick={() => setActiveDevLogTab('console')}
                               >
@@ -82,7 +82,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 size="sm"
                                 className={cn(
                                   "h-8 rounded-lg px-2.5 text-[10px] font-semibold uppercase tracking-wider",
-                                  activeDevLogTab === 'network' ? 'bg-teal-50 text-teal-700 shadow-sm hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:shadow-xl dark:hover:bg-teal-500/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-slate-500 dark:hover:text-slate-300'
+                                  activeDevLogTab === 'network' ? 'bg-teal-50 text-teal-700 shadow-sm hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:shadow-xl dark:hover:bg-teal-500/20' : 'text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground'
                                 )}
                                 onClick={() => setActiveDevLogTab('network')}
                               >
@@ -94,7 +94,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 size="sm"
                                 className={cn(
                                   "h-8 px-2.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg",
-                                  (loadedRunLabel === 'current' || loadedRunLabel === 'live') ? 'bg-teal-600 text-white shadow-lg hover:bg-teal-500' : 'text-muted-foreground hover:bg-teal-50 hover:text-teal-700 dark:text-slate-500 dark:hover:bg-teal-500/10 dark:hover:text-teal-400'
+                                  (loadedRunLabel === 'current' || loadedRunLabel === 'live') ? 'bg-teal-600 text-white shadow-lg hover:bg-teal-500' : 'text-muted-foreground hover:bg-teal-50 hover:text-teal-700 dark:text-muted-foreground dark:hover:bg-teal-500/10 dark:hover:text-bug-fixed'
                                 )}
                                 onClick={loadCurrentLogRun}
                                 disabled={isLoadingHistory}
@@ -106,7 +106,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 size="sm"
                                 className={cn(
                                   "h-8 px-2.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg gap-1.5",
-                                  loadedRunLabel === 'previous' ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-500' : 'text-muted-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-500 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400'
+                                  loadedRunLabel === 'previous' ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-500' : 'text-muted-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:text-muted-foreground dark:hover:bg-indigo-500/10 dark:hover:text-status-in-progress'
                                 )}
                                 onClick={loadLogHistory}
                                 disabled={isLoadingHistory}
@@ -121,7 +121,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:bg-rose-50 hover:text-rose-700 dark:text-slate-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                                className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:bg-rose-50 hover:text-rose-700 dark:text-muted-foreground dark:hover:bg-rose-500/10 dark:hover:text-status-failed"
                                 onClick={clearLogs}
                               >
                                 <Trash2 className="w-4 h-4" />

@@ -272,14 +272,14 @@ export function TestCaseTable({
             onChange={(e) => { setSearch(e.target.value); resetPage(); }}
             className="h-10 rounded-lg border-border/70 bg-background pl-9 pr-9 text-sm shadow-none"
           />
-          <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground sm:block">/</kbd>
+          <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:block">/</kbd>
         </div>
         <Popover>
           <PopoverTrigger asChild>
             <Button type="button" variant="outline" className="h-10 justify-center gap-2 rounded-lg border-border/70 bg-background px-3 font-semibold">
               <SlidersHorizontal /> Filter
               {activeFilterChips.filter(chip => !['search', 'from', 'to'].includes(chip.key)).length > 0 ? (
-                <Badge variant="secondary" className="min-w-5 justify-center px-1.5 font-mono text-[10px]">
+                <Badge variant="secondary" className="min-w-5 justify-center px-1.5 font-mono text-xs">
                   {activeFilterChips.filter(chip => !['search', 'from', 'to'].includes(chip.key)).length}
                 </Badge>
               ) : null}
@@ -392,15 +392,15 @@ export function TestCaseTable({
 
         <AnimatePresence initial={false}>
           {activeFilterChips.length > 0 && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/35 pt-3" aria-label="Active filters">
-                <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Active</span>
+                <span className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Active</span>
                 {activeFilterChips.map(chip => (
-                  <button key={chip.key} type="button" onClick={() => { chip.clear(); resetPage(); }} className="group inline-flex max-w-56 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/7 px-2.5 py-1 text-[10px] font-semibold text-primary transition-colors duration-150 hover:border-primary/40 hover:bg-primary/12" aria-label={`Remove filter ${chip.label}`}>
+                  <button key={chip.key} type="button" onClick={() => { chip.clear(); resetPage(); }} className="group inline-flex max-w-56 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/7 px-2.5 py-1 text-xs font-semibold text-primary transition-colors duration-150 hover:border-primary/40 hover:bg-primary/12" aria-label={`Remove filter ${chip.label}`}>
                     <span className="truncate">{chip.label}</span><X className="h-3 w-3 opacity-60 group-hover:opacity-100" />
                   </button>
                 ))}
-                <button type="button" onClick={resetFilters} className="text-[10px] font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Clear all</button>
+                <button type="button" onClick={resetFilters} className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Clear all</button>
               </div>
             </motion.div>
           )}
@@ -410,16 +410,16 @@ export function TestCaseTable({
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-9 rounded-lg gap-1.5 font-bold shadow-sm transition duration-150">
             <Plus className="w-4 h-4" /> Add Test Case
-            <kbd className="ml-0.5 hidden rounded border border-primary-foreground/30 px-1 font-mono text-[9px] leading-4 opacity-70 lg:inline-block">N</kbd>
+            <kbd className="ml-0.5 hidden rounded border border-primary-foreground/30 px-1 font-mono text-xs leading-4 opacity-70 lg:inline-block">N</kbd>
           </Button>
           {aiEnabled && (
-            <Button onClick={openAIDialog} size="sm" className="group h-9 rounded-lg gap-1.5 border border-violet-500/20 bg-violet-500/10 font-bold text-violet-500 transition duration-150 hover:bg-violet-500/20 dark:text-violet-400">
+            <Button onClick={openAIDialog} size="sm" className="group h-9 rounded-lg gap-1.5 border border-violet-500/20 bg-violet-500/10 font-bold text-violet-500 transition duration-150 hover:bg-violet-500/20 dark:text-bug-fixing">
               <Sparkles className="w-4 h-4" /> Generate AI
             </Button>
           )}
         </div>
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
-          <Badge key={showingLabel} variant="outline" className="col-span-2 h-9 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-1 animate-in zoom-in-95 duration-200 tabular-nums">
+          <Badge key={showingLabel} variant="outline" className="col-span-2 h-9 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-1 animate-in zoom-in-95 duration-200 tabular-nums">
             {showingLabel}
           </Badge>
           <DataTableDensityToggle value={density} onValueChange={setDensity} />
@@ -430,7 +430,7 @@ export function TestCaseTable({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-card border border-border/50 text-foreground rounded-2xl shadow-xl">
-              <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">
+              <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">
                 Kolom Tabel
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-border/40" />

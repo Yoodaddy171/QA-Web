@@ -259,8 +259,8 @@ export function TestCaseDialog({
               <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
                 <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
-                  <SelectItem value="Critical" className="rounded-lg text-red-400 font-medium">Critical</SelectItem>
-                  <SelectItem value="High" className="rounded-lg text-orange-400 font-medium">High</SelectItem>
+                  <SelectItem value="Critical" className="rounded-lg text-status-failed font-medium">Critical</SelectItem>
+                  <SelectItem value="High" className="rounded-lg text-bug-open font-medium">High</SelectItem>
                   <SelectItem value="Medium" className="rounded-lg text-yellow-400 font-medium">Medium</SelectItem>
                   <SelectItem value="Low" className="rounded-lg text-blue-400 font-medium">Low</SelectItem>
                 </SelectContent>
@@ -337,8 +337,8 @@ export function TestCaseDialog({
                 <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih hasil..." /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                   <SelectItem value="__none__" className="rounded-lg">-</SelectItem>
-                  <SelectItem value="As Expected" className="rounded-lg text-emerald-400 font-medium">As Expected</SelectItem>
-                  <SelectItem value="Not As Expected" className="rounded-lg text-rose-400 font-medium">Not As Expected</SelectItem>
+                  <SelectItem value="As Expected" className="rounded-lg text-status-passed font-medium">As Expected</SelectItem>
+                  <SelectItem value="Not As Expected" className="rounded-lg text-status-failed font-medium">Not As Expected</SelectItem>
                 </SelectContent>
               </Select>
             </div>

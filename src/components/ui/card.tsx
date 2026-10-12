@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const cardVariants = cva(
-  "flex flex-col gap-5 rounded-xl border transition-[border-color,background-color,transform] duration-150",
+  "flex min-w-0 flex-col gap-5 rounded-xl border",
   {
     variants: {
       variant: {
@@ -56,7 +56,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-        className={cn("leading-none font-semibold text-foreground", className)}
+        className={cn("text-base leading-snug font-semibold text-foreground", className)}
       {...props}
     />
   )

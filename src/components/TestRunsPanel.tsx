@@ -172,6 +172,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
       const maxIndex = Math.max(0, data.testCases.length - 1);
       const nextIndex = Number.isFinite(storedIndex) ? Math.max(0, Math.min(maxIndex, storedIndex)) : 0;
       setActiveCaseIndex(nextIndex);
+      setCasePage(Math.floor(nextIndex / RUN_CASES_PER_PAGE));
       const nextCase = data.testCases?.[nextIndex];
       const savedNotes = nextCase ? window.localStorage.getItem(notesStorageKey(projectId, runId, nextCase.id)) : null;
       setNotes(savedNotes ?? nextCase?.executions?.[0]?.notes ?? '');
@@ -365,21 +366,15 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
 
   const moveCase = useCallback((delta: number) => {
     if (!selectedRun) return;
-    setActiveCaseIndex(index => {
-      const nextIndex = Math.max(0, Math.min(selectedRun.testCases.length - 1, index + delta));
-      window.localStorage.setItem(lastCaseStorageKey(projectId, selectedRun.id), String(nextIndex));
-      const nextCase = selectedRun.testCases[nextIndex];
-      const savedNotes = window.localStorage.getItem(notesStorageKey(projectId, selectedRun.id, nextCase.id));
-      setNotes(savedNotes ?? nextCase?.executions?.[0]?.notes ?? '');
-      setNotesDirty(savedNotes !== null);
-      return nextIndex;
-    });
-  }, [projectId, selectedRun]);
-
-  // Daftar testcase dipaginasi, jadi halamannya ikut berpindah mengikuti case aktif.
-  useEffect(() => {
-    setCasePage(Math.floor(activeCaseIndex / RUN_CASES_PER_PAGE));
-  }, [activeCaseIndex]);
+    const nextIndex = Math.max(0, Math.min(selectedRun.testCases.length - 1, activeCaseIndex + delta));
+    setActiveCaseIndex(nextIndex);
+    setCasePage(Math.floor(nextIndex / RUN_CASES_PER_PAGE));
+    window.localStorage.setItem(lastCaseStorageKey(projectId, selectedRun.id), String(nextIndex));
+    const nextCase = selectedRun.testCases[nextIndex];
+    const savedNotes = window.localStorage.getItem(notesStorageKey(projectId, selectedRun.id, nextCase.id));
+    setNotes(savedNotes ?? nextCase?.executions?.[0]?.notes ?? '');
+    setNotesDirty(savedNotes !== null);
+  }, [projectId, selectedRun, activeCaseIndex]);
 
   useEffect(() => {
     if (!selectedRun || !activeCase || !notesDirty) return;
@@ -546,7 +541,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
         <Button variant="outline" onClick={() => void reloadRuns()} disabled={isLoading}><RefreshCw className="h-4 w-4" />Muat ulang</Button>
       </div>
 
-      {error && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">{error}</div>}
+      {error && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-status-blocked">{error}</div>}
 
       {isDraggingEvidence && activeExecution && (
         <div className="pointer-events-none fixed inset-4 z-[100] flex animate-in items-center justify-center rounded-2xl border-2 border-dashed border-primary/60 bg-background/88 fade-in duration-150 backdrop-blur-sm" role="status" aria-live="polite">
@@ -573,7 +568,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
               <div className="flex flex-col gap-1.5"><Label>Periode cycle</Label><DateRangePicker from={runStartDate} to={runEndDate} onFromChange={setRunStartDate} onToChange={setRunEndDate} label="Pilih periode cycle" /></div>
               <div className="flex flex-col gap-1.5"><Label>Test Plan</Label><Select value={runTestPlanId || 'none'} onValueChange={value => setRunTestPlanId(value === 'none' ? '' : value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Tanpa Test Plan</SelectItem>{testPlans.map(plan => <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>)}</SelectContent></Select></div>
               <Button className="w-full" onClick={() => void createRun()} disabled={isSaving || !runName.trim()} title={!runName.trim() ? 'Isi nama cycle untuk melanjutkan' : undefined}><Plus className="h-4 w-4" />Buat Test Cycle</Button>
-              {!runName.trim() && <p className="text-[11px] text-muted-foreground">Nama cycle wajib diisi.</p>}
+              {!runName.trim() && <p className="text-xs text-muted-foreground">Nama cycle wajib diisi.</p>}
             </div>}
             {isLoading && runs.length === 0 && <div className="flex flex-col gap-2" aria-label="Memuat Test Cycle"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
             {runs.map(run => (
@@ -588,13 +583,13 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
             ))}
             {nextRunCursor && <Button variant="ghost" size="sm" className="w-full" onClick={() => void loadMoreRuns().catch(error => setError(error instanceof Error ? error.message : 'Gagal memuat cycle.'))}>Muat cycle berikutnya</Button>}
             {!runs.length && !isLoading && <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center"><p className="text-sm font-semibold">Belum ada Test Cycle</p><p className="mt-1 text-xs text-muted-foreground">Buat cycle pertama untuk mulai execution.</p><Button size="sm" className="mt-4" onClick={openCreateRunForm}><Plus className="h-4 w-4" />Buat cycle</Button></div>}
-            {selectedRun && selectedRun.testCases.length > 0 && <div className="mt-4 border-t border-border/70 pt-4"><div className="relative mb-2"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><Input value={caseSearch} onChange={event => setCaseSearch(event.target.value)} placeholder="Cari testcase..." className="h-8 pl-8 text-xs" /></div><div className="max-h-[42svh] space-y-1 overflow-y-auto">{visibleRunCases.map(testCase => { const index = selectedRun.testCases.findIndex(item => item.id === testCase.id); const latestStatus = testCase.executions[0]?.status || TEST_EXECUTION_STATUS.NOT_RUN; return <button key={testCase.id} type="button" onClick={() => { setActiveCaseIndex(index); const draft = window.localStorage.getItem(notesStorageKey(projectId, selectedRun.id, testCase.id)); setNotes(draft ?? testCase.executions[0]?.notes ?? ''); setNotesDirty(draft !== null); }} className={`qa-content-auto flex w-full items-start gap-2 rounded-lg border px-2.5 py-2 text-left ${index === activeCaseIndex ? 'qa-selected-row border-primary/30' : 'border-transparent hover:bg-secondary/60'}`}><span className="font-mono text-[10px] text-muted-foreground">{index + 1}</span><span className="min-w-0 flex-1"><span className="block truncate font-mono text-[11px] font-semibold">{testCase.testCaseId}</span><span className="block truncate text-[10px] text-muted-foreground">{testCase.testAction}</span></span><Badge variant={statusVariant(latestStatus)} className="px-1 text-[8px]">{latestStatus}</Badge></button>; })}{selectedRun.casePage?.hasMore && <Button variant="ghost" size="sm" className="w-full" onClick={() => void loadMoreRunCases().catch(error => setError(error instanceof Error ? error.message : 'Gagal memuat testcase.'))}>Muat testcase berikutnya</Button>}</div></div>}
+            {selectedRun && selectedRun.testCases.length > 0 && <div className="mt-4 border-t border-border/70 pt-4"><div className="relative mb-2"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><Input value={caseSearch} onChange={event => setCaseSearch(event.target.value)} placeholder="Cari testcase..." className="h-8 pl-8 text-xs" /></div><div className="max-h-[42svh] space-y-1 overflow-y-auto">{visibleRunCases.map(testCase => { const index = selectedRun.testCases.findIndex(item => item.id === testCase.id); const latestStatus = testCase.executions[0]?.status || TEST_EXECUTION_STATUS.NOT_RUN; return <button key={testCase.id} type="button" onClick={() => { setActiveCaseIndex(index); const draft = window.localStorage.getItem(notesStorageKey(projectId, selectedRun.id, testCase.id)); setNotes(draft ?? testCase.executions[0]?.notes ?? ''); setNotesDirty(draft !== null); }} className={`qa-content-auto flex w-full items-start gap-2 rounded-lg border px-2.5 py-2 text-left ${index === activeCaseIndex ? 'qa-selected-row border-primary/30' : 'border-transparent hover:bg-secondary/60'}`}><span className="font-mono text-xs text-muted-foreground">{index + 1}</span><span className="min-w-0 flex-1"><span className="block truncate font-mono text-xs font-semibold">{testCase.testCaseId}</span><span className="block truncate text-xs text-muted-foreground">{testCase.testAction}</span></span><Badge variant={statusVariant(latestStatus)} className="px-1 text-xs">{latestStatus}</Badge></button>; })}{selectedRun.casePage?.hasMore && <Button variant="ghost" size="sm" className="w-full" onClick={() => void loadMoreRunCases().catch(error => setError(error instanceof Error ? error.message : 'Gagal memuat testcase.'))}>Muat testcase berikutnya</Button>}</div></div>}
           </CardContent>
         </Card>
 
         <Card padding="none" className={selectedRun ? 'signal-surface signal-sweep border-primary/25' : 'border-border/70'}>
           {!selectedRun ? (
-            <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 p-8 text-center"><span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-primary/20 bg-primary/5"><CircleDot className="h-7 w-7 text-primary/55" /></span><p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Execution workspace</p><h2 className="text-lg font-semibold">Pilih Test Run</h2><p className="max-w-sm text-sm text-muted-foreground">Pilih cycle di sebelah kiri atau buat cycle baru untuk mulai execution.</p></div>
+            <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 p-8 text-center"><span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-primary/20 bg-primary/5"><CircleDot className="h-7 w-7 text-primary/55" /></span><p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-primary">Execution workspace</p><h2 className="text-lg font-semibold">Pilih Test Run</h2><p className="max-w-sm text-sm text-muted-foreground">Pilih cycle di sebelah kiri atau buat cycle baru untuk mulai execution.</p></div>
           ) : (
             <>
               <CardHeader className="border-b border-border/70 bg-card/95 py-4">
@@ -604,8 +599,8 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                 </div>
                 <div className="mt-3 flex items-center gap-3">
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary" aria-label={`Progress ${selectedRun.progress}%`}><span className="block h-full origin-left rounded-full bg-primary transition-transform duration-200" style={{ transform: `scaleX(${selectedRun.progress / 100})` }} /></div>
-                  <span className="font-mono text-[10px] font-bold text-foreground">{selectedRun.progress}%</span>
-                  {activeCase ? <span className="hidden text-[10px] text-muted-foreground sm:inline">Case {activeCaseIndex + 1}/{selectedRun.testCases.length}</span> : null}
+                  <span className="font-mono text-xs font-bold text-foreground">{selectedRun.progress}%</span>
+                  {activeCase ? <span className="hidden text-xs text-muted-foreground sm:inline">Case {activeCaseIndex + 1}/{selectedRun.testCases.length}</span> : null}
                 </div>
                 {editingRun && <div className="mt-4 space-y-2"><Input value={runName} onChange={event => setRunName(event.target.value)} aria-label="Edit nama Test Run" /><Textarea value={runDescription} onChange={event => setRunDescription(event.target.value)} className="min-h-16" aria-label="Edit deskripsi Test Run" /><Input value={runAssignee} onChange={event => setRunAssignee(event.target.value)} placeholder="Tester / assignee" aria-label="Edit assignee Test Run" /><div className="flex gap-2"><Button size="sm" onClick={() => void updateRunDetails()} disabled={isSaving || !runName.trim()}>Simpan detail</Button><Button size="sm" variant="ghost" onClick={() => setEditingRun(false)}>Batal</Button></div></div>}
               </CardHeader>
@@ -622,12 +617,12 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                   return <div className="space-y-2 rounded-xl border border-border/70 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold">Testcase dalam run</p>
-                      <span className="text-[11px] text-muted-foreground">{selectedRun.testCases.length} testcase{totalCasePages > 1 ? ` · halaman ${page + 1}/${totalCasePages}` : ''}</span>
+                      <span className="text-xs text-muted-foreground">{selectedRun.testCases.length} testcase{totalCasePages > 1 ? ` · halaman ${page + 1}/${totalCasePages}` : ''}</span>
                     </div>
                     {pageCases.map(testCase => {
                       const index = selectedRun.testCases.findIndex(item => item.id === testCase.id);
                       return <div key={testCase.id} className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs ${index === activeCaseIndex ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-secondary/30'}`}>
-                        <button type="button" className="min-w-0 truncate text-left hover:text-primary" onClick={() => setActiveCaseIndex(index)}>
+                        <button type="button" className="min-w-0 truncate text-left hover:text-primary" onClick={() => { setActiveCaseIndex(index); setCasePage(Math.floor(index / RUN_CASES_PER_PAGE)); }}>
                           <span className="mr-2 text-muted-foreground">{index + 1}.</span>
                           <span className="font-mono font-semibold">{testCase.testCaseId}</span>
                           <span className="ml-2 text-muted-foreground">{testCase.page}</span>
@@ -637,12 +632,12 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                     })}
                     {totalCasePages > 1 && <div className="flex items-center justify-between gap-2 pt-1">
                       <Button variant="outline" size="sm" className="h-7 px-2" disabled={page === 0} onClick={() => setCasePage(page - 1)}><ChevronLeft data-icon="inline-start" />Sebelumnya</Button>
-                      <span className="text-[11px] text-muted-foreground">Menampilkan {pageStart + 1}–{pageStart + pageCases.length}</span>
+                      <span className="text-xs text-muted-foreground">Menampilkan {pageStart + 1}–{pageStart + pageCases.length}</span>
                       <Button variant="outline" size="sm" className="h-7 px-2" disabled={page >= totalCasePages - 1} onClick={() => setCasePage(page + 1)}>Berikutnya<ChevronRight data-icon="inline-end" /></Button>
                     </div>}
                   </div>;
                 })()}
-                {activeCase ? <div key={activeCase.id} className="animate-in fade-in slide-in-from-right-2 duration-150"><div className="rounded-xl border border-border/70 p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-xs font-bold text-primary">{activeCase.testCaseId}</p><h2 className="mt-1 text-lg font-bold">{activeCase.testAction}</h2><p className="mt-1 text-xs text-muted-foreground">{activeCase.module?.name || 'Unassigned'} · {activeCase.page}{activeCase.subMenu ? ` · ${activeCase.subMenu}` : ''}</p></div><Badge key={visibleExecutionStatus} variant={statusVariant(visibleExecutionStatus)} className="animate-in zoom-in-90 duration-150">{visibleExecutionStatus}</Badge></div><div className="mt-5 grid gap-4 md:grid-cols-2"><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Steps</p><pre className="min-h-36 whitespace-pre-wrap rounded-lg bg-secondary/50 p-3 text-sm font-sans leading-6">{activeCase.steps || '—'}</pre></div><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected result</p><p className="min-h-36 rounded-lg bg-secondary/50 p-3 text-sm leading-6">{activeCase.expectedResult || '—'}</p></div></div><div className="mt-4 flex items-center justify-between"><Label htmlFor="execution-notes">Execution notes</Label><span className="text-[10px] text-muted-foreground">{notesDirty ? 'Draft tersimpan lokal' : 'Tersimpan'}</span></div><Textarea id="execution-notes" value={notes} onChange={event => { setNotes(event.target.value); setNotesDirty(true); }} placeholder="Catatan execution..." className="mt-2 min-h-24" /></div><div className="qa-command-bar sticky bottom-0 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-xl p-3"><Button variant="ghost" size="sm" onClick={() => moveCase(-1)} disabled={activeCaseIndex === 0}><ChevronLeft data-icon="inline-start" />Previous</Button><span className="mr-auto text-xs text-muted-foreground">{activeCaseIndex + 1}/{selectedRun.testCases.length}</span>{EXECUTION_ACTIONS.map(action => { const Icon = action.icon; const active = visibleExecutionStatus === action.status; return <Button key={action.status} variant={active ? action.variant : 'outline'} size="sm" onClick={() => void execute(action.status)} disabled={isSaving} aria-pressed={active}><Icon data-icon="inline-start" />{action.label}<kbd className="rounded border border-current/20 px-1 text-[9px]">{action.shortcut}</kbd></Button>; })}<Button size="sm" onClick={() => moveCase(1)} disabled={activeCaseIndex >= selectedRun.testCases.length - 1}>Next Case<ChevronRight data-icon="inline-end" /></Button></div></div> : <div className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">Tambahkan testcase untuk mulai execution.</div>}
+                {activeCase ? <div key={activeCase.id} className="animate-in fade-in slide-in-from-right-2 duration-150"><div className="rounded-xl border border-border/70 p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-xs font-bold text-primary">{activeCase.testCaseId}</p><h2 className="mt-1 text-lg font-bold">{activeCase.testAction}</h2><p className="mt-1 text-xs text-muted-foreground">{activeCase.module?.name || 'Unassigned'} · {activeCase.page}{activeCase.subMenu ? ` · ${activeCase.subMenu}` : ''}</p></div><Badge key={visibleExecutionStatus} variant={statusVariant(visibleExecutionStatus)} className="animate-in zoom-in-90 duration-150">{visibleExecutionStatus}</Badge></div><div className="mt-5 grid gap-4 md:grid-cols-2"><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Steps</p><pre className="min-h-36 whitespace-pre-wrap rounded-lg bg-secondary/50 p-3 text-sm font-sans leading-6">{activeCase.steps || '—'}</pre></div><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected result</p><p className="min-h-36 rounded-lg bg-secondary/50 p-3 text-sm leading-6">{activeCase.expectedResult || '—'}</p></div></div><div className="mt-4 flex items-center justify-between"><Label htmlFor="execution-notes">Execution notes</Label><span className="text-xs text-muted-foreground">{notesDirty ? 'Draft tersimpan lokal' : 'Tersimpan'}</span></div><Textarea id="execution-notes" value={notes} onChange={event => { setNotes(event.target.value); setNotesDirty(true); }} placeholder="Catatan execution..." className="mt-2 min-h-24" /></div><div className="qa-command-bar sticky bottom-0 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-xl p-3"><Button variant="ghost" size="sm" onClick={() => moveCase(-1)} disabled={activeCaseIndex === 0}><ChevronLeft data-icon="inline-start" />Previous</Button><span className="mr-auto text-xs text-muted-foreground">{activeCaseIndex + 1}/{selectedRun.testCases.length}</span>{EXECUTION_ACTIONS.map(action => { const Icon = action.icon; const active = visibleExecutionStatus === action.status; return <Button key={action.status} variant={active ? action.variant : 'outline'} size="sm" onClick={() => void execute(action.status)} disabled={isSaving} aria-pressed={active}><Icon data-icon="inline-start" />{action.label}<kbd className="rounded border border-current/20 px-1 text-xs">{action.shortcut}</kbd></Button>; })}<Button size="sm" onClick={() => moveCase(1)} disabled={activeCaseIndex >= selectedRun.testCases.length - 1}>Next Case<ChevronRight data-icon="inline-end" /></Button></div></div> : <div className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">Tambahkan testcase untuk mulai execution.</div>}
               </CardContent>
             </>
           )}
@@ -655,7 +650,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {
-  return <div className="rounded-xl border border-border/70 bg-secondary/30 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold">{value}</p></div>;
+  return <div className="rounded-xl border border-border/70 bg-secondary/30 p-3"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold">{value}</p></div>;
 }
 
 function ExecutionContextPanel({ selectedRun, activeCase, activeExecution, activeEvidence, activities, projectId, isSaving, isDraggingEvidence, uploadEvidence, removeEvidence, createBug }: {
@@ -672,9 +667,9 @@ function ExecutionContextPanel({ selectedRun, activeCase, activeExecution, activ
   createBug: () => Promise<void>;
 }) {
   return <div className="flex flex-col gap-3">
-    <section className="rounded-xl border border-border/70 bg-card p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Execution</p><p className="mt-3 text-sm font-medium">{activeExecution ? new Date(activeExecution.createdAt).toLocaleString() : 'Belum dijalankan'}</p><p className="mt-1 text-xs text-muted-foreground">{activeExecution?.tester || selectedRun.assignedTo || 'Tester belum ditentukan'}</p>{activeExecution?.status === TEST_EXECUTION_STATUS.FAILED && <Button variant="destructive" className="mt-4 w-full" onClick={() => void createBug()} disabled={isSaving}><Bug data-icon="inline-start" />Create Bug</Button>}</section>
+    <section className="rounded-xl border border-border/70 bg-card p-4"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Execution</p><p className="mt-3 text-sm font-medium">{activeExecution ? new Date(activeExecution.createdAt).toLocaleString() : 'Belum dijalankan'}</p><p className="mt-1 text-xs text-muted-foreground">{activeExecution?.tester || selectedRun.assignedTo || 'Tester belum ditentukan'}</p>{activeExecution?.status === TEST_EXECUTION_STATUS.FAILED && <Button variant="destructive" className="mt-4 w-full" onClick={() => void createBug()} disabled={isSaving}><Bug data-icon="inline-start" />Create Bug</Button>}</section>
     <section className="rounded-xl border border-border/70 bg-card p-4"><p className="text-sm font-semibold">Evidence</p><label className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-3 py-5 text-center text-xs transition-colors ${isDraggingEvidence ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-secondary/50'}`}><input type="file" className="sr-only" accept="image/*,video/mp4,video/webm,application/pdf" disabled={isSaving || !activeExecution} onChange={event => { void uploadEvidence(event.target.files?.[0]); event.currentTarget.value = ''; }} /><UploadCloud className="mb-2" />Drop, paste, atau pilih file</label><div className="mt-3 flex flex-col gap-2">{activeEvidence.length ? activeEvidence.map(item => <div key={item.id} className="flex items-center gap-2 rounded-lg bg-secondary/40 px-3 py-2 text-xs"><a className="min-w-0 flex-1 truncate text-primary hover:underline" href={`/api/test-runs/${selectedRun.id}/executions/${activeExecution?.id}/evidence/${item.id}?projectId=${encodeURIComponent(projectId)}`} target="_blank" rel="noreferrer">{item.fileName}</a><Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={() => void removeEvidence(item.id)} disabled={isSaving}>Hapus</Button></div>) : <p className="text-xs text-muted-foreground">{activeExecution ? 'Belum ada evidence.' : 'Jalankan testcase sebelum menambah evidence.'}</p>}</div>{activeEvidence.length && activeExecution?.id ? <ExecutionEvidencePreview evidence={activeEvidence} testRunId={selectedRun.id} executionId={activeExecution.id} projectId={projectId} onReplace={(id, file) => void uploadEvidence(file, id)} /> : null}</section>
-    <section className="rounded-xl border border-border/70 bg-card p-4"><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground"><History className="size-4" /> History</p><div className="mt-3 max-h-52 space-y-3 overflow-y-auto">{activities.length ? activities.slice(0, 12).map(activity => <div key={activity.id} className="border-l-2 border-primary/30 pl-3"><p className="text-xs font-semibold">{activity.action}{activity.field ? ` · ${activity.field}` : ''}</p><p className="text-[10px] text-muted-foreground">{new Date(activity.createdAt).toLocaleString()}</p></div>) : <p className="text-xs text-muted-foreground">Belum ada history.</p>}</div></section>
-    {activeCase && <p className="px-1 text-[10px] text-muted-foreground">Context aktif: <span className="font-mono text-foreground">{activeCase.testCaseId}</span></p>}
+    <section className="rounded-xl border border-border/70 bg-card p-4"><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground"><History className="size-4" /> History</p><div className="mt-3 max-h-52 space-y-3 overflow-y-auto">{activities.length ? activities.slice(0, 12).map(activity => <div key={activity.id} className="border-l-2 border-primary/30 pl-3"><p className="text-xs font-semibold">{activity.action}{activity.field ? ` · ${activity.field}` : ''}</p><p className="text-xs text-muted-foreground">{new Date(activity.createdAt).toLocaleString()}</p></div>) : <p className="text-xs text-muted-foreground">Belum ada history.</p>}</div></section>
+    {activeCase && <p className="px-1 text-xs text-muted-foreground">Context aktif: <span className="font-mono text-foreground">{activeCase.testCaseId}</span></p>}
   </div>;
 }

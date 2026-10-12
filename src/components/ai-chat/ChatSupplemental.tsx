@@ -44,7 +44,7 @@ export function ToolTrace({ usedTools = [], provider }: { usedTools?: string[]; 
     <div className="mt-3 rounded-xl border border-border/50 bg-card/40 p-2 text-[10px] text-muted-foreground">
       {usedTools.length > 0 && <p className="font-semibold">AI membaca: {usedTools.join(', ')}</p>}
       {provider?.provider && <p className="mt-1">Provider: {provider.provider}{provider.model ? ` · ${provider.model}` : ''}</p>}
-      {provider?.error && <p className="mt-1 text-amber-600 dark:text-amber-300">Provider fallback: {provider.error}</p>}
+      {provider?.error && <p className="mt-1 text-amber-600 dark:text-status-blocked">Provider fallback: {provider.error}</p>}
     </div>
   );
 }

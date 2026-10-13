@@ -3,12 +3,30 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Palette switches must not start thousands of inherited color transitions.
-   This transient guard leaves transform/opacity motion and normal hover states intact. */
-html[data-theme-changing] *,
-html[data-theme-changing] *::before,
-html[data-theme-changing] *::after {
-  transition-property: transform, opacity !important;
+/* Keep the inspector shell compositable; tw-animate's generic enter/exit
+   keyframes also animate filter. Content mounts after this actual animation. */
+@keyframes qa-inspector-in {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes qa-inspector-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100%); }
+}
+@keyframes qa-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes qa-overlay-out { from { opacity: 1; } to { opacity: 0; } }
+.test-case-detail-dialog[data-state="open"] { animation-name: qa-inspector-in; }
+.test-case-detail-dialog[data-state="closed"] { animation-name: qa-inspector-out; }
+.qa-inspector-overlay[data-state="open"] { animation-name: qa-overlay-in; }
+.qa-inspector-overlay[data-state="closed"] { animation-name: qa-overlay-out; }
+
+/* Only transition-bearing surfaces need the transient palette guard. SVGs
+   also receive transitions through parent arbitrary variants (no own class).
+   Tailwind 4 uses individual transform properties; preserve those animations. */
+html[data-theme-changing] :is([class*="transition"], .qa-interactive, body, header, main, nav, [data-slot="card"], svg),
+html[data-theme-changing] :is([class*="transition"], .qa-interactive)::before,
+html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
+  transition-property: transform, opacity, translate, scale, rotate !important;
 }
 
 @theme inline {
@@ -78,6 +96,7 @@ html[data-theme-changing] *::after {
   --radius: 0.625rem;
   --motion-fast: 120ms;
   --motion-duration: 180ms;
+  --motion-content: var(--motion-duration);
   --motion-slow: 240ms;
   --motion-overlay: 220ms;
   --motion-panel: 260ms;

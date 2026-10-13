@@ -28,9 +28,9 @@ import type { TestCase, TestCaseTableProps } from './TestCaseTable.types';
 import { TestCaseTableBody } from './TestCaseTableBody';
 import { DataTableDensityToggle } from '@/components/DataTableDensityToggle';
 import { useTableDensity } from '@/hooks/use-table-density';
+import { useTableViewport } from '@/hooks/use-table-viewport';
+import { mountedTestCaseColumns, type TestCaseColumnKey } from '@/lib/client/testcase-column-visibility';
 export type { TestCase } from './TestCaseTable.types';
-
-type TestCaseColumnKey = 'subMenu' | 'weight' | 'type' | 'priority' | 'action' | 'status' | 'result' | 'record' | 'progress';
 
 const TESTCASE_COLUMN_OPTIONS: Array<{ key: TestCaseColumnKey; label: string; responsiveClass?: string }> = [
   { key: 'subMenu', label: 'Sub Menu', responsiveClass: 'hidden lg:table-cell' },
@@ -143,6 +143,8 @@ export function TestCaseTable({
   onQuickStatusChange,
 }: TestCaseTableProps) {
   const [visibleColumns, setVisibleColumns] = useState<Record<TestCaseColumnKey, boolean>>(getInitialTestCaseColumns);
+  const viewportBucket = useTableViewport();
+  const mountedColumns = useMemo(() => mountedTestCaseColumns(visibleColumns, viewportBucket), [visibleColumns, viewportBucket]);
   // "Quest complete": row id that just got flipped to DONE, celebrated briefly.
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [savedViewsVersion, setSavedViewsVersion] = useState(0);
@@ -225,8 +227,8 @@ export function TestCaseTable({
     ? `Menampilkan ${testCases.length} dari ${total} data`
     : `Menampilkan ${testCases.length} data`;
   const shownOptionalColumnCount = useMemo(
-    () => TESTCASE_COLUMN_OPTIONS.filter((column) => visibleColumns[column.key]).length,
-    [visibleColumns]
+    () => TESTCASE_COLUMN_OPTIONS.filter((column) => mountedColumns[column.key]).length,
+    [mountedColumns]
   );
   const tableColSpan = 4 + shownOptionalColumnCount + 1;
   const isColumnVisible = (key: TestCaseColumnKey) => visibleColumns[key];
@@ -250,7 +252,7 @@ export function TestCaseTable({
   });
   const tableBodyProps = {
     selectedProject, testCases, selectedIds, testRecordById, page, limit, total, totalPages, tableColSpan,
-    isLoading, hasActiveFilters, getColumnClass,
+    isLoading, hasActiveFilters, getColumnClass, mountedColumns,
     ...rowActions, onQuickStatusChange: onQuickStatusChange ? rowActions.onQuickStatusChange : undefined,
     celebrateId, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant,
     getPriorityColor, getTestTypeColor, rowClassName,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition, type SetStateAction } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
   bulkUpdateTestCaseStatus,
@@ -13,6 +13,7 @@ import {
 import type { Stats, TestCase } from '@/lib/client/api/types';
 import { TESTCASE_STATUS } from '@/lib/domain/testcase';
 import { reconcileRows } from '@/lib/client/reconcile-rows';
+import { isLatestResult } from '@/lib/client/latest-result';
 
 type RefreshCallback = () => void;
 
@@ -29,7 +30,12 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
 
 export function useTestCases(selectedProject: string) {
   const { toast } = useToast();
-  const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [list, setList] = useState({ testCases: [] as TestCase[], total: 0, totalPages: 1 });
+  const { testCases, total, totalPages } = list;
+  const setTestCases = useCallback((update: SetStateAction<TestCase[]>) => {
+    setList(previous => ({ ...previous, testCases: typeof update === 'function' ? update(previous.testCases) : update }));
+  }, []);
+  const [isRenderingResults, startResultsTransition] = useTransition();
   const [stats, setStats] = useState<Stats | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -47,13 +53,12 @@ export function useTestCases(selectedProject: string) {
   const [sortOrder, setSortOrder] = useState<string>('asc');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
   const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const testCaseAbortRef = useRef<AbortController | null>(null);
+  const requestVersion = useRef(0);
   const selectedProjectRef = useRef(selectedProject);
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -65,6 +70,7 @@ export function useTestCases(selectedProject: string) {
     if (!projId) return;
 
     testCaseAbortRef.current?.abort();
+    const version = ++requestVersion.current;
     const controller = new AbortController();
     testCaseAbortRef.current = controller;
 
@@ -101,20 +107,34 @@ export function useTestCases(selectedProject: string) {
       if (fto) params.set('createdTo', fto);
 
       const data = await fetchTestCases(params, controller.signal);
-      setTestCases(previous => reconcileRows(previous, data.testCases || []));
-      setTotal(data.total || 0);
+      if (!isLatestResult(controller.signal, version, requestVersion.current, projId, selectedProjectRef.current)) return;
       const nextTotalPages = data.totalPages || 1;
-      setTotalPages(nextTotalPages);
+      // Network feedback stays urgent. Rows/counts commit together at transition
+      // priority so input can interrupt rendering. Recheck when React rebases it.
+      startResultsTransition(() => setList(previous => {
+        if (!isLatestResult(controller.signal, version, requestVersion.current, projId, selectedProjectRef.current)) return previous;
+        return { testCases: reconcileRows(previous.testCases, data.testCases || []), total: data.total || 0, totalPages: nextTotalPages };
+      }));
       // Clamp back when the current page no longer exists (e.g. after deleting
       // the last rows of the final page); the page effect re-fetches.
       if ((opts?.pageVal ?? page) > nextTotalPages) setPage(nextTotalPages);
     } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
+      if (controller.signal.aborted || version !== requestVersion.current || (err instanceof DOMException && err.name === 'AbortError')) return;
       toast({ title: 'Error', description: 'Failed to load test cases', variant: 'destructive' });
     } finally {
-      if (testCaseAbortRef.current === controller) setIsLoadingTestCases(false);
+      if (testCaseAbortRef.current === controller) {
+        testCaseAbortRef.current = null;
+        setIsLoadingTestCases(false);
+      }
     }
   }, [debouncedSearch, filterBug, filterCreatedFrom, filterCreatedTo, filterModule, filterPriority, filterStatus, filterSubMenu, filterTag, filterTestRun, filterTestType, limit, page, sortBy, sortOrder, toast]);
+
+  const currentQueryRef = useRef({ loadTestCases, filterStatus, sortBy, isRenderingResults });
+  useEffect(() => {
+    currentQueryRef.current = { loadTestCases, filterStatus, sortBy, isRenderingResults };
+  }, [loadTestCases, filterStatus, sortBy, isRenderingResults]);
+
+  useEffect(() => () => { ++requestVersion.current; testCaseAbortRef.current?.abort(); }, [selectedProject]);
 
   useEffect(() => {
     if (!selectedProject) return;
@@ -148,15 +168,25 @@ export function useTestCases(selectedProject: string) {
   }, [debouncedSearch, filterBug, filterCreatedFrom, filterCreatedTo, filterModule, filterPriority, filterStatus, filterSubMenu, filterTag, filterTestRun, filterTestType, limit, loadTestCases, page, sortBy, sortOrder]);
 
   const handleQuickStatusChange = useCallback(async (testCaseId: string, newStatus: string) => {
+    const queryVersionAtMutation = requestVersion.current;
     try {
-      await updateTestCase({ id: testCaseId, status: newStatus });
-      setTestCases(prev => prev.map(tc => tc.id === testCaseId ? { ...tc, status: newStatus } : tc));
+      const saved = await updateTestCase({ id: testCaseId, status: newStatus });
+      if (selectedProject !== selectedProjectRef.current) return;
+      const query = currentQueryRef.current;
+      const hadPendingRead = Boolean(testCaseAbortRef.current) || query.isRenderingResults || queryVersionAtMutation !== requestVersion.current;
+      ++requestVersion.current;
+      testCaseAbortRef.current?.abort();
+      testCaseAbortRef.current = null;
+      setIsLoadingTestCases(false);
+      // The server owns retest/result rules; never invent a successful status.
+      setTestCases(prev => prev.map(tc => tc.id === testCaseId ? { ...tc, ...saved } : tc));
+      if (query.filterStatus !== 'all' || query.sortBy === 'status' || hadPendingRead) void query.loadTestCases(selectedProject);
       loadStats(selectedProject);
-      toast({ variant: 'success', title: 'Status updated', description: `Status diubah ke ${newStatus}` });
+      toast({ variant: 'success', title: 'Status updated', description: `Status diubah ke ${saved.status}` });
     } catch {
       toast({ title: 'Gagal', description: 'Status gagal diubah', variant: 'destructive' });
     }
-  }, [loadStats, selectedProject, toast]);
+  }, [loadStats, selectedProject, setTestCases, toast]);
 
   const handleDeleteTestCase = useCallback(async (id: string, refreshAll: RefreshCallback) => {
     try {
@@ -288,7 +318,7 @@ export function useTestCases(selectedProject: string) {
     total,
     limit,
     setLimit,
-    isLoadingTestCases,
+    isLoadingTestCases: isLoadingTestCases || isRenderingResults,
     isLoadingStats,
     selectedIds,
     setSelectedIds,

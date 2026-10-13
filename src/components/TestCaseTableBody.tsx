@@ -60,13 +60,13 @@ const TestCaseDataRow = React.memo(function TestCaseDataRow(props: TestCaseTable
 
 // Sorting and selection change the row shell, not unchanged data/control trees.
 const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseTableBodyProps) {
-  const { tc, record, celebrating, getColumnClass, openViewDialog, onQuickStatusChange, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant, getTestTypeColor, getPriorityColor, openEditDialog, handleDuplicate, requestDelete } = props;
+  const { tc, record, celebrating, mountedColumns, getColumnClass, openViewDialog, onQuickStatusChange, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant, getTestTypeColor, getPriorityColor, openEditDialog, handleDuplicate, requestDelete } = props;
   return (
     <>
                     <TableCell className="sticky left-[72px] z-10 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden truncate whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary" title={tc.testCaseId}>{tc.testCaseId}</TableCell>
                     <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={tc.page}>{tc.page}</TableCell>
-                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[100px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>
-                    <TableCell className={getColumnClass('weight')}>
+                    {mountedColumns.subMenu && <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[100px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>}
+                    {mountedColumns.weight && <TableCell className={getColumnClass('weight')}>
                       {tc.calculatedWeight != null ? (
                         <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-xs font-mono text-muted-foreground">
                           {tc.calculatedWeight.toFixed(2)}%
@@ -74,21 +74,21 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                       ) : (
                       <span className="text-xs font-semibold text-muted-foreground">—</span>
                       )}
-                    </TableCell>
-                    <TableCell className={getColumnClass('type')}>
+                    </TableCell>}
+                    {mountedColumns.type && <TableCell className={getColumnClass('type')}>
                       <Badge variant="outline" className={cn("rounded-md text-xs font-bold", getTestTypeColor(tc.testType))}>
                         {tc.testType}
                       </Badge>
-                    </TableCell>
-                    <TableCell className={getColumnClass('priority')}>
+                    </TableCell>}
+                    {mountedColumns.priority && <TableCell className={getColumnClass('priority')}>
                       <Badge variant="outline" className={cn("rounded-md text-xs font-bold", getPriorityColor(tc.priority))}>
                         {tc.priority}
                       </Badge>
-                    </TableCell>
-                    <TableCell className={getColumnClass('action', 'max-w-[180px]')}>
+                    </TableCell>}
+                    {mountedColumns.action && <TableCell className={getColumnClass('action', 'max-w-[180px]')}>
                       <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{tc.testAction}</p>
-                    </TableCell>
-                    <TableCell className={getColumnClass('status')}>
+                    </TableCell>}
+                    {mountedColumns.status && <TableCell className={getColumnClass('status')}>
                       {onQuickStatusChange ? (
                         <div className="relative">
                           {celebrating && <ConfettiBurst radius={44} count={14} />}
@@ -99,8 +99,8 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                           {getStatusIcon(tc.status)} {tc.status}
                         </Badge>
                       )}
-                    </TableCell>
-                    <TableCell className={getColumnClass('result', 'px-3')}>
+                    </TableCell>}
+                    {mountedColumns.result && <TableCell className={getColumnClass('result', 'px-3')}>
                       {tc.actualResult ? (
                         <Badge variant={tc.actualResult === 'As Expected' ? 'success' : tc.actualResult === 'Not As Expected' ? 'failed' : 'outline'} className="text-xs font-semibold">
                           {tc.actualResult}
@@ -108,8 +108,8 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                       ) : (
                         <span className="text-xs font-semibold text-muted-foreground">-</span>
                       )}
-                    </TableCell>
-                    <TableCell className={getColumnClass('record', 'px-3')}>
+                    </TableCell>}
+                    {mountedColumns.record && <TableCell className={getColumnClass('record', 'px-3')}>
                       {record ? (
                         <div className="space-y-1">
                           <div className="flex flex-wrap gap-1">
@@ -134,13 +134,13 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                           No Records
                         </Badge>
                       )}
-                    </TableCell>
-                    <TableCell className={getColumnClass('progress')}>
+                    </TableCell>}
+                    {mountedColumns.progress && <TableCell className={getColumnClass('progress')}>
                       <div className="flex items-center gap-2">
                         <Progress value={tc.progress} className="h-1 w-12 bg-secondary/50" />
                         <span className="text-xs font-bold text-muted-foreground">{tc.progress}%</span>
                       </div>
-                    </TableCell>
+                    </TableCell>}
                     <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -177,7 +177,7 @@ const formatLastRun = (dateStr: string | null) => {
 export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: TestCaseTableBodyProps) {
   const {
     selectedProject, testCases, selectedIds, testRecordById, page, limit, total, totalPages, tableColSpan,
-    isLoading, hasActiveFilters, resetFilters, toggleSelectAll, toggleSort, getColumnClass,
+    isLoading, hasActiveFilters, resetFilters, toggleSelectAll, toggleSort, getColumnClass, mountedColumns,
     openViewDialog, openEditDialog, handleDuplicate, requestDelete, toggleSelect, onQuickStatusChange,
     celebrateId, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant,
     getPriorityColor, getTestTypeColor, handleLimitChange, setPage, rowClassName,
@@ -187,8 +187,9 @@ export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: Te
     <>
       <div className="relative max-h-[70vh] overflow-auto rounded-xl border border-border/70 bg-card/95 shadow-sm" aria-busy={Boolean(isLoading)}>
       {isLoading && testCases.length > 0 && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/45 backdrop-blur-[1px]" role="status" aria-label="Memperbarui test cases">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none" />
+        <div className="pointer-events-none sticky top-1 z-30 ml-auto -mb-8 mr-2 flex h-8 w-fit items-center gap-2 rounded-md border border-border bg-card px-2 text-xs text-muted-foreground shadow-sm" role="status" aria-label="Memperbarui test cases">
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none" />
+          Memperbarui…
         </div>
       )}
       <Table className="w-full table-auto">
@@ -211,15 +212,15 @@ export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: Te
             <TableHead className="w-[110px] cursor-pointer select-none text-xs font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('page')}>
               <div className="flex items-center gap-1">Page <ArrowUpDown className="w-3 h-3 text-primary" /></div>
             </TableHead>
-            <TableHead className={getColumnClass('subMenu', 'w-[100px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>
-            <TableHead className={getColumnClass('weight', 'w-[68px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Weight</TableHead>
-            <TableHead className={getColumnClass('type', 'w-[80px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Type</TableHead>
-            <TableHead className={getColumnClass('priority', 'w-[84px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>
-            <TableHead className={getColumnClass('action', 'text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>
-            <TableHead className={getColumnClass('status', 'w-[140px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>
-            <TableHead className={getColumnClass('result', 'w-[120px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Result</TableHead>
-            <TableHead className={getColumnClass('record', 'w-[140px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Test Record</TableHead>
-            <TableHead className={getColumnClass('progress', 'w-[88px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Progress</TableHead>
+            {mountedColumns.subMenu && <TableHead className={getColumnClass('subMenu', 'w-[100px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>}
+            {mountedColumns.weight && <TableHead className={getColumnClass('weight', 'w-[68px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Weight</TableHead>}
+            {mountedColumns.type && <TableHead className={getColumnClass('type', 'w-[80px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Type</TableHead>}
+            {mountedColumns.priority && <TableHead className={getColumnClass('priority', 'w-[84px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>}
+            {mountedColumns.action && <TableHead className={getColumnClass('action', 'text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>}
+            {mountedColumns.status && <TableHead className={getColumnClass('status', 'w-[140px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>}
+            {mountedColumns.result && <TableHead className={getColumnClass('result', 'w-[120px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Result</TableHead>}
+            {mountedColumns.record && <TableHead className={getColumnClass('record', 'w-[140px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Test Record</TableHead>}
+            {mountedColumns.progress && <TableHead className={getColumnClass('progress', 'w-[88px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Progress</TableHead>}
             <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
           </TableRow>
         </TableHeader>
@@ -266,7 +267,7 @@ export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: Te
                   const record = testRecordById[tc.id];
 
                   const row = (
-<TestCaseDataRow key={tc.id} tc={tc} index={index} record={record} isSelected={selectedIds.has(tc.id)} celebrating={celebrateId === tc.id} page={page} limit={limit} rowClassName={rowClassName} getColumnClass={getColumnClass} openViewDialog={openViewDialog} toggleSelect={toggleSelect} onQuickStatusChange={onQuickStatusChange} setCelebrateId={setCelebrateId} getStatusColor={getStatusColor} getStatusIcon={getStatusIcon} getStatusBadgeVariant={getStatusBadgeVariant} getTestTypeColor={getTestTypeColor} getPriorityColor={getPriorityColor} openEditDialog={openEditDialog} handleDuplicate={handleDuplicate} requestDelete={requestDelete} />
+<TestCaseDataRow key={tc.id} tc={tc} index={index} record={record} isSelected={selectedIds.has(tc.id)} celebrating={celebrateId === tc.id} page={page} limit={limit} rowClassName={rowClassName} getColumnClass={getColumnClass} mountedColumns={mountedColumns} openViewDialog={openViewDialog} toggleSelect={toggleSelect} onQuickStatusChange={onQuickStatusChange} setCelebrateId={setCelebrateId} getStatusColor={getStatusColor} getStatusIcon={getStatusIcon} getStatusBadgeVariant={getStatusBadgeVariant} getTestTypeColor={getTestTypeColor} getPriorityColor={getPriorityColor} openEditDialog={openEditDialog} handleDuplicate={handleDuplicate} requestDelete={requestDelete} />
                   );
                   return process.env.NEXT_PUBLIC_QA_PERF_PROFILING === '1'
                     ? <React.Profiler key={tc.id} id={tc.id} onRender={recordRow}>{row}</React.Profiler>

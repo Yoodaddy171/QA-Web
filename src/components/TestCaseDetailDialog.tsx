@@ -199,6 +199,26 @@ export function TestCaseDetailDialog({
   onNavigate,
 }: TestCaseDetailDialogProps) {
   const [activeMainTab, setActiveMainTab] = useState('details');
+  const inspectorSurface = useRef<HTMLDivElement>(null);
+  const [contentReady, setContentReady] = useState(false);
+  const [previousOpen, setPreviousOpen] = useState(open);
+  if (previousOpen !== open) {
+    setPreviousOpen(open);
+    setContentReady(false);
+  }
+  useEffect(() => {
+    if (!open) return;
+    let canceled = false;
+    const frame = requestAnimationFrame(() => {
+      // Wait for the real shell animation, not a guessed loading timeout.
+      // No animations (including reduced motion) means content is ready now.
+      const animations = inspectorSurface.current?.getAnimations().filter(animation => animation.playState === 'running') || [];
+      void Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
+        if (!canceled) setContentReady(true);
+      });
+    });
+    return () => { canceled = true; cancelAnimationFrame(frame); };
+  }, [open]);
   const [expandedGuide, setExpandedGuide] = useState<'automation' | 'manual' | null>(null);
   const [manualCaptureBrowserMode, setManualCaptureBrowserMode] = useState<ManualCaptureBrowserMode>('clean');
   const [manualCaptureMode, setManualCaptureMode] = useState<ManualCaptureMode>('frame');
@@ -230,7 +250,7 @@ export function TestCaseDetailDialog({
   const recordingFullscreenTimerRef = useRef<number | null>(null);
   // Live capture continues in the hook. Transform its buffered data only when
   // the Automation UI is visible; overview/history do not need recording work.
-  const visibleLogs = open && activeMainTab === 'logs' ? liveLogs : EMPTY_LOGS;
+  const visibleLogs = open && contentReady && activeMainTab === 'logs' ? liveLogs : EMPTY_LOGS;
   const consoleLogs = useMemo(() => filterConsoleLogs(visibleLogs), [filterConsoleLogs, visibleLogs]);
   const groupedConsoleLogs = useMemo(() => groupConsoleLogs(consoleLogs), [consoleLogs]);
   const executionLogs = useMemo(() => visibleLogs.filter(isExecutionLog), [visibleLogs]);
@@ -894,11 +914,12 @@ export function TestCaseDetailDialog({
       onOpenChange(nextOpen);
     }}>
       <DialogContent
+        ref={inspectorSurface}
         onEscapeKeyDown={(event) => {
           if (isSystemDevLogFullscreen) { event.preventDefault(); closeSystemDevLogFullscreen(); }
           else if (isRecordingFullscreen) { event.preventDefault(); closeRecordingFullscreen(); }
         }}
-        overlayClassName="bg-black/35"
+        overlayClassName="qa-inspector-overlay bg-black/35"
         className={cn(
           "signal-surface test-case-detail-dialog inset-y-0 !top-0 !left-auto !right-0 h-dvh max-h-dvh w-full max-w-none sm:max-w-none !translate-none flex flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 border-l border-border/60 bg-card p-0 text-foreground shadow-2xl data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 lg:w-[72vw] lg:min-w-[760px] lg:max-w-[1100px]",
           isSystemDevLogFullscreen
@@ -964,6 +985,8 @@ export function TestCaseDetailDialog({
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto pr-1 outline-none scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
+                  {!contentReady && <div className="space-y-4 py-1" role="status" aria-label="Memuat detail testcase"><div className="h-24 rounded-xl bg-secondary/40" /><div className="h-40 rounded-xl bg-secondary/40" /></div>}
+                  {contentReady && <>
                   <AnimatePresence mode="wait">
                   {activeMainTab === 'details' && (
                     <TestCaseDetailsTab
@@ -1171,6 +1194,7 @@ export function TestCaseDetailDialog({
                     </TabsContent>
                   )}
                   </AnimatePresence>
+                  </>}
                 </div>
               </Tabs>
             </div>

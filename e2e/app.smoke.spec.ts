@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('loads the QA workspace and exposes primary navigation', async ({ page }) => {
   const consoleErrors: string[] = [];

@@ -12,6 +12,7 @@ import {
 } from '@/lib/client/api/testcases-client';
 import type { Stats, TestCase } from '@/lib/client/api/types';
 import { TESTCASE_STATUS } from '@/lib/domain/testcase';
+import { reconcileRows } from '@/lib/client/reconcile-rows';
 
 type RefreshCallback = () => void;
 
@@ -100,7 +101,7 @@ export function useTestCases(selectedProject: string) {
       if (fto) params.set('createdTo', fto);
 
       const data = await fetchTestCases(params, controller.signal);
-      setTestCases(data.testCases || []);
+      setTestCases(previous => reconcileRows(previous, data.testCases || []));
       setTotal(data.total || 0);
       const nextTotalPages = data.totalPages || 1;
       setTotalPages(nextTotalPages);
@@ -111,7 +112,7 @@ export function useTestCases(selectedProject: string) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       toast({ title: 'Error', description: 'Failed to load test cases', variant: 'destructive' });
     } finally {
-      setIsLoadingTestCases(false);
+      if (testCaseAbortRef.current === controller) setIsLoadingTestCases(false);
     }
   }, [debouncedSearch, filterBug, filterCreatedFrom, filterCreatedTo, filterModule, filterPriority, filterStatus, filterSubMenu, filterTag, filterTestRun, filterTestType, limit, page, sortBy, sortOrder, toast]);
 

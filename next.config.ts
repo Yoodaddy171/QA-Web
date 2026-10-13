@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   reactStrictMode: true,
+  // Opt-in profiling build; disabled for normal production deployments.
+  reactProductionProfiling: process.env.QA_PERF_PROFILING === '1',
   serverExternalPackages: ['exceljs', '@ffmpeg-installer/ffmpeg'],
   // @ts-ignore
   turbopack: {},

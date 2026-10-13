@@ -25,7 +25,7 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
   } = props;
   return isSystemDevLogFullscreen ? (
           <div className="fixed inset-0 z-[78] flex items-stretch justify-stretch bg-background text-foreground">
-            <div className="flex h-screen w-screen overflow-hidden bg-background">
+            <div className="flex h-dvh w-full overflow-hidden bg-background">
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex min-h-20 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-5 py-4">
                   <div className="min-w-0">
@@ -145,12 +145,13 @@ export function SystemDevLogFullscreen(props: SystemDevLogFullscreenProps) {
                     size="sm"
                     className="absolute right-5 top-5 z-[90] h-10 w-10 rounded-full border border-border/70 bg-background/90 p-0 text-foreground shadow-xl backdrop-blur transition hover:bg-secondary"
                     onClick={closeSystemDevLogFullscreen}
+                    aria-label="Close fullscreen DevLog"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
 
-                <div className="grid min-h-0 flex-1 grid-cols-[minmax(380px,34%)_1fr] bg-muted/25">
+                <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-2 bg-muted/25 lg:grid-cols-[minmax(280px,34%)_1fr] lg:grid-rows-1">
                   <div className="min-h-0 overflow-y-auto border-r border-border p-3">
                     {activeDevLogTab === 'execution' ? (
                     <ExecutionLogView

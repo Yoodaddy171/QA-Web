@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useCommittedActions } from '@/hooks/use-committed-actions';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle, Bot, Bug, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
@@ -127,6 +128,34 @@ interface TestCaseDetailDialogProps {
   onNavigate?: (testCase: TestCase) => void;
 }
 
+const EMPTY_LOGS: LogEntry[] = [];
+const formatRelativeTime = (relativeMs?: number) => {
+    if (typeof relativeMs !== 'number') return '-';
+    const safeMs = Math.max(0, Math.round(relativeMs));
+    const totalSeconds = Math.floor(safeMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+const getNetworkMethod = (network: NonNullable<LogEntry['network']>) => (
+    network.method || network.event || 'TRACE'
+  );
+const getNetworkStatus = (network: NonNullable<LogEntry['network']>) => {
+    if (typeof network.status === 'number') return String(network.status);
+    if (network.event === 'Request') return 'REQ';
+    if (network.event === 'Response') return 'RES';
+    return '-';
+  };
+const getNetworkStatusClass = (network: NonNullable<LogEntry['network']>) => {
+    if (typeof network.status !== 'number') return 'bg-muted text-muted-foreground dark:bg-slate-800 dark:text-muted-foreground';
+    return network.status < 400
+      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-status-passed'
+      : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-status-failed';
+  };
+const getNetworkDuration = (network: NonNullable<LogEntry['network']>) => (
+    typeof network.duration === 'number' ? `${network.duration}ms` : '-'
+  );
+
 export function TestCaseDetailDialog({
   open,
   onOpenChange,
@@ -199,16 +228,19 @@ export function TestCaseDetailDialog({
   const fullscreenTimelineRef = useRef<HTMLDivElement>(null);
   const recordingPanRef = useRef({ active: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
   const recordingFullscreenTimerRef = useRef<number | null>(null);
-  const consoleLogs = useMemo(() => filterConsoleLogs(liveLogs), [filterConsoleLogs, liveLogs]);
+  // Live capture continues in the hook. Transform its buffered data only when
+  // the Automation UI is visible; overview/history do not need recording work.
+  const visibleLogs = open && activeMainTab === 'logs' ? liveLogs : EMPTY_LOGS;
+  const consoleLogs = useMemo(() => filterConsoleLogs(visibleLogs), [filterConsoleLogs, visibleLogs]);
   const groupedConsoleLogs = useMemo(() => groupConsoleLogs(consoleLogs), [consoleLogs]);
-  const executionLogs = useMemo(() => liveLogs.filter(isExecutionLog), [liveLogs]);
+  const executionLogs = useMemo(() => visibleLogs.filter(isExecutionLog), [visibleLogs]);
   const navigationIndex = useMemo(() => {
     if (!testCaseList?.length || !viewTestCase) return -1;
     return testCaseList.findIndex(tc => tc.id === viewTestCase.id);
   }, [testCaseList, viewTestCase]);
   const rawNetworkLogs = useMemo(() => (
-    liveLogs.filter((log) => log.isNetwork || Boolean(log.network))
-  ), [liveLogs]);
+    visibleLogs.filter((log) => log.isNetwork || Boolean(log.network))
+  ), [visibleLogs]);
   const networkLogItems = useMemo(() => (
     rawNetworkLogs
       .filter((log): log is LogEntry & { network: NonNullable<LogEntry['network']> } => Boolean(log.network))
@@ -328,7 +360,7 @@ export function TestCaseDetailDialog({
     : null;
   const recordingVideoKey = `${manualRecording?.sessionId ?? 'none'}:${manualRecording?.video?.url ?? 'none'}:${manualRecordingVideoStatus ?? 'none'}`;
   const recordingTimelineBounds = useMemo(() => {
-    const values = liveLogs
+    const values = visibleLogs
       .map((log) => normalizedLogRelativeMs(log.relativeMs))
       .filter((value): value is number => typeof value === 'number');
     if (!values.length) return { min: 0, max: 0 };
@@ -336,7 +368,7 @@ export function TestCaseDetailDialog({
       min: Math.max(0, Math.min(...values) - 10000),
       max: Math.max(...values),
     };
-  }, [liveLogs]);
+  }, [visibleLogs]);
   const getRecordingVideoDurationMs = () => {
     if (recordingVideoDurationMs?.key === recordingVideoKey && recordingVideoDurationMs.durationMs > 0) {
       return recordingVideoDurationMs.durationMs;
@@ -352,12 +384,12 @@ export function TestCaseDetailDialog({
     && measuredRecordingVideoDurationMs > 0;
   const isVideoLoading = hasManualRecordingVideo && !isVideoPlaybackReady;
   const syncedVideoEvents = useMemo(() => (
-    buildSyncedVideoEvents(liveLogs, manualRecording, {
+    buildSyncedVideoEvents(visibleLogs, manualRecording, {
       measuredDurationMs: recordingVideoDurationMs?.key === recordingVideoKey ? recordingVideoDurationMs.durationMs : undefined,
     })
       .filter((event) => typeof event.clampedOffsetMs === 'number')
       .slice(0, 80)
-  ), [liveLogs, manualRecording, recordingVideoDurationMs, recordingVideoKey]);
+  ), [visibleLogs, manualRecording, recordingVideoDurationMs, recordingVideoKey]);
   const filteredSyncedVideoEvents = useMemo(() => (
     filterVideoEventsByCategory(syncedVideoEvents, syncedEventFilters)
   ), [syncedEventFilters, syncedVideoEvents]);
@@ -393,14 +425,6 @@ export function TestCaseDetailDialog({
   ), [selectedSyncedVideoEvent]);
   const syncedNetworkLogIdSet = useMemo(() => new Set(syncedNetworkLogIds), [syncedNetworkLogIds]);
 
-  const formatRelativeTime = (relativeMs?: number) => {
-    if (typeof relativeMs !== 'number') return '-';
-    const safeMs = Math.max(0, Math.round(relativeMs));
-    const totalSeconds = Math.floor(safeMs / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
-  };
   const formatLogRecordingTime = (log: Pick<LogEntry, 'relativeMs'>) => (
     formatRelativeTime(hasManualRecordingVideo ? getLogVideoMs(log) : normalizedLogRelativeMs(log.relativeMs))
   );
@@ -413,10 +437,9 @@ export function TestCaseDetailDialog({
       ? video.duration
       : seekableDuration;
     if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
-      setRecordingVideoDurationMs({
-        key: recordingVideoKey,
-        durationMs: Math.round(durationSeconds * 1000),
-      });
+      const durationMs = Math.round(durationSeconds * 1000);
+      setRecordingVideoDurationMs(current => current?.key === recordingVideoKey && current.durationMs === durationMs
+        ? current : { key: recordingVideoKey, durationMs });
     }
   };
 
@@ -497,23 +520,8 @@ export function TestCaseDetailDialog({
     });
   };
 
-  const getNetworkMethod = (network: NonNullable<LogEntry['network']>) => (
-    network.method || network.event || 'TRACE'
-  );
 
-  const getNetworkStatus = (network: NonNullable<LogEntry['network']>) => {
-    if (typeof network.status === 'number') return String(network.status);
-    if (network.event === 'Request') return 'REQ';
-    if (network.event === 'Response') return 'RES';
-    return '-';
-  };
 
-  const getNetworkStatusClass = (network: NonNullable<LogEntry['network']>) => {
-    if (typeof network.status !== 'number') return 'bg-muted text-muted-foreground dark:bg-slate-800 dark:text-muted-foreground';
-    return network.status < 400
-      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-status-passed'
-      : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-status-failed';
-  };
 
   const getSyncedEventSeverityClass = (event: SyncedVideoEvent) => {
     if (event.severity === 'error') return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-950/30 dark:text-rose-200';
@@ -531,9 +539,6 @@ export function TestCaseDetailDialog({
     return 'border-indigo-200 bg-indigo-500 shadow-indigo-500/40';
   };
 
-  const getNetworkDuration = (network: NonNullable<LogEntry['network']>) => (
-    typeof network.duration === 'number' ? `${network.duration}ms` : '-'
-  );
 
   const updateNetworkFilters = (nextFilters: Partial<NetworkFilterState>) => {
     setNetworkFilters((current) => ({ ...current, ...nextFilters }));
@@ -840,6 +845,8 @@ export function TestCaseDetailDialog({
     loadedRunLabel, loadCurrentLogRun, isLoadingHistory, loadLogHistory, clearLogs,
   };
 
+  const logActions = useCommittedActions({ seekRecordingFromLog, updateNetworkFilters, toggleNetworkFilter });
+
   const systemDevLogFullscreenProps = {
     isSystemDevLogFullscreen, activeDevLogTab, fullscreenNetworkGroups, fullscreenConsoleGroups, executionLogs, viewTestCase, evidenceLogs: liveLogs,
     setActiveDevLogTab, setSelectedSystemDevLogId, selectedSystemDevLogId, setIsSystemDevLogFullscreen,
@@ -887,11 +894,15 @@ export function TestCaseDetailDialog({
       onOpenChange(nextOpen);
     }}>
       <DialogContent
-        overlayClassName="bg-black/25 backdrop-blur-[2px]"
+        onEscapeKeyDown={(event) => {
+          if (isSystemDevLogFullscreen) { event.preventDefault(); closeSystemDevLogFullscreen(); }
+          else if (isRecordingFullscreen) { event.preventDefault(); closeRecordingFullscreen(); }
+        }}
+        overlayClassName="bg-black/35"
         className={cn(
-          "signal-surface test-case-detail-dialog inset-y-0 !left-auto !right-0 h-dvh max-h-dvh w-screen !max-w-none !translate-x-0 translate-y-0 flex flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 border-l border-border/60 bg-card p-0 text-foreground shadow-2xl data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full lg:w-[72vw] lg:min-w-[760px] lg:max-w-[1100px]",
+          "signal-surface test-case-detail-dialog inset-y-0 !top-0 !left-auto !right-0 h-dvh max-h-dvh w-full max-w-none sm:max-w-none !translate-none flex flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 border-l border-border/60 bg-card p-0 text-foreground shadow-2xl data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 lg:w-[72vw] lg:min-w-[760px] lg:max-w-[1100px]",
           isSystemDevLogFullscreen
-            ? "left-[50%] right-auto top-[50%] h-screen max-h-screen w-screen max-w-none translate-x-[-50%] translate-y-[-50%] rounded-none border-0 sm:top-[50%] sm:max-h-screen sm:max-w-none"
+            ? "w-full max-w-none rounded-none border-0 lg:w-full lg:min-w-0 lg:max-w-none"
             : isRecordingFullscreen
               ? "w-[96vw] sm:max-w-[96vw]"
               : "rounded-2xl"
@@ -1009,386 +1020,6 @@ export function TestCaseDetailDialog({
                         <div className="flex flex-col flex-1 min-h-0">
                           <DevLogGuide expandedGuide={expandedGuide} setExpandedGuide={setExpandedGuide} />
 
-                          <div className="!hidden flex-1 flex-col overflow-hidden rounded-2xl border border-border/60 bg-secondary/20 shadow-inner" aria-hidden="true">
-                            <div className="flex h-11 shrink-0 items-center justify-between border-b border-border/40 bg-secondary/40 px-4">
-                              <div className="flex rounded-lg bg-background/50 p-1 border border-border/40">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className={cn(
-                                    "h-7 px-3 text-xs font-bold uppercase tracking-wider",
-                                    activeDevLogTab === 'console'
-                                      ? 'bg-primary text-primary-foreground shadow-sm'
-                                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
-                                  )}
-                                  onClick={() => setActiveDevLogTab('console')}
-                                >
-                                  Console
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className={cn(
-                                    "h-7 px-3 text-xs font-bold uppercase tracking-wider",
-                                    activeDevLogTab === 'network'
-                                      ? 'bg-primary text-primary-foreground shadow-sm'
-                                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
-                                  )}
-                                  onClick={() => setActiveDevLogTab('network')}
-                                >
-                                  Network
-                                </Button>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {activeDevLogTab === 'network' && (
-                                  <Badge variant="outline" className="h-6 border-indigo-200 bg-indigo-50 text-xs font-bold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-status-in-progress">
-                                    {networkLogItems.length} Requests
-                                  </Badge>
-                                )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 gap-1.5 rounded-xl border-border/60 bg-background/80 text-xs font-bold text-muted-foreground hover:text-foreground shadow-sm"
-                                  onClick={openSystemDevLogFullscreen}
-                                >
-                                  <Maximize2 className="h-3.5 w-3.5" />
-                                  Fullscreen
-                                </Button>
-                              </div>
-                            </div>
-
-                            <div className="min-h-0 flex-1 overflow-hidden bg-background/40">
-                              {activeDevLogTab === 'console' ? (
-                                <div className="h-full overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
-                                  {groupedConsoleLogs.length === 0 ? (
-                                    <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
-                                      <Bot className="mb-4 h-10 w-10 opacity-20" />
-                                      <p className="text-xs font-semibold uppercase tracking-wider">Waiting for Browser Logs...</p>
-                                      <p className="mt-2 text-xs font-medium opacity-60">Pastikan Automation Capture sudah terhubung.</p>
-                                    </div>
-                                  ) : (
-                                    groupedConsoleLogs.map((group) => {
-                                      const { log, entries, count } = group;
-                                      const logId = group.id;
-                                      const isError = entries.some((entry) => entry.level === 'SEVERE' || entry.log?.toString().toLowerCase().includes('error'));
-                                      const isWarning = entries.some((entry) => entry.level === 'WARNING' || entry.log?.toString().toLowerCase().includes('warn'));
-                                      const canExpand = typeof log.log === 'object' || count > 1;
-
-                                      return (
-                                        <div
-                                          key={logId}
-                                          className={cn(
-                                            "mb-1.5 rounded-xl border border-border/40 bg-card/60 transition duration-200",
-                                            isError ? 'border-red-200 bg-red-50/50 dark:border-red-500/20 dark:bg-red-950/20' : isWarning ? 'border-amber-200 bg-amber-50/50 dark:border-amber-500/20 dark:bg-amber-950/20' : 'hover:border-border hover:bg-card'
-                                          )}
-                                        >
-                                          <div
-                                            className={cn(
-                                              "flex w-full cursor-pointer items-start gap-3 p-2.5 text-left text-xs font-medium leading-relaxed",
-                                              !canExpand && "cursor-default"
-                                            )}
-                                            onClick={() => {
-                                              if (canExpand) {
-                                                setExpandedLogId(expandedLogId === logId ? null : logId);
-                                              }
-                                              seekRecordingFromLog(log);
-                                            }}
-                                          >
-                                            <span className="text-muted-foreground text-xs min-w-[64px] font-bold opacity-60">
-                                              {log.timestamp ? new Date(log.timestamp).toLocaleTimeString('id-ID', { hour12: false }) : '-'}
-                                            </span>
-                                            {typeof log.relativeMs === 'number' && (
-                                              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-status-in-progress">
-                                                {formatRelativeTime(log.relativeMs)}
-                                              </span>
-                                            )}
-                                            <div className="flex-1 break-all">
-                                              <span className={cn(isError ? 'text-rose-700 dark:text-status-failed font-bold' : isWarning ? 'text-amber-700 dark:text-status-blocked font-bold' : 'text-foreground/90')}>
-                                                {getConsoleLogText(log)}
-                                              </span>
-                                            </div>
-                                            {count > 1 && (
-                                              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
-                                                x{count}
-                                              </span>
-                                            )}
-                                            {canExpand && (
-                                              <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0 mt-0.5", expandedLogId === logId && "rotate-180")} />
-                                            )}
-                                          </div>
-                                          <AnimatePresence>
-                                            {expandedLogId === logId && canExpand && (
-                                              <motion.div
-                                                initial={false}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.2 }}
-                                                className="overflow-hidden"
-                                              >
-                                                <div className="space-y-3 px-10 pb-4">
-                                                  {count > 1 && (
-                                                    <div className="rounded-xl border border-border/60 bg-background/50 p-2.5 shadow-inner">
-                                                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Repeated {count} times</p>
-                                                      <div className="max-h-48 space-y-1 overflow-y-auto pr-1 scrollbar-thin">
-                                                        {entries.map((entry, entryIndex) => (
-                                                          <button
-                                                            key={entry.id ?? `${logId}-repeat-${entryIndex}`}
-                                                            type="button"
-                                                            className="grid w-full grid-cols-[48px_72px_1fr] gap-3 rounded-lg border border-border/40 bg-secondary/20 px-3 py-1.5 text-left text-xs hover:bg-secondary/40 transition-colors"
-                                                            onClick={() => seekRecordingFromLog(entry)}
-                                                          >
-                                                            <span className="font-semibold text-muted-foreground opacity-40">#{entryIndex + 1}</span>
-                                                            <span className="font-mono font-bold text-indigo-600 dark:text-status-in-progress">{formatRelativeTime(entry.relativeMs)}</span>
-                                                            <span className="truncate text-foreground font-medium">{getConsoleLogText(entry)}</span>
-                                                          </button>
-                                                        ))}
-                                                      </div>
-                                                    </div>
-                                                  )}
-                                                  <div className="bg-secondary/30 rounded-xl p-4 border border-border/40 shadow-inner">
-                                                    <pre className="text-foreground/80 text-xs whitespace-pre-wrap overflow-x-auto font-mono leading-relaxed">
-                                                      {formatPrettyValue(log.log)}
-                                                    </pre>
-                                                  </div>
-                                                </div>
-                                              </motion.div>
-                                            )}
-                                          </AnimatePresence>
-                                        </div>
-                                      );
-                                    })
-                                  )}
-                                  <div ref={logEndRef} className="h-4" />
-                                </div>
-                              ) : (
-                                <div className="h-full flex flex-col">
-                                  <div className="space-y-2.5 border-b border-border/40 bg-secondary/40 p-3 shadow-sm">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <div className="relative min-w-[240px] flex-1">
-                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                                        <Input
-                                          value={networkFilters.search}
-                                          onChange={(event) => updateNetworkFilters({ search: event.target.value })}
-                                          placeholder="Search URL, method, status..."
-                                          className="h-9 border-border/60 bg-background/80 pl-9 text-xs font-medium text-foreground placeholder:text-muted-foreground/50 rounded-xl focus-visible:ring-primary/20 transition duration-200"
-                                        />
-                                      </div>
-                                      <select
-                                        value={networkFilters.host}
-                                        onChange={(event) => updateNetworkFilters({ host: event.target.value })}
-                                        className="h-9 min-w-[160px] rounded-xl border border-border/60 bg-background/80 px-3 text-xs font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/10 transition duration-200"
-                                      >
-                                        <option value="all">All hosts ({networkLogItems.length})</option>
-                                        {networkHosts.map((host) => (
-                                          <option key={host} value={host}>{host}</option>
-                                        ))}
-                                      </select>
-                                      <select
-                                        value={networkFilters.method}
-                                        onChange={(event) => updateNetworkFilters({ method: event.target.value })}
-                                        className="h-9 rounded-xl border border-border/60 bg-background/80 px-3 text-xs font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/10 transition duration-200"
-                                      >
-                                        <option value="all">Methods</option>
-                                        {networkMethods.map((method) => (
-                                          <option key={method} value={method}>{method}</option>
-                                        ))}
-                                      </select>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-9 gap-1.5 px-3 rounded-xl border-border/60 bg-background/80 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground shadow-sm"
-                                        onClick={() => setNetworkFilters(DEFAULT_NETWORK_FILTERS)}
-                                      >
-                                        <RefreshCw className="h-3.5 w-3.5" />
-                                        Reset
-                                      </Button>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                                      {[
-                                        { key: 'showPreflight' as const, label: `Preflight ${networkCategoryCounts.preflight}` },
-                                        { key: 'showDocument' as const, label: `Docs ${networkCategoryCounts.document}` },
-                                        { key: 'showScript' as const, label: `JS ${networkCategoryCounts.script}` },
-                                        { key: 'showImage' as const, label: `Img ${networkCategoryCounts.image}` },
-                                        { key: 'showStatic' as const, label: `Static ${networkCategoryCounts.static}` },
-                                        { key: 'showTelemetry' as const, label: `Log ${networkCategoryCounts.telemetry}` },
-                                        { key: 'showOther' as const, label: `Other ${networkCategoryCounts.other}` },
-                                      ].map((filter) => (
-                                        <Button
-                                          key={filter.key}
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className={cn(
-                                            "h-7 rounded-lg border px-3 text-xs font-bold transition duration-200",
-                                            networkFilters[filter.key]
-                                              ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
-                                              : 'border-border/40 bg-secondary/30 text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
-                                          )}
-                                          onClick={() => toggleNetworkFilter(filter.key)}
-                                        >
-                                          {filter.label}
-                                        </Button>
-                                      ))}
-                                      <span className="ml-auto rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-semibold uppercase tracking-tighter text-primary">
-                                        API {networkCategoryCounts.business}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  <div className="grid grid-cols-12 gap-2 p-2.5 bg-secondary/40 border-b border-border/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
-                                    <div className="col-span-1">Method</div>
-                                    <div className="col-span-1">Type</div>
-                                    <div className="col-span-5 pl-1">Name / Path</div>
-                                    <div className="col-span-2 text-center">Status</div>
-                                    <div className="col-span-2 text-right">Time</div>
-                                    <div className="col-span-1"></div>
-                                  </div>
-
-                                  <div className="flex-1 overflow-y-auto divide-y divide-border/30 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
-                                    {groupedNetworkLogs.length === 0 ? (
-                                      <div className="h-full flex flex-col items-center justify-center py-24 text-muted-foreground">
-                                        <RefreshCw className="w-10 h-10 mb-4 opacity-10 animate-spin" />
-                                        <p className="font-semibold tracking-[0.2em] text-xs uppercase opacity-40">Listening for traffic...</p>
-                                      </div>
-                                    ) : (
-                                      groupedNetworkLogs.map((group) => {
-                                        const { log: net, meta, entries, count } = group;
-                                        const logId = group.id;
-
-                                        return (
-                                          <div key={logId} className="group hover:bg-secondary/20 transition-colors">
-                                            <div
-                                              className="grid grid-cols-12 gap-2 p-2.5 cursor-pointer items-center text-xs"
-                                              onClick={() => {
-                                                seekRecordingFromLog(net);
-                                                setExpandedLogId(expandedLogId === logId ? null : logId);
-                                              }}
-                                            >
-                                              <div className="col-span-1 font-semibold text-primary truncate">{getNetworkMethod(net.network)}</div>
-                                              <div className="col-span-1 truncate">
-                                                <span className={`rounded-md border px-1.5 py-0.5 text-xs font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
-                                                  {meta.label}
-                                                </span>
-                                              </div>
-                                              <div className="col-span-5 min-w-0 pl-1">
-                                                <div className="truncate font-semibold text-foreground">{meta.pathname.split('/').pop() || meta.pathname || net.network.url}</div>
-                                                <div className="truncate text-xs text-muted-foreground font-medium opacity-60">{meta.host}</div>
-                                              </div>
-                                              <div className="col-span-2 text-center">
-                                                <span className={cn("px-2 py-0.5 rounded-lg text-xs font-semibold", getNetworkStatusClass(net.network))}>
-                                                  {getNetworkStatus(net.network)}
-                                                </span>
-                                              </div>
-                                              <div className="col-span-2 text-right">
-                                                <div className="font-bold text-muted-foreground">{getNetworkDuration(net.network)}</div>
-                                                {typeof net.relativeMs === 'number' && (
-                                                  <div className="text-xs font-semibold text-primary uppercase tracking-tighter">{formatRelativeTime(net.relativeMs)}</div>
-                                                )}
-                                              </div>
-                                              <div className="col-span-1 flex items-center justify-end gap-1.5">
-                                                {count > 1 && (
-                                                  <span className="rounded-full border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">
-                                                    {count}
-                                                  </span>
-                                                )}
-                                                <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground/40 transition-transform group-hover:text-muted-foreground", expandedLogId === logId && "rotate-180")} />
-                                              </div>
-                                            </div>
-                                            <AnimatePresence>
-                                              {expandedLogId === logId && (
-                                                <motion.div
-                                                  initial={false}
-                                                  animate={{ opacity: 1 }}
-                                                  exit={{ opacity: 0 }}
-                                                  transition={{ duration: 0.2 }}
-                                                  className="overflow-hidden"
-                                                >
-                                                  <div className="p-5 bg-secondary/10 border-t border-border/30 space-y-4">
-                                                    {count > 1 && (
-                                                      <div className="rounded-xl border border-border/40 bg-background/60 p-3 shadow-inner">
-                                                        <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground opacity-50">Repeated Request History ({count})</p>
-                                                        <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
-                                                          {entries.map((entry, entryIndex) => (
-                                                            <button
-                                                              key={entry.log.id ?? `${logId}-repeat-${entryIndex}`}
-                                                              type="button"
-                                                              className="grid w-full grid-cols-[40px_72px_64px_1fr] gap-3 rounded-lg border border-border/40 bg-secondary/30 px-3 py-2 text-left text-xs hover:bg-secondary/50 transition-colors"
-                                                              onClick={() => seekRecordingFromLog(entry.log)}
-                                                            >
-                                                              <span className="font-semibold text-muted-foreground opacity-30">#{entryIndex + 1}</span>
-                                                              <span className="font-mono font-bold text-primary">{formatRelativeTime(entry.log.relativeMs)}</span>
-                                                              <span className={cn("rounded-md px-1.5 py-0.5 text-center font-semibold", getNetworkStatusClass(entry.log.network))}>
-                                                                {getNetworkStatus(entry.log.network)}
-                                                              </span>
-                                                              <span className="truncate text-foreground font-medium">{getNetworkDuration(entry.log.network)}</span>
-                                                            </button>
-                                                          ))}
-                                                        </div>
-                                                      </div>
-                                                    )}
-
-                                                    <div className="rounded-xl border border-border/40 bg-background/60 p-4 shadow-inner space-y-4">
-                                                      <div>
-                                                        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground opacity-50">Full Destination URL</p>
-                                                        <pre className="overflow-auto rounded-lg border border-border/30 bg-secondary/20 p-2.5 font-mono text-xs leading-relaxed text-foreground/80 break-all whitespace-pre-wrap">
-                                                          {net.network.url}
-                                                        </pre>
-                                                      </div>
-
-                                                      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-                                                        <div className="space-y-2">
-                                                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground opacity-50">Request Headers</p>
-                                                          <pre className={cn(networkCodePanelClass, "h-[240px] border-border/30 bg-secondary/20 text-foreground/70")}>
-                                                            {formatPrettyValue(net.network.headers)}
-                                                          </pre>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                          <p className="text-xs font-semibold uppercase tracking-wider text-primary/60 opacity-80">Request Body</p>
-                                                          <pre className={cn(networkCodePanelClass, "h-[240px] border-primary/20 bg-primary/5 text-primary/80")}>
-                                                            {formatPrettyValue(getRequestPayload(net.network.data))}
-                                                          </pre>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600/60 opacity-80">Response Body</p>
-                                                          <pre className={cn(networkCodePanelClass, "h-[240px] border-emerald-500/20 bg-emerald-500/5 text-emerald-600/80 font-semibold")}>
-                                                            {formatPrettyValue(getResponsePayload(net.network.data))}
-                                                          </pre>
-                                                        </div>
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                </motion.div>
-                                              )}
-                                            </AnimatePresence>
-                                          </div>
-                                        );
-                                      })
-                                    )}
-                                    <div ref={logEndRef} className="h-4" />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            <div className="bg-secondary/60 px-4 py-2 border-t border-border/40 flex items-center justify-between shrink-0 shadow-inner">
-                              <div className="flex items-center gap-5 text-xs font-semibold uppercase tracking-[0.15em]">
-                                <div className="flex items-center gap-2">
-                                  <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                                  <span className="text-emerald-700 dark:text-status-passed">{okLogCount} Succesful</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <div className="h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"></div>
-                                  <span className="text-rose-700 dark:text-status-failed">{errorLogCount} Critical Errors</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-tighter italic">
-                                <RefreshCw className="h-3 w-3 animate-spin-slow" />
-                                Live Telemetry Stream
-                              </div>
-                            </div>
-                          </div>
 
                           <div className="hidden shrink-0 mt-4 items-start gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm" aria-hidden="true">
                             <div className="mt-0.5 rounded-xl border border-primary/20 bg-background/80 p-2 text-primary shadow-sm">
@@ -1466,7 +1097,7 @@ export function TestCaseDetailDialog({
                                   evidenceLogs={liveLogs}
                                   logEndRef={logEndRef}
                                   formatRelativeTime={formatRelativeTime}
-                                  onSelectLog={seekRecordingFromLog}
+                                  onSelectLog={logActions.seekRecordingFromLog}
                                 />
                               ) : activeDevLogTab === 'console' ? (
                                 <ConsoleLogView
@@ -1474,7 +1105,7 @@ export function TestCaseDetailDialog({
                                   logEndRef={logEndRef}
                                   expandedLogId={expandedLogId}
                                   setExpandedLogId={setExpandedLogId}
-                                  seekRecordingFromLog={seekRecordingFromLog}
+                                  seekRecordingFromLog={logActions.seekRecordingFromLog}
                                   formatRelativeTime={formatRelativeTime}
                                   getConsoleLogText={getConsoleLogText}
                                   formatPrettyValue={formatPrettyValue}
@@ -1482,7 +1113,7 @@ export function TestCaseDetailDialog({
                               ) : (
                                 <NetworkLogView
                                   networkFilters={networkFilters}
-                                  updateNetworkFilters={updateNetworkFilters}
+                                  updateNetworkFilters={logActions.updateNetworkFilters}
                                   networkLogItems={networkLogItems}
                                   networkHosts={networkHosts}
                                   networkMethods={networkMethods}
@@ -1490,10 +1121,10 @@ export function TestCaseDetailDialog({
                                   DEFAULT_NETWORK_FILTERS={DEFAULT_NETWORK_FILTERS}
                                   networkCategoryCounts={networkCategoryCounts}
                                   hiddenNetworkCount={hiddenNetworkCount}
-                                  toggleNetworkFilter={toggleNetworkFilter}
+                                  toggleNetworkFilter={logActions.toggleNetworkFilter}
                                   groupedNetworkLogs={groupedNetworkLogs}
                                   logEndRef={logEndRef}
-                                  seekRecordingFromLog={seekRecordingFromLog}
+                                  seekRecordingFromLog={logActions.seekRecordingFromLog}
                                   expandedLogId={expandedLogId}
                                   setExpandedLogId={setExpandedLogId}
                                   getNetworkMethod={getNetworkMethod}
@@ -1570,6 +1201,7 @@ export function TestCaseDetailDialog({
                   size="sm"
                   className="absolute right-4 top-4 z-[90] h-10 w-10 rounded-full border border-border/70 bg-background/90 p-0 text-foreground shadow-xl backdrop-blur transition hover:bg-secondary"
                   onClick={closeRecordingFullscreen}
+                  aria-label="Close recording fullscreen"
                 >
                   <X className="h-4 w-4" />
                 </Button>

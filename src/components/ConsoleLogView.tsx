@@ -1,4 +1,5 @@
 'use client';
+import { memo } from 'react';
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, Clock } from 'lucide-react';
@@ -6,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 type ConsoleLogViewProps = Record<string, any>;
 
-export function ConsoleLogView(props: ConsoleLogViewProps) {
+export const ConsoleLogView = memo(function ConsoleLogView(props: ConsoleLogViewProps) {
   const {
     groupedConsoleLogs, logEndRef, expandedLogId, setExpandedLogId,
     seekRecordingFromLog, formatRelativeTime, getConsoleLogText, formatPrettyValue,
@@ -30,7 +31,14 @@ export function ConsoleLogView(props: ConsoleLogViewProps) {
           return (
             <div key={logId} className={cn('group', isError ? 'bg-rose-50 dark:bg-rose-950/20' : isWarning ? 'bg-amber-50 dark:bg-amber-950/20' : 'hover:bg-secondary/60 dark:hover:bg-secondary/50')}>
               <div
-                className="flex items-start gap-3 p-2 cursor-pointer transition-colors"
+                role="button"
+                tabIndex={0}
+                aria-label={`Inspect console event ${getConsoleLogText(log)}`}
+                aria-expanded={canExpand ? expandedLogId === logId : undefined}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
+                }}
+                className="flex items-start gap-3 p-2 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2"
                 onClick={() => {
                   seekRecordingFromLog(log);
                   setExpandedLogId(expandedLogId === logId ? null : logId);
@@ -84,4 +92,4 @@ export function ConsoleLogView(props: ConsoleLogViewProps) {
       <div ref={logEndRef} className="h-4" />
     </div>
   );
-}
+});

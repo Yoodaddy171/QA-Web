@@ -15,9 +15,158 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';
+import { TestCaseStatusCell } from '@/components/TestCaseStatusCell';
 import { cn } from '@/lib/utils';
 
 type TestCaseTableBodyProps = Record<string, any>;
+// Per-row diagnostics are compiled out of ordinary production builds.
+const recordRow: React.ProfilerOnRenderCallback = (id, phase, actualDuration) => {
+  const target = window as typeof window & { __qaRowCommits?: Array<{ id: string; phase: string; actualDuration: number }> };
+  const commits = target.__qaRowCommits ??= [];
+  commits.push({ id, phase, actualDuration });
+  if (commits.length > 5000) commits.splice(0, commits.length - 5000);
+};
+const TestCaseDataRow = React.memo(function TestCaseDataRow(props: TestCaseTableBodyProps) {
+  const { tc, index, isSelected, page, limit, rowClassName, openViewDialog, toggleSelect, ...cells } = props;
+  return (
+<TableRow
+
+                    className={cn(
+                      'group cursor-pointer border-border/30 transition-colors duration-150 hover:bg-secondary/40', rowClassName,
+                      isSelected && 'bg-primary/[0.06] hover:bg-primary/10'
+                    )}
+
+                    title="Klik untuk melihat detail"
+                    onClick={(e) => {
+                      // Ignore clicks on interactive controls inside the row.
+                      if ((e.target as HTMLElement).closest('button, a, input, select, [role="checkbox"], [role="combobox"], [role="menu"]')) return;
+                      openViewDialog(tc);
+                    }}
+                  >
+                    <TableCell className="sticky left-0 z-10 bg-card pl-4 group-hover:bg-secondary">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(tc.id)}
+                        className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                      />
+                    </TableCell>
+                    <TableCell className="sticky left-10 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">
+                      {(page - 1) * limit + index + 1}
+                    </TableCell>
+                    <TestCaseDataCells tc={tc} openViewDialog={openViewDialog} {...cells} />
+                  </TableRow>
+  );
+});
+
+// Sorting and selection change the row shell, not unchanged data/control trees.
+const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseTableBodyProps) {
+  const { tc, record, celebrating, getColumnClass, openViewDialog, onQuickStatusChange, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant, getTestTypeColor, getPriorityColor, openEditDialog, handleDuplicate, requestDelete } = props;
+  return (
+    <>
+                    <TableCell className="sticky left-[72px] z-10 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden truncate whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary" title={tc.testCaseId}>{tc.testCaseId}</TableCell>
+                    <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={tc.page}>{tc.page}</TableCell>
+                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[100px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>
+                    <TableCell className={getColumnClass('weight')}>
+                      {tc.calculatedWeight != null ? (
+                        <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-xs font-mono text-muted-foreground">
+                          {tc.calculatedWeight.toFixed(2)}%
+                        </Badge>
+                      ) : (
+                      <span className="text-xs font-semibold text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className={getColumnClass('type')}>
+                      <Badge variant="outline" className={cn("rounded-md text-xs font-bold", getTestTypeColor(tc.testType))}>
+                        {tc.testType}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className={getColumnClass('priority')}>
+                      <Badge variant="outline" className={cn("rounded-md text-xs font-bold", getPriorityColor(tc.priority))}>
+                        {tc.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className={getColumnClass('action', 'max-w-[180px]')}>
+                      <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{tc.testAction}</p>
+                    </TableCell>
+                    <TableCell className={getColumnClass('status')}>
+                      {onQuickStatusChange ? (
+                        <div className="relative">
+                          {celebrating && <ConfettiBurst radius={44} count={14} />}
+                        <TestCaseStatusCell id={tc.id} displayId={tc.testCaseId} status={tc.status} onChange={onQuickStatusChange} celebrate={setCelebrateId} color={getStatusColor} icon={getStatusIcon} />
+                        </div>
+                      ) : (
+                        <Badge variant={getStatusBadgeVariant(tc.status)} className="gap-1 text-xs font-semibold">
+                          {getStatusIcon(tc.status)} {tc.status}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className={getColumnClass('result', 'px-3')}>
+                      {tc.actualResult ? (
+                        <Badge variant={tc.actualResult === 'As Expected' ? 'success' : tc.actualResult === 'Not As Expected' ? 'failed' : 'outline'} className="text-xs font-semibold">
+                          {tc.actualResult}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs font-semibold text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className={getColumnClass('record', 'px-3')}>
+                      {record ? (
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap gap-1">
+                            {record.hasAutomationRun && (
+                              <Badge className="rounded-md bg-indigo-500/10 text-xs font-semibold text-status-in-progress border-indigo-500/20 shadow-none uppercase">
+                                Auto
+                              </Badge>
+                            )}
+                            {record.hasManualCapture && (
+                              <Badge className="rounded-md bg-teal-500/10 text-xs font-semibold text-bug-fixed border-teal-500/20 shadow-none uppercase">
+                                Manual
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground uppercase tracking-tighter">
+                            <CalendarClock className="h-2.5 w-2.5" />
+                            {formatLastRun(record.lastRunAt)}
+                          </div>
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-xs font-semibold text-muted-foreground uppercase">
+                          No Records
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className={getColumnClass('progress')}>
+                      <div className="flex items-center gap-2">
+                        <Progress value={tc.progress} className="h-1 w-12 bg-secondary/50" />
+                        <span className="text-xs font-bold text-muted-foreground">{tc.progress}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-label={`Actions for ${tc.testCaseId}`} title={`Actions for ${tc.testCaseId}`} variant="ghost" size="sm" className="h-7 w-7 rounded-md p-0 text-muted-foreground opacity-45 transition-opacity duration-150 hover:bg-secondary hover:text-foreground hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-card elevation-3 border-border/60 text-foreground">
+                          <DropdownMenuItem onClick={() => openViewDialog(tc)}>
+                            <Eye className="w-4 h-4 mr-2" /> Lihat Detail
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(tc)}>
+                            <Edit3 className="w-4 h-4 mr-2" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicate(tc)}>
+                            <Copy className="w-4 h-4 mr-2" /> Duplikasi
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => requestDelete(tc)} className="text-status-failed focus:text-status-failed">
+                            <Trash2 className="w-4 h-4 mr-2" /> Hapus
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+    </>
+  );
+});
 const TESTCASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const formatLastRun = (dateStr: string | null) => {
@@ -25,7 +174,7 @@ const formatLastRun = (dateStr: string | null) => {
   return new Date(dateStr).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
 };
 
-export function TestCaseTableBody(props: TestCaseTableBodyProps) {
+export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: TestCaseTableBodyProps) {
   const {
     selectedProject, testCases, selectedIds, testRecordById, page, limit, total, totalPages, tableColSpan,
     isLoading, hasActiveFilters, resetFilters, toggleSelectAll, toggleSort, getColumnClass,
@@ -116,147 +265,12 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
                 testCases.map((tc, index) => {
                   const record = testRecordById[tc.id];
 
-                  return (
-                  <TableRow
-                    key={tc.id}
-                    className={cn(
-                      'group cursor-pointer border-border/30 transition-colors duration-150 hover:bg-secondary/40', rowClassName,
-                      selectedIds.has(tc.id) && 'bg-primary/[0.06] hover:bg-primary/10'
-                    )}
-
-                    title="Klik untuk melihat detail"
-                    onClick={(e) => {
-                      // Ignore clicks on interactive controls inside the row.
-                      if ((e.target as HTMLElement).closest('button, a, input, select, [role="checkbox"], [role="combobox"], [role="menu"]')) return;
-                      openViewDialog(tc);
-                    }}
-                  >
-                    <TableCell className="sticky left-0 z-10 bg-card pl-4 group-hover:bg-secondary">
-                      <Checkbox
-                        checked={selectedIds.has(tc.id)}
-                        onCheckedChange={() => toggleSelect(tc.id)}
-                        className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
-                      />
-                    </TableCell>
-                    <TableCell className="sticky left-10 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">
-                      {(page - 1) * limit + index + 1}
-                    </TableCell>
-                    <TableCell className="sticky left-[72px] z-10 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden truncate whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary" title={tc.testCaseId}>{tc.testCaseId}</TableCell>
-                    <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={tc.page}>{tc.page}</TableCell>
-                    <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[100px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>
-                    <TableCell className={getColumnClass('weight')}>
-                      {tc.calculatedWeight != null ? (
-                        <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-xs font-mono text-muted-foreground">
-                          {tc.calculatedWeight.toFixed(2)}%
-                        </Badge>
-                      ) : (
-                      <span className="text-xs font-semibold text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className={getColumnClass('type')}>
-                      <Badge variant="outline" className={cn("rounded-md text-xs font-bold", getTestTypeColor(tc.testType))}>
-                        {tc.testType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className={getColumnClass('priority')}>
-                      <Badge variant="outline" className={cn("rounded-md text-xs font-bold", getPriorityColor(tc.priority))}>
-                        {tc.priority}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className={getColumnClass('action', 'max-w-[180px]')}>
-                      <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{tc.testAction}</p>
-                    </TableCell>
-                    <TableCell className={getColumnClass('status')}>
-                      {onQuickStatusChange ? (
-                        <div className="relative">
-                          {celebrateId === tc.id && <ConfettiBurst radius={44} count={14} />}
-                        <Select value={tc.status} onValueChange={(val) => { if (val === 'DONE' && tc.status !== 'DONE') setCelebrateId(tc.id); onQuickStatusChange(tc.id, val); }}>
-                          <SelectTrigger className={cn("h-8 w-[178px] rounded-lg text-xs font-bold shadow-none gap-1 px-2", getStatusColor(tc.status))}>
-                            {getStatusIcon(tc.status)} <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
-                            <SelectItem value="DONE" className="text-xs font-bold rounded-lg">DONE</SelectItem>
-                            <SelectItem value="NOT DONE" className="text-xs font-bold rounded-lg">NOT DONE</SelectItem>
-                            <SelectItem value="IN PROGRESS" className="text-xs font-bold rounded-lg">IN PROGRESS</SelectItem>
-                            <SelectItem value="BLOCKED" className="text-xs font-bold rounded-lg">BLOCKED</SelectItem>
-                            <SelectItem value="FAILED" className="text-xs font-bold rounded-lg">FAILED</SelectItem>
-                            <SelectItem value="READY TO RETEST" className="text-xs font-bold rounded-lg">READY TO RETEST</SelectItem>
-                            <SelectItem value="TBA" className="text-xs font-bold rounded-lg">TBA</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        </div>
-                      ) : (
-                        <Badge variant={getStatusBadgeVariant(tc.status)} className="gap-1 text-xs font-semibold">
-                          {getStatusIcon(tc.status)} {tc.status}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className={getColumnClass('result', 'px-3')}>
-                      {tc.actualResult ? (
-                        <Badge variant={tc.actualResult === 'As Expected' ? 'success' : tc.actualResult === 'Not As Expected' ? 'failed' : 'outline'} className="text-xs font-semibold">
-                          {tc.actualResult}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs font-semibold text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className={getColumnClass('record', 'px-3')}>
-                      {record ? (
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap gap-1">
-                            {record.hasAutomationRun && (
-                              <Badge className="rounded-md bg-indigo-500/10 text-xs font-semibold text-status-in-progress border-indigo-500/20 shadow-none uppercase">
-                                Auto
-                              </Badge>
-                            )}
-                            {record.hasManualCapture && (
-                              <Badge className="rounded-md bg-teal-500/10 text-xs font-semibold text-bug-fixed border-teal-500/20 shadow-none uppercase">
-                                Manual
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground uppercase tracking-tighter">
-                            <CalendarClock className="h-2.5 w-2.5" />
-                            {formatLastRun(record.lastRunAt)}
-                          </div>
-                        </div>
-                      ) : (
-                        <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-xs font-semibold text-muted-foreground uppercase">
-                          No Records
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className={getColumnClass('progress')}>
-                      <div className="flex items-center gap-2">
-                        <Progress value={tc.progress} className="h-1 w-12 bg-secondary/50" />
-                        <span className="text-xs font-bold text-muted-foreground">{tc.progress}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-label={`Actions for ${tc.testCaseId}`} title={`Actions for ${tc.testCaseId}`} variant="ghost" size="sm" className="h-7 w-7 rounded-md p-0 text-muted-foreground opacity-45 transition-opacity duration-150 hover:bg-secondary hover:text-foreground hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-card elevation-3 border-border/60 text-foreground">
-                          <DropdownMenuItem onClick={() => openViewDialog(tc)}>
-                            <Eye className="w-4 h-4 mr-2" /> Lihat Detail
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(tc)}>
-                            <Edit3 className="w-4 h-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicate(tc)}>
-                            <Copy className="w-4 h-4 mr-2" /> Duplikasi
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => requestDelete(tc)} className="text-status-failed focus:text-status-failed">
-                            <Trash2 className="w-4 h-4 mr-2" /> Hapus
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                  const row = (
+<TestCaseDataRow key={tc.id} tc={tc} index={index} record={record} isSelected={selectedIds.has(tc.id)} celebrating={celebrateId === tc.id} page={page} limit={limit} rowClassName={rowClassName} getColumnClass={getColumnClass} openViewDialog={openViewDialog} toggleSelect={toggleSelect} onQuickStatusChange={onQuickStatusChange} setCelebrateId={setCelebrateId} getStatusColor={getStatusColor} getStatusIcon={getStatusIcon} getStatusBadgeVariant={getStatusBadgeVariant} getTestTypeColor={getTestTypeColor} getPriorityColor={getPriorityColor} openEditDialog={openEditDialog} handleDuplicate={handleDuplicate} requestDelete={requestDelete} />
                   );
+                  return process.env.NEXT_PUBLIC_QA_PERF_PROFILING === '1'
+                    ? <React.Profiler key={tc.id} id={tc.id} onRender={recordRow}>{row}</React.Profiler>
+                    : row;
                 })
               )}
             </TableBody>
@@ -315,4 +329,4 @@ export function TestCaseTableBody(props: TestCaseTableBodyProps) {
       )}
     </>
   );
-}
+});

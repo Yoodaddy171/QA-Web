@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Loader2, MessageCircle, Minimize2, Plus, RotateCcw, Send, Sparkles, X } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { UI_MOTION } from '@/lib/client/ui-motion';
+import { clampChatFrame, getChatViewport, getDefaultChatFrame } from '@/lib/client/chat-viewport';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -170,35 +171,8 @@ export function FloatingAIChat({
     setLoading(false);
   }, [projectId]);
 
-  const getDefaultFrame = () => {
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const width = Math.min(DEFAULT_CHAT_WIDTH, viewportWidth - 24);
-    const height = Math.min(DEFAULT_CHAT_HEIGHT, viewportHeight - 40);
-
-    return {
-      width: Math.max(MIN_CHAT_WIDTH, width),
-      height: Math.max(MIN_CHAT_HEIGHT, height),
-      left: Math.max(12, viewportWidth - width - CHAT_MARGIN),
-      top: Math.max(12, viewportHeight - height - CHAT_MARGIN),
-    };
-  };
-
-  const clampFrame = (frame: ChatFrame): ChatFrame => {
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const maxWidth = Math.max(MIN_CHAT_WIDTH, viewportWidth - 24);
-    const maxHeight = Math.max(MIN_CHAT_HEIGHT, viewportHeight - 40);
-    const width = Math.min(Math.max(frame.width, MIN_CHAT_WIDTH), maxWidth);
-    const height = Math.min(Math.max(frame.height, MIN_CHAT_HEIGHT), maxHeight);
-
-    return {
-      width,
-      height,
-      left: Math.min(Math.max(12, frame.left), Math.max(12, viewportWidth - width - 12)),
-      top: Math.min(Math.max(12, frame.top), Math.max(12, viewportHeight - height - 12)),
-    };
-  };
+  const getDefaultFrame = getDefaultChatFrame;
+  const clampFrame = (frame: ChatFrame): ChatFrame => clampChatFrame(frame, getChatViewport());
 
   useEffect(() => {
     if (!open) return;
@@ -210,7 +184,13 @@ export function FloatingAIChat({
     };
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.visualViewport?.addEventListener('resize', handleResize);
+    window.visualViewport?.addEventListener('scroll', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('scroll', handleResize);
+    };
   }, [open]);
 
   const startMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -257,8 +237,9 @@ export function FloatingAIChat({
 
     const nextWidth = drag.startFrame.width - deltaX;
     const nextHeight = drag.startFrame.height - deltaY;
-    const clampedWidth = Math.min(Math.max(nextWidth, MIN_CHAT_WIDTH), Math.max(MIN_CHAT_WIDTH, window.innerWidth - 24));
-    const clampedHeight = Math.min(Math.max(nextHeight, MIN_CHAT_HEIGHT), Math.max(MIN_CHAT_HEIGHT, window.innerHeight - 40));
+    const sized = clampFrame({ ...drag.startFrame, width: nextWidth, height: nextHeight });
+    const clampedWidth = sized.width;
+    const clampedHeight = sized.height;
 
     setChatFrame(clampFrame({
       width: clampedWidth,
@@ -554,11 +535,11 @@ export function FloatingAIChat({
                     {messages.length <= 1 && (
                       <div className="border-t border-border/40 bg-transparent px-4 py-4">
                         <div className="grid grid-cols-1 gap-2">
-                          {SUGGESTIONS.map((suggestion, idx) => (
+                          {SUGGESTIONS.map((suggestion) => (
                             <motion.button
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: idx * 0.1 }}
+                              transition={{ duration: reduceMotion ? 0 : UI_MOTION.content, ease: UI_MOTION.ease }}
                               key={suggestion}
                               type="button"
                               onClick={() => askAI(suggestion)}

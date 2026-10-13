@@ -7,8 +7,7 @@ import { PrismaClient } from '@prisma/client';
 
 const scrypt = promisify(crypto.scrypt);
 const databasePath = path.resolve('prisma/db/e2e.db');
-const databaseUrl = 'file:./db/e2e.db';
-const localSchemaSource = path.resolve('prisma/db/custom.db');
+const databaseUrl = `file:${databasePath.replaceAll('\\', '/')}`;
 
 for (const suffix of ['', '-journal', '-wal', '-shm']) {
   await fs.rm(`${databasePath}${suffix}`, { force: true });
@@ -17,18 +16,7 @@ await fs.mkdir(path.dirname(databasePath), { recursive: true });
 
 const prismaCli = path.resolve('node_modules/prisma/build/index.js');
 let pushStatus = 1;
-let copiedLocalSchema = false;
-const nodeMajor = Number(process.versions.node.split('.')[0]);
-if (process.platform === 'win32' && nodeMajor >= 26) {
-  try {
-    await fs.copyFile(localSchemaSource, databasePath);
-    copiedLocalSchema = true;
-    pushStatus = 0;
-    console.log('Using a copied local schema because Prisma 6 schema-engine does not support Node 26.');
-  } catch {}
-}
-if (!copiedLocalSchema) {
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+for (let attempt = 1; attempt <= 3; attempt += 1) {
     const pushed = spawnSync(process.execPath, [prismaCli, 'db', 'push', '--skip-generate', '--schema', 'prisma/sqlite.prisma'], {
       stdio: 'inherit',
       env: { ...process.env, DATABASE_URL: databaseUrl, RUST_LOG: process.env.RUST_LOG || 'info' },
@@ -36,21 +24,18 @@ if (!copiedLocalSchema) {
     pushStatus = pushed.status ?? 1;
     if (pushStatus === 0) break;
     if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 500));
-  }
 }
-if (pushStatus !== 0) process.exit(pushStatus);
+if (pushStatus !== 0) {
+  const diff = spawnSync(process.execPath, [prismaCli, 'migrate', 'diff', '--from-empty', '--to-schema-datamodel', 'prisma/sqlite.prisma', '--script'], { encoding: 'utf8', env: { ...process.env, DATABASE_URL: databaseUrl } });
+  if (diff.status !== 0) throw new Error(diff.stderr || 'E2E schema generation failed');
+  const { DatabaseSync } = await import('node:sqlite');
+  const fixture = new DatabaseSync(databasePath);
+  try { fixture.exec(diff.stdout); } finally { fixture.close(); }
+  console.log('Applied empty schema SQL to dedicated E2E fixture; no user database copied.');
+}
 
 const db = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
 try {
-  if (copiedLocalSchema) {
-    const tables = await db.$queryRawUnsafe('SELECT name FROM sqlite_master WHERE type = \'table\' AND name NOT LIKE \'sqlite_%\'');
-    await db.$executeRawUnsafe('PRAGMA foreign_keys=OFF');
-    for (const { name } of tables) {
-      if (typeof name !== 'string' || !/^[A-Za-z0-9_]+$/.test(name)) throw new Error('Unsafe SQLite table name.');
-      await db.$executeRawUnsafe(`DELETE FROM "${name}"`);
-    }
-    await db.$executeRawUnsafe('PRAGMA foreign_keys=ON');
-  }
   const salt = 'qa-desk-e2e-static-salt';
   const derived = await scrypt('E2E-only-password-2026!', salt, 64);
   const passwordHash = `scrypt$${salt}$${derived.toString('hex')}`;

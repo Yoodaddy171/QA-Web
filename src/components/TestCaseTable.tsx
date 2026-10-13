@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCommittedActions } from '@/hooks/use-committed-actions';
 import {
   ArrowUpDown, Bookmark, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
   FileSpreadsheet, MoreHorizontal, Plus, RefreshCw, Search, Settings2, SlidersHorizontal,
@@ -229,10 +230,10 @@ export function TestCaseTable({
   );
   const tableColSpan = 4 + shownOptionalColumnCount + 1;
   const isColumnVisible = (key: TestCaseColumnKey) => visibleColumns[key];
-  const getColumnClass = (key: TestCaseColumnKey, baseClass = '') => {
+  const getColumnClass = useCallback((key: TestCaseColumnKey, baseClass = '') => {
     const option = TESTCASE_COLUMN_OPTIONS.find((column) => column.key === key);
-    return cn(!isColumnVisible(key) && 'hidden', isColumnVisible(key) && option?.responsiveClass, baseClass);
-  };
+    return cn(!visibleColumns[key] && 'hidden', visibleColumns[key] && option?.responsiveClass, baseClass);
+  }, [visibleColumns]);
   const setColumnVisible = (key: TestCaseColumnKey, checked: boolean) => {
     setVisibleColumns((current) => ({ ...current, [key]: checked }));
   };
@@ -242,12 +243,17 @@ export function TestCaseTable({
     setPage(1);
   };
 
+  const rowActions = useCommittedActions({
+    resetFilters, toggleSelectAll, toggleSort, openViewDialog, openEditDialog,
+    handleDuplicate, requestDelete, toggleSelect, handleLimitChange, setPage,
+    onQuickStatusChange: (id: string, status: string) => onQuickStatusChange?.(id, status),
+  });
   const tableBodyProps = {
     selectedProject, testCases, selectedIds, testRecordById, page, limit, total, totalPages, tableColSpan,
-    isLoading, hasActiveFilters, resetFilters, toggleSelectAll, toggleSort, getColumnClass,
-    openViewDialog, openEditDialog, handleDuplicate, requestDelete, toggleSelect, onQuickStatusChange,
+    isLoading, hasActiveFilters, getColumnClass,
+    ...rowActions, onQuickStatusChange: onQuickStatusChange ? rowActions.onQuickStatusChange : undefined,
     celebrateId, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant,
-    getPriorityColor, getTestTypeColor, handleLimitChange, setPage, rowClassName,
+    getPriorityColor, getTestTypeColor, rowClassName,
   };
 
   useEffect(() => {

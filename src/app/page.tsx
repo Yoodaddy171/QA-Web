@@ -205,14 +205,17 @@ export default function TestCaseManager() {
   // Dashboard filter state
   const [selectedModuleFilter, setSelectedModuleFilter] = useState<string>('all');
 
+  const pendingNavigationRef = useRef<string | null>(null);
   const navigateToTab = useCallback((tab: AppTab, projectId = selectedProject, replace = false) => {
     setActiveTab(tab);
     if (projectId) {
       const href = `/projects/${encodeURIComponent(projectId)}/${TAB_ROUTES[tab]}`;
-      if (pathname !== href) {
+      const previousPending = pendingNavigationRef.current;
+      if (pathname !== href || (previousPending && previousPending !== href)) {
+        pendingNavigationRef.current = href;
         if (replace) router.replace(href);
         else router.push(href);
-      }
+      } else pendingNavigationRef.current = null;
     }
   }, [pathname, router, selectedProject]);
   const handleProjectChange = useCallback((projectId: string) => {
@@ -371,6 +374,9 @@ export default function TestCaseManager() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const routed = workspaceRoute(pathname);
+      // An older router transition must not overwrite the latest menu click.
+      if (pendingNavigationRef.current && pendingNavigationRef.current !== pathname) return;
+      pendingNavigationRef.current = null;
       if (routed) {
         setActiveTab(routed.tab);
         if (projects.some(project => project.id === routed.projectId)) setSelectedProject(routed.projectId);

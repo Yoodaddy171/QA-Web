@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Profiler, createContext, useContext, useEffect, useMemo, useState, type ProfilerOnRenderCallback, type ReactNode } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { UI_MOTION } from '@/lib/client/ui-motion';
+import { createThemeTransitionGuard } from '@/lib/client/theme-transition';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -20,8 +21,13 @@ function getSystemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+let guardThemeTransition: (() => void) | undefined;
 function applyTheme(theme: Theme) {
   const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
+  if (document.documentElement.classList.contains('dark') !== (resolvedTheme === 'dark')) {
+    guardThemeTransition ??= createThemeTransitionGuard(document.documentElement, callback => window.requestAnimationFrame(callback));
+    guardThemeTransition();
+  }
   document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
   return resolvedTheme;
 }
@@ -68,11 +74,21 @@ export function useAppTheme() {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
+  const content = process.env.NEXT_PUBLIC_QA_PERF_PROFILING === '1'
+    ? <Profiler id="QADesk" onRender={recordPerformanceCommit}>{children}</Profiler>
+    : children;
   return (
     <AppThemeProvider>
       <MotionConfig reducedMotion="user" transition={{ duration: UI_MOTION.content, ease: UI_MOTION.ease }}>
-        {children}
+        {content}
       </MotionConfig>
     </AppThemeProvider>
   );
 }
+
+const recordPerformanceCommit: ProfilerOnRenderCallback = (id, phase, actualDuration, baseDuration, startTime, commitTime) => {
+  const target = window as typeof window & { __qaCommits?: unknown[] };
+  const commits = target.__qaCommits ??= [];
+  commits.push({ id, phase, actualDuration, baseDuration, startTime, commitTime });
+  if (commits.length > 2000) commits.splice(0, commits.length - 2000);
+};

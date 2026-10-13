@@ -1,4 +1,5 @@
 'use client';
+import { memo } from 'react';
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, Filter, RefreshCw, Search } from 'lucide-react';
@@ -8,7 +9,7 @@ import { cn } from '@/lib/utils';
 
 type NetworkLogViewProps = Record<string, any>;
 
-export function NetworkLogView(props: NetworkLogViewProps) {
+export const NetworkLogView = memo(function NetworkLogView(props: NetworkLogViewProps) {
   const {
     networkFilters, updateNetworkFilters, networkLogItems, networkHosts, networkMethods,
     setNetworkFilters, DEFAULT_NETWORK_FILTERS, networkCategoryCounts, hiddenNetworkCount,
@@ -132,7 +133,14 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                         return (
                                           <div key={logId} className="group hover:bg-secondary/60 dark:hover:bg-secondary/50">
                                             <div
-                                              className="grid grid-cols-12 gap-2 p-2 cursor-pointer items-center transition-colors"
+                                              role="button"
+                                              tabIndex={0}
+                                              aria-label={`Inspect ${getNetworkMethod(net.network)} ${meta.name || meta.host || net.network.url}`}
+                                              aria-expanded={expandedLogId === logId}
+                                              onKeyDown={(event) => {
+                                                if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
+                                              }}
+                                              className="grid grid-cols-12 gap-2 p-2 cursor-pointer items-center transition-colors focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2"
                                               onClick={() => {
                                                 seekRecordingFromLog(net);
                                                 setExpandedLogId(expandedLogId === logId ? null : logId);
@@ -238,5 +246,5 @@ export function NetworkLogView(props: NetworkLogViewProps) {
                                   </div>
                                 </div>
   );
-}
+});
 

@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { contentTransition } from '@/lib/client/ui-motion';
+import { UI_MOTION, contentTransition } from '@/lib/client/ui-motion';
 
 interface Project {
   id: string;
@@ -152,7 +152,7 @@ function WorkspaceSidebar({
   return (
     <Sidebar collapsible="icon" className="border-sidebar-border/80 bg-sidebar">
       <SidebarHeader className="gap-4 border-b border-sidebar-border/70 px-3 py-4">
-        <motion.div layout className={cn('flex min-h-10 items-center', expanded ? 'justify-between' : 'justify-center')}>
+        <motion.div className={cn('flex min-h-10 items-center', expanded ? 'justify-between' : 'justify-center')}>
           <BrandMark compact={!expanded} />
           <AnimatePresence initial={false}>
             {expanded && (
@@ -220,13 +220,14 @@ function WorkspaceSidebar({
                     >
                       {active && (
                         <motion.span
-                          layoutId="sidebar-active-pill"
-                          transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 450, damping: 32 }}
+                          initial={false}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: reduceMotion ? 0 : UI_MOTION.feedback }}
                           className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-sidebar-primary"
                         />
                       )}
                       <Icon className="relative" />
-                      <span className="relative flex min-w-0 flex-col gap-0.5 leading-none transition-[max-width,opacity,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:translate-x-1 group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:opacity-0">
+                      <span className="relative flex min-w-0 flex-col gap-0.5 leading-none transition-[opacity,transform] duration-[var(--motion-panel)] ease-[var(--motion-ease)] motion-reduce:transition-none group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:translate-x-1 group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:opacity-0">
                         <span className="truncate text-[13px] font-bold">{item.label}</span>
                         <span className="truncate text-xs font-medium text-sidebar-foreground/45">
                           {item.description}
@@ -257,8 +258,8 @@ function WorkspaceSidebar({
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sidebar-border/70">
                 <div
-                  className="h-full rounded-full bg-sidebar-primary transition-[width] duration-500 motion-reduce:transition-none"
-                  style={{ width: `${Math.max(0, Math.min(projectHealth, 100))}%` }}
+                  className="h-full origin-left rounded-full bg-sidebar-primary transition-transform duration-[var(--motion-content)] motion-reduce:transition-none"
+                  style={{ transform: `scaleX(${Math.max(0, Math.min(projectHealth, 100)) / 100})` }}
                 />
               </div>
             </motion.div>

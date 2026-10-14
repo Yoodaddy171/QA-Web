@@ -41,6 +41,10 @@ test('preserves inspector tabs, keyboard DevLog, narrow viewport and logout', as
     await page.getByRole('button',{name:/Network \(/}).click();
     const row=page.getByRole('button',{name:/Inspect POST/}).first();await row.focus();await page.keyboard.press('Enter');await expect(row).toHaveAttribute('aria-expanded','true');await page.keyboard.press('Space');await expect(row).toHaveAttribute('aria-expanded','false');
     await page.getByRole('button',{name:'Fullscreen',exact:true}).click();
+    // PERF-FS-001: fullscreen must not tween layout-driving inspector geometry.
+    const inspector = page.locator('.test-case-detail-dialog');
+    await expect(inspector).toHaveCSS('transition-property', 'opacity, transform, translate, scale, rotate');
+    await expect.poll(() => inspector.evaluate(element => Math.round(element.getBoundingClientRect().width))).toBe(await page.evaluate(() => document.documentElement.clientWidth));
     await page.getByRole('button',{name:'Close fullscreen DevLog'}).click();
     await page.getByRole('button',{name:'Fullscreen',exact:true}).click();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toBeVisible();await expect(page.getByRole('button',{name:'Close fullscreen DevLog'})).toBeHidden();
     await page.getByRole('button',{name:'Next test case'}).click();await expect(page.getByRole('tab',{name:'Automation',exact:true})).toHaveAttribute('data-state','active');
@@ -69,4 +73,30 @@ test('latest rapid navigation intent wins',async({page})=>{
   await page.goto('/projects/e2e-project/dashboard');
   for(const name of ['Bugs','Automation Logs','Test Cycles','Traceability','Reports','Settings','Cases']) await page.locator('[data-sidebar="menu-button"]').filter({hasText:name}).first().click();
   await expect(page).toHaveURL(/\/test-cases$/);await expect(page.getByRole('heading',{name:'Cases',exact:true})).toBeVisible();
+});
+
+test('APPNAV-001: same-project tabs retain the shell and support browser history', async ({ page }) => {
+  await page.goto('/projects/e2e-project/test-cases');
+  const menu = (name: string) => page.locator('[data-sidebar="menu-button"]').filter({ hasText: name }).first();
+  await expect(menu('Cases')).toHaveAttribute('aria-current', 'page');
+  await menu('Cases').evaluate(element => element.setAttribute('data-qa-nav-mount', 'APPNAV-001'));
+  const tabs = [['Dashboard', 'dashboard'], ['Bugs', 'bugs'], ['Automation Logs', 'automation'], ['Test Cycles', 'test-runs'], ['Traceability', 'traceability'], ['Reports', 'reports'], ['Settings', 'settings'], ['Cases', 'test-cases']];
+  for (let cycle = 0; cycle < 3; cycle++) {
+    for (const [name, route] of tabs) {
+      await menu(name).click();
+      await expect(page).toHaveURL(new RegExp(`/${route}$`));
+      await expect(menu(name)).toHaveAttribute('aria-current', 'page');
+      await expect(menu('Cases')).toHaveAttribute('data-qa-nav-mount', 'APPNAV-001');
+    }
+  }
+  await page.goBack();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(menu('Settings')).toHaveAttribute('aria-current', 'page');
+  await page.goForward();
+  await expect(page).toHaveURL(/\/test-cases$/);
+  await expect(menu('Cases')).toHaveAttribute('aria-current', 'page');
+  await expect(menu('Cases')).toHaveAttribute('data-qa-nav-mount', 'APPNAV-001');
+  await page.reload();
+  await expect(page).toHaveURL(/\/test-cases$/);
+  await expect(menu('Cases')).toHaveAttribute('aria-current', 'page');
 });

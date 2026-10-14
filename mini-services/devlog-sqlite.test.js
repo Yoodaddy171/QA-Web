@@ -6,6 +6,7 @@ const { PrismaClient } = require('@prisma/client');
 const { createDevlogStore } = require('./devlog-store');
 
 it('SQLite persists Devlog events, deduplicates, pages cursors, and reads recording metadata', async () => {
+  const started = performance.now();
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-devlog-sqlite-'));
   const url = `file:${path.join(directory, 'test.db').replaceAll('\\', '/')}`;
   // On Windows the schema engine expects the absolute SQLite file to exist.
@@ -13,6 +14,7 @@ it('SQLite persists Devlog events, deduplicates, pages cursors, and reads record
   const pushed = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'db', 'push', '--schema', 'prisma/sqlite.prisma', '--skip-generate'], {
     env: { ...process.env, DATABASE_URL: url }, encoding: 'utf8', windowsHide: true,
   });
+  console.info('DevLog SQLite schema preparation ms:', Math.round(performance.now() - started));
   expect(pushed.status, pushed.stderr).toBe(0);
   const db = new PrismaClient({ datasourceUrl: url });
   const store = createDevlogStore(db, { allowOrphans: true, sqlite: true });
@@ -28,5 +30,5 @@ it('SQLite persists Devlog events, deduplicates, pages cursors, and reads record
     await store.persistRecording({ recordingId: 'recording-1', sessionId: 'run-1', testCaseId: 'fixture', startedAt: event.timestamp, status: 'finished' }, directory);
     expect(await store.getLatestRecording('fixture')).toMatchObject({ recordingId: 'recording-1' });
     expect((await store.getRuns('fixture'))[0].status).toBe('finished');
-  } finally { await db.$disconnect(); }
+  } finally { await db.$disconnect(); console.info('DevLog SQLite total ms:', Math.round(performance.now() - started)); }
 }, 30000);

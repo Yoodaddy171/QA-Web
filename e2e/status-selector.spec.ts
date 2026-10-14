@@ -179,7 +179,13 @@ test('responsive columns remount on resize and respect saved user visibility', a
     await expect(page.locator('thead th')).toHaveCount(14);
     await page.setViewportSize({ width: 390, height: 900 });
     await expect(page.locator('thead th')).toHaveCount(6);
-    await expect(page.getByRole('combobox', { name: 'Status for KEY-001' })).toBeAttached();
+    const mobileStatus = page.getByRole('combobox', { name: 'Status for KEY-001', includeHidden: true });
+    await expect(mobileStatus).toBeAttached();
+    await mobileStatus.scrollIntoViewIfNeeded();
+    await mobileStatus.click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(mobileStatus).toBeFocused();
     await page.setViewportSize({ width: 1440, height: 900 });
     await expect(page.locator('thead th')).toHaveCount(11);
     await page.getByRole('button', { name: 'Columns', exact: true }).click();

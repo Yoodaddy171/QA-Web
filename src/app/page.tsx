@@ -213,7 +213,14 @@ export default function TestCaseManager() {
       const previousPending = pendingNavigationRef.current;
       if (pathname !== href || (previousPending && previousPending !== href)) {
         pendingNavigationRef.current = href;
-        if (replace) router.replace(href);
+        // Every section exports this same client workspace. A same-project
+        // tab change needs URL/history bookkeeping, not another RSC page
+        // transition that can remount the shell while the next click lands.
+        // Project changes and initial entry retain server-router navigation.
+        if (workspaceRoute(pathname)?.projectId === projectId) {
+          if (replace) window.history.replaceState(null, '', href);
+          else window.history.pushState(null, '', href);
+        } else if (replace) router.replace(href);
         else router.push(href);
       } else pendingNavigationRef.current = null;
     }
@@ -414,6 +421,8 @@ export default function TestCaseManager() {
     const timer = window.setTimeout(() => {
       if (activeTab === 'testcases') {
         void Promise.all([loadTestCases(selectedProject), loadAutomated(selectedProject)]);
+      } else if (activeTab === 'dashboard') {
+        void Promise.all([loadModules(selectedProject), loadStats(selectedProject)]);
       } else if (activeTab === 'bugfix') {
         void loadBugFix(selectedProject);
       } else if (activeTab === 'automated') {

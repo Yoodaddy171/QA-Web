@@ -108,27 +108,67 @@ Object.assign(results.environment,{repetitions,warmups:1,tracing,diagnostic,prof
 Object.assign(results.environment,{datasetHash,fixtureRows:fixtureRows.length});
 Object.assign(results.environment,{harnessHash});
 Object.assign(results.environment, { telemetry, animationProbe, gpu: systemInfo.gpu, browserCommandLine: systemInfo.commandLine,
-  animationMethod: animationProbe ? 'Finite Web Animations API windows sampled in rAF, including CSS animations/transitions; not compositor FPS. Probe overhead reported separately. JS-only motion absent from this API is not certified.' : 'disabled' });
+  animationMethod: animationProbe ? 'CSS start/end event windows (elapsed-time inference when delivery coalesces), newly created WAAPI animations, and observed inline motion. No whole-DOM animation scan per frame. Not compositor FPS; probe overhead reported separately.' : 'disabled' });
 const percentile = (a, p) => a.length ? [...a].sort((x,y) => x-y)[Math.min(a.length-1, Math.ceil(a.length*p)-1)] : null;
+const prepared = async () => {
+  await page.bringToFront();
+  await expect.poll(()=>page.evaluate(()=>document.visibilityState==='visible'&&document.hasFocus())).toBe(true);
+  await page.evaluate(async () => {
+    const finite=document.getAnimations().filter(animation=>['running','pending'].includes(animation.playState)&&Number.isFinite(animation.effect?.getComputedTiming().activeDuration)&&animation.effect.getComputedTiming().activeDuration<=1000);
+    await Promise.allSettled(finite.map(animation=>animation.finished));
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    await new Promise(resolve=>requestIdleCallback(resolve,{timeout:5000}));
+  });
+};
 async function measure(name, action, setup = async () => {}) {
   if (process.env.QA_BENCH_SCENARIOS && !process.env.QA_BENCH_SCENARIOS.split(',').includes(name)) return;
   await setup(); await action(); await sleep(1300);
   const windowMs = results.environment.windowMs[name] || results.environment.windowMs.default;
   const samples = [];
   for (let n=0;n<repetitions;n++) {
-    await setup(); await sleep(400);
+    await setup(); await sleep(400); await prepared();
     await page.evaluate(({ telemetry, animationProbe }) => {
       window.__qaCommits = []; window.__qaFrames = []; window.__qaLongTasks = []; window.__qaRowCommits=[];
       window.__qaFrameTimes=[]; window.__qaAnimations=[]; window.__qaProbeCosts=[]; window.__qaLoafs=[]; window.__qaEvents=[]; window.__qaTransitionCounts={};window.__qaTransitionTargets=[];
       window.__qaSampleStart=performance.now();
+      window.__qaFocusStart={visible:document.visibilityState,focused:document.hasFocus()};window.__qaFocusChanges=[];
+      window.__qaFocusListener=event=>window.__qaFocusChanges.push({type:event.type,time:performance.now(),visible:document.visibilityState,focused:document.hasFocus()});
+      for(const type of ['focus','blur'])window.addEventListener(type,window.__qaFocusListener);
+      document.addEventListener('visibilitychange',window.__qaFocusListener);
+      window.__qaCssMotion=[];window.__qaCreatedAnimations=[];
+      if(animationProbe) {
+        const originalAnimate=Element.prototype.animate;window.__qaOriginalAnimate=originalAnimate;
+        Element.prototype.animate=function(...args){const animation=originalAnimate.apply(this,args);if(window.__qaMeasuring)window.__qaCreatedAnimations.push(animation);return animation;};
+      }
+      window.__qaJsMotion=[];window.__qaMotionProbeCosts=[];
+      if(animationProbe) {
+        const tracked=new WeakMap();
+        window.__qaMotionObserver=new MutationObserver(records=>{
+          const began=performance.now(), targets=new Set(records.map(record=>record.target));
+          for(const target of targets) {
+            if(!target.style)continue;
+            const value=[target.style.transform,target.style.opacity,target.style.translate,target.style.scale,target.style.rotate].join('|');
+            if(value==='||||')continue;
+            let motion=tracked.get(target);
+            if(motion?.value===value)continue;
+            if(!motion) {
+              motion={start:began,end:began,last:began,value,updates:0,target:target.getAttribute('data-slot')||target.tagName,className:target.getAttribute('class'),method:'observed inline transform/opacity changes; first/last observed mutation, not exact compositor duration'};
+              tracked.set(target,motion);window.__qaJsMotion.push(motion);
+            }
+            motion.end=began;motion.last=began;motion.value=value;motion.updates++;
+          }
+          window.__qaMotionProbeCosts.push(performance.now()-began);
+        });
+        window.__qaMotionObserver.observe(document.body,{subtree:true,attributes:true,attributeFilter:['style']});
+      }
       window.__qaRequests=[];window.__qaTableCommits=[];window.__qaInteractionFeedback=[];
       window.__qaTelemetryObservers=[];
       if(telemetry) {
         window.__qaOriginalFetch=window.fetch;
         window.fetch=async(...args)=>{
           const input=args[0],url=typeof input==='string'?input:input instanceof Request?input.url:String(input);
-          if(!url.includes('/api/testcases?'))return window.__qaOriginalFetch(...args);
-          const timing={url,start:performance.now()};window.__qaRequests.push(timing);
+          if(!url.includes('/api/testcases'))return window.__qaOriginalFetch(...args);
+          const timing={url,method:args[1]?.method||(input instanceof Request?input.method:'GET'),start:performance.now()};window.__qaRequests.push(timing);
           try {
             const response=await window.__qaOriginalFetch(...args);timing.response=performance.now();timing.status=response.status;
             const json=response.json.bind(response);response.json=async()=>{const value=await json();timing.parsed=performance.now();timing.rows=value.testCases?.length;return value;};
@@ -151,8 +191,21 @@ async function measure(name, action, setup = async () => {}) {
           observer.observe({type,buffered:false,...(type==='event'?{durationThreshold:16}:{})});
           window.__qaTelemetryObservers.push(observer);
         }
-        window.__qaTransitionListener=event=>{const key=`${event.type}:${event.propertyName || event.animationName}`;window.__qaTransitionCounts[key]=(window.__qaTransitionCounts[key]||0)+1;
-          if(event.type==='transitionstart'&&window.__qaTransitionTargets.length<200)window.__qaTransitionTargets.push({property:event.propertyName,tag:event.target.tagName,slot:event.target.getAttribute?.('data-slot'),className:event.target.getAttribute?.('class')});};
+        const cssStarts=new WeakMap(),seenCssEvents=new WeakSet();window.__qaCssTargets=new Set();
+        window.__qaTransitionListener=event=>{if(seenCssEvents.has(event))return;seenCssEvents.add(event);const began=performance.now(),property=event.propertyName || event.animationName,key=`${event.type}:${property}`;window.__qaTransitionCounts[key]=(window.__qaTransitionCounts[key]||0)+1;
+          if(animationProbe){
+            let starts=cssStarts.get(event.target);if(!starts){starts=new Map();cssStarts.set(event.target,starts);}
+            const id=`${event.pseudoElement||''}:${property}`;
+            if(['transitionstart','animationstart'].includes(event.type)){
+              starts.set(id,{time:event.timeStamp,elapsed:event.elapsedTime||0});
+              if(!window.__qaCssTargets.has(event.target)){window.__qaCssTargets.add(event.target);for(const type of ['transitionend','animationend','transitioncancel','animationcancel'])event.target.addEventListener(type,window.__qaTransitionListener,true);}
+            }
+            if(['transitionend','animationend','transitioncancel','animationcancel'].includes(event.type)&&starts.has(id)){
+              const start=starts.get(id),elapsedDuration=Math.max(0,((event.elapsedTime||0)-start.elapsed)*1000);starts.delete(id);
+              window.__qaCssMotion.push({start:Math.min(start.time,event.timeStamp-elapsedDuration),end:event.timeStamp,duration:elapsedDuration,observedSpan:event.timeStamp-start.time,target:event.target.getAttribute?.('data-slot')||event.target.tagName,className:event.target.getAttribute?.('class'),property,cancelled:event.type.endsWith('cancel'),method:'CSS start/end event timestamps; elapsed-time inferred start when delivery coalesces, not compositor presentation'});
+            }
+          }
+          if(event.type==='transitionstart'&&window.__qaTransitionTargets.length<200)window.__qaTransitionTargets.push({property:event.propertyName,tag:event.target.tagName,slot:event.target.getAttribute?.('data-slot'),className:event.target.getAttribute?.('class')});window.__qaMotionProbeCosts.push(performance.now()-began);};
         for(const type of ['transitionrun','transitionstart','transitionend','transitioncancel','animationstart','animationend','animationcancel']) document.addEventListener(type,window.__qaTransitionListener,true);
       }
       window.__qaInputFeedback=[];
@@ -167,7 +220,7 @@ async function measure(name, action, setup = async () => {}) {
         previous=t;
         if(animationProbe && window.__qaMeasuring) {
           const probeStart=performance.now();
-          for(const animation of document.getAnimations()) {
+          for(const animation of window.__qaCreatedAnimations) {
             const timing=animation.effect?.getComputedTiming();
             if(!timing || !Number.isFinite(timing.activeDuration) || timing.activeDuration<=0 || timing.activeDuration>1000 || typeof animation.startTime!=='number')continue;
             if(observed.has(animation))continue;
@@ -184,21 +237,32 @@ async function measure(name, action, setup = async () => {}) {
         if(window.__qaMeasuring)requestAnimationFrame(frame);
       };requestAnimationFrame(frame);
     }, { telemetry, animationProbe });
-    if(tracing) await cdp.send('Tracing.start', { categories:'devtools.timeline,v8,blink.user_timing,disabled-by-default-devtools.timeline', transferMode:'ReturnAsStream' });
+    if(tracing) {
+      await cdp.send('Tracing.start', { categories:'devtools.timeline,v8,blink.user_timing,cc,viz,toplevel,disabled-by-default-devtools.timeline,disabled-by-default-devtools.timeline.frame', transferMode:'ReturnAsStream' });
+      await page.evaluate(()=>{performance.clearMarks('qa-bench-anchor');performance.mark('qa-bench-anchor');window.__qaTraceAnchor=performance.getEntriesByName('qa-bench-anchor').at(-1).startTime;});
+    }
     const started=Date.now(); await action(); const actionMs=Date.now()-started; await sleep(Math.max(0,windowMs-actionMs));
     const data = await page.evaluate(() => {
       window.__qaMeasuring=false;window.__qaObserver.disconnect();document.removeEventListener('input',window.__qaInputListener,true);
       for(const observer of window.__qaTelemetryObservers)observer.disconnect();
       if(window.__qaOriginalFetch){window.fetch=window.__qaOriginalFetch;window.__qaOriginalFetch=undefined;}
       window.__qaTableObserver?.disconnect();
+      window.__qaMotionObserver?.disconnect();
+      for(const type of ['focus','blur'])window.removeEventListener(type,window.__qaFocusListener);
+      document.removeEventListener('visibilitychange',window.__qaFocusListener);
+      if(window.__qaOriginalAnimate){Element.prototype.animate=window.__qaOriginalAnimate;window.__qaOriginalAnimate=undefined;}
       for(const type of ['pointerdown','keydown','input'])document.removeEventListener(type,window.__qaInteractionListener,true);
       for(const type of ['transitionrun','transitionstart','transitionend','transitioncancel','animationstart','animationend','animationcancel'])document.removeEventListener(type,window.__qaTransitionListener,true);
+      for(const target of window.__qaCssTargets||[])for(const type of ['transitionend','animationend','transitioncancel','animationcancel'])target.removeEventListener(type,window.__qaTransitionListener,true);
       // Exclude animations already started by setup/warm-up. Allow one refresh
       // interval for the browser's document-timeline timestamp rounding.
-      const animations=window.__qaAnimations.filter(a=>a.start>=window.__qaSampleStart-17.5&&a.end>window.__qaSampleStart);
-      const overlaps=(start,end)=>animations.some(a=>start<a.end&&end>a.start);
+      const animations=window.__qaAnimations.filter(a=>a.end>window.__qaSampleStart);
+      const cssMotion=window.__qaCssMotion.filter(a=>a.duration>0&&a.duration<=1000&&a.end>window.__qaSampleStart);
+      const jsMotion=window.__qaJsMotion.filter(motion=>motion.updates>=2&&motion.end>motion.start).map(({value,last,...motion})=>({...motion,duration:motion.end-motion.start}));
+      const overlaps=(start,end)=>[...animations,...cssMotion,...jsMotion].some(a=>start<a.end&&end>a.start);
       return {intervals:window.__qaFrames,longTasks:window.__qaLongTasks,commits:window.__qaCommits,rowCommits:window.__qaRowCommits,inputFeedback:window.__qaInputFeedback,
-        animationWindows:animations,animationIntervals:window.__qaFrameTimes.filter(f=>overlaps(f.start,f.end)),animationLongTasks:window.__qaLongTasks.filter(t=>overlaps(t.startTime,t.startTime+t.duration)),
+        sampleStart:window.__qaSampleStart,traceAnchor:window.__qaTraceAnchor,focusStart:window.__qaFocusStart,focusEnd:{visible:document.visibilityState,focused:document.hasFocus()},focusChanges:window.__qaFocusChanges,frameTimes:window.__qaFrameTimes,jsMotionWindows:jsMotion,motionProbeCosts:window.__qaMotionProbeCosts,
+        animationWindows:animations,cssMotionWindows:cssMotion,animationIntervals:window.__qaFrameTimes.filter(f=>overlaps(f.start,f.end)),animationLongTasks:window.__qaLongTasks.filter(t=>overlaps(t.startTime,t.startTime+t.duration)),
         transitionCounts:window.__qaTransitionCounts,transitionTargets:window.__qaTransitionTargets,loafs:window.__qaLoafs,eventTiming:window.__qaEvents,probeCosts:window.__qaProbeCosts,
         requests:window.__qaRequests,tableCommits:window.__qaTableCommits,interactionFeedback:window.__qaInteractionFeedback,
         domNodes:document.querySelectorAll('*').length,statusSelectors:document.querySelectorAll('tbody [role="combobox"]').length,mountedNativeSelects:document.querySelectorAll('tbody select').length};
@@ -233,6 +297,9 @@ try {
   await measure('sidebar-expand',sidebar,()=>sidebarState('collapsed'));
   await measure('inspector-open',openInspector,async()=>{if(await page.getByRole('dialog').isVisible()) await closeInspector();});
   await measure('inspector-close',closeInspector,async()=>{if(!await page.getByRole('dialog').isVisible())await openInspector();});
+  await measure('dialog-open',()=>page.getByRole('button',{name:/Add Test Case/}).click(),async()=>{if(await page.getByRole('dialog').isVisible())await closeInspector();});
+  await measure('dialog-close',closeInspector,async()=>{if(!await page.getByRole('dialog').isVisible())await page.getByRole('button',{name:/Add Test Case/}).click();});
+  if(await page.getByRole('dialog').isVisible())await closeInspector();
   await openInspector();
   await measure('inspector-tabs',async()=>{ for(const t of ['Steps','Overview','Execution']) await page.getByRole('tab',{name:t,exact:true}).click(); });
   await closeInspector();
@@ -256,11 +323,17 @@ try {
   await measure('cases-clear-module',()=>selectModule('All Modules'),()=>selectModule('Checkout'));
   await measure('cases-pagination',async()=>{await page.getByRole('button',{name:'Halaman berikutnya',exact:true}).click();await sleep(100);await settled();},async()=>{if(await page.getByRole('button',{name:'Halaman sebelumnya',exact:true}).isEnabled()){await page.getByRole('button',{name:'Halaman sebelumnya',exact:true}).click();await sleep(150);await settled();}});
   await measure('cases-selection',async()=>{for(const i of [0,1,2])await page.locator('tbody [role="checkbox"]').nth(i).click();});
-  const status=async value=>{const trigger=page.locator('tbody [role="combobox"]').first();await trigger.click();await page.getByRole('option',{name:value,exact:true}).click();await expect(trigger).toContainText(value);};
-  await measure('cases-status',()=>status('FAILED'),()=>status('DONE'));
+  const status=async value=>{const trigger=page.locator('tbody [role="combobox"]').first();if((await trigger.innerText()).trim()===value){await settled();return;}await trigger.click();const saved=page.waitForResponse(response=>response.request().method()==='PUT'&&new URL(response.url()).pathname==='/api/testcases');await page.getByRole('option',{name:value,exact:true}).click();const response=await saved;if(!response.ok())throw new Error(`Status update ${response.status()}`);const canonical=await response.json();await expect(trigger).toContainText(canonical.status);await settled();};
   await measure('cases-filter-sort',async()=>{await page.locator('[data-search-input]').fill('Checkout');await sleep(150);await page.locator('[data-search-input]').fill('');await page.getByRole('columnheader',{name:'ID',exact:true}).click();await page.getByRole('columnheader',{name:'ID',exact:true}).click();});
+  // Native tab history preserves query state; Phase 3 router remounts reset
+  // it. Normalize the visible navigation workload explicitly on both builds.
+  await sortTo('asc');
+  const navigationSize=page.locator('[data-slot="select-trigger"]').last();
+  if((await navigationSize.innerText()).trim()!=='10'){await navigationSize.click();await page.getByRole('option',{name:'10',exact:true}).click();await settled();}
+  await expect(page.locator('tbody tr')).toHaveCount(10);
+  await expect(page.locator('tbody tr').first()).toContainText('PERF-001');
   for (const [name,from,to,route] of [['nav-dashboard-cases','Dashboard','Cases','test-cases'],['nav-cases-bugs','Cases','Bugs','bugs'],['nav-bugs-automation','Bugs','Automation Logs','automation'],['nav-automation-reports','Automation Logs','Reports','reports']]) {
-    await measure(name,async()=>{await menu(to).click();await page.waitForURL(`**/${route}`);await expect(menu(to)).toHaveAttribute('aria-current','page');},async()=>{await menu(from).click();await expect(menu(from)).toHaveAttribute('aria-current','page');await sleep(400);});
+    await measure(name,async()=>{await menu(to).click();await page.waitForURL(`**/${route}`);await expect(menu(to)).toHaveAttribute('aria-current','page');},async()=>{await menu(from).click();const fromRoute={Dashboard:'dashboard',Cases:'test-cases',Bugs:'bugs','Automation Logs':'automation'}[from];await page.waitForURL(`**/${fromRoute}`);await expect(menu(from)).toHaveAttribute('aria-current','page');await sleep(400);});
   }
   await measure('rapid-menu-navigation',async()=>{for(const [label,route] of [['Dashboard','dashboard'],['Bugs','bugs'],['Automation Logs','automation'],['Test Cycles','test-runs'],['Traceability','traceability'],['Reports','reports'],['Settings','settings'],['Cases','test-cases']]){await menu(label).click();await page.waitForURL(`**/${route}`);await expect(menu(label)).toHaveAttribute('aria-current','page');}});
   await page.goto(`${baseURL}/projects/perf-project/test-cases`);
@@ -270,6 +343,14 @@ try {
   const row=()=>page.locator('[class*="grid-cols-12"][class*="cursor-pointer"]:visible').first();
   await measure('network-expansion',()=>row().click());
   await measure('fullscreen-devlog',async()=>{await page.getByRole('button',{name:'Fullscreen',exact:true}).last().click();await page.locator('button').filter({has:page.locator('svg.lucide-x')}).filter({visible:true}).first().click();});
+  const devlogClose=()=>page.getByRole('button',{name:'Close fullscreen DevLog'});
+  await measure('devlog-fullscreen-open',()=>page.getByRole('button',{name:'Fullscreen',exact:true}).last().click(),async()=>{if(await devlogClose().isVisible())await devlogClose().click();});
+  await measure('devlog-fullscreen-close',()=>devlogClose().click(),async()=>{if(!await devlogClose().isVisible())await page.getByRole('button',{name:'Fullscreen',exact:true}).last().click();});
+  if(await devlogClose().isVisible())await devlogClose().click();
+  const recordingClose=()=>page.getByRole('button',{name:'Close recording fullscreen'});
+  await measure('recording-fullscreen-open',()=>page.getByRole('button',{name:'Fullscreen',exact:true}).first().click(),async()=>{if(await recordingClose().isVisible())await recordingClose().click();});
+  await measure('recording-fullscreen-close',()=>recordingClose().click(),async()=>{if(!await recordingClose().isVisible())await page.getByRole('button',{name:'Fullscreen',exact:true}).first().click();});
+  if(await recordingClose().isVisible())await recordingClose().click();
   await measure('recording-playback',async()=>{const v=page.locator('video:visible').first(); await v.evaluate(async video=>{video.currentTime=1;await video.play();});await sleep(800);await v.evaluate(video=>video.pause());});
   results.videoProof=await page.locator('video:visible').first().evaluate(video=>({duration:video.duration,currentTime:video.currentTime,readyState:video.readyState,error:video.error?.message||null}));
   if (process.env.QA_BENCH_FUNCTIONAL === '1') {
@@ -320,7 +401,10 @@ try {
       for(const theme of ['light','dark']){await page.emulateMedia({colorScheme:theme});await expect(page.locator('html')).toHaveClass(theme==='dark'?/dark/:/^(?!.*dark)/);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));}
     } else for(const theme of ['Light','Dark']){await page.getByRole('button',{name:'Toggle theme'}).click();await page.getByRole('menuitem',{name:theme,exact:true}).click();}
   });
-} catch(e) { results.failure=e.message; console.error(e.message); await page.screenshot({path:path.join(output,'failure.png')}); }
+  // Mutations run last so they cannot change the fixture during other primary
+  // scenarios. Each comparator must start from its own identical DB snapshot.
+  await measure('cases-status',()=>status('FAILED'),()=>status('DONE'));
+} catch(e) { results.failure=e.message;results.failureUrl=page.url(); console.error(e.message); await page.screenshot({path:path.join(output,'failure.png')}); }
 finally { await fs.writeFile(path.join(output,'results.json'),JSON.stringify(results,null,2)); await browser.close(); }
 console.log(`Evidence: ${output}`);
 if(results.failure)process.exitCode=1;

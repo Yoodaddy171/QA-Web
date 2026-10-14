@@ -248,6 +248,9 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
 
 .test-case-detail-dialog {
   position: fixed;
+  /* duration-* also sets transition duration; the default property is "all".
+     Fullscreen geometry must settle once, not relayout the table every frame. */
+  transition-property: opacity, transform, translate, scale, rotate;
 }
 
 .signal-sweep::after {

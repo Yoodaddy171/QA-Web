@@ -260,10 +260,10 @@ async function readRunLogs(candidateIds: string[]) {
   return buildRunLogs('', null);
 }
 
-async function readRunLogsFromDatabase(candidateIds: string[]) {
+async function readRunLogsFromDatabase(candidateIds: string[], projectId: string) {
   if (!devlogDb) return null;
   const run = await devlogDb.automationRun.findFirst({
-    where: { testCaseId: { in: candidateIds } },
+    where: { projectId, testCaseId: { in: candidateIds } },
     orderBy: { startedAt: 'desc' },
     select: {
       events: {
@@ -318,10 +318,10 @@ async function readLatestRecording(testCaseIds: string[]) {
   return null;
 }
 
-async function readLatestRecordingFromDatabase(testCaseIds: string[]) {
+async function readLatestRecordingFromDatabase(testCaseIds: string[], projectId: string) {
   if (!devlogDb) return null;
   const recording = await devlogDb.recording.findFirst({
-    where: { testCaseId: { in: testCaseIds } },
+    where: { testCaseId: { in: testCaseIds }, run: { projectId } },
     orderBy: { startedAt: 'desc' },
     select: { metadata: true, mediaRoot: true },
   });
@@ -415,14 +415,14 @@ export async function GET(req: NextRequest) {
     const { record, type } = await findRecord(requestedId, projectId);
     if (!record) return NextResponse.json({ error: 'Test case atau bug fix tidak ditemukan.' }, { status: 404 });
 
-    const candidateIds = Array.from(new Set([
-      requestedId,
-      record.id,
-      record.testCaseId,
-      record.sourceTestCaseId || '',
-    ].filter(Boolean)));
-    const { raw, logs } = await readRunLogsFromDatabase(candidateIds) || await readRunLogs(candidateIds);
-    const recording = await readLatestRecordingFromDatabase(candidateIds) || await readLatestRecording(candidateIds);
+    // Display IDs are project-local and can collide. Only persisted internal IDs
+    // may select runtime files; validate a Bug's source before adding its ID.
+    const source = record.sourceTestCaseId
+      ? await db.testCase.findFirst({ where: { id: record.sourceTestCaseId, projectId }, select: { id: true } })
+      : null;
+    const candidateIds = [...new Set([record.id, ...(source ? [source.id] : [])])];
+    const { raw, logs } = await readRunLogsFromDatabase(candidateIds, projectId) || await readRunLogs(candidateIds);
+    const recording = await readLatestRecordingFromDatabase(candidateIds, projectId) || await readLatestRecording(candidateIds);
     const pickedFrames = recording ? pickFrames(recording.metadata.frames, extractImportantRelativeTimes(raw)) : [];
     const frames = recording ? (await Promise.all(pickedFrames.map(async frame => ({
       time: formatRelativeTime(frame.relativeMs),
@@ -445,7 +445,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('GET /api/evidence error:', error);
-    return NextResponse.json({ error: `Failed to generate evidence report: ${error.message}` }, { status: 500 });
+    console.error('GET /api/evidence failed', { code: typeof error?.code === 'string' ? error.code : 'UNKNOWN' });
+    return NextResponse.json({ error: 'Failed to generate evidence report' }, { status: 500 });
   }
 }

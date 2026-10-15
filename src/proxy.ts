@@ -3,7 +3,10 @@ import { getSessionByToken, hasMinimumRole, isAllowedRequestOrigin, SESSION_COOK
 import { db } from '@/lib/db';
 
 const PUBLIC_PATHS = ['/login', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/bootstrap'];
-const PROJECT_SCOPED_API = ['/api/activity', '/api/ai', '/api/automation/', '/api/bugfix', '/api/evidence', '/api/excel', '/api/modules', '/api/notifications', '/api/project-knowledge', '/api/reports', '/api/requirements', '/api/stats', '/api/testcases', '/api/test-plans', '/api/test-runs', '/api/traceability'];
+const PROJECT_SCOPED_API = ['/api/activity', '/api/ai', '/api/automation', '/api/bugfix', '/api/evidence', '/api/excel', '/api/modules', '/api/notifications', '/api/project-knowledge', '/api/reports', '/api/requirements', '/api/stats', '/api/testcases', '/api/test-plans', '/api/test-runs', '/api/traceability'];
+class RequestGuardError extends Error {
+  constructor(public readonly status: number, message: string) { super(message); }
+}
 
 function jsonError(error: string, status: number) {
   return NextResponse.json({ error }, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -13,22 +16,46 @@ function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.includes(pathname);
 }
 
-async function readSmallJson(req: NextRequest) {
-  if (!req.headers.get('content-type')?.includes('application/json')) return null;
-  if (Number(req.headers.get('content-length') || 0) > 1_000_000) return null;
-  return req.clone().json().catch(() => null) as Promise<Record<string, unknown> | null>;
+async function readSmallJson(req: NextRequest, pathname: string) {
+  if (!req.body) return null;
+  const contentType = req.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+  // Multipart handlers validate their nested IDs; Excel also binds the form
+  // project to the query project authorized here. Never skip a JSON handler's body.
+  if (contentType === 'multipart/form-data' && (pathname === '/api/excel'
+    || /^\/api\/test-runs\/[^/]+\/executions\/[^/]+\/evidence$/.test(pathname))) return null;
+  if (contentType !== 'application/json') throw new RequestGuardError(415, 'Content-Type application/json diperlukan.');
+  if (Number(req.headers.get('content-length') || 0) > 1_000_000) throw new RequestGuardError(413, 'Body JSON terlalu besar.');
+  const reader = req.clone().body!.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    size += chunk.value.byteLength;
+    if (size > 1_000_000) {
+      void reader.cancel().catch(() => undefined);
+      throw new RequestGuardError(413, 'Body JSON terlalu besar.');
+    }
+    chunks.push(chunk.value);
+  }
+  try {
+    const body: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('object required');
+    return body as Record<string, unknown>;
+  } catch { throw new RequestGuardError(400, 'Body JSON tidak valid.'); }
 }
 
 async function entityProjectIds(pathname: string, req: NextRequest, body: Record<string, unknown> | null) {
   const ids = new Set<string>();
-  const explicit = req.nextUrl.searchParams.get('projectId') || (typeof body?.projectId === 'string' ? body.projectId : '');
-  if (explicit) ids.add(explicit);
+  const explicit = [...req.nextUrl.searchParams.getAll('projectId'), typeof body?.projectId === 'string' ? body.projectId : ''].filter(Boolean);
+  explicit.forEach(id => ids.add(id));
 
   const segments = pathname.split('/').filter(Boolean);
   const entityId = segments[2] && !['read-all', 'next-id'].includes(segments[2]) ? segments[2] : '';
   if (pathname.startsWith('/api/reports/') && entityId) {
     const row = await db.report.findUnique({ where: { id: entityId }, select: { projectId: true } });
-    if (row) ids.add(row.projectId);
+    if (!row) throw new RequestGuardError(404, 'Report tidak ditemukan.');
+    ids.add(row.projectId);
   } else if (pathname.startsWith('/api/requirements/') && entityId) {
     const row = await db.requirement.findUnique({ where: { id: entityId }, select: { projectId: true } });
     if (row) ids.add(row.projectId);
@@ -66,7 +93,7 @@ async function entityProjectIds(pathname: string, req: NextRequest, body: Record
     rows.forEach(row => ids.add(row.projectId));
   }
 
-  if (pathname === '/api/evidence' && !explicit) {
+  if (pathname === '/api/evidence' && !explicit.length) {
     const requestedId = req.nextUrl.searchParams.get('testCaseId') || '';
     const [testCases, bugs] = await Promise.all([
       db.testCase.findMany({ where: { OR: [{ id: requestedId }, { testCaseId: requestedId }] }, select: { projectId: true } }),
@@ -87,7 +114,18 @@ function requiredRole(pathname: string, method: string): WorkspaceRole {
 }
 
 export async function proxy(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  try { return await authorizeRequest(req); }
+  catch (error) {
+    if (error instanceof RequestGuardError) return jsonError(error.message, error.status);
+    console.error('Authorization check failed', { name: error instanceof Error ? error.name : 'unknown' });
+    return jsonError('Pemeriksaan akses gagal.', 500);
+  }
+}
+
+async function authorizeRequest(req: NextRequest) {
+  let pathname: string;
+  try { pathname = req.nextUrl.pathname.split('/').map(segment => decodeURIComponent(segment)).join('/'); }
+  catch { throw new RequestGuardError(400, 'Path tidak valid.'); }
   if (isPublicPath(pathname)) return NextResponse.next();
 
   const session = await getSessionByToken(req.cookies.get(SESSION_COOKIE)?.value);
@@ -102,7 +140,9 @@ export async function proxy(req: NextRequest) {
     return jsonError('Origin request tidak diizinkan.', 403);
   }
 
-  const body = ['GET', 'HEAD'].includes(req.method) ? null : await readSmallJson(req);
+  const body = ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? null : await readSmallJson(req, pathname);
+  if (['GET', 'HEAD'].includes(req.method) && ['/api/testcases', '/api/bugfix', '/api/modules'].includes(pathname)
+    && !req.nextUrl.searchParams.get('projectId')) return jsonError('Project scope wajib diisi.', 400);
   const projectIds = pathname.startsWith('/api/') ? await entityProjectIds(pathname, req, body) : new Set<string>();
   const memberships = new Map(session.user.memberships.map(item => [item.workspaceId, item]));
   const projects = projectIds.size
@@ -116,7 +156,7 @@ export async function proxy(req: NextRequest) {
     return jsonError('Anda tidak memiliki akses yang diperlukan untuk project ini.', 403);
   }
 
-  const scopedWithoutProject = PROJECT_SCOPED_API.some(prefix => pathname === prefix || pathname.startsWith(prefix));
+  const scopedWithoutProject = PROJECT_SCOPED_API.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
   if (pathname.startsWith('/api/') && scopedWithoutProject && !projectIds.size) return jsonError('Project scope wajib diisi.', 400);
 
   const selectedMembership = projectMemberships[0] || session.user.memberships.find(item => hasMinimumRole(item.role, minimumRole));
@@ -132,5 +172,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|logo.svg|.*\\.(?:png|jpg|jpeg|gif|webp|svg|css|js|woff2?)$).*)'],
+  matcher: ['/api/:path*', '/((?!_next/static|_next/image|favicon.ico|logo.svg|.*\\.(?:png|jpg|jpeg|gif|webp|svg|css|js|woff2?)$).*)'],
 };

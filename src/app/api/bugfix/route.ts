@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const projectId = url.searchParams.get('projectId');
+    if (!projectId) return NextResponse.json({ error: 'Project scope wajib diisi.' }, { status: 400 });
     const status = url.searchParams.get('status');
     const search = url.searchParams.get('search');
     const page = parsePositiveInt(url.searchParams.get('page'), 1, 100000);

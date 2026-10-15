@@ -21,6 +21,11 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const projectId = formData.get('projectId') as string;
+    // The proxy authorizes the query project before this multipart body is read.
+    // Do not let a second, different form project select another workspace.
+    if (!projectId || projectId !== req.nextUrl.searchParams.get('projectId')) {
+      return NextResponse.json({ error: 'Project form harus sesuai dengan project query yang diotorisasi.' }, { status: 400 });
+    }
     notificationProjectId = projectId;
     const createModules = formData.get('createModules') === 'true';
     const mode = String(formData.get('mode') || 'import');

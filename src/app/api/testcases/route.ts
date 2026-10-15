@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const projectId = url.searchParams.get('projectId');
+    if (!projectId) return NextResponse.json({ error: 'Project scope wajib diisi.' }, { status: 400 });
     const moduleId = url.searchParams.get('moduleId');
     const subMenu = url.searchParams.get('subMenu');
     const status = url.searchParams.get('status');

@@ -17,6 +17,7 @@ import {
 } from '@/lib/services/testcase-service';
 import { calculatedWeightFor, getCalculatedWeightMap } from '@/lib/services/weight-service';
 import { NextRequest, NextResponse } from 'next/server';
+import { mutationFailure } from '@/lib/services/mutation-error';
 
 const TESTCASE_SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'testCaseId', 'page', 'status', 'priority', 'testType']);
 
@@ -147,7 +148,7 @@ export async function GET(req: NextRequest) {
         updatedAt: true,
         module: { select: { id: true, name: true } },
       },
-      orderBy: { [sortBy]: sortOrder },
+      orderBy: [{ [sortBy]: sortOrder }, { id: sortOrder }],
       skip: (page - 1) * limit,
       take: limit,
     }), getCalculatedWeightMap(projectId || undefined)]);
@@ -243,7 +244,7 @@ export async function PUT(req: NextRequest) {
     // Get current test case for comparison
     const current = await db.testCase.findUnique({
       where: { id },
-      select: { projectId: true, page: true, subMenu: true, status: true, actualResult: true, testCaseId: true, testType: true, testAction: true, steps: true, expectedResult: true, priority: true, moduleId: true, remarks: true, tags: true },
+      select: { projectId: true, page: true, subMenu: true, status: true, actualResult: true, testCaseId: true, testType: true, testAction: true, steps: true, expectedResult: true, priority: true, moduleId: true, remarks: true, tags: true, updatedAt: true },
     });
     if (!current) return NextResponse.json({ error: 'Test case not found' }, { status: 404 });
 
@@ -298,8 +299,8 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(testCase);
   } catch (error) {
-    console.error('PUT /api/testcases error:', error);
-    return NextResponse.json({ error: 'Failed to update test case' }, { status: 500 });
+    const failure = mutationFailure(error, 'PUT /api/testcases', 'Failed to update test case');
+    return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
 }
 
@@ -320,8 +321,8 @@ export async function PATCH(req: NextRequest) {
     const result = await bulkUpdateTestCaseStatus(ids, body.status);
     return NextResponse.json(result);
   } catch (error) {
-    console.error('PATCH /api/testcases error:', error);
-    return NextResponse.json({ error: 'Failed to bulk update test cases' }, { status: 500 });
+    const failure = mutationFailure(error, 'PATCH /api/testcases', 'Failed to bulk update test cases');
+    return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
 }
 

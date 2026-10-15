@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
-import { BUGFIX_STATUS, canTransitionBugFixStatus, isBugFixStatus, isEditableBugFixStatus } from '@/lib/domain/bugfix';
-import { getProgressFromStatus } from '@/lib/domain/progress';
-import { TESTCASE_ACTUAL_RESULT, TESTCASE_STATUS } from '@/lib/domain/testcase';
+import { isBugFixStatus } from '@/lib/domain/bugfix';
+import { updateBugFixStatus } from '@/lib/services/bugfix-service';
+import { mutationFailure } from '@/lib/services/mutation-error';
 import { NextRequest, NextResponse } from 'next/server';
 
 const BUGFIX_SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'testCaseId', 'page', 'status', 'priority']);
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
         updatedAt: true,
         module: { select: { id: true, name: true } },
       },
-      orderBy: { [sortBy]: sortOrder },
+      orderBy: [{ [sortBy]: sortOrder }, { id: sortOrder }],
       skip: (page - 1) * limit,
       take: limit,
     });
@@ -84,78 +84,13 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, ...data } = body;
-    if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
-
-    // Get current bug fix item
-    const current = await db.bugFix.findUnique({ where: { id } });
-    if (!current) return NextResponse.json({ error: 'Bug fix item not found' }, { status: 404 });
-
-    // Update timestamps based on status change
-    const updateData: Record<string, unknown> = {};
-    if (data.status !== undefined) {
-      if (!isEditableBugFixStatus(data.status)) {
-        return NextResponse.json(
-          { error: 'Bug fix hanya bisa diproses sampai READY TO RETEST. Verified & Fixed dilakukan dari halaman Test Case setelah retest berhasil.' },
-          { status: 400 }
-        );
-      }
-
-      // Enforce one-step-at-a-time lifecycle: no skipping stages.
-      if (!canTransitionBugFixStatus(current.status, data.status)) {
-        return NextResponse.json(
-          { error: 'Status bug fix hanya bisa berpindah satu tahap. Tidak boleh melompati tahap.' },
-          { status: 400 }
-        );
-      }
-
-      updateData.status = data.status;
-      const now = new Date();
-
-      if (data.status === BUGFIX_STATUS.REPORTED && !current.reportedAt) {
-        updateData.reportedAt = now;
-      }
-      if (data.status === BUGFIX_STATUS.FIXING) {
-        updateData.fixingAt = now;
-        // Bounce back: if a retest failed and the bug is moved back from
-        // READY TO RETEST, revert the synced test case out of READY TO RETEST.
-        if (current.status === BUGFIX_STATUS.READY_TO_RETEST) {
-          await db.testCase.updateMany({
-            where: { id: current.sourceTestCaseId, status: TESTCASE_STATUS.READY_TO_RETEST },
-            data: {
-              status: TESTCASE_STATUS.FAILED,
-              actualResult: TESTCASE_ACTUAL_RESULT.NOT_AS_EXPECTED,
-              progress: getProgressFromStatus(TESTCASE_STATUS.FAILED),
-            },
-          });
-        }
-      }
-      if (data.status === BUGFIX_STATUS.READY_TO_RETEST) {
-        updateData.readyAt = now;
-        // Sync: update the original test case status to READY TO RETEST
-        const updateResult = await db.testCase.updateMany({
-          where: { id: current.sourceTestCaseId },
-          data: { status: TESTCASE_STATUS.READY_TO_RETEST, progress: getProgressFromStatus(TESTCASE_STATUS.READY_TO_RETEST) },
-        });
-        if (updateResult.count === 0) {
-          return NextResponse.json(
-            { error: 'Original test case tidak ditemukan. Bug fix ini tidak bisa dikirim ke Ready to Retest.' },
-            { status: 404 }
-          );
-        }
-      }
-    }
-
-    const bugFixItem = await db.bugFix.update({
-      where: { id },
-      data: updateData,
-      include: { module: true },
-    });
-
+    const { id, status } = body;
+    if (typeof id !== 'string' || !id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    const bugFixItem = await updateBugFixStatus(id, status);
     return NextResponse.json(bugFixItem);
   } catch (error) {
-    console.error('PUT /api/bugfix error:', error);
-    return NextResponse.json({ error: 'Failed to update bug fix item' }, { status: 500 });
+    const failure = mutationFailure(error, 'PUT /api/bugfix', 'Failed to update bug fix item');
+    return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
 }
 

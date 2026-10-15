@@ -2,6 +2,8 @@ import { db } from '@/lib/db';
 import { BUGFIX_STATUS } from '@/lib/domain/bugfix';
 import { TESTCASE_ACTUAL_RESULT, TESTCASE_STATUS } from '@/lib/domain/testcase';
 import type { Prisma } from '@prisma/client';
+import { MutationError, nextMutationTime } from './mutation-error';
+import { recordActivity } from './activity-history-service';
 
 type DbClient = typeof db | Prisma.TransactionClient;
 
@@ -26,26 +28,46 @@ export async function syncBugFixForTestCaseStatus(input: {
   finalActualResult: string | null;
 }) {
   const client = input.client ?? db;
+  const mismatched = await client.bugFix.findFirst({
+    where: { sourceTestCaseId: input.sourceTestCaseId, projectId: { not: input.source.projectId } },
+    select: { id: true },
+  });
+  if (mismatched) throw new MutationError(409, 'Relasi Bug dan Test Case tidak berada dalam project yang sama.');
 
   if (input.finalStatus === TESTCASE_STATUS.FAILED) {
     // Already tracked in the active queue — nothing to do.
     const activeBugFix = await client.bugFix.findFirst({
       where: {
         sourceTestCaseId: input.sourceTestCaseId,
+        projectId: input.source.projectId,
         status: { not: BUGFIX_STATUS.VERIFIED_FIXED },
       },
-      select: { id: true },
+      select: { id: true, status: true, updatedAt: true },
     });
-    if (activeBugFix) return;
+    if (activeBugFix) {
+      // A failed retest is the same adjacent READY -> FIXING bounce as the Bugs UI.
+      if (activeBugFix.status === BUGFIX_STATUS.READY_TO_RETEST) {
+        const now = nextMutationTime(activeBugFix.updatedAt);
+        const bounced = await client.bugFix.updateMany({
+          where: { id: activeBugFix.id, projectId: input.source.projectId, status: BUGFIX_STATUS.READY_TO_RETEST, updatedAt: activeBugFix.updatedAt },
+          data: { status: BUGFIX_STATUS.FIXING, fixingAt: now, updatedAt: now },
+        });
+        if (bounced.count !== 1) throw new MutationError(409, 'Status bug telah berubah. Muat ulang data sebelum mencoba lagi.');
+        await recordActivity({ projectId: input.source.projectId, entityType: 'BugFix', entityId: activeBugFix.id,
+          action: 'UPDATED', field: 'status', beforeValue: BUGFIX_STATUS.READY_TO_RETEST, afterValue: BUGFIX_STATUS.FIXING }, client);
+      }
+      return;
+    }
 
     // Regression: the case was previously verified & fixed but failed again.
     // Reopen the resolved bug instead of leaving it hidden in "resolved".
     const resolvedBugFix = await client.bugFix.findFirst({
       where: {
         sourceTestCaseId: input.sourceTestCaseId,
+        projectId: input.source.projectId,
         status: BUGFIX_STATUS.VERIFIED_FIXED,
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       select: { id: true },
     });
 
@@ -94,6 +116,7 @@ export async function syncBugFixForTestCaseStatus(input: {
     await client.bugFix.updateMany({
       where: {
         sourceTestCaseId: input.sourceTestCaseId,
+        projectId: input.source.projectId,
         status: { not: BUGFIX_STATUS.VERIFIED_FIXED },
       },
       data: {

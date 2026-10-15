@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchBugFixes } from './bugfix-client';
+import { fetchBugFixes, updateBugFix } from './bugfix-client';
+import { updateTestCase, bulkUpdateTestCaseStatus } from './testcases-client';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('Bugs GET client', () => {
@@ -20,4 +21,13 @@ describe('Bugs GET client', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
     await expect(fetchBugFixes({ projectId: 'a' })).rejects.toThrow('gagal dimuat');
   });
+});
+
+it('6A-RACE: existing mutation clients surface HTTP 409 without claiming success or retrying', async () => {
+  const fetch = vi.fn().mockResolvedValue({ ok: false, status: 409, json: async () => ({ error: 'Data berubah. Muat ulang.' }) });
+  vi.stubGlobal('fetch', fetch);
+  await expect(updateBugFix({ id: 'a', status: 'SEDANG DI FIX' })).rejects.toThrow('Muat ulang');
+  await expect(updateTestCase({ id: 'a', status: 'DONE' })).rejects.toThrow('Muat ulang');
+  await expect(bulkUpdateTestCaseStatus(['a'], 'DONE')).rejects.toThrow('Muat ulang');
+  expect(fetch).toHaveBeenCalledTimes(3);
 });

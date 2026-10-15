@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import { createRequire } from 'node:module';
 import { db } from '@/lib/db';
 import { normalizeLocalOllamaUrl } from '@/lib/ai-settings';
 import { evidenceStorageRoot } from '@/lib/storage/evidence-storage';
@@ -79,10 +79,25 @@ async function checkBrowser() {
   });
 }
 
-async function checkFfmpeg() {
+// Resolve through Node from the deployed application root. Turbopack can relocate
+// external packages to hashed directories, breaking the installer's sibling lookup.
+function loadFfmpegInstaller(): { path: string } {
+  const runtimeRequire = createRequire(path.join(/*turbopackIgnore: true*/ process.cwd(), 'package.json'));
+  return runtimeRequire('@ffmpeg-installer/ffmpeg');
+}
+
+export async function checkFfmpeg(
+  env: Partial<NodeJS.ProcessEnv> = process.env,
+  loadInstaller: () => { path: string } = loadFfmpegInstaller,
+) {
   return timedCheck('ffmpeg', 'FFmpeg', async () => {
-    const candidate = process.env.FFMPEG_PATH || ffmpegInstaller.path;
-    await fs.access(candidate);
+    try {
+      // An explicit binary must also work when the optional installer is absent.
+      const candidate = env.FFMPEG_PATH || loadInstaller().path;
+      await fs.access(candidate);
+    } catch {
+      return { status: 'blocked', detail: 'Binary FFmpeg tidak tersedia. Periksa instalasi FFmpeg atau atur FFMPEG_PATH.' };
+    }
     return { status: 'ready', detail: 'Binary FFmpeg tersedia untuk finalisasi rekaman.' };
   });
 }

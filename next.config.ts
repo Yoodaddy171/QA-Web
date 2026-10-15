@@ -18,6 +18,12 @@ const nextConfig: NextConfig = {
   // Opt-in profiling build; disabled for normal production deployments.
   reactProductionProfiling: process.env.QA_PERF_PROFILING === '1',
   serverExternalPackages: ['exceljs', '@ffmpeg-installer/ffmpeg'],
+  outputFileTracingIncludes: {
+    '/api/readiness': [
+      './node_modules/@ffmpeg-installer/ffmpeg/**/*',
+      `./node_modules/@ffmpeg-installer/${process.platform}-${process.arch}/**/*`,
+    ],
+  },
   // @ts-ignore
   turbopack: {},
   webpack: (config, { dev }) => {

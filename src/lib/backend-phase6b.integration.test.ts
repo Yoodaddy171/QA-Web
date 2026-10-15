@@ -116,6 +116,28 @@ it('6B-EVIDENCE: duplicate display IDs cannot select another workspace automatio
   expect(html).not.toContain('SYNTHETIC-b-PRIVATE-LOG');
 });
 
+it.each(['separator', 'next-id', 'read-all'])('6B1-PATH: %s report ID retains its actual workspace', async kind => {
+  const a = data.resources.a, b = data.resources.b;
+  const foreignReport = await db.report.create({ data: {
+    id: kind === 'separator' ? `${a.report.id}/foreign` : kind, projectId: b.project.id, version: 'custom',
+    reportType: 'TEST_PLANNING_DOCUMENT', metricsSnapshot: {},
+    reportingPeriodStart: new Date('2020-01-01'), reportingPeriodEnd: new Date('2020-01-02'),
+    progressNarrative: 'SYNTHETIC-SLASH-PRIVATE',
+  } });
+  const endpoint = `/api/reports/${encodeURIComponent(foreignReport.id)}?projectId=${a.project.id}`;
+  const handler = (req: NextRequest) => reports.GET(req, { params: Promise.resolve({ id: foreignReport.id }) });
+  const before = await snapshot();
+  const denied = await dispatch(request(endpoint), handler);
+  expect(denied.status).toBe(403);
+  expect(await denied.text()).not.toContain('SYNTHETIC-SLASH-PRIVATE');
+  const mutation = await dispatch(request(endpoint, 'qa', 'PATCH', { author: 'Unauthorized' }), req => reports.PATCH(req, { params: Promise.resolve({ id: foreignReport.id }) }));
+  expect(mutation.status).toBe(403);
+  const allowed = await dispatch(request(`/api/reports/${encodeURIComponent(foreignReport.id)}`, 'foreign'), handler);
+  expect(allowed.status).toBe(200);
+  expect((await allowed.json()).report.id).toBe(foreignReport.id);
+  expect(await snapshot()).toEqual(before);
+});
+
 it('6B-MULTIPART: an authorized query cannot select a foreign Excel form project', async () => {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{ ID: 'SHARED-001', Page: 'Synthetic', Feature: 'Submit', Test: 'Synthetic', Step: 'Click', 'Expected Result': 'Saved', Status: 'NOT DONE' }]), 'Synthetic');

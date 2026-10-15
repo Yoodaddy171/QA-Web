@@ -50,8 +50,12 @@ async function entityProjectIds(pathname: string, req: NextRequest, body: Record
   const explicit = [...req.nextUrl.searchParams.getAll('projectId'), typeof body?.projectId === 'string' ? body.projectId : ''].filter(Boolean);
   explicit.forEach(id => ids.add(id));
 
-  const segments = pathname.split('/').filter(Boolean);
-  const entityId = segments[2] && !['read-all', 'next-id'].includes(segments[2]) ? segments[2] : '';
+  // Decode each resource segment without turning an encoded slash inside an ID
+  // into a route separator. Next supplies that entire decoded ID to the handler.
+  const segments = pathname.split('/').filter(Boolean).map(segment => decodeURIComponent(segment));
+  // Only notifications/read-all is a collection action here. Those words are
+  // valid custom IDs on other dynamic resources and still require ownership.
+  const entityId = segments[2] && !(segments[1] === 'notifications' && segments[2] === 'read-all') ? segments[2] : '';
   if (pathname.startsWith('/api/reports/') && entityId) {
     const row = await db.report.findUnique({ where: { id: entityId }, select: { projectId: true } });
     if (!row) throw new RequestGuardError(404, 'Report tidak ditemukan.');
@@ -124,7 +128,7 @@ export async function proxy(req: NextRequest) {
 
 async function authorizeRequest(req: NextRequest) {
   let pathname: string;
-  try { pathname = req.nextUrl.pathname.split('/').map(segment => decodeURIComponent(segment)).join('/'); }
+  try { pathname = req.nextUrl.pathname.split('/').map(segment => encodeURIComponent(decodeURIComponent(segment))).join('/'); }
   catch { throw new RequestGuardError(400, 'Path tidak valid.'); }
   if (isPublicPath(pathname)) return NextResponse.next();
 

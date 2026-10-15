@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AlertTriangle, Bug, CheckCircle2, Clock, Eye, RefreshCw, Search, Settings2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AnimatedNumber } from '@/components/ui/animated-number';
@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { canTransitionBugFixStatus } from '@/lib/domain/bugfix';
+import { BugFixStatusCell } from '@/components/BugFixStatusCell';
 import { DataTableDensityToggle } from '@/components/DataTableDensityToggle';
 import { useTableDensity } from '@/hooks/use-table-density';
 import { cn } from '@/lib/utils';
@@ -123,6 +123,78 @@ const getBugFixStatusColor = (status: string) => {
   }
 };
 
+type BugFixRowsProps = {
+  visibleBugFixItems: BugFixItem[];
+  rowClassName: string;
+  bugFixTab: 'active' | 'resolved';
+  getColumnClass: (column: BugFixColumnKey, extra?: string) => string;
+  getPriorityColor: BugFixPanelProps['getPriorityColor'];
+  onStatusChange: BugFixPanelProps['onStatusChange'];
+  onOpenDetail: BugFixPanelProps['onOpenDetail'];
+};
+
+// Memoize the row boundary as well as the page: one canonical changed record
+// should not invalidate the other closed selector/date/cell trees.
+const BugFixTableRow = memo(function BugFixTableRow({
+  bf, index, ...props
+}: Omit<BugFixRowsProps, 'visibleBugFixItems'> & { bf: BugFixItem; index: number }) {
+  const { rowClassName, bugFixTab, getColumnClass, getPriorityColor, onStatusChange, onOpenDetail } = props;
+  return (
+    <TableRow
+      data-bug-id={bf.id}
+      className={cn("cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors group", rowClassName)}
+
+      title="Klik untuk melihat detail"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('button, a, input, select, [role="checkbox"], [role="combobox"], [role="menu"], [role="option"], [role="listbox"]')) return;
+        onOpenDetail(bf);
+      }}
+    >
+      <TableCell className="sticky left-0 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">{index + 1}</TableCell>
+      <TableCell className="sticky left-10 z-10 w-[130px] min-w-[130px] max-w-[130px] overflow-hidden whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary">{bf.testCaseId}</TableCell>
+      <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={bf.page}>{bf.page}</TableCell>
+      <TableCell className={getColumnClass('subMenu', 'max-w-[100px] truncate text-[13px] font-medium text-muted-foreground')} title={bf.subMenu || ''}>{bf.subMenu || '—'}</TableCell>
+      <TableCell className={getColumnClass('action', 'max-w-[180px]')} title={bf.testAction}>
+        <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{bf.testAction}</p>
+      </TableCell>
+      <TableCell className={getColumnClass('priority')}>
+        <Badge variant="outline" className={cn("text-xs font-bold tracking-wide uppercase px-2 py-0.5 shadow-xs", getPriorityColor(bf.priority))}>
+          {bf.priority}
+        </Badge>
+      </TableCell>
+      <TableCell className={getColumnClass('status')}>
+        {bugFixTab === 'resolved' ? (
+          <Badge variant="success" className="text-xs font-bold uppercase tracking-wider px-2 py-0.5">
+            {bf.status}
+          </Badge>
+        ) : (
+          <BugFixStatusCell id={bf.id} displayId={bf.testCaseId} status={bf.status} color={getBugFixStatusColor(bf.status)} onChange={onStatusChange} />
+        )}
+      </TableCell>
+      <TableCell className={getColumnClass('reportedAt', 'text-xs font-semibold text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
+      <TableCell className={getColumnClass('timing', 'whitespace-nowrap text-xs font-semibold text-muted-foreground')}>
+        {bugFixTab === 'resolved'
+          ? formatDate(bf.fixedAt)
+          : bf.status === 'READY TO RETEST'
+            ? formatDate(bf.readyAt)
+            : formatDate(bf.fixingAt)}
+      </TableCell>
+      <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
+        <Button
+          aria-label={`View bug ${bf.testCaseId}`}
+          title={`View bug ${bf.testCaseId}`}
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 rounded-md p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
+          onClick={() => onOpenDetail(bf)}
+        >
+          <Eye className="w-4 h-4 text-primary" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+});
+
 export function BugFixPanel({
   selectedProject,
   modules,
@@ -143,11 +215,13 @@ export function BugFixPanel({
 }: BugFixPanelProps) {
   const [visibleColumns, setVisibleColumns] = useState<Record<BugFixColumnKey, boolean>>(getInitialBugFixColumns);
   const { density, setDensity, rowClassName } = useTableDensity();
-  const isColumnVisible = (key: BugFixColumnKey) => visibleColumns[key];
-  const getColumnClass = (key: BugFixColumnKey, baseClass = '') => {
+  const getColumnClass = useCallback((key: BugFixColumnKey, baseClass = '') => {
     const option = BUGFIX_COLUMN_OPTIONS.find((column) => column.key === key);
-    return cn(!isColumnVisible(key) && 'hidden', isColumnVisible(key) && option?.responsiveClass, baseClass);
-  };
+    return cn(!visibleColumns[key] && 'hidden', visibleColumns[key] && option?.responsiveClass, baseClass);
+  }, [visibleColumns]);
+  const detailHandler = useRef(onOpenDetail);
+  useLayoutEffect(() => { detailHandler.current = onOpenDetail; }, [onOpenDetail]);
+  const openDetail = useCallback((item: BugFixItem) => detailHandler.current(item), []);
 
   useEffect(() => {
     window.localStorage.setItem(BUGFIX_COLUMN_STORAGE_KEY, JSON.stringify(visibleColumns));
@@ -296,67 +370,9 @@ export function BugFixPanel({
               </TableHeader>
               <TableBody>
                 {visibleBugFixItems.map((bf, index) => (
-                  <TableRow
-                    key={bf.id}
-                    className={cn("cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors group", rowClassName)}
-
-                    title="Klik untuk melihat detail"
-                    onClick={(e) => {
-                      if ((e.target as HTMLElement).closest('button, a, input, select, [role="checkbox"], [role="combobox"], [role="menu"]')) return;
-                      onOpenDetail(bf);
-                    }}
-                  >
-                    <TableCell className="sticky left-0 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">{index + 1}</TableCell>
-                    <TableCell className="sticky left-10 z-10 w-[130px] min-w-[130px] max-w-[130px] overflow-hidden whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary">{bf.testCaseId}</TableCell>
-                    <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={bf.page}>{bf.page}</TableCell>
-                    <TableCell className={getColumnClass('subMenu', 'max-w-[100px] truncate text-[13px] font-medium text-muted-foreground')} title={bf.subMenu || ''}>{bf.subMenu || '—'}</TableCell>
-                    <TableCell className={getColumnClass('action', 'max-w-[180px]')} title={bf.testAction}>
-                      <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{bf.testAction}</p>
-                    </TableCell>
-                    <TableCell className={getColumnClass('priority')}>
-                      <Badge variant="outline" className={cn("text-xs font-bold tracking-wide uppercase px-2 py-0.5 shadow-xs", getPriorityColor(bf.priority))}>
-                        {bf.priority}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className={getColumnClass('status')}>
-                      {bugFixTab === 'resolved' ? (
-                        <Badge variant="success" className="text-xs font-bold uppercase tracking-wider px-2 py-0.5">
-                          {bf.status}
-                        </Badge>
-                      ) : (
-                        <Select value={bf.status} onValueChange={(val) => onStatusChange(bf.id, val)}>
-                          <SelectTrigger className={cn("h-7 w-[140px] rounded-lg border px-2 text-xs font-bold uppercase tracking-wider shadow-none", getBugFixStatusColor(bf.status))}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl bg-card border border-border/50 shadow-lg text-foreground">
-                            <SelectItem value="SUDAH DILAPORKAN" disabled={!canTransitionBugFixStatus(bf.status, 'SUDAH DILAPORKAN')} className="text-xs font-bold rounded-lg my-0.5 mx-1">DILAPORKAN</SelectItem>
-                            <SelectItem value="SEDANG DI FIX" disabled={!canTransitionBugFixStatus(bf.status, 'SEDANG DI FIX')} className="text-xs font-bold rounded-lg my-0.5 mx-1">SEDANG DI FIX</SelectItem>
-                            <SelectItem value="READY TO RETEST" disabled={!canTransitionBugFixStatus(bf.status, 'READY TO RETEST')} className="text-xs font-bold rounded-lg my-0.5 mx-1">READY TO RETEST</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </TableCell>
-                    <TableCell className={getColumnClass('reportedAt', 'text-xs font-semibold text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
-                    <TableCell className={getColumnClass('timing', 'whitespace-nowrap text-xs font-semibold text-muted-foreground')}>
-                      {bugFixTab === 'resolved'
-                        ? formatDate(bf.fixedAt)
-                        : bf.status === 'READY TO RETEST'
-                          ? formatDate(bf.readyAt)
-                          : formatDate(bf.fixingAt)}
-                    </TableCell>
-                    <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
-                      <Button
-                        aria-label={`View bug ${bf.testCaseId}`}
-                        title={`View bug ${bf.testCaseId}`}
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 rounded-md p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        onClick={() => onOpenDetail(bf)}
-                      >
-                        <Eye className="w-4 h-4 text-primary" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                  <BugFixTableRow key={bf.id} bf={bf} index={index} rowClassName={rowClassName}
+                    bugFixTab={bugFixTab} getColumnClass={getColumnClass} getPriorityColor={getPriorityColor}
+                    onStatusChange={onStatusChange} onOpenDetail={openDetail} />
                 ))}
               </TableBody>
             </Table>

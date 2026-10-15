@@ -7,7 +7,7 @@ export type BugFixQueryOptions = {
   limit?: number;
 };
 
-export async function fetchBugFixes(options: BugFixQueryOptions): Promise<{ bugFixItems?: BugFixItem[] }> {
+export async function fetchBugFixes(options: BugFixQueryOptions, signal?: AbortSignal): Promise<{ bugFixItems?: BugFixItem[] }> {
   const params = new URLSearchParams({
     projectId: options.projectId,
     limit: String(options.limit ?? 100),
@@ -15,7 +15,8 @@ export async function fetchBugFixes(options: BugFixQueryOptions): Promise<{ bugF
   if (options.search) params.set('search', options.search);
   if (options.status) params.set('status', options.status);
 
-  const res = await fetch(`/api/bugfix?${params}`);
+  const res = await fetch(`/api/bugfix?${params}`, { signal });
+  if (!res.ok) throw new Error('Bug fix data gagal dimuat');
   return res.json();
 }
 

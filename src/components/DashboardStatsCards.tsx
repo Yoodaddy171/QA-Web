@@ -9,7 +9,7 @@ import type { DashboardStats } from '@/components/DashboardPanel';
 export function DashboardStatsCards({ stats }: { stats: DashboardStats }) {
   return (
 <motion.div
-  className="grid grid-cols-2 overflow-hidden rounded-xl border border-border/70 bg-card/90 sm:grid-cols-3 lg:grid-cols-7"
+  className="grid grid-cols-2 overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 xl:grid-cols-7"
   initial={false}
 >
   {([
@@ -23,15 +23,15 @@ export function DashboardStatsCards({ stats }: { stats: DashboardStats }) {
   ] as const).map(({ key, label, value, icon: StatIcon, iconBg, iconColor }) => (
     <motion.div
       key={key}
-      className="relative border-b border-r border-border/60 p-4 last:border-r-0 lg:border-b-0"
+      className="relative border-b border-r border-border/60 p-4 last:border-r-0 xl:border-b-0"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <div className={cn('rounded-lg p-2', iconBg)}>
           <StatIcon className={cn('h-4 w-4', iconColor)} />
         </div>
         <div>
           <AnimatedNumber value={value} className="block font-mono text-xl font-bold text-foreground tabular-nums" />
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+          <p className="qa-module-meta mt-1">{label}</p>
         </div>
       </div>
     </motion.div>

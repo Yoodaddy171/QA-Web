@@ -41,9 +41,7 @@ export async function getProjectStats(projectId: string) {
     }),
     db.testRun.findMany({
       where: { projectId, status: { not: 'ARCHIVED' } },
-      include: {
-        testCases: { include: { executions: { orderBy: { createdAt: 'desc' }, take: 1 } } },
-      },
+      select: { id: true, name: true, status: true },
       orderBy: { updatedAt: 'desc' },
       take: 10,
     }),
@@ -64,8 +62,16 @@ export async function getProjectStats(projectId: string) {
     }),
   ]);
 
+  // Readiness consumes just one of the ten candidates. Avoid materializing the
+  // testcase/execution graph (including unused notes) for every other cycle.
+  const selectedRun = testRuns.find(run => run.status === 'IN PROGRESS')
+    || testRuns.find(run => run.status === 'READY') || testRuns[0] || null;
+  const runCases = selectedRun ? await db.testRunCase.findMany({
+    where: { testRunId: selectedRun.id },
+    select: { executions: { orderBy: { createdAt: 'desc' }, take: 1, select: { status: true } } },
+  }) : [];
   const stats = calculateDashboardStats(allTestCases, bugFixItems, projectModules);
-  return { ...stats, releaseReadiness: buildReleaseReadiness(testRuns, bugFixItems), recentActivities };
+  return { ...stats, releaseReadiness: buildReleaseReadiness(selectedRun ? [{ ...selectedRun, testCases: runCases }] : [], bugFixItems), recentActivities };
 }
 
 export function buildReleaseReadiness(testRuns: Array<{ id: string; name: string; status: string; testCases: Array<{ executions: Array<{ status: string }> }> }>, bugFixItems: Array<{ id: string; priority: string; status: string }>) {

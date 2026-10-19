@@ -1,0 +1,214 @@
+{
+  "browser": "149.0.7827.55",
+  "errors": [],
+  "results": [
+    {
+      "id": "UI-004",
+      "label": "cases",
+      "reference": "UI-108",
+      "filename": "pass1-narrow/UI-004-cases-390-dark.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "role": "OWNER",
+      "fixture": "Phase8A logical seed: Mercury Commerce QA,24 cases,3 modules,4 Bugs; new synthetic UUIDs/timestamps.",
+      "route": "/projects/cmvatqg6f001awqy0om8yvz3b/test-cases",
+      "conditions": {
+        "documentOverflow": false,
+        "dialogs": [],
+        "theme": "dark"
+      }
+    },
+    {
+      "id": "UI-013",
+      "label": "create",
+      "reference": "UI-013",
+      "filename": "pass1-narrow/UI-013-create-390-dark.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "role": "OWNER",
+      "fixture": "Phase8A logical seed: Mercury Commerce QA,24 cases,3 modules,4 Bugs; new synthetic UUIDs/timestamps.",
+      "route": "/projects/cmvatqg6f001awqy0om8yvz3b/test-cases",
+      "conditions": {
+        "documentOverflow": false,
+        "dialogs": [
+          {
+            "x": 16,
+            "y": 16,
+            "width": 358,
+            "height": 812
+          }
+        ],
+        "theme": "dark"
+      }
+    },
+    {
+      "id": "UI-024",
+      "label": "inspector",
+      "reference": "UI-109",
+      "filename": "pass1-narrow/UI-024-inspector-390-dark.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "role": "OWNER",
+      "fixture": "Phase8A logical seed: Mercury Commerce QA,24 cases,3 modules,4 Bugs; new synthetic UUIDs/timestamps.",
+      "route": "/projects/cmvatqg6f001awqy0om8yvz3b/test-cases",
+      "conditions": {
+        "documentOverflow": false,
+        "dialogs": [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844
+          }
+        ],
+        "theme": "dark"
+      }
+    },
+    {
+      "id": "UI-043",
+      "label": "bugs",
+      "reference": "UI-110",
+      "filename": "pass1-narrow/UI-043-bugs-390-dark.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "role": "OWNER",
+      "fixture": "Phase8A logical seed: Mercury Commerce QA,24 cases,3 modules,4 Bugs; new synthetic UUIDs/timestamps.",
+      "route": "/projects/cmvatqg6f001awqy0om8yvz3b/bugs",
+      "conditions": {
+        "documentOverflow": false,
+        "dialogs": [],
+        "theme": "dark"
+      }
+    },
+    {
+      "label": "measured-token-contrast",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "contrast": {
+        "bodyOnCard": 16.142049287571098,
+        "metadataOnCard": 7.025075019929545,
+        "primaryButton": 5.359503790559961
+      },
+      "scope": "Three opaque existing token pairs only; not full WCAG certification."
+    },
+    {
+      "id": "UI-004",
+      "label": "cases",
+      "reference": "UI-117",
+      "filename": "pass1-narrow/UI-004-cases-390-light.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "role": "OWNER",
+      "fixture": "Phase8A logical seed: Mercury Commerce QA,24 cases,3 modules,4 Bugs; new synthetic UUIDs/timestamps.",
+      "route": "/projects/cmvatqg6f001awqy0om8yvz3b/test-cases",
+      "conditions": {
+        "documentOverflow": false,
+        "dialogs": [],
+        "theme": "light"
+      }
+    },
+    {
+      "id": "UI-013",
+      "label": "create",
+      "reference": "UI-013",
+      "filename": "pass1-narrow/UI-013-create-390-light.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "role": "OWNER",
+      "fixture": "Phase8A logical seed: Mercury Commerce QA,24 cases,3 modules,4 Bugs; new synthetic UUIDs/timestamps.",
+      "route": "/projects/cmvatqg6f001awqy0om8yvz3b/test-cases",
+      "conditions": {
+        "documentOverflow": false,
+        "dialogs": [
+          {
+            "x": 16,
+            "y": 16,
+            "width": 358,
+            "height": 812
+          }
+        ],
+        "theme": "light"
+      }
+    },
+    {
+      "id": "UI-024",
+      "label": "inspector",
+      "reference": "UI-109",
+      "filename": "pass1-narrow/UI-024-inspector-390-light.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "role": "OWNER",
+      "fixture": "Phase8A logical seed: Mercury Commerce QA,24 cases,3 modules,4 Bugs; new synthetic UUIDs/timestamps.",
+      "route": "/projects/cmvatqg6f001awqy0om8yvz3b/test-cases",
+      "conditions": {
+        "documentOverflow": false,
+        "dialogs": [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 844
+          }
+        ],
+        "theme": "light"
+      }
+    },
+    {
+      "id": "UI-043",
+      "label": "bugs",
+      "reference": "UI-110",
+      "filename": "pass1-narrow/UI-043-bugs-390-light.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "role": "OWNER",
+      "fixture": "Phase8A logical seed: Mercury Commerce QA,24 cases,3 modules,4 Bugs; new synthetic UUIDs/timestamps.",
+      "route": "/projects/cmvatqg6f001awqy0om8yvz3b/bugs",
+      "conditions": {
+        "documentOverflow": false,
+        "dialogs": [],
+        "theme": "light"
+      }
+    },
+    {
+      "label": "measured-token-contrast",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "contrast": {
+        "bodyOnCard": 17.71676507806213,
+        "metadataOnCard": 4.832895561154151,
+        "primaryButton": 6.287528596095884
+      },
+      "scope": "Three opaque existing token pairs only; not full WCAG certification."
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,8 @@ const dateInput = (value?: Date) => value ? new Date(value).toISOString().slice(
 
 export function ReportForm({ projectId, report, onReportSaved, onCancel }: ReportFormProps) {
   const { toast } = useToast();
+  const prefix = useId();
+  const fieldId = (field: string) => `${prefix}-${field}`;
   const [reportType, setReportType] = useState<ReportType>(report?.reportType || 'TEST_STATUS_REPORT');
   const [documentId, setDocumentId] = useState(report?.documentId || '');
   const [testRunId, setTestRunId] = useState(report?.testRunId || '');
@@ -48,7 +50,7 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
       .then(async response => ({ response, data: await response.json() }))
       .then(({ response, data }) => {
         if (!response.ok) throw new Error(data.error || 'Test Cycle gagal dimuat.');
-        const runs = Array.isArray(data.runs) ? data.runs : [];
+        const runs = Array.isArray(data.testRuns) ? data.testRuns : [];
         setTestRuns(runs);
         setTestRunId(current => current || runs[0]?.id || '');
       })
@@ -59,8 +61,8 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
   const setSection = (key: keyof ReportSections, value: string) => setSections(current => ({ ...current, [key]: value }));
   const textarea = (key: keyof ReportSections, label: string, placeholder = '') => (
     <div>
-      <Label htmlFor={key}>{label}</Label>
-      <Textarea id={key} value={sections[key] || ''} onChange={(e) => setSection(key, e.target.value)} placeholder={placeholder} rows={4} />
+      <Label htmlFor={fieldId(key)}>{label}</Label>
+      <Textarea id={fieldId(key)} value={sections[key] || ''} onChange={(e) => setSection(key, e.target.value)} placeholder={placeholder} rows={4} />
     </div>
   );
 
@@ -108,43 +110,43 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
   const isPlanning = reportType === 'TEST_PLANNING_DOCUMENT';
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-5xl space-y-5">
-      <div className="rounded-lg border border-border/60 bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-foreground">{report ? 'Edit Report' : 'Create Report'}</h2>
-        <p className="text-sm text-muted-foreground">Isi metadata dan section dokumen. Snapshot metrics akan dihitung dari database.</p>
+    <form onSubmit={handleSubmit} className="qa-module-form flex min-w-0 max-w-5xl flex-col gap-5">
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">{report ? 'Edit Report' : 'Create Report'}</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">Isi metadata dan section dokumen. Snapshot metrics akan dihitung dari database.</p>
       </div>
 
-      <Accordion type="multiple" defaultValue={['doc', 'sections']} className="rounded-lg border border-border/60 bg-card px-4">
+      <Accordion type="multiple" defaultValue={['doc', 'sections']} className="rounded-xl border border-border bg-card px-4 sm:px-5">
         <AccordionItem value="doc">
           <AccordionTrigger>Document Info</AccordionTrigger>
           <AccordionContent className="grid gap-4 md:grid-cols-2">
             <div>
-              <Label>Template</Label>
+              <Label htmlFor={fieldId("reportType")} >Template</Label>
               <Select value={reportType} onValueChange={(value) => setReportType(value as ReportType)} disabled={Boolean(report)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id={fieldId("reportType")}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="TEST_STATUS_REPORT">Test Status Report FDS</SelectItem>
                   <SelectItem value="TEST_PLANNING_DOCUMENT">Test Planning FDS</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Document ID</Label><Input value={documentId} onChange={(e) => setDocumentId(e.target.value)} placeholder="01 / 02 / TSR-001" /></div>
-            {!isPlanning ? <div><Label>Source Test Cycle</Label><Select value={testRunId || 'none'} onValueChange={value => setTestRunId(value === 'none' ? '' : value)} disabled={Boolean(report)}><SelectTrigger><SelectValue placeholder="Pilih Test Cycle" /></SelectTrigger><SelectContent><SelectItem value="none">Pilih Test Cycle</SelectItem>{testRuns.map(run => <SelectItem key={run.id} value={run.id}>{run.name} · {run.status}</SelectItem>)}</SelectContent></Select><p className="mt-1 text-xs text-muted-foreground">Headline report diambil dari execution terbaru pada cycle ini.</p></div> : null}
-            <div><Label>Version</Label><Input value={version} onChange={(e) => setVersion(e.target.value)} required /></div>
-            <div><Label>Document Status</Label><Input value={documentStatus} onChange={(e) => setDocumentStatus(e.target.value)} /></div>
-            <div><Label>Author</Label><Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tim Pengujian" /></div>
-            <div><Label>Approved By</Label><Input value={approvedBy} onChange={(e) => setApprovedBy(e.target.value)} placeholder="Project Manager" /></div>
-            <div className="flex flex-col gap-2"><Label>Tanggal penerbitan</Label><DatePicker value={dateOfIssue} onChange={setDateOfIssue} label="Pilih tanggal penerbitan" required /></div>
-            <div className="flex flex-col gap-2"><Label>Periode report</Label><DateRangePicker from={startDate} to={endDate} onFromChange={setStartDate} onToChange={setEndDate} label="Pilih periode report" required /></div>
+            <div><Label htmlFor={fieldId("documentId")} >Document ID</Label><Input id={fieldId("documentId")} value={documentId} onChange={(e) => setDocumentId(e.target.value)} placeholder="01 / 02 / TSR-001" /></div>
+            {!isPlanning ? <div><Label htmlFor={fieldId("testRunId")} >Source Test Cycle</Label><Select value={testRunId || 'none'} onValueChange={value => setTestRunId(value === 'none' ? '' : value)} disabled={Boolean(report)}><SelectTrigger id={fieldId("testRunId")} aria-required="true"><SelectValue placeholder="Pilih Test Cycle" /></SelectTrigger><SelectContent><SelectItem value="none">Pilih Test Cycle</SelectItem>{testRuns.map(run => <SelectItem key={run.id} value={run.id}>{run.name} · {run.status}</SelectItem>)}</SelectContent></Select><p className="mt-1 text-xs text-muted-foreground">Headline report memakai execution terbaru pada cycle ini, bukan status inventory atau verifikasi Bug.</p></div> : null}
+            <div><Label htmlFor={fieldId("version")} >Version</Label><Input id={fieldId("version")} value={version} onChange={(e) => setVersion(e.target.value)} required /></div>
+            <div><Label htmlFor={fieldId("documentStatus")} >Document Status</Label><Input id={fieldId("documentStatus")} value={documentStatus} onChange={(e) => setDocumentStatus(e.target.value)} /></div>
+            <div><Label htmlFor={fieldId("author")} >Author</Label><Input id={fieldId("author")} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tim Pengujian" /></div>
+            <div><Label htmlFor={fieldId("approvedBy")} >Approved By</Label><Input id={fieldId("approvedBy")} value={approvedBy} onChange={(e) => setApprovedBy(e.target.value)} placeholder="Project Manager" /></div>
+            <div className="flex flex-col gap-2"><Label id={fieldId("issue-label")} htmlFor={fieldId("issue")} >Tanggal penerbitan</Label><DatePicker id={fieldId("issue")} labelledBy={fieldId("issue-label")} value={dateOfIssue} onChange={setDateOfIssue} label="Pilih tanggal penerbitan" required /></div>
+            <div className="flex flex-col gap-2"><Label id={fieldId("period-label")} htmlFor={fieldId("period")} >Periode report</Label><DateRangePicker id={fieldId("period")} labelledBy={fieldId("period-label")} from={startDate} to={endDate} onFromChange={setStartDate} onToChange={setEndDate} label="Pilih periode report" required /></div>
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="approval">
           <AccordionTrigger>Approval, Revision Log, References</AccordionTrigger>
           <AccordionContent className="space-y-4">
-            <div><Label>Document Information</Label><Textarea value={documentInformation} onChange={(e) => setDocumentInformation(e.target.value)} rows={3} /></div>
-            <div><Label>Revision Log</Label><Textarea value={revisionLog} onChange={(e) => setRevisionLog(e.target.value)} placeholder="27/07/2023 | 1.0 | Initial document | QA Team" rows={4} /></div>
-            <div><Label>References</Label><Textarea value={references} onChange={(e) => setReferences(e.target.value)} placeholder="External: ISO/IEC/IEEE 29119&#10;Internal: SRS Project" rows={5} /></div>
+            <div><Label htmlFor={fieldId("documentInformation")} >Document Information</Label><Textarea id={fieldId("documentInformation")} value={documentInformation} onChange={(e) => setDocumentInformation(e.target.value)} rows={3} /></div>
+            <div><Label htmlFor={fieldId("revisionLog")} >Revision Log</Label><Textarea id={fieldId("revisionLog")} value={revisionLog} onChange={(e) => setRevisionLog(e.target.value)} placeholder="27/07/2023 | 1.0 | Initial document | QA Team" rows={4} /></div>
+            <div><Label htmlFor={fieldId("references")} >References</Label><Textarea id={fieldId("references")} value={references} onChange={(e) => setReferences(e.target.value)} placeholder="External: ISO/IEC/IEEE 29119&#10;Internal: SRS Project" rows={5} /></div>
           </AccordionContent>
         </AccordionItem>
 
@@ -179,9 +181,9 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
         </AccordionItem>
       </Accordion>
 
-      <div className="flex gap-3">
-        <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save Draft'}</Button>
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+      <div className="sticky bottom-4 flex flex-wrap justify-end gap-2 rounded-xl border border-border bg-card p-4 pr-20">
+        <Button type="submit" className="min-h-10" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save Draft'}</Button>
+        <Button type="button" className="min-h-10" variant="outline" onClick={onCancel}>Cancel</Button>
       </div>
     </form>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { MutationAction } from '@/components/WorkspaceAccess';
 import { useCommittedActions } from '@/hooks/use-committed-actions';
 import { createPortal } from 'react-dom';
 import {
@@ -200,6 +201,7 @@ export function TestCaseDetailDialog({
 }: TestCaseDetailDialogProps) {
   const [activeMainTab, setActiveMainTab] = useState('details');
   const inspectorSurface = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
   const [contentReady, setContentReady] = useState(false);
   const [previousOpen, setPreviousOpen] = useState(open);
   if (previousOpen !== open) {
@@ -920,6 +922,18 @@ export function TestCaseDetailDialog({
           else if (isRecordingFullscreen) { event.preventDefault(); closeRecordingFullscreen(); }
         }}
         overlayClassName="qa-inspector-overlay bg-black/35"
+        onOpenAutoFocus={() => {
+          const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          const labels = [`Actions for ${viewTestCase?.testCaseId}`, `View bug ${viewTestCase?.testCaseId}`, `View run ${viewTestCase?.testCaseId}`];
+          returnFocus.current = focused && focused !== document.body && focused.getAttribute('role') !== 'menuitem'
+            ? focused
+            : Array.from(document.querySelectorAll<HTMLElement>('button[aria-label]')).find(element => labels.includes(element.getAttribute('aria-label') || '')) || null;
+        }}
+        onCloseAutoFocus={event => {
+          event.preventDefault();
+          // Do not steal focus from a form opened by Edit/Refine.
+          if (!document.querySelector('[role="dialog"][data-state="open"]') && returnFocus.current?.isConnected) returnFocus.current.focus();
+        }}
         className={cn(
           "signal-surface test-case-detail-dialog inset-y-0 !top-0 !left-auto !right-0 h-dvh max-h-dvh w-full max-w-none sm:max-w-none !translate-none flex flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 border-l border-border/60 bg-card p-0 text-foreground shadow-2xl data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 lg:w-[72vw] lg:min-w-[760px] lg:max-w-[1100px]",
           isSystemDevLogFullscreen
@@ -943,7 +957,7 @@ export function TestCaseDetailDialog({
             <div className="flex h-full min-h-0 flex-col p-4 pt-3 sm:p-6 sm:pt-4">
               <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="min-h-0 w-full flex-1 gap-0">
                 <div className="sticky top-0 z-10 mb-4 w-full shrink-0 overflow-x-auto rounded-xl bg-card pb-1 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
-                  <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 rounded-xl border border-border/60 bg-secondary/50 p-1">
+                  <TabsList aria-label="Bagian detail testcase" className="qa-inspector-tabs flex h-auto w-max min-w-full justify-start gap-1 border border-border bg-muted p-1">
                   <TabsTrigger value="details" className="min-w-max flex-none gap-2">
                     <ClipboardList className="w-4 h-4" /> Overview
                   </TabsTrigger>
@@ -983,11 +997,13 @@ export function TestCaseDetailDialog({
                   </TabsTrigger>
                 </TabsList>
                 </div>
+                <p className="py-2 text-xs leading-5 text-muted-foreground">Geser tab untuk melihat bagian lainnya, atau gunakan tombol panah saat tab terfokus.</p>
 
                 <div className="min-h-0 flex-1 overflow-y-auto pr-1 outline-none scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
                   {!contentReady && <div className="space-y-4 py-1" role="status" aria-label="Memuat detail testcase"><div className="h-24 rounded-xl bg-secondary/40" /><div className="h-40 rounded-xl bg-secondary/40" /></div>}
                   {contentReady && <>
-                  <AnimatePresence mode="wait">
+                  {/* Radix owns tab unmounting. An outer exit wait can deadlock
+                      when Radix removes the nested motion node before its exit completes. */}
                   {activeMainTab === 'details' && (
                     <TestCaseDetailsTab
                       viewTestCase={viewTestCase}
@@ -997,10 +1013,12 @@ export function TestCaseDetailDialog({
                     />
                   )}
                   {activeMainTab === 'steps' && (
+                    <TabsContent value="steps" className="mt-0 outline-none">
                     <motion.div key="steps" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} className="grid gap-4 md:grid-cols-2">
                       <section className="rounded-xl border border-border/70 bg-secondary/20 p-5"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Test steps</p><pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-7 text-foreground">{viewTestCase.steps || '—'}</pre></section>
                       <section className="rounded-xl border border-border/70 bg-secondary/20 p-5"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected result</p><p className="mt-4 text-sm leading-7 text-foreground">{viewTestCase.expectedResult || '—'}</p></section>
                     </motion.div>
+                    </TabsContent>
                   )}
                   {isBugFixDetail && activeMainTab === 'lifecycle' && (
                     <TestCaseLifecycleTab
@@ -1087,7 +1105,7 @@ export function TestCaseDetailDialog({
                               </AnimatePresence>
                             </div>
 
-                          <ManualCaptureCommand {...manualCaptureCommandProps} />
+                          <MutationAction><ManualCaptureCommand {...manualCaptureCommandProps} /></MutationAction>
 
                           <ManualRecordingPreview {...manualRecordingPreviewProps} />{/*
                                       Memproses video{videoProcessingPercent !== null && isVideoFinalizing ? ` — ${videoProcessingPercent}%` : ''}
@@ -1193,7 +1211,6 @@ export function TestCaseDetailDialog({
                       </motion.div>
                     </TabsContent>
                   )}
-                  </AnimatePresence>
                   </>}
                 </div>
               </Tabs>

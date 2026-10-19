@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { MutationAction } from '@/components/WorkspaceAccess';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -59,7 +60,7 @@ export function ReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
 
   if (isCreating || editingReport) {
     return (
-      <div>
+      <div className="qa-module-page">
         <Button variant="ghost" onClick={closeForm} className="mb-4 gap-2">
           <ArrowLeft className="h-4 w-4" /> Kembali ke Reports
         </Button>
@@ -70,7 +71,7 @@ export function ReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
 
   if (selectedReport) {
     return (
-      <div>
+      <div className="qa-module-page">
         <Button variant="ghost" onClick={() => setSelectedReport(null)} className="mb-4 gap-2">
           <ArrowLeft className="h-4 w-4" /> Kembali ke Reports
         </Button>
@@ -88,13 +89,13 @@ export function ReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
   }
 
   return (
-    <div>
-      <div className="signal-surface mb-4 flex flex-col gap-3 rounded-xl border border-border/70 bg-card/95 p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="qa-module-page flex flex-col gap-5">
+      <div className="qa-module-toolbar flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">Buat dan tinjau Test Status Report maupun dokumen Test Planning.</p>
-        <Button onClick={() => setIsCreating(true)}>
+        <MutationAction><Button onClick={() => setIsCreating(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Buat Report
-        </Button>
+        </Button></MutationAction>
       </div>
 
       {isLoading ? (

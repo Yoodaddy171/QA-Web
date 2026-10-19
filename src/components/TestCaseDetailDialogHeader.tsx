@@ -26,7 +26,7 @@ export function TestCaseDetailDialogHeader({
   getStatusIcon,
 }: TestCaseDetailDialogHeaderProps) {
   return (
-    <DialogHeader className="shrink-0 border-b border-border/30 bg-card/95 p-4 pb-3 backdrop-blur-md sm:p-6 sm:pb-3">
+    <DialogHeader className="shrink-0 border-b border-border bg-card p-4 pb-3 pr-12 text-left sm:p-6 sm:pb-3 sm:pr-12">
       <div className="flex items-center justify-between gap-2">
         <DialogTitle className="flex min-w-0 flex-wrap items-center gap-2 text-base font-bold tracking-tight sm:text-xl">
           <ClipboardList className="h-5 w-5 shrink-0 text-primary" />
@@ -66,7 +66,7 @@ export function TestCaseDetailDialogHeader({
         )}
       </div>
       {viewTestCase && (
-        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 pl-7 text-[10px] text-muted-foreground">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 pl-7 text-xs text-muted-foreground">
           <span><span className="font-semibold uppercase tracking-wider">Display ID</span> <code className="ml-1 font-mono font-bold text-primary">{viewTestCase.testCaseId}</code></span>
           <span className="flex min-w-0 items-center gap-1"><span className="font-semibold uppercase tracking-wider">UUID</span> <code className="max-w-[240px] truncate font-mono text-foreground/70" title={viewTestCase.id}>{viewTestCase.id}</code><button type="button" onClick={() => void navigator.clipboard.writeText(viewTestCase.id)} className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Copy testcase UUID"><Copy className="h-3 w-3" /></button></span>
         </div>

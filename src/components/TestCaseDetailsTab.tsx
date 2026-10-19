@@ -22,6 +22,7 @@ interface TestCaseDetailsTabProps {
 export function TestCaseDetailsTab({ viewTestCase, onCopyId, getTestTypeColor, getPriorityColor }: TestCaseDetailsTabProps) {
   return (
 <TabsContent value="details" className="space-y-6 mt-0 outline-none">
+  <p className="text-xs text-muted-foreground">Status di sini adalah status inventory. Retest Bug diselesaikan melalui Done / As Expected pada testcase terkait, bukan Pass di Test Run.</p>
   <motion.div
     key="details"
     initial={{ opacity: 0, y: 10 }}

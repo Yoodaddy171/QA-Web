@@ -48,9 +48,9 @@ export function DashboardActivityTimeline({
   onNavigate?: (tab: 'testRuns' | 'testcases' | 'bugfix') => void;
 }) {
   return (
-    <Card className="border-border/70 bg-card/95">
-      <CardHeader className="border-b border-border/50 pb-3">
-        <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <Card padding="none" className="gap-0 border-border bg-card shadow-none">
+      <CardHeader className="border-b border-border p-4 sm:px-5">
+        <CardTitle className="qa-module-heading flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" /> Aktivitas QA terbaru
         </CardTitle>
       </CardHeader>
@@ -67,7 +67,7 @@ export function DashboardActivityTimeline({
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full border-2 border-card bg-primary" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-foreground">
+                    <p className="text-sm font-medium text-foreground">
                       {item.entityType} {ACTION_LABELS[item.action] || item.action.toLowerCase()}
                       {item.field ? <span className="font-normal text-muted-foreground"> · {item.field}</span> : null}
                     </p>
@@ -79,7 +79,7 @@ export function DashboardActivityTimeline({
                     </div>
                   </div>
                   {target && onNavigate ? (
-                    <button type="button" onClick={() => onNavigate(target)} aria-label={`Buka ${item.entityType}`} className="self-center rounded-md p-1.5 text-muted-foreground opacity-60 transition-[opacity,color,transform] duration-150 hover:translate-x-0.5 hover:text-primary group-hover:opacity-100 focus-visible:opacity-100">
+                    <button type="button" onClick={() => onNavigate(target)} aria-label={`Buka ${item.entityType}`} className="flex size-9 shrink-0 items-center justify-center self-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </button>
                   ) : null}

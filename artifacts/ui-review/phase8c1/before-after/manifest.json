@@ -1,0 +1,53 @@
+{
+  "pairs": [
+    {
+      "id": "UI-004",
+      "before": "screenshots/desktop/UI-004-cases-table.png",
+      "after": "candidate-final/UI-004-cases-1440-dark.png",
+      "contactSheet": "before-after/UI-004-before-after.png"
+    },
+    {
+      "id": "UI-006",
+      "before": "screenshots/desktop/UI-006-cases-filters.png",
+      "after": "candidate-final/UI-006-filters-1440-dark.png",
+      "contactSheet": "before-after/UI-006-before-after.png"
+    },
+    {
+      "id": "UI-013",
+      "before": "screenshots/desktop/UI-013-cases-create.png",
+      "after": "candidate-final/UI-013-create-1440-dark.png",
+      "contactSheet": "before-after/UI-013-before-after.png"
+    },
+    {
+      "id": "UI-015",
+      "before": "screenshots/desktop/UI-015-cases-edit.png",
+      "after": "candidate-final/UI-015-edit-1440-dark.png",
+      "contactSheet": "before-after/UI-015-before-after.png"
+    },
+    {
+      "id": "UI-024",
+      "before": "screenshots/desktop/UI-024-inspector-overview.png",
+      "after": "candidate-final/UI-024-inspector-1440-dark.png",
+      "contactSheet": "before-after/UI-024-before-after.png"
+    },
+    {
+      "id": "UI-043",
+      "before": "screenshots/desktop/UI-043-bugs-active.png",
+      "after": "candidate-final/UI-043-bugs-1440-dark.png",
+      "contactSheet": "before-after/UI-043-before-after.png"
+    },
+    {
+      "id": "UI-046",
+      "before": "screenshots/desktop/UI-046-bugs-detail-lifecycle.png",
+      "after": "candidate-final/UI-046-bug-detail-1440-dark.png",
+      "contactSheet": "before-after/UI-046-before-after.png"
+    },
+    {
+      "id": "UI-127",
+      "before": "screenshots/desktop/UI-127-inspector-transition-empty-body.png",
+      "after": "candidate-final/UI-127-steps-fixed-1440-dark.png",
+      "contactSheet": "before-after/UI-127-before-after.png"
+    }
+  ],
+  "note": "Original screenshots unchanged. Contact sheets are explicitly resized comparison thumbnails."
+}

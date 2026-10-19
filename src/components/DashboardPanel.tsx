@@ -250,18 +250,19 @@ export function DashboardPanel({
       initial={false}
         animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0 }}
-        className="space-y-4"
+        className="qa-module-page flex flex-col gap-5"
       >
+        <p className="text-xs text-muted-foreground">Readiness merangkum inventory, execution cycle, dan Bug. Pass execution tidak otomatis menandai Bug terverifikasi.</p>
         {/* Refresh indicator */}
         {(onRefresh || lastRefreshed) && (
-          <div className="flex items-center justify-end gap-3 bg-secondary/20 p-2 rounded-xl border border-border/30 max-w-fit ml-auto">
+          <div className="qa-module-toolbar flex flex-wrap items-center justify-end gap-3 rounded-xl border border-border bg-card p-2 sm:ml-auto sm:max-w-fit">
             {lastRefreshed && (
               <span className="text-xs font-semibold text-muted-foreground">
                 Terakhir diperbarui: {lastRefreshed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             )}
             {onRefresh && (
-              <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading} className="h-7 px-2.5 gap-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition">
+              <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading} className="gap-2">
                 <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} /> Muat ulang
               </Button>
             )}
@@ -269,7 +270,7 @@ export function DashboardPanel({
         )}
 
         {/* Release decision command surface */}
-        <Card className="signal-surface border-primary/35 bg-card shadow-sm">
+        <Card padding="none" className="gap-0 border-primary/30 bg-card shadow-none">
           <CardContent className="p-0">
             <div className="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,.65fr)]">
               <div className="flex flex-col gap-6 p-5 sm:flex-row sm:items-center sm:p-7">
@@ -283,12 +284,12 @@ export function DashboardPanel({
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <AnimatedNumber value={stats.overallProgress} suffix="%" className="font-mono text-2xl font-bold tracking-tight text-foreground tabular-nums" />
-                    <span className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">readiness</span>
+                    <span className="qa-module-meta">Readiness</span>
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-primary">Release decision</span>
+                    <span className="text-sm font-semibold text-foreground">Release decision</span>
                     {stats.releaseReadiness && <Badge variant={stats.releaseReadiness.recommendation === 'READY' ? 'success' : stats.releaseReadiness.recommendation === 'NOT READY' ? 'failed' : 'warning'}>{stats.releaseReadiness.recommendation}</Badge>}
                   </div>
                   <h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
@@ -302,8 +303,8 @@ export function DashboardPanel({
                   <div className="mt-5 flex flex-wrap gap-2">
                     {onNavigate && <Button size="sm" onClick={() => onNavigate('testRuns')} className="gap-2"><Play className="h-3.5 w-3.5" /> Buka run aktif</Button>}
                     {onNavigate && <Button size="sm" variant="outline" onClick={() => onNavigate('reports')} className="gap-2">Lihat report <ArrowUpRight className="h-3.5 w-3.5" /></Button>}
-                    {stats.failedCount > 0 && <Button size="sm" variant="ghost" onClick={onOpenFailedCases || (() => onNavigate?.('testcases'))} className="text-red-500">Testcase gagal</Button>}
-                    {onNavigate && stats.bugFixReported > 0 && <Button size="sm" variant="ghost" onClick={() => onNavigate('bugfix')} className="text-orange-500">Buka bugs</Button>}
+                    {stats.failedCount > 0 && <Button size="sm" variant="ghost" onClick={onOpenFailedCases || (() => onNavigate?.('testcases'))} className="text-status-failed">Testcase gagal</Button>}
+                    {onNavigate && stats.bugFixReported > 0 && <Button size="sm" variant="ghost" onClick={() => onNavigate('bugfix')} className="text-bug-open">Buka bugs</Button>}
                   </div>
                 </div>
               </div>
@@ -318,7 +319,7 @@ export function DashboardPanel({
                 ].map(([label, value, tone]) => (
                   <div key={String(label)} className="border-b border-r border-border/50 p-4 last:border-b-0 lg:[&:nth-last-child(-n+2)]:border-b-0">
                     <p className={cn('font-mono text-2xl font-semibold tabular-nums', tone)}>{value}</p>
-                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+                    <p className="qa-module-meta mt-1">{label}</p>
                   </div>
                 ))}
               </div>
@@ -327,13 +328,13 @@ export function DashboardPanel({
         </Card>
 
         {release?.testRunName && (
-          <Card className="border-border/70 bg-card shadow-none">
+          <Card padding="none" className="gap-0 border-border bg-card shadow-none">
             <CardContent className="p-4 sm:p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                 <div className="min-w-0 lg:w-64">
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2 w-2" aria-hidden="true"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 motion-reduce:animate-none" /><span className="relative inline-flex h-2 w-2 rounded-full bg-primary" /></span>
-                    <span className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-primary">Test Run terbaru</span>
+                    <span className="qa-module-heading">Test Run terbaru</span>
                   </div>
                   <p className="mt-1 truncate text-sm font-semibold text-foreground">{release.testRunName}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{release.testRunStatus} · {release.completedCases}/{release.totalCases} executed</p>
@@ -375,14 +376,14 @@ export function DashboardPanel({
         {/* Visual Analytics Charts */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Status Distribution */}
-          <Card variant="majestic" className="border-border/40 hover:border-primary/20 shadow-sm transition duration-300 bg-card">
-            <CardHeader className="pb-3 border-b border-border/40">
+          <Card padding="none" className="gap-0 border-border bg-card shadow-none">
+            <CardHeader className="border-b border-border p-4 sm:px-5">
               <div className="flex items-center gap-2">
                 <Percent className="w-4 h-4 text-primary" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Distribusi Skenario</CardTitle>
+                <CardTitle className="qa-module-heading">Distribusi Skenario</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 h-[250px] flex items-center justify-center">
+            <CardContent className="flex min-h-[360px] items-center justify-center p-4 sm:h-[280px] sm:min-h-0 sm:p-5">
               <div className="w-full h-full flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex-1 h-[200px] relative w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -441,11 +442,11 @@ export function DashboardPanel({
           </Card>
 
           {/* Priority Distribution */}
-          <Card variant="majestic" className="border-border/40 hover:border-primary/20 shadow-sm transition duration-300 bg-card">
-            <CardHeader className="pb-3 border-b border-border/40">
+          <Card padding="none" className="gap-0 border-border bg-card shadow-none">
+            <CardHeader className="border-b border-border p-4 sm:px-5">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-primary" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kasus per Prioritas</CardTitle>
+                <CardTitle className="qa-module-heading">Kasus per Prioritas</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="pt-6 h-[250px] flex items-center justify-center">
@@ -502,14 +503,14 @@ export function DashboardPanel({
         />
 
         {stats.bugFixTotal > 0 && (
-          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
-            <CardHeader className="border-b border-border/40 pb-3">
+          <Card padding="none" className="gap-0 border-border bg-card shadow-none">
+            <CardHeader className="border-b border-border p-4 sm:px-5">
               <div className="flex items-center gap-2">
                 <Bug className="h-4 w-4 text-orange-500" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ringkasan Bug Fix</CardTitle>
+                <CardTitle className="qa-module-heading">Ringkasan Bug Fix</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 pt-5 sm:grid-cols-4">
+            <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4 sm:p-5">
               {[
                 { label: 'Open', value: stats.bugFixReported, color: 'text-bug-open', surface: 'bg-bug-open/10' },
                 { label: 'Fixing', value: stats.bugFixFixing, color: 'text-bug-fixing', surface: 'bg-bug-fixing/10' },
@@ -535,11 +536,11 @@ export function DashboardPanel({
 
         {/* Page Groups */}
         {stats.pageGroups.length > 0 && (
-          <Card variant="majestic">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Test Cases per Page</CardTitle>
+          <Card padding="none" className="gap-0 border-border shadow-none">
+            <CardHeader className="border-b border-border p-4 sm:px-5">
+              <CardTitle className="qa-module-heading">Test Cases per Page</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-5">
               <div className="flex flex-wrap gap-2">
                 {stats.pageGroups.map((pg) => (
                   <Badge key={pg.page} variant="outline" className="text-xs font-medium py-1.5 px-3 bg-secondary/50 border-border/60 text-foreground rounded-xl">

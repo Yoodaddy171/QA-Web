@@ -3,6 +3,125 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Phase 8C.2 opt-in surfaces: never target unrelated tables or inspector portals. */
+.qa-module-page { min-width: 0; padding-bottom: var(--space-8); }
+.qa-module-toolbar [data-slot="button"],
+.qa-module-toolbar [data-slot="input"],
+.qa-module-toolbar [data-slot="select-trigger"] {
+  min-height: 2.25rem;
+  border-radius: var(--space-2);
+}
+.qa-module-page [data-slot="badge"] {
+  min-height: 1.5rem;
+  border-radius: var(--space-1);
+  font-size: var(--text-caption);
+  padding-inline: var(--space-2);
+}
+.qa-module-heading { font-size: var(--text-body); font-weight: 600; line-height: 1.5; color: var(--foreground); }
+.qa-module-meta { font-size: var(--text-caption); line-height: 1.5; color: var(--muted-foreground); }
+.qa-module-form [data-slot="label"] { font-size: var(--text-caption); font-weight: 600; line-height: 1.5; }
+.qa-module-form [data-slot="input"], .qa-module-form [data-slot="select-trigger"] {
+  min-height: 2.5rem;
+  width: 100%;
+  border-radius: var(--space-2);
+}
+.qa-module-form textarea { border-radius: var(--space-2); font-size: var(--text-body); line-height: 1.5; }
+.qa-module-form [data-slot="accordion-content"] > div:has(> [data-slot="label"]) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.qa-module-tabs [data-slot="tabs-trigger"][data-state="active"] {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  color: var(--primary);
+  box-shadow: none;
+}
+.qa-cycle-workspace .qa-command-bar { border: 1px solid var(--border); background: var(--card); }
+.qa-cycle-workspace .qa-command-bar [data-slot="button"] { min-height: 2.25rem; }
+.qa-cycle-workspace [aria-label="Status Test Run"] { width: 9rem; }
+.qa-report-document > .border { border-radius: var(--space-3); box-shadow: none; }
+.qa-report-document h2 { font-size: 1rem; font-weight: 600; line-height: 1.5; }
+.qa-report-document table { min-width: 42rem; }
+.qa-settings-page [data-slot="card"] { gap: 0; padding-block: 0; border-color: var(--border); box-shadow: none; }
+.qa-settings-page [data-slot="card-header"] { margin-bottom: 0; padding: var(--space-5); border-bottom: 1px solid var(--border); }
+.qa-settings-page [data-slot="card-title"] { font-size: var(--text-body); font-weight: 600; line-height: 1.5; }
+.qa-settings-page [data-slot="card-content"] { padding: var(--space-5); }
+.qa-settings-page [data-slot="label"] { color: var(--foreground); letter-spacing: normal; text-transform: none; }
+.qa-settings-page [data-slot="button"] { min-height: 2.25rem; border-radius: var(--space-2); }
+.qa-settings-page fieldset { min-width: 0; }
+.qa-settings-page .divide-y [data-slot="select-trigger"] { width: 9rem; }
+
+/* Core QA surfaces compose the existing token scale; no second theme system. */
+.qa-data-workspace { padding-bottom: var(--space-8); }
+.qa-workspace-toolbar [data-slot="button"],
+.qa-workspace-toolbar [data-slot="input"],
+.qa-workspace-toolbar [data-slot="select-trigger"] {
+  min-height: 2.25rem;
+  border-radius: var(--space-2);
+}
+.qa-workspace-toolbar [data-slot="select-trigger"] { width: 100%; }
+.qa-data-table { font-size: var(--text-body); }
+.qa-data-table [data-slot="table-header"] .sticky { background: var(--secondary); }
+.qa-data-table [data-slot="table-head"] {
+  height: 2.75rem;
+  font-size: var(--text-caption);
+  letter-spacing: 0.025em;
+}
+.qa-data-table [data-slot="table-cell"] { vertical-align: middle; }
+.qa-data-table tr.h-11 > [data-slot="table-cell"] { padding-block: var(--space-1); }
+.qa-data-table tr.h-11 .line-clamp-2 { line-height: 1.125rem; }
+.qa-data-table [data-slot="badge"] {
+  min-height: 1.5rem;
+  border-radius: var(--space-1);
+  padding-inline: var(--space-2);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+.qa-data-table tr[data-state="selected"] > .sticky {
+  background: color-mix(in srgb, var(--primary) 8%, var(--card));
+}
+.qa-data-table .sticky.right-0 { box-shadow: -1px 0 var(--border); }
+.qa-table-scroll-help {
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) var(--space-3);
+  color: var(--muted-foreground);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+.qa-inspector-tabs [data-slot="tabs-trigger"][data-state="active"] {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  color: var(--primary);
+  box-shadow: none;
+}
+.qa-case-form [data-slot="label"] {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--foreground);
+}
+.qa-case-form [data-slot="input"], .qa-case-form [data-slot="select-trigger"] {
+  width: 100%;
+  min-height: 2.5rem;
+  border-radius: var(--space-2);
+  background: var(--background);
+}
+.qa-case-form textarea {
+  border-radius: var(--space-2);
+  background: var(--background);
+  font-family: inherit;
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+.qa-case-form input::placeholder, .qa-case-form textarea::placeholder { color: var(--muted-foreground); }
+.qa-case-form p[class*="text-[10px]"] { font-size: var(--text-caption); line-height: 1.5; color: var(--muted-foreground); }
+.qa-case-form [data-slot="button"], .qa-inspector-footer [data-slot="button"] {
+  min-height: 2.5rem;
+  border-radius: var(--space-2);
+}
+
 /* Keep the inspector shell compositable; tw-animate's generic enter/exit
    keyframes also animate filter. Content mounts after this actual animation. */
 @keyframes qa-inspector-in {

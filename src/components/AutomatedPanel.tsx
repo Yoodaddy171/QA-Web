@@ -199,7 +199,7 @@ export function AutomatedPanel({
   }
 
   return (
-    <div className="min-w-0 space-y-5 overflow-x-hidden">
+    <div className="qa-module-page flex flex-col gap-5">
       <AutomationStatsCards
         total={filteredItems.length}
         manual={filteredItems.filter((item) => item.automation.hasManualCapture).length}
@@ -209,7 +209,7 @@ export function AutomatedPanel({
 
 
       {/* Filter and action toolbar */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/40 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="qa-module-toolbar flex flex-col gap-3 rounded-xl border border-border bg-card p-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
           <div className="relative min-w-0 flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
@@ -217,11 +217,12 @@ export function AutomatedPanel({
               placeholder="Cari test record..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="h-9.5 rounded-xl border border-border/50 bg-secondary/35 pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 text-xs font-medium"
+              className="pl-9"
+              aria-label="Cari automation record"
             />
           </div>
           <Select value={filterModule} onValueChange={setFilterModule}>
-            <SelectTrigger className="h-9.5 w-full rounded-xl border border-border/50 bg-secondary/35 text-xs font-semibold text-foreground hover:bg-secondary/65 transition duration-200 sm:w-[190px]">
+            <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Module" />
             </SelectTrigger>
             <SelectContent className="border border-border/50 bg-card shadow-lg">
@@ -236,12 +237,12 @@ export function AutomatedPanel({
           </Select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="h-9.5 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <Badge variant="outline" className="min-h-9 justify-center text-muted-foreground">
             {showingLabel}
           </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9.5 rounded-xl gap-2 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
+              <Button variant="outline" size="sm" className="gap-2">
                 <Settings2 className="h-3.5 w-3.5 text-primary" />
                 Columns
               </Button>
@@ -265,7 +266,7 @@ export function AutomatedPanel({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="h-9.5 rounded-xl gap-2 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading} className="gap-2">
             <RefreshCw className={`h-3.5 w-3.5 text-primary ${loading ? 'animate-spin' : ''}`} />
             Sinkronkan
           </Button>
@@ -273,9 +274,9 @@ export function AutomatedPanel({
       </div>
 
       {filteredItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center space-y-2 rounded-2xl border border-dashed border-border/60 bg-card py-20 shadow-sm text-center">
-          <TerminalSquare className="h-12 w-12 text-muted-foreground/25 animate-pulse" />
-          <p className="text-sm font-bold uppercase tracking-wider text-foreground">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card px-5 py-12 text-center">
+          <TerminalSquare className="size-9 text-muted-foreground" />
+          <p className="qa-module-heading">
             {items.length === 0 ? 'Belum ada test record' : 'Tidak ada hasil yang cocok'}
           </p>
           <p className="max-w-md text-center text-xs font-medium text-muted-foreground/80">
@@ -298,8 +299,10 @@ export function AutomatedPanel({
           )}
         </div>
       ) : (
-        <div className="relative max-h-[70vh] overflow-auto rounded-2xl border border-border/40 bg-card shadow-sm">
-              <Table className="w-full table-auto">
+        <div className="relative rounded-xl border border-border bg-card">
+              <Table className="qa-data-table w-full min-w-[720px] table-auto md:min-w-[1040px] xl:min-w-[1380px]"
+                containerClassName="max-h-[70vh] overflow-auto rounded-t-xl focus-visible:outline-2 focus-visible:outline-ring"
+                containerProps={{role:'region',tabIndex:0,'aria-label':'Tabel automation record','aria-describedby':'automation-scroll-help'}}>
                 <TableHeader className="sticky top-0 z-10 bg-secondary/95">
                    <TableRow className="border-border/30 hover:bg-transparent">
                     <TableHead className="sticky left-0 z-20 w-10 bg-secondary/95 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
@@ -320,7 +323,7 @@ export function AutomatedPanel({
                   {filteredItems.map((item, index) => (
                     <TableRow
                       key={item.id}
-                      className="cursor-pointer border-border/30 hover:bg-secondary/40 transition-colors group"
+                      className="group h-14 cursor-pointer border-border/30 transition-colors hover:bg-secondary/40"
 
                       title="Klik untuk melihat detail"
                       onClick={(e) => {
@@ -344,8 +347,8 @@ export function AutomatedPanel({
                         </div>
                       </TableCell>
                       <TableCell className={getColumnClass('module', 'max-w-[110px] truncate text-[13px] font-medium text-muted-foreground')} title={item.module?.name || ''}>{item.module?.name || '-'}</TableCell>
-                      <TableCell className={getColumnClass('action', 'max-w-[180px]')} title={item.testAction}>
-                        <p className="truncate text-sm text-muted-foreground transition-colors group-hover:text-foreground">{item.testAction}</p>
+                      <TableCell className={getColumnClass('action', 'min-w-[240px] max-w-[320px]')} title={item.testAction}>
+                        <p className="line-clamp-2 text-sm leading-5 text-foreground">{item.testAction}</p>
                       </TableCell>
                       <TableCell className={getColumnClass('type')}>
                         <Badge variant="outline" className={cn("rounded-xl text-xs font-bold px-2.5 py-0.5", getTestTypeColor(item.testType))}>
@@ -357,12 +360,12 @@ export function AutomatedPanel({
                           {item.priority}
                         </Badge>
                       </TableCell>
-                      <TableCell className={getColumnClass('status')}>
+                      <TableCell className={getColumnClass('status', 'min-w-[160px] whitespace-nowrap')}>
                         <Badge variant={getStatusBadgeVariant(item.status)} className="gap-1 text-xs font-bold tracking-wide uppercase px-2.5 py-0.5 shadow-xs">
                           {getStatusIcon(item.status)} {item.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className={getColumnClass('lastRun', 'whitespace-nowrap text-xs font-semibold uppercase text-muted-foreground')}>{formatDate(item.automation.lastRunAt)}</TableCell>
+                      <TableCell className={getColumnClass('lastRun', 'min-w-[172px] whitespace-nowrap text-xs tabular-nums text-muted-foreground')}>{formatDate(item.automation.lastRunAt)}</TableCell>
                       <TableCell className={getColumnClass('source')}>
                         <div className="flex flex-wrap gap-1">
                           {item.automation.hasAutomationRun && <Badge className="rounded-xl bg-indigo-500/10 text-status-in-progress border border-indigo-500/20 text-xs font-bold uppercase tracking-wider px-2 py-0.5">Auto</Badge>}
@@ -384,7 +387,7 @@ export function AutomatedPanel({
                           title={`View run ${item.testCaseId}`}
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 rounded-md p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          className="size-9 rounded-lg p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
                           onClick={() => onOpenDetail(item)}
                         >
                           <Eye className="h-4 w-4 text-primary" />
@@ -394,6 +397,7 @@ export function AutomatedPanel({
                   ))}
                 </TableBody>
               </Table>
+              <p id="automation-scroll-help" className="qa-table-scroll-help">Geser tabel untuk melihat metadata lainnya. ID dan aksi tetap terlihat.</p>
         </div>
       )}
     </div>

@@ -18,15 +18,15 @@ export function DashboardModuleProgress(props: DashboardModuleProgressProps) {
     <>
         {/* Module Progress */}
         {stats.moduleProgress.length > 0 && (
-          <Card variant="majestic" className="border-border/40 shadow-sm bg-card">
-            <CardHeader className="pb-3 border-b border-border/40">
-              <div className="flex items-center justify-between gap-3">
+          <Card padding="none" className="gap-0 border-border bg-card shadow-none">
+            <CardHeader className="border-b border-border p-4 sm:px-5">
+              <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-primary" />
-                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Progress per Module</CardTitle>
+                  <CardTitle className="qa-module-heading">Progress per Module</CardTitle>
                 </div>
                 <Select value={selectedModuleFilter} onValueChange={setSelectedModuleFilter}>
-                  <SelectTrigger className="h-8 w-[160px] rounded-xl border border-border/50 bg-secondary/40 text-xs font-semibold">
+                  <SelectTrigger className="w-full sm:w-44">
                     <SelectValue placeholder="All Modules" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl bg-card border border-border/50 shadow-lg">
@@ -38,7 +38,7 @@ export function DashboardModuleProgress(props: DashboardModuleProgressProps) {
                 </Select>
               </div>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="p-4 sm:p-5">
               <div className="space-y-3">
                 {(selectedModuleFilter === 'all'
                   ? [...stats.moduleProgress, ...(stats.ungroupedProgress ? [stats.ungroupedProgress] : [])]
@@ -56,7 +56,7 @@ export function DashboardModuleProgress(props: DashboardModuleProgressProps) {
                   };
                   return (
                     <div key={mod.id || 'ungrouped'} className="rounded-xl border border-border/60 overflow-hidden">
-                      <button onClick={toggleExpand} className="flex w-full items-center justify-between gap-4 p-4 text-left hover:bg-secondary/50 transition-colors">
+                      <button onClick={toggleExpand} className="flex w-full flex-wrap items-center justify-between gap-4 p-4 text-left transition-colors hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-ring" aria-expanded={isExpanded}>
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
                             <Layers className="h-4 w-4 text-primary" />
@@ -74,7 +74,7 @@ export function DashboardModuleProgress(props: DashboardModuleProgressProps) {
                       </button>
                       <Collapse open={isExpanded}>
                         <div className="border-t border-border/50 bg-secondary/20">
-                            <Table>
+                            <Table className="qa-data-table min-w-[640px]">
                               <TableHeader>
                                 <TableRow className="hover:bg-transparent border-border/50">
                                   <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground h-9">Page</TableHead>

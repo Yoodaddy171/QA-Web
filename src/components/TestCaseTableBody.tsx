@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import {
   ArrowUpDown, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
   FileSpreadsheet, MoreHorizontal, RefreshCw, Search, Trash2, Upload, X
@@ -30,7 +31,7 @@ const TestCaseDataRow = React.memo(function TestCaseDataRow(props: TestCaseTable
   const { tc, index, isSelected, page, limit, rowClassName, openViewDialog, toggleSelect, ...cells } = props;
   return (
 <TableRow
-
+                    data-state={isSelected ? 'selected' : undefined}
                     className={cn(
                       'group cursor-pointer border-border/30 transition-colors duration-150 hover:bg-secondary/40', rowClassName,
                       isSelected && 'bg-primary/[0.06] hover:bg-primary/10'
@@ -45,6 +46,7 @@ const TestCaseDataRow = React.memo(function TestCaseDataRow(props: TestCaseTable
                   >
                     <TableCell className="sticky left-0 z-10 bg-card pl-4 group-hover:bg-secondary">
                       <Checkbox
+                        aria-label={`Pilih testcase ${tc.testCaseId}`}
                         checked={isSelected}
                         onCheckedChange={() => toggleSelect(tc.id)}
                         className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
@@ -61,11 +63,12 @@ const TestCaseDataRow = React.memo(function TestCaseDataRow(props: TestCaseTable
 // Sorting and selection change the row shell, not unchanged data/control trees.
 const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseTableBodyProps) {
   const { tc, record, celebrating, mountedColumns, getColumnClass, openViewDialog, onQuickStatusChange, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant, getTestTypeColor, getPriorityColor, openEditDialog, handleDuplicate, requestDelete } = props;
+  const { canEdit } = useWorkspaceAccess();
   return (
     <>
                     <TableCell className="sticky left-[72px] z-10 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden truncate whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary" title={tc.testCaseId}>{tc.testCaseId}</TableCell>
-                    <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={tc.page}>{tc.page}</TableCell>
-                    {mountedColumns.subMenu && <TableCell className={getColumnClass('subMenu', 'text-muted-foreground text-[13px] font-medium max-w-[100px] truncate')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>}
+                    <TableCell className="min-w-[120px] max-w-[144px] truncate whitespace-nowrap text-sm font-semibold text-foreground" title={tc.page}>{tc.page}</TableCell>
+                    {mountedColumns.subMenu && <TableCell className={getColumnClass('subMenu', 'min-w-[128px] max-w-[144px] truncate whitespace-nowrap text-sm text-muted-foreground')} title={tc.subMenu || ''}>{tc.subMenu || '—'}</TableCell>}
                     {mountedColumns.weight && <TableCell className={getColumnClass('weight')}>
                       {tc.calculatedWeight != null ? (
                         <Badge variant="outline" className="rounded-md border-border/60 bg-secondary/50 text-xs font-mono text-muted-foreground">
@@ -85,11 +88,11 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                         {tc.priority}
                       </Badge>
                     </TableCell>}
-                    {mountedColumns.action && <TableCell className={getColumnClass('action', 'max-w-[180px]')}>
-                      <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{tc.testAction}</p>
+                    {mountedColumns.action && <TableCell className={getColumnClass('action', 'min-w-[240px] max-w-[320px]')} title={tc.testAction}>
+                      <p className="line-clamp-2 text-sm leading-5 text-foreground">{tc.testAction}</p>
                     </TableCell>}
-                    {mountedColumns.status && <TableCell className={getColumnClass('status')}>
-                      {onQuickStatusChange ? (
+                    {mountedColumns.status && <TableCell className={getColumnClass('status', 'min-w-[196px]')}>
+                      {canEdit && onQuickStatusChange ? (
                         <div className="relative">
                           {celebrating && <ConfettiBurst radius={44} count={14} />}
                         <TestCaseStatusCell id={tc.id} displayId={tc.testCaseId} status={tc.status} onChange={onQuickStatusChange} celebrate={setCelebrateId} color={getStatusColor} icon={getStatusIcon} />
@@ -100,13 +103,13 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                         </Badge>
                       )}
                     </TableCell>}
-                    {mountedColumns.result && <TableCell className={getColumnClass('result', 'px-3')}>
+                    {mountedColumns.result && <TableCell className={getColumnClass('result', 'min-w-[152px] whitespace-nowrap px-3')}>
                       {tc.actualResult ? (
                         <Badge variant={tc.actualResult === 'As Expected' ? 'success' : tc.actualResult === 'Not As Expected' ? 'failed' : 'outline'} className="text-xs font-semibold">
                           {tc.actualResult}
                         </Badge>
                       ) : (
-                        <span className="text-xs font-semibold text-muted-foreground">-</span>
+                        <span className="text-xs font-semibold text-muted-foreground">—</span>
                       )}
                     </TableCell>}
                     {mountedColumns.record && <TableCell className={getColumnClass('record', 'px-3')}>
@@ -144,7 +147,7 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                     <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button aria-label={`Actions for ${tc.testCaseId}`} title={`Actions for ${tc.testCaseId}`} variant="ghost" size="sm" className="h-7 w-7 rounded-md p-0 text-muted-foreground opacity-45 transition-opacity duration-150 hover:bg-secondary hover:text-foreground hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100">
+                          <Button aria-label={`Actions for ${tc.testCaseId}`} title={`Actions for ${tc.testCaseId}`} variant="ghost" size="icon" className="size-9 text-muted-foreground">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -152,15 +155,15 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                           <DropdownMenuItem onClick={() => openViewDialog(tc)}>
                             <Eye className="w-4 h-4 mr-2" /> Lihat Detail
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(tc)}>
+                          <MutationAction><DropdownMenuItem onClick={() => openEditDialog(tc)}>
                             <Edit3 className="w-4 h-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicate(tc)}>
+                          </DropdownMenuItem></MutationAction>
+                          <MutationAction><DropdownMenuItem onClick={() => handleDuplicate(tc)}>
                             <Copy className="w-4 h-4 mr-2" /> Duplikasi
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => requestDelete(tc)} className="text-status-failed focus:text-status-failed">
+                          </DropdownMenuItem></MutationAction>
+                          <MutationAction><DropdownMenuItem onClick={() => requestDelete(tc)} className="text-status-failed focus:text-status-failed">
                             <Trash2 className="w-4 h-4 mr-2" /> Hapus
-                          </DropdownMenuItem>
+                          </DropdownMenuItem></MutationAction>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -185,14 +188,16 @@ export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: Te
 
   return (
     <>
-      <div className="relative max-h-[70vh] overflow-auto rounded-xl border border-border/70 bg-card/95 shadow-sm" aria-busy={Boolean(isLoading)}>
+      <div className="relative min-w-0 rounded-xl border border-border bg-card" aria-busy={Boolean(isLoading)}>
       {isLoading && testCases.length > 0 && (
         <div className="pointer-events-none sticky top-1 z-30 ml-auto -mb-8 mr-2 flex h-8 w-fit items-center gap-2 rounded-md border border-border bg-card px-2 text-xs text-muted-foreground shadow-sm" role="status" aria-label="Memperbarui test cases">
           <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none" />
           Memperbarui…
         </div>
       )}
-      <Table className="w-full table-auto">
+      <Table className="qa-data-table w-full min-w-[720px] md:min-w-[1000px] xl:min-w-[1320px] table-auto"
+        containerClassName="max-h-[max(180px,calc(100dvh-420px))] overflow-auto rounded-t-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        containerProps={{ role: 'region', tabIndex: 0, 'aria-label': 'Tabel testcase, dapat digeser horizontal dan vertikal', 'aria-describedby': 'cases-scroll-help' }}>
         <TableHeader className="sticky top-0 z-10 bg-secondary/95">
           <TableRow className="border-border/30 hover:bg-transparent">
             <TableHead className="sticky left-0 z-20 w-10 bg-secondary/95 pl-4">
@@ -205,20 +210,20 @@ export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: Te
                 className="border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary/60 data-[state=indeterminate]:border-primary rounded"
               />
             </TableHead>
-            <TableHead className="sticky left-10 z-20 w-10 bg-secondary/95 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
+            <TableHead className="sticky left-10 z-20 w-8 min-w-8 bg-secondary/95 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
             <TableHead className="sticky left-[72px] z-20 w-[120px] min-w-[120px] cursor-pointer select-none bg-secondary/95 text-xs font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('testCaseId')}>
               <div className="flex items-center gap-1">ID <ArrowUpDown className="w-3 h-3 text-primary" /></div>
             </TableHead>
             <TableHead className="w-[110px] cursor-pointer select-none text-xs font-semibold uppercase tracking-wider text-muted-foreground" onClick={() => toggleSort('page')}>
               <div className="flex items-center gap-1">Page <ArrowUpDown className="w-3 h-3 text-primary" /></div>
             </TableHead>
-            {mountedColumns.subMenu && <TableHead className={getColumnClass('subMenu', 'w-[100px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>}
+            {mountedColumns.subMenu && <TableHead className={getColumnClass('subMenu', 'w-[144px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Sub Menu</TableHead>}
             {mountedColumns.weight && <TableHead className={getColumnClass('weight', 'w-[68px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Weight</TableHead>}
             {mountedColumns.type && <TableHead className={getColumnClass('type', 'w-[80px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Type</TableHead>}
             {mountedColumns.priority && <TableHead className={getColumnClass('priority', 'w-[84px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Priority</TableHead>}
             {mountedColumns.action && <TableHead className={getColumnClass('action', 'text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Test Action</TableHead>}
-            {mountedColumns.status && <TableHead className={getColumnClass('status', 'w-[140px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>}
-            {mountedColumns.result && <TableHead className={getColumnClass('result', 'w-[120px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Result</TableHead>}
+            {mountedColumns.status && <TableHead className={getColumnClass('status', 'w-[196px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Status</TableHead>}
+            {mountedColumns.result && <TableHead className={getColumnClass('result', 'w-[152px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Result</TableHead>}
             {mountedColumns.record && <TableHead className={getColumnClass('record', 'w-[140px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Test Record</TableHead>}
             {mountedColumns.progress && <TableHead className={getColumnClass('progress', 'w-[88px] text-xs font-semibold uppercase tracking-wider text-muted-foreground')}>Progress</TableHead>}
             <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
@@ -276,9 +281,10 @@ export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: Te
               )}
             </TableBody>
           </Table>
+        <p id="cases-scroll-help" className="qa-table-scroll-help">Geser tabel untuk melihat semua kolom. ID dan aksi tetap terlihat.</p>
       </div>
       {total > 0 && (
-        <div className="flex flex-col gap-3 rounded-lg border border-border/50 bg-secondary/50 px-3 py-2 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-3 py-3 pr-20 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground tabular-nums">
               Halaman {page} dari {totalPages} <span className="mx-2 opacity-20">|</span> {total} test cases

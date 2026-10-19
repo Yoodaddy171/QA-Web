@@ -90,7 +90,7 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                     onClick={syncFigmaKnowledge}
                     disabled={!figmaUrl.trim() || figmaSyncing}
                     title={!figmaUrl.trim() ? 'Masukkan URL atau key Figma terlebih dahulu.' : undefined}
-                    className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-primary to-cyan-500 px-4 text-xs font-bold uppercase text-white"
+                    className="min-h-10 gap-2"
                   >
                     {figmaSyncing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Link className="h-3.5 w-3.5" />}
                     Sinkronkan
@@ -108,7 +108,7 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
   return (
       <Card variant="majestic" className="overflow-hidden border-border/40 shadow-sm">
         <CardHeader className="border-b border-border/60 pb-3">
-          <div className="flex items-center justify-between">
+          <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle className="text-lg font-semibold tracking-tight">Project Knowledge</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground font-medium">
@@ -119,7 +119,8 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
               onClick={() => setKnowledgeForm(EMPTY_KNOWLEDGE_FORM)}
               size="sm"
               disabled={!selectedProject}
-              className="gap-1.5 rounded-xl bg-secondary/50 hover:bg-secondary/80 text-foreground font-bold text-xs uppercase border border-border/50 shadow-sm transition duration-200"
+              variant="outline"
+              className="gap-2"
             >
               <Plus className="h-3.5 w-3.5 text-primary" /> Tambah Baru
             </Button>
@@ -190,7 +191,8 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                         type="button"
                         onClick={uploadKnowledgeFile}
                         disabled={!knowledgeFile || knowledgeUploading}
-                        className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-white font-bold shadow-md hover:shadow-cyan-500/20 transition duration-200 text-xs uppercase px-4"
+                        variant="outline"
+                        className="min-h-10 gap-2"
                       >
                         {knowledgeUploading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                         Upload
@@ -206,11 +208,11 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
 
               </div>
 
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
                 <Button
                   onClick={saveKnowledge}
                   disabled={knowledgeSaving || !knowledgeForm.title.trim() || !knowledgeForm.content.trim()}
-                  className="h-11 gap-2 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-bold shadow-lg hover:shadow-primary/20 transition duration-300 text-xs uppercase px-6"
+                  className="min-h-10 gap-2"
                 >
                   <Save className="h-4 w-4" />
                   {knowledgeForm.id ? 'Update Project Knowledge' : 'Simpan Knowledge'}
@@ -244,7 +246,7 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05, duration: 0.3 }}
-                        className="rounded-2xl border border-border/50 bg-secondary/20 p-5 hover:border-primary/30 hover:bg-secondary/40 hover:shadow-md transition duration-300 group relative overflow-hidden"
+                        className="group relative min-w-0 rounded-xl border border-border bg-card p-4 transition-colors duration-150 hover:bg-secondary/30"
                       >
                         <div className="absolute top-0 right-0 h-24 w-24 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <div className="flex items-start justify-between gap-4 relative z-10">
@@ -260,10 +262,11 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                               Terakhir diperbarui: {new Date(item.updatedAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
                             </p>
                           </div>
-                          <div className="flex shrink-0 items-center gap-1.5 opacity-100 transition duration-300 sm:translate-x-2 sm:opacity-0 sm:group-hover:translate-x-0 sm:group-hover:opacity-100">
+                          <div className="flex shrink-0 items-center gap-1.5">
                             <Button
                               variant="outline"
                               size="icon"
+                              aria-label={`Edit knowledge ${item.title}`}
                               className="h-9 w-9 rounded-xl border-border/60 bg-background/80 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 shadow-sm"
                               onClick={() => setKnowledgeForm({
                                 id: item.id,

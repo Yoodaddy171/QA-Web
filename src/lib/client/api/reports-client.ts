@@ -21,7 +21,9 @@ export async function saveReport(payload: Record<string, unknown>, reportId?: st
 }
 
 export async function runReportAction(reportId: string, action: ReportAction): Promise<ReportData> {
-  const res = await fetch(`/api/reports/${reportId}/${action}`, { method: 'POST' });
+  const res = await fetch(`/api/reports/${reportId}/${action}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Aksi report gagal dijalankan');
   return data.report;

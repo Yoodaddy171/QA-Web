@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { MutationAction } from '@/components/WorkspaceAccess';
 import { Badge } from '@/components/ui/badge';
 import { Download, FileText, FilePlus2, Pencil, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -67,33 +68,34 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
   };
 
   const section = (title: string, body?: string) => body ? (
-    <div className="rounded-lg border border-border/60 bg-card p-5 shadow-sm">
-      <h2 className="mb-3 text-lg font-bold text-foreground">{title}</h2>
+    <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+      <h2 className="mb-3 text-base font-semibold text-foreground">{title}</h2>
       <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{body}</p>
     </div>
   ) : null;
 
   return (
-    <div className="space-y-4">
-      <div className="signal-surface rounded-xl border border-border/70 bg-card p-6 shadow-sm">
+    <div className="qa-report-document flex min-w-0 flex-col gap-5">
+      <p className="text-xs text-muted-foreground">Hasil cycle berasal dari execution; status inventory dan verifikasi Bug ditampilkan terpisah. Finalisasi memerlukan QA_LEAD atau lebih tinggi.</p>
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <FileText className="h-8 w-8 text-primary" />
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold text-foreground">{isPlanning ? 'Test Planning FDS' : 'Test Status Report FDS'}</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{isPlanning ? 'Test Planning FDS' : 'Test Status Report FDS'}</h1>
                 <Badge variant={report.status === 'FINAL' ? 'success' : 'secondary'}>{report.status}</Badge>
               </div>
-              <p className="text-sm text-muted-foreground">Version {report.version} - {report.documentId || report.id}</p>
+              <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">Version {report.version} - {report.documentId || report.id}</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {report.status !== 'FINAL' && <Button variant="outline" onClick={() => onEdit(report)}><Pencil className="mr-2 h-4 w-4" />Edit Draft</Button>}
-            {report.status !== 'FINAL' && <Button variant="outline" onClick={() => postAction('refresh')}><RefreshCcw className="mr-2 h-4 w-4" />Refresh Snapshot</Button>}
-            {report.status !== 'FINAL' && <Button onClick={() => postAction('finalize')}><ShieldCheck className="mr-2 h-4 w-4" />Finalize</Button>}
-            {report.status === 'FINAL' && <Button variant="outline" onClick={() => postAction('versions')}><FilePlus2 className="mr-2 h-4 w-4" />New Version</Button>}
+          <div className="qa-module-toolbar flex flex-wrap gap-2">
+            {report.status !== 'FINAL' && <MutationAction><Button variant="outline" onClick={() => onEdit(report)}><Pencil className="mr-2 h-4 w-4" />Edit Draft</Button></MutationAction>}
+            {report.status !== 'FINAL' && <MutationAction><Button variant="outline" onClick={() => postAction('refresh')}><RefreshCcw className="mr-2 h-4 w-4" />Refresh Snapshot</Button></MutationAction>}
+            {report.status !== 'FINAL' && <MutationAction minimum="QA_LEAD"><Button onClick={() => postAction('finalize')}><ShieldCheck className="mr-2 h-4 w-4" />Finalize</Button></MutationAction>}
+            {report.status === 'FINAL' && <MutationAction><Button variant="outline" onClick={() => postAction('versions')}><FilePlus2 className="mr-2 h-4 w-4" />New Version</Button></MutationAction>}
             <Button variant="outline" onClick={handleExportHTML}><Download className="mr-2 h-4 w-4" />HTML</Button>
-            <Button asChild><a href={`/api/reports/${report.id}/export/docx`}><Download className="mr-2 h-4 w-4" />DOCX</a></Button>
+            <Button variant="outline" asChild><a href={`/api/reports/${report.id}/export/docx`}><Download className="mr-2 h-4 w-4" />DOCX</a></Button>
           </div>
         </div>
 
@@ -128,7 +130,7 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
         ))}
       </div>
 
-      <div className="signal-surface rounded-xl border border-primary/25 bg-primary/5 p-5 shadow-[0_16px_50px_-38px_rgba(99,102,241,.8)]">
+      <div className="rounded-xl border border-primary/30 bg-card p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Release decision summary</p>

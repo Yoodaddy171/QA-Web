@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import { useCommittedActions } from '@/hooks/use-committed-actions';
 import {
   ArrowUpDown, Bookmark, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
@@ -218,6 +219,7 @@ export function TestCaseTable({
     filterTag ? { key: 'tag', label: `Tag: ${filterTag}`, clear: () => setFilterTag('') } : null,
   ].filter((item): item is { key: string; label: string; clear: () => void } => Boolean(item));
   const selectTriggerClass = 'h-9 rounded-md border-border/60 bg-secondary/50 text-foreground text-sm shadow-sm';
+  const { canEdit } = useWorkspaceAccess();
   const toolbarButtonClass = 'h-9 rounded-md gap-1.5 font-semibold';
   const formatLastRun = (dateStr: string | null) => {
     if (!dateStr) return 'Belum dites';
@@ -253,7 +255,7 @@ export function TestCaseTable({
   const tableBodyProps = {
     selectedProject, testCases, selectedIds, testRecordById, page, limit, total, totalPages, tableColSpan,
     isLoading, hasActiveFilters, getColumnClass, mountedColumns,
-    ...rowActions, onQuickStatusChange: onQuickStatusChange ? rowActions.onQuickStatusChange : undefined,
+    ...rowActions, onQuickStatusChange: canEdit && onQuickStatusChange ? rowActions.onQuickStatusChange : undefined,
     celebrateId, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant,
     getPriorityColor, getTestTypeColor, rowClassName,
   };
@@ -267,12 +269,12 @@ export function TestCaseTable({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      className="min-w-0 space-y-4"
+      className="qa-data-workspace flex min-w-0 flex-col gap-4"
     >
-      <div className="rounded-xl border border-border/70 bg-card p-3 shadow-xs sm:p-4">
+      <div className="qa-workspace-toolbar rounded-xl border border-border bg-card p-3 sm:p-4">
         <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(260px,1fr)_auto_minmax(220px,auto)_auto]">
         <div className="relative min-w-0">
-          <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary', isLoading && 'animate-bounce [animation-duration:0.7s] motion-reduce:animate-none')} />
+          <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 size-4 text-primary', isLoading && 'opacity-60')} />
           <Input
             data-search-input
             placeholder="Cari ID, page, action, atau steps..."
@@ -414,16 +416,18 @@ export function TestCaseTable({
           )}
         </AnimatePresence>
 
-      <div className="mt-3 flex min-w-0 flex-col gap-3 border-t border-border/40 pt-3 lg:flex-row lg:items-center lg:justify-between">
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">Status inventory: retest Bug diselesaikan dengan Done / As Expected pada testcase terkait.</p>
+      {!canEdit && <p className="text-xs leading-5 text-muted-foreground">Mode baca saja. Perubahan memerlukan role QA atau lebih tinggi pada workspace ini.</p>}
+      <div className="mt-3 flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-9 rounded-lg gap-1.5 font-bold shadow-sm transition duration-150">
+          <MutationAction><Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-9 rounded-lg gap-1.5 font-bold shadow-sm transition duration-150">
             <Plus className="w-4 h-4" /> Add Test Case
             <kbd className="ml-0.5 hidden rounded border border-primary-foreground/30 px-1 font-mono text-xs leading-4 opacity-70 lg:inline-block">N</kbd>
-          </Button>
+          </Button></MutationAction>
           {aiEnabled && (
-            <Button onClick={openAIDialog} size="sm" className="group h-9 rounded-lg gap-1.5 border border-violet-500/20 bg-violet-500/10 font-bold text-violet-500 transition duration-150 hover:bg-violet-500/20 dark:text-bug-fixing">
+            <MutationAction><Button onClick={openAIDialog} size="sm" variant="outline">
               <Sparkles className="w-4 h-4" /> Generate AI
-            </Button>
+            </Button></MutationAction>
           )}
         </div>
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
@@ -465,9 +469,9 @@ export function TestCaseTable({
             className="hidden"
             onChange={handleImportExcel}
           />
-          <Button onClick={openImportDialog} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
+          <MutationAction><Button onClick={openImportDialog} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
             <Upload className="w-4 h-4 text-primary" /> Import Excel
-          </Button>
+          </Button></MutationAction>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
@@ -502,11 +506,11 @@ export function TestCaseTable({
               <button type="button" onClick={clearSelection} className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground lg:ml-0" aria-label="Clear selection"><X className="h-4 w-4" /></button>
             </div>
             <div className="flex flex-1 flex-wrap gap-2 lg:justify-end">
-              <Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-8 gap-1.5"><Settings2 className="h-3.5 w-3.5" /> Status</Button>
-              <Button onClick={() => setShowBulkExecution(true)} variant="outline" size="sm" className="h-8 gap-1.5"><CalendarClock className="h-3.5 w-3.5" /> Execute</Button>
-              <Button onClick={() => setShowBulkAssign(true)} variant="outline" size="sm" className="h-8 gap-1.5"><UserRound className="h-3.5 w-3.5" /> Assign</Button>
+              <MutationAction><Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-8 gap-1.5"><Settings2 className="h-3.5 w-3.5" /> Status</Button></MutationAction>
+              <MutationAction><Button onClick={() => setShowBulkExecution(true)} variant="outline" size="sm" className="h-8 gap-1.5"><CalendarClock className="h-3.5 w-3.5" /> Execute</Button></MutationAction>
+              <MutationAction><Button onClick={() => setShowBulkAssign(true)} variant="outline" size="sm" className="h-8 gap-1.5"><UserRound className="h-3.5 w-3.5" /> Assign</Button></MutationAction>
               <Button onClick={() => handleExportExcel('xlsx', [...selectedIds])} variant="outline" size="sm" className="h-8 gap-1.5"><FileDown className="h-3.5 w-3.5" /> Export</Button>
-              <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-8 gap-1.5"><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+              <MutationAction><Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-8 gap-1.5"><Trash2 className="h-3.5 w-3.5" /> Delete</Button></MutationAction>
             </div>
           </motion.div>
         )}

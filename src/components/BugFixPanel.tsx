@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import { AlertTriangle, Bug, CheckCircle2, Clock, Eye, RefreshCw, Search, Settings2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AnimatedNumber } from '@/components/ui/animated-number';
@@ -138,6 +139,7 @@ type BugFixRowsProps = {
 const BugFixTableRow = memo(function BugFixTableRow({
   bf, index, ...props
 }: Omit<BugFixRowsProps, 'visibleBugFixItems'> & { bf: BugFixItem; index: number }) {
+  const { canEdit } = useWorkspaceAccess();
   const { rowClassName, bugFixTab, getColumnClass, getPriorityColor, onStatusChange, onOpenDetail } = props;
   return (
     <TableRow
@@ -152,27 +154,27 @@ const BugFixTableRow = memo(function BugFixTableRow({
     >
       <TableCell className="sticky left-0 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">{index + 1}</TableCell>
       <TableCell className="sticky left-10 z-10 w-[130px] min-w-[130px] max-w-[130px] overflow-hidden whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary">{bf.testCaseId}</TableCell>
-      <TableCell className="max-w-[110px] truncate text-sm font-bold text-foreground" title={bf.page}>{bf.page}</TableCell>
-      <TableCell className={getColumnClass('subMenu', 'max-w-[100px] truncate text-[13px] font-medium text-muted-foreground')} title={bf.subMenu || ''}>{bf.subMenu || '—'}</TableCell>
-      <TableCell className={getColumnClass('action', 'max-w-[180px]')} title={bf.testAction}>
-        <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">{bf.testAction}</p>
+      <TableCell className="min-w-[120px] max-w-[144px] truncate whitespace-nowrap text-sm font-semibold text-foreground" title={bf.page}>{bf.page}</TableCell>
+      <TableCell className={getColumnClass('subMenu', 'min-w-[128px] max-w-[144px] truncate whitespace-nowrap text-sm text-muted-foreground')} title={bf.subMenu || ''}>{bf.subMenu || '—'}</TableCell>
+      <TableCell className={getColumnClass('action', 'min-w-[240px] max-w-[320px]')} title={bf.testAction}>
+        <p className="line-clamp-2 text-sm leading-5 text-foreground">{bf.testAction}</p>
       </TableCell>
       <TableCell className={getColumnClass('priority')}>
-        <Badge variant="outline" className={cn("text-xs font-bold tracking-wide uppercase px-2 py-0.5 shadow-xs", getPriorityColor(bf.priority))}>
+        <Badge variant="outline" className={cn("text-xs font-semibold", getPriorityColor(bf.priority))}>
           {bf.priority}
         </Badge>
       </TableCell>
-      <TableCell className={getColumnClass('status')}>
-        {bugFixTab === 'resolved' ? (
-          <Badge variant="success" className="text-xs font-bold uppercase tracking-wider px-2 py-0.5">
+      <TableCell className={getColumnClass('status', 'min-w-[196px]')}>
+        {!canEdit || bugFixTab === 'resolved' ? (
+          <Badge variant="outline" className={cn('text-xs font-semibold', getBugFixStatusColor(bf.status))}>
             {bf.status}
           </Badge>
         ) : (
           <BugFixStatusCell id={bf.id} displayId={bf.testCaseId} status={bf.status} color={getBugFixStatusColor(bf.status)} onChange={onStatusChange} />
         )}
       </TableCell>
-      <TableCell className={getColumnClass('reportedAt', 'text-xs font-semibold text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
-      <TableCell className={getColumnClass('timing', 'whitespace-nowrap text-xs font-semibold text-muted-foreground')}>
+      <TableCell className={getColumnClass('reportedAt', 'min-w-[144px] whitespace-nowrap text-xs tabular-nums text-muted-foreground')}>{formatDate(bf.reportedAt)}</TableCell>
+      <TableCell className={getColumnClass('timing', 'min-w-[144px] whitespace-nowrap text-xs tabular-nums text-muted-foreground')}>
         {bugFixTab === 'resolved'
           ? formatDate(bf.fixedAt)
           : bf.status === 'READY TO RETEST'
@@ -184,8 +186,8 @@ const BugFixTableRow = memo(function BugFixTableRow({
           aria-label={`View bug ${bf.testCaseId}`}
           title={`View bug ${bf.testCaseId}`}
           variant="ghost"
-          size="sm"
-          className="h-7 w-7 rounded-md p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
+          size="icon"
+          className="size-9 text-muted-foreground"
           onClick={() => onOpenDetail(bf)}
         >
           <Eye className="w-4 h-4 text-primary" />
@@ -243,20 +245,21 @@ export function BugFixPanel({
       initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0 }}
-      className="min-w-0 space-y-6 overflow-x-hidden"
+      className="qa-data-workspace flex min-w-0 flex-col gap-4"
     >
       {stats && <BugFixStatsCards stats={stats} />}
+      <p className="text-xs text-muted-foreground">READY TO RETEST: uji ulang testcase inventory terkait. Pilih Done / As Expected untuk verifikasi Bug; Pass di Test Run saja tidak memverifikasi Bug.</p>
 
 
 
       {/* Toolbar */}
-      <div className="flex min-w-0 flex-col items-start justify-between gap-4 rounded-2xl border border-border/40 bg-card p-4 shadow-sm 2xl:flex-row 2xl:items-center">
+      <div className="qa-workspace-toolbar flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
         <Tabs
           value={bugFixTab}
           onValueChange={(v) => setBugFixTab(v as 'active' | 'resolved')}
           className="w-full sm:w-auto"
         >
-          <TabsList className="h-10 rounded-xl border border-border/50 bg-secondary/35 p-1 shadow-inner">
+          <TabsList className="qa-inspector-tabs h-10 border border-border bg-muted p-1">
             <TabsTrigger value="active" className="gap-2 rounded-lg px-4 text-xs font-semibold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Bug className="w-3.5 h-3.5" /> Bug Aktif
             </TabsTrigger>
@@ -266,7 +269,7 @@ export function BugFixPanel({
           </TabsList>
         </Tabs>
 
-        <div className="grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 2xl:w-auto 2xl:grid-cols-[auto_auto_minmax(220px,1fr)_180px_180px]">
+        <div className="grid w-full min-w-0 grid-cols-2 items-center gap-2 xl:grid-cols-[auto_auto_auto_minmax(160px,1fr)_160px_160px]">
           <Badge variant="outline" className="h-9.5 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Menampilkan {visibleBugFixItems.length} data
           </Badge>
@@ -348,8 +351,10 @@ export function BugFixPanel({
           </p>
         </div>
       ) : (
-        <div className="relative max-h-[70vh] overflow-auto rounded-2xl border border-border/40 bg-card shadow-sm">
-            <Table className="w-full table-auto">
+        <div className="relative min-w-0 rounded-xl border border-border bg-card">
+            <Table className="qa-data-table w-full min-w-[720px] md:min-w-[1000px] xl:min-w-[1240px] table-auto"
+              containerClassName="max-h-[max(180px,calc(100dvh-420px))] overflow-auto rounded-t-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              containerProps={{ role: 'region', tabIndex: 0, 'aria-label': 'Tabel bug, dapat digeser horizontal dan vertikal', 'aria-describedby': 'bugs-scroll-help' }}>
               <TableHeader className="sticky top-0 z-10 bg-secondary/95">
                 <TableRow className="border-border/30 hover:bg-transparent">
                   <TableHead className="sticky left-0 z-20 w-10 bg-secondary/95 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">No</TableHead>
@@ -376,6 +381,7 @@ export function BugFixPanel({
                 ))}
               </TableBody>
             </Table>
+            <p id="bugs-scroll-help" className="qa-table-scroll-help">Geser tabel untuk melihat semua kolom. ID dan aksi tetap terlihat.</p>
         </div>
       )}
     </motion.div>

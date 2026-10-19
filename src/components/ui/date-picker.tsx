@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import { CalendarDays, X } from "lucide-react"
 import { format, isValid, parse } from "date-fns"
 import { id } from "date-fns/locale"
@@ -20,6 +21,8 @@ const serializeDate = (date?: Date) => date ? format(date, "yyyy-MM-dd") : ""
 const displayDate = (date?: Date) => date ? format(date, "d MMM yyyy", { locale: id }) : "Belum dipilih"
 
 interface DateRangePickerProps {
+  id?: string
+  labelledBy?: string
   from?: string
   to?: string
   onFromChange: (value: string) => void
@@ -31,6 +34,8 @@ interface DateRangePickerProps {
 }
 
 function DateRangePicker({
+  id: controlId,
+  labelledBy,
   from,
   to,
   onFromChange,
@@ -40,6 +45,7 @@ function DateRangePicker({
   disabled = false,
   required = false,
 }: DateRangePickerProps) {
+  const descriptionId = useId()
   const selected: DateRange | undefined = from || to
     ? { from: parseDate(from), to: parseDate(to) }
     : undefined
@@ -62,6 +68,9 @@ function DateRangePicker({
             type="button"
             variant="outline"
             disabled={disabled}
+            id={controlId}
+            aria-labelledby={labelledBy}
+            aria-describedby={descriptionId}
             aria-label={`${label}: dari ${displayDate(selected?.from)}, sampai ${displayDate(selected?.to)}`}
             className={cn(
               "h-10 w-full justify-start gap-2 rounded-xl border-border/50 bg-secondary/35 px-3 text-left text-xs font-semibold shadow-xs",
@@ -78,6 +87,7 @@ function DateRangePicker({
             </span>
           </Button>
         </PopoverTrigger>
+        <span id={descriptionId} className="sr-only">{required ? "Wajib diisi. " : ""}{`Dari ${displayDate(selected?.from)}, sampai ${displayDate(selected?.to)}`}</span>
         {(selected?.from || selected?.to) && !disabled && !required ? (
           <Button
             type="button"
@@ -121,6 +131,8 @@ function DateRangePicker({
 }
 
 interface DatePickerProps {
+  id?: string
+  labelledBy?: string
   value?: string
   onChange: (value: string) => void
   className?: string
@@ -129,7 +141,8 @@ interface DatePickerProps {
   required?: boolean
 }
 
-function DatePicker({ value, onChange, className, label = "Pilih tanggal", disabled = false, required = false }: DatePickerProps) {
+function DatePicker({ id: controlId, labelledBy, value, onChange, className, label = "Pilih tanggal", disabled = false, required = false }: DatePickerProps) {
+  const descriptionId = useId()
   const selected = parseDate(value)
 
   return (
@@ -140,6 +153,9 @@ function DatePicker({ value, onChange, className, label = "Pilih tanggal", disab
             type="button"
             variant="outline"
             disabled={disabled}
+            id={controlId}
+            aria-labelledby={labelledBy}
+            aria-describedby={descriptionId}
             aria-label={`${label}: ${displayDate(selected)}`}
             className={cn("h-10 w-full justify-start gap-2 rounded-xl border-border/50 bg-secondary/35 px-3 text-left text-xs font-semibold shadow-xs", !selected && "text-muted-foreground")}
           >
@@ -147,6 +163,7 @@ function DatePicker({ value, onChange, className, label = "Pilih tanggal", disab
             <span className="min-w-0 flex-1 truncate">{selected ? displayDate(selected) : label}</span>
           </Button>
         </PopoverTrigger>
+        <span id={descriptionId} className="sr-only">{required ? "Wajib diisi. " : ""}{displayDate(selected)}</span>
         {selected && !disabled && !required ? (
           <Button type="button" variant="ghost" size="icon" aria-label={`Hapus ${label.toLowerCase()}`} onClick={() => onChange("")} className="absolute right-1 top-1/2 size-8 -translate-y-1/2 rounded-lg">
             <X />

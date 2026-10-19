@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,6 +81,9 @@ export function TestCaseDialog({
   onSaveSuccess
 }: TestCaseDialogProps) {
   const { toast } = useToast();
+  const prefix = useId();
+  const fieldId = (field: string) => `${prefix}-${field}`;
+  const returnFocus = useRef<HTMLElement | null>(null);
   const [formData, setFormData] = useState(EMPTY_TEST_CASE);
   const [initialSnapshot, setInitialSnapshot] = useState('');
 
@@ -144,7 +147,7 @@ export function TestCaseDialog({
       actualResult: formData.actualResult || null,
       subMenu: formData.subMenu.trim() || null,
       remarks: formData.remarks.trim() || null,
-      tags: formData.tags.trim() || null,
+      tags: formData.tags.trim(),
     };
 
     try {
@@ -186,8 +189,11 @@ export function TestCaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border-border/60 bg-card text-foreground elevation-3 rounded-2xl scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent p-6">
-        <DialogHeader className="mb-4">
+      <DialogContent
+        onOpenAutoFocus={() => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+        onCloseAutoFocus={(event) => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus(); }}
+        className="qa-case-form flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden rounded-xl border-border bg-card p-0 text-foreground sm:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-border p-5 pr-12 text-left sm:px-6">
           <DialogTitle className="text-xl font-semibold tracking-tight">
             {editingTestCase ? 'Edit Test Case' : 'Tambah Test Case Baru'}
           </DialogTitle>
@@ -196,12 +202,14 @@ export function TestCaseDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="min-h-0 overflow-y-auto p-5 sm:px-6">
+          <fieldset className="flex min-w-0 flex-col gap-4 border-0 p-0">
+          <legend className="mb-4 text-sm font-semibold">Identitas dan klasifikasi</legend>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Case ID <span className="text-red-500">*</span></Label>
+              <Label htmlFor={fieldId("testCaseId")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Case ID <span className="text-red-500">*</span></Label>
               <Input
-                value={formData.testCaseId}
+                id={fieldId("testCaseId")} aria-required="true" value={formData.testCaseId}
                 onChange={(e) => setFormData({ ...formData, testCaseId: e.target.value })}
                 placeholder="contoh: A-001"
                 disabled={Boolean(editingTestCase)}
@@ -210,9 +218,9 @@ export function TestCaseDialog({
               {editingTestCase ? <p className="text-[10px] text-muted-foreground">ID bersifat permanen agar report, evidence, dan relasi tetap konsisten.</p> : null}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Page / Menu <span className="text-red-500">*</span></Label>
+              <Label htmlFor={fieldId("page")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Page / Menu <span className="text-red-500">*</span></Label>
               <Input
-                value={formData.page}
+                id={fieldId("page")} aria-required="true" value={formData.page}
                 onChange={(e) => setFormData({ ...formData, page: e.target.value })}
                 placeholder="contoh: CMS Login"
                 className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
@@ -220,11 +228,11 @@ export function TestCaseDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sub Menu</Label>
+              <Label htmlFor={fieldId("subMenu")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sub Menu</Label>
               <Input
-                value={formData.subMenu}
+                id={fieldId("subMenu")} value={formData.subMenu}
                 onChange={(e) => setFormData({ ...formData, subMenu: e.target.value })}
                 placeholder="contoh: Order List"
                 className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
@@ -243,11 +251,11 @@ export function TestCaseDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tipe Test <span className="text-red-500">*</span></Label>
+              <Label htmlFor={fieldId("testType")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tipe Test <span className="text-red-500">*</span></Label>
               <Select value={formData.testType} onValueChange={(v) => setFormData({ ...formData, testType: v })}>
-                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
+                <SelectTrigger id={fieldId("testType")} aria-required="true" className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                   <SelectItem value="Positive" className="rounded-lg">Positive</SelectItem>
                   <SelectItem value="Negative" className="rounded-lg">Negative</SelectItem>
@@ -255,9 +263,9 @@ export function TestCaseDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Prioritas</Label>
+              <Label htmlFor={fieldId("priority")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Prioritas</Label>
               <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
-                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
+                <SelectTrigger id={fieldId("priority")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                   <SelectItem value="Critical" className="rounded-lg text-status-failed font-medium">Critical</SelectItem>
                   <SelectItem value="High" className="rounded-lg text-bug-open font-medium">High</SelectItem>
@@ -268,9 +276,9 @@ export function TestCaseDialog({
             </div>
             {modules.length > 0 && (
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Module</Label>
+                <Label htmlFor={fieldId("moduleId")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Module</Label>
                 <Select value={formData.moduleId || 'none'} onValueChange={(v) => setFormData({ ...formData, moduleId: v === 'none' ? '' : v })}>
-                  <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih Module" /></SelectTrigger>
+                  <SelectTrigger id={fieldId("moduleId")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih Module" /></SelectTrigger>
                   <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                     <SelectItem value="none" className="rounded-lg">Tanpa Module</SelectItem>
                     {modules.map((m) => (
@@ -282,10 +290,13 @@ export function TestCaseDialog({
             )}
           </div>
 
+          </fieldset>
+          <fieldset className="mt-6 flex min-w-0 flex-col gap-4 border-0 p-0">
+          <legend className="mb-4 text-sm font-semibold">Prosedur dan hasil</legend>
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Action <span className="text-red-500">*</span></Label>
+            <Label htmlFor={fieldId("testAction")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Action <span className="text-red-500">*</span></Label>
             <Textarea
-              value={formData.testAction}
+              id={fieldId("testAction")} aria-required="true" value={formData.testAction}
               onChange={(e) => setFormData({ ...formData, testAction: e.target.value })}
               placeholder="Deskripsi aksi test yang dilakukan"
               rows={2}
@@ -294,9 +305,9 @@ export function TestCaseDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Steps <span className="text-red-500">*</span></Label>
+            <Label htmlFor={fieldId("steps")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Steps <span className="text-red-500">*</span></Label>
             <Textarea
-              value={formData.steps}
+              id={fieldId("steps")} aria-required="true" value={formData.steps}
               onChange={(e) => setFormData({ ...formData, steps: e.target.value })}
               placeholder="- Langkah 1&#10;- Langkah 2&#10;- Langkah 3"
               rows={4}
@@ -304,11 +315,11 @@ export function TestCaseDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expected Result <span className="text-red-500">*</span></Label>
+              <Label htmlFor={fieldId("expectedResult")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expected Result <span className="text-red-500">*</span></Label>
               <Textarea
-                value={formData.expectedResult}
+                id={fieldId("expectedResult")} aria-required="true" value={formData.expectedResult}
                 onChange={(e) => setFormData({ ...formData, expectedResult: e.target.value })}
                 placeholder="Hasil yang diharapkan"
                 rows={2}
@@ -316,7 +327,7 @@ export function TestCaseDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Actual Result</Label>
+              <Label htmlFor={fieldId("actualResult")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Actual Result</Label>
               <Select
                 value={
                   formData.actualResult === 'As Expected' ? 'As Expected' :
@@ -334,7 +345,7 @@ export function TestCaseDialog({
                   }
                 }}
               >
-                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih hasil..." /></SelectTrigger>
+                <SelectTrigger id={fieldId("actualResult")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih hasil..." /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                   <SelectItem value="__none__" className="rounded-lg">-</SelectItem>
                   <SelectItem value="As Expected" className="rounded-lg text-status-passed font-medium">As Expected</SelectItem>
@@ -344,9 +355,9 @@ export function TestCaseDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</Label>
+              <Label htmlFor={fieldId("status")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</Label>
               <Select value={formData.status} onValueChange={(v) => {
                 const progress = v === 'DONE' ? 100 : (v === 'IN PROGRESS' || v === 'READY TO RETEST') ? 50 : 0;
                 const actualResult = v === 'DONE'
@@ -356,7 +367,7 @@ export function TestCaseDialog({
                     : formData.actualResult;
                 setFormData({ ...formData, status: v, progress, actualResult });
               }}>
-                <SelectTrigger className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
+                <SelectTrigger id={fieldId("status")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
                 <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
                   <SelectItem value="NOT DONE" className="rounded-lg">Not Done</SelectItem>
                   <SelectItem value="IN PROGRESS" className="rounded-lg">In Progress</SelectItem>
@@ -380,10 +391,13 @@ export function TestCaseDialog({
             </div>
           </div>
 
+          </fieldset>
+          <fieldset className="mt-6 flex min-w-0 flex-col gap-4 border-0 p-0">
+          <legend className="mb-4 text-sm font-semibold">Catatan tambahan</legend>
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Remarks / Catatan</Label>
+            <Label htmlFor={fieldId("remarks")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Remarks / Catatan</Label>
             <Textarea
-              value={formData.remarks}
+              id={fieldId("remarks")} value={formData.remarks}
               onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
               placeholder="Catatan tambahan"
               rows={2}
@@ -392,15 +406,16 @@ export function TestCaseDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tags</Label>
-            <Input value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} placeholder="smoke, checkout, release" />
+            <Label htmlFor={fieldId("tags")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tags</Label>
+            <Input id={fieldId("tags")} value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} placeholder="smoke, checkout, release" />
             <p className="text-[10px] text-muted-foreground">Pisahkan beberapa tag dengan koma.</p>
           </div>
+          </fieldset>
         </div>
 
-        <DialogFooter className="border-t border-border/40 pt-4 mt-6">
+        <DialogFooter className="shrink-0 border-t border-border bg-card px-5 py-4 sm:px-6">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Batal</Button>
-          <Button onClick={handleSaveTestCase} variant="majestic" className="rounded-xl bg-gradient-to-r from-primary to-cyan-500 hover:from-primary/90 hover:to-cyan-500/90 text-white font-medium shadow-md hover:shadow-cyan-500/10 transition duration-200 gap-1.5">
+          <Button onClick={handleSaveTestCase}>
             <Save className="w-4 h-4" /> {editingTestCase ? 'Simpan Perubahan' : 'Buat Test Case'}
           </Button>
         </DialogFooter>

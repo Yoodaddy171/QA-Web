@@ -1,0 +1,41 @@
+{
+  "scope": "Read-only arrival smoke only; no redesign or complete workflow coverage.",
+  "results": [
+    {
+      "section": "dashboard",
+      "title": "Dashboard",
+      "url": "/projects/cmven6wzk001awqqw8sv74qd1/dashboard",
+      "meaningfulContent": true,
+      "documentOverflow": false
+    },
+    {
+      "section": "reports",
+      "title": "Reports",
+      "url": "/projects/cmven6wzk001awqqw8sv74qd1/reports",
+      "meaningfulContent": true,
+      "documentOverflow": false
+    },
+    {
+      "section": "traceability",
+      "title": "Traceability",
+      "url": "/projects/cmven6wzk001awqqw8sv74qd1/traceability",
+      "meaningfulContent": true,
+      "documentOverflow": false
+    },
+    {
+      "section": "settings",
+      "title": "Settings",
+      "url": "/projects/cmven6wzk001awqqw8sv74qd1/settings",
+      "meaningfulContent": true,
+      "documentOverflow": false
+    },
+    {
+      "section": "test-runs",
+      "title": "Test Cycles",
+      "url": "/projects/cmven6wzk001awqqw8sv74qd1/test-runs",
+      "meaningfulContent": true,
+      "documentOverflow": false
+    }
+  ],
+  "errors": []
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import { Bug, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDot, History, ListChecks, Loader2, PanelRight, Plus, RefreshCw, Search, UploadCloud, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -89,6 +90,7 @@ function notesStorageKey(projectId: string, testRunId: string, testCaseId: strin
 }
 
 export function TestRunsPanel({ projectId }: { projectId: string }) {
+  const { canEdit } = useWorkspaceAccess();
   const { toast } = useToast();
   const [runs, setRuns] = useState<TestRun[]>([]);
   const [nextRunCursor, setNextRunCursor] = useState<string | null>(null);
@@ -338,7 +340,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
   };
 
   const execute = useCallback(async (status: string) => {
-    if (!selectedRun || !activeCase) return;
+    if (!canEdit || !selectedRun || !activeCase) return;
     setOptimisticStatus(status);
     setIsSaving(true);
     try {
@@ -353,7 +355,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
       window.localStorage.removeItem(notesStorageKey(projectId, selectedRun.id, activeCase.id));
       setNotesDirty(false);
       setError(null);
-      toast({ variant: 'success', title: `${activeCase.testCaseId} · ${status}`, description: 'Hasil tersimpan. Tekan N untuk lanjut ke testcase berikutnya.' });
+      toast({ variant: 'success', title: `${activeCase.testCaseId} · ${status}`, description: 'Hasil execution tersimpan untuk cycle ini; inventory dan verifikasi Bug tidak otomatis berubah. Tekan N untuk lanjut ke testcase berikutnya.' });
     } catch (saveError) {
       const message = saveError instanceof Error ? saveError.message : 'Gagal menyimpan execution.';
       setError(message);
@@ -362,7 +364,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
       setOptimisticStatus(null);
       setIsSaving(false);
     }
-  }, [activeCase, notes, openRun, projectId, reloadRuns, selectedRun, toast]);
+  }, [canEdit, activeCase, notes, openRun, projectId, reloadRuns, selectedRun, toast]);
 
   const moveCase = useCallback((delta: number) => {
     if (!selectedRun) return;
@@ -402,10 +404,12 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
   }, [openRun, projectId]);
 
   const createBug = async () => {
-    if (!selectedRun || !activeExecution || activeExecution.status !== TEST_EXECUTION_STATUS.FAILED) return;
+    if (!canEdit || !selectedRun || !activeExecution || activeExecution.status !== TEST_EXECUTION_STATUS.FAILED) return;
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/test-runs/${selectedRun.id}/executions/${activeExecution.id}/bug?projectId=${encodeURIComponent(projectId)}`, { method: 'POST' });
+      const response = await fetch(`/api/test-runs/${selectedRun.id}/executions/${activeExecution.id}/bug?projectId=${encodeURIComponent(projectId)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Gagal membuat bug.');
       setError(null);
@@ -420,7 +424,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
   };
 
   const uploadEvidence = async (file: File | undefined, replaceEvidenceId?: string) => {
-    if (!selectedRun || !activeExecution || !file) return;
+    if (!canEdit || !selectedRun || !activeExecution || !file) return;
     if (!ALLOWED_EVIDENCE_TYPES.has(file.type)) {
       setError('Tipe evidence tidak didukung. Gunakan PNG, JPEG, WebP, GIF, MP4, WebM, atau PDF.');
       return;
@@ -450,7 +454,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
   };
 
   const removeEvidence = async (evidenceId: string) => {
-    if (!selectedRun || !activeExecution) return;
+    if (!canEdit || !selectedRun || !activeExecution) return;
     setIsSaving(true);
     try {
       const response = await fetch(`/api/test-runs/${selectedRun.id}/executions/${activeExecution.id}/evidence?projectId=${encodeURIComponent(projectId)}&evidenceId=${encodeURIComponent(evidenceId)}`, { method: 'DELETE' });
@@ -467,7 +471,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     const handleDragOver = (event: DragEvent) => {
-      if (!activeExecution || !event.dataTransfer?.types.includes('Files')) return;
+      if (!canEdit || !activeExecution || !event.dataTransfer?.types.includes('Files')) return;
       event.preventDefault();
       setIsDraggingEvidence(true);
     };
@@ -484,7 +488,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
     };
     const handlePaste = (event: ClipboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || isSaving || !activeExecution) return;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || !canEdit || isSaving || !activeExecution) return;
       const imageItem = Array.from(event.clipboardData?.items || []).find(item => item.type.startsWith('image/'));
       const imageFile = imageItem?.getAsFile();
       if (!imageFile) return;
@@ -495,7 +499,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
       const target = event.target as HTMLElement | null;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
       const shortcut = resolveExecutionShortcut(event.key, target?.tagName);
-      if (shortcut?.type === 'execute') {
+      if (canEdit && shortcut?.type === 'execute') {
         event.preventDefault();
         void execute(shortcut.status);
       } else if (shortcut?.type === 'next') {
@@ -515,7 +519,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
       window.removeEventListener('dragleave', handleDragLeave);
       window.removeEventListener('drop', handleDrop);
     };
-  }, [activeExecution, execute, isSaving, moveCase]);
+  }, [activeExecution, canEdit, execute, isSaving, moveCase]);
 
   const assignedCaseIds = useMemo(() => new Set(selectedRun?.testCases.map(testCase => testCase.id) || []), [selectedRun?.testCases]);
   const selectableCases = availableCases.filter(testCase => !assignedCaseIds.has(testCase.id));
@@ -535,8 +539,8 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className="qa-module-page qa-module-form qa-cycle-workspace flex flex-col gap-5">
+      <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
         <p className="text-sm text-muted-foreground">Kelola cycle dan jalankan testcase dalam execution workspace.</p>
         <Button variant="outline" onClick={() => void reloadRuns()} disabled={isLoading}><RefreshCw className="h-4 w-4" />Muat ulang</Button>
       </div>
@@ -550,17 +554,17 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
       )}
 
       <div className="grid min-h-[calc(100svh-11rem)] gap-3 lg:grid-cols-[280px_minmax(0,1fr)] min-[1440px]:grid-cols-[280px_minmax(0,1fr)_320px]">
-        <Card padding="none" className="border-border/70">
-          <CardHeader className="border-b border-border/70 px-5 py-5">
+        <Card padding="none" className="min-w-0 border-border bg-card shadow-none">
+          <CardHeader className="border-b border-border p-4">
             <div className="flex flex-col gap-4">
               <div className="min-w-0">
-                <CardTitle className="flex items-center gap-2 whitespace-nowrap"><ListChecks className="h-4 w-4 shrink-0 text-primary" /> Daftar Test Cycle</CardTitle>
+                <CardTitle className="qa-module-heading flex items-center gap-2"><ListChecks className="h-4 w-4 shrink-0 text-primary" /> Daftar Test Cycle</CardTitle>
                 <CardDescription className="mt-1.5 leading-relaxed">{isLoading && runs.length === 0 ? 'Memuat cycle...' : `${runs.length} cycle pada project ini`}</CardDescription>
               </div>
-              <Button className="w-full justify-center" size="sm" variant={showCreateRun ? 'secondary' : 'outline'} onClick={() => showCreateRun ? setShowCreateRun(false) : openCreateRunForm()} aria-expanded={showCreateRun}><Plus className="h-4 w-4" />{showCreateRun ? 'Tutup' : 'Cycle baru'}</Button>
+              <MutationAction><Button className="w-full justify-center" size="sm" variant={showCreateRun ? 'secondary' : 'outline'} onClick={() => showCreateRun ? setShowCreateRun(false) : openCreateRunForm()} aria-expanded={showCreateRun}><Plus className="h-4 w-4" />{showCreateRun ? 'Tutup' : 'Cycle baru'}</Button></MutationAction>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3 py-5">
+          <CardContent className="flex flex-col gap-3 p-4">
             {showCreateRun && <div className="flex flex-col gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/[0.03] p-3">
               <div className="flex flex-col gap-1.5"><Label htmlFor="new-run-name">Nama cycle <span className="text-destructive">*</span></Label><Input id="new-run-name" value={runName} onChange={event => setRunName(event.target.value)} placeholder="Regression Release 1.2" /></div>
               <div className="flex flex-col gap-1.5"><Label htmlFor="new-run-description">Deskripsi</Label><Textarea id="new-run-description" value={runDescription} onChange={event => setRunDescription(event.target.value)} placeholder="Tujuan dan ruang lingkup cycle" className="min-h-16" /></div>
@@ -572,9 +576,9 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
             </div>}
             {isLoading && runs.length === 0 && <div className="flex flex-col gap-2" aria-label="Memuat Test Cycle"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
             {runs.map(run => (
-              <button key={run.id} type="button" onClick={() => void openRun(run.id)} className={`w-full rounded-xl border p-4 text-left transition-colors ${selectedRun?.id === run.id ? 'border-primary/50 bg-primary/5' : 'border-border/70 hover:bg-secondary/50'}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="font-semibold">{run.name}</span>
+              <button key={run.id} type="button" aria-pressed={selectedRun?.id === run.id} onClick={() => void openRun(run.id)} className={`w-full rounded-xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-ring ${selectedRun?.id === run.id ? 'border-primary/50 bg-primary/10' : 'border-border hover:bg-secondary/50'}`}>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <span className="min-w-0 break-words text-sm font-semibold">{run.name}</span>
                   <Badge variant={run.status === 'COMPLETED' ? 'success' : run.status === 'IN PROGRESS' ? 'inprogress' : 'outline'}>{run.status}</Badge>
                 </div>
                 <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground"><span>{run.summary.total} cases</span><span>{run.progress}% complete</span></div>
@@ -582,20 +586,20 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
               </button>
             ))}
             {nextRunCursor && <Button variant="ghost" size="sm" className="w-full" onClick={() => void loadMoreRuns().catch(error => setError(error instanceof Error ? error.message : 'Gagal memuat cycle.'))}>Muat cycle berikutnya</Button>}
-            {!runs.length && !isLoading && <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center"><p className="text-sm font-semibold">Belum ada Test Cycle</p><p className="mt-1 text-xs text-muted-foreground">Buat cycle pertama untuk mulai execution.</p><Button size="sm" className="mt-4" onClick={openCreateRunForm}><Plus className="h-4 w-4" />Buat cycle</Button></div>}
+            {!runs.length && !isLoading && <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center"><p className="text-sm font-semibold">Belum ada Test Cycle</p><p className="mt-1 text-xs text-muted-foreground">Buat cycle pertama untuk mulai execution.</p><MutationAction><Button size="sm" className="mt-4" onClick={openCreateRunForm}><Plus className="h-4 w-4" />Buat cycle</Button></MutationAction></div>}
             {selectedRun && selectedRun.testCases.length > 0 && <div className="mt-4 border-t border-border/70 pt-4"><div className="relative mb-2"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><Input value={caseSearch} onChange={event => setCaseSearch(event.target.value)} placeholder="Cari testcase..." className="h-8 pl-8 text-xs" /></div><div className="max-h-[42svh] space-y-1 overflow-y-auto">{visibleRunCases.map(testCase => { const index = selectedRun.testCases.findIndex(item => item.id === testCase.id); const latestStatus = testCase.executions[0]?.status || TEST_EXECUTION_STATUS.NOT_RUN; return <button key={testCase.id} type="button" onClick={() => { setActiveCaseIndex(index); const draft = window.localStorage.getItem(notesStorageKey(projectId, selectedRun.id, testCase.id)); setNotes(draft ?? testCase.executions[0]?.notes ?? ''); setNotesDirty(draft !== null); }} className={`qa-content-auto flex w-full items-start gap-2 rounded-lg border px-2.5 py-2 text-left ${index === activeCaseIndex ? 'qa-selected-row border-primary/30' : 'border-transparent hover:bg-secondary/60'}`}><span className="font-mono text-xs text-muted-foreground">{index + 1}</span><span className="min-w-0 flex-1"><span className="block truncate font-mono text-xs font-semibold">{testCase.testCaseId}</span><span className="block truncate text-xs text-muted-foreground">{testCase.testAction}</span></span><Badge variant={statusVariant(latestStatus)} className="px-1 text-xs">{latestStatus}</Badge></button>; })}{selectedRun.casePage?.hasMore && <Button variant="ghost" size="sm" className="w-full" onClick={() => void loadMoreRunCases().catch(error => setError(error instanceof Error ? error.message : 'Gagal memuat testcase.'))}>Muat testcase berikutnya</Button>}</div></div>}
           </CardContent>
         </Card>
 
-        <Card padding="none" className={selectedRun ? 'signal-surface signal-sweep border-primary/25' : 'border-border/70'}>
+        <Card padding="none" className={selectedRun ? 'min-w-0 border-primary/30 bg-card shadow-none' : 'min-w-0 border-border bg-card shadow-none'}>
           {!selectedRun ? (
             <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 p-8 text-center"><span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-primary/20 bg-primary/5"><CircleDot className="h-7 w-7 text-primary/55" /></span><p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-primary">Execution workspace</p><h2 className="text-lg font-semibold">Pilih Test Run</h2><p className="max-w-sm text-sm text-muted-foreground">Pilih cycle di sebelah kiri atau buat cycle baru untuk mulai execution.</p></div>
           ) : (
             <>
-              <CardHeader className="border-b border-border/70 bg-card/95 py-4">
+              <CardHeader className="border-b border-border bg-card p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div><CardTitle>{selectedRun.name}</CardTitle><CardDescription className="mt-1">{selectedRun.description || 'Execution workspace'}{selectedRun.assignedTo ? ` · ${selectedRun.assignedTo}` : ''}</CardDescription><Button size="sm" variant="ghost" className="mt-1 px-0" onClick={() => setEditingRun(true)}>Edit detail</Button></div>
-                  <div className="flex flex-wrap items-center gap-2"><Select value={selectedRun.status} onValueChange={value => void updateRunStatus(value)} disabled={isSaving}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value={TEST_RUN_STATUS.DRAFT}>Draft</SelectItem><SelectItem value={TEST_RUN_STATUS.READY}>Ready</SelectItem><SelectItem value={TEST_RUN_STATUS.IN_PROGRESS}>In Progress</SelectItem><SelectItem value={TEST_RUN_STATUS.COMPLETED}>Completed</SelectItem><SelectItem value={TEST_RUN_STATUS.ARCHIVED}>Archived</SelectItem></SelectContent></Select><Badge variant="success">{selectedRun.summary.passed} passed</Badge><Badge variant="failed">{selectedRun.summary.failed} failed</Badge><Badge variant="blocked">{selectedRun.summary.blocked} blocked</Badge><Button variant="outline" size="icon" className="size-9 min-[1440px]:hidden" onClick={() => setContextOpen(true)} aria-label="Buka execution context"><PanelRight /></Button></div>
+                  <div><CardTitle>{selectedRun.name}</CardTitle><CardDescription className="mt-1">{selectedRun.description || 'Execution workspace'}{selectedRun.assignedTo ? ` · ${selectedRun.assignedTo}` : ''}</CardDescription><MutationAction><Button size="sm" variant="ghost" className="mt-1 px-0" onClick={() => setEditingRun(true)}>Edit detail</Button></MutationAction></div>
+                  <div className="flex flex-wrap items-center gap-2"><Select value={selectedRun.status} onValueChange={value => void updateRunStatus(value)} disabled={!canEdit || isSaving}><SelectTrigger aria-label="Status Test Run" className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value={TEST_RUN_STATUS.DRAFT}>Draft</SelectItem><SelectItem value={TEST_RUN_STATUS.READY}>Ready</SelectItem><SelectItem value={TEST_RUN_STATUS.IN_PROGRESS}>In Progress</SelectItem><SelectItem value={TEST_RUN_STATUS.COMPLETED}>Completed</SelectItem><SelectItem value={TEST_RUN_STATUS.ARCHIVED}>Archived</SelectItem></SelectContent></Select><Badge variant="success">{selectedRun.summary.passed} passed</Badge><Badge variant="failed">{selectedRun.summary.failed} failed</Badge><Badge variant="blocked">{selectedRun.summary.blocked} blocked</Badge><Button variant="outline" size="icon" className="size-9 min-[1440px]:hidden" onClick={() => setContextOpen(true)} aria-label="Buka execution context"><PanelRight /></Button></div>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary" aria-label={`Progress ${selectedRun.progress}%`}><span className="block h-full origin-left rounded-full bg-primary transition-transform duration-200" style={{ transform: `scaleX(${selectedRun.progress / 100})` }} /></div>
@@ -604,10 +608,10 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                 </div>
                 {editingRun && <div className="mt-4 space-y-2"><Input value={runName} onChange={event => setRunName(event.target.value)} aria-label="Edit nama Test Run" /><Textarea value={runDescription} onChange={event => setRunDescription(event.target.value)} className="min-h-16" aria-label="Edit deskripsi Test Run" /><Input value={runAssignee} onChange={event => setRunAssignee(event.target.value)} placeholder="Tester / assignee" aria-label="Edit assignee Test Run" /><div className="flex gap-2"><Button size="sm" onClick={() => void updateRunDetails()} disabled={isSaving || !runName.trim()}>Simpan detail</Button><Button size="sm" variant="ghost" onClick={() => setEditingRun(false)}>Batal</Button></div></div>}
               </CardHeader>
-              <CardContent className="space-y-5 py-5">
-                <div className="grid gap-3 rounded-xl border border-border/70 bg-secondary/20 p-3 sm:grid-cols-2 2xl:grid-cols-[1.5fr_1.2fr_auto] 2xl:items-end"><div className="flex flex-col gap-1.5"><Label>Periode cycle</Label><DateRangePicker from={runStartDate} to={runEndDate} onFromChange={setRunStartDate} onToChange={setRunEndDate} label="Pilih periode cycle" /></div><div className="flex flex-col gap-1.5"><Label>Test Plan</Label><Select value={runTestPlanId || 'none'} onValueChange={value => setRunTestPlanId(value === 'none' ? '' : value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Tanpa Test Plan</SelectItem>{testPlans.map(plan => <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>)}</SelectContent></Select></div><Button size="sm" variant="outline" onClick={() => void updateRunDates()} disabled={isSaving} className="sm:col-span-2 2xl:col-span-1">Simpan metadata</Button></div>
+              <CardContent className="flex min-w-0 flex-col gap-5 p-4 sm:p-5">
+                <fieldset disabled={!canEdit} className="grid gap-3 rounded-xl border border-border/70 bg-secondary/20 p-3 sm:grid-cols-2 2xl:grid-cols-[1.5fr_1.2fr_auto] 2xl:items-end"><div className="flex flex-col gap-1.5"><Label>Periode cycle</Label><DateRangePicker from={runStartDate} to={runEndDate} onFromChange={setRunStartDate} onToChange={setRunEndDate} label="Pilih periode cycle" /></div><div className="flex flex-col gap-1.5"><Label>Test Plan</Label><Select value={runTestPlanId || 'none'} onValueChange={value => setRunTestPlanId(value === 'none' ? '' : value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Tanpa Test Plan</SelectItem>{testPlans.map(plan => <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>)}</SelectContent></Select></div><Button size="sm" variant="outline" onClick={() => void updateRunDates()} disabled={isSaving} className="sm:col-span-2 2xl:col-span-1">Simpan metadata</Button></fieldset>
                 <div className="grid gap-3 sm:grid-cols-4"><Metric label="Total" value={selectedRun.summary.total} /><Metric label="Selesai" value={selectedRun.summary.completed} /><Metric label="Belum dijalankan" value={selectedRun.summary.notRun} /><Metric label="Progress" value={`${selectedRun.progress}%`} /></div>
-                <div className="flex flex-wrap items-center gap-2"><Button variant="outline" size="sm" onClick={() => { void loadAvailableCases(); }}><Plus className="h-4 w-4" />Pilih testcase</Button>{selectedRun.testCases.length > 0 && <span className="text-xs text-muted-foreground">Keyboard: P pass · F fail · B blocked · R retest · N next</span>}{activeCaseIndex > 0 && <Badge variant="info">Dilanjutkan dari {activeCaseIndex + 1}/{selectedRun.testCases.length}</Badge>}</div>
+                <div className="flex flex-wrap items-center gap-2"><MutationAction><Button variant="outline" size="sm" onClick={() => { void loadAvailableCases(); }}><Plus className="h-4 w-4" />Pilih testcase</Button></MutationAction>{selectedRun.testCases.length > 0 && <span className="text-xs text-muted-foreground">Hasil execution hanya untuk cycle ini; tidak otomatis mengubah inventory atau memverifikasi Bug. P/F/B/R · N next</span>}{activeCaseIndex > 0 && <Badge variant="info">Dilanjutkan dari {activeCaseIndex + 1}/{selectedRun.testCases.length}</Badge>}</div>
                 {availableCases.length > 0 && <div className="space-y-3 rounded-xl border border-border/70 p-4"><div className="flex items-center justify-between"><p className="text-sm font-semibold">Tambah testcase</p><Button size="sm" onClick={() => void addCases()} disabled={isSaving || selectedCaseIds.size === 0}>Tambahkan pilihan ({selectedCaseIds.size})</Button></div><div className="max-h-44 space-y-1 overflow-auto">{selectableCases.map(testCase => <label key={testCase.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-secondary/60"><input type="checkbox" checked={selectedCaseIds.has(testCase.id)} onChange={event => setSelectedCaseIds(previous => { const next = new Set(previous); if (event.target.checked) next.add(testCase.id); else next.delete(testCase.id); return next; })} /><span className="font-mono font-semibold">{testCase.testCaseId}</span><span className="text-muted-foreground">{testCase.page}</span></label>)}{!selectableCases.length && <p className="text-sm text-muted-foreground">Semua testcase sudah dimasukkan.</p>}</div></div>}
                 {selectedRun.testCases.length > 0 && (() => {
                   const totalCasePages = Math.max(1, Math.ceil(selectedRun.testCases.length / RUN_CASES_PER_PAGE));
@@ -627,7 +631,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                           <span className="font-mono font-semibold">{testCase.testCaseId}</span>
                           <span className="ml-2 text-muted-foreground">{testCase.page}</span>
                         </button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" disabled={isSaving} onClick={async () => { const response = await fetch(`/api/test-runs/${selectedRun.id}/cases?projectId=${encodeURIComponent(projectId)}&testCaseId=${encodeURIComponent(testCase.id)}`, { method: 'DELETE' }); if (!response.ok) { const data = await response.json().catch(() => ({})); setError(data.error || 'Gagal menghapus testcase dari Test Run.'); return; } await openRun(selectedRun.id); }} aria-label={`Hapus ${testCase.testCaseId} dari Test Run`}>Hapus</Button>
+                        <MutationAction><Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" disabled={isSaving} onClick={async () => { const response = await fetch(`/api/test-runs/${selectedRun.id}/cases?projectId=${encodeURIComponent(projectId)}&testCaseId=${encodeURIComponent(testCase.id)}`, { method: 'DELETE' }); if (!response.ok) { const data = await response.json().catch(() => ({})); setError(data.error || 'Gagal menghapus testcase dari Test Run.'); return; } await openRun(selectedRun.id); }} aria-label={`Hapus ${testCase.testCaseId} dari Test Run`}>Hapus</Button></MutationAction>
                       </div>;
                     })}
                     {totalCasePages > 1 && <div className="flex items-center justify-between gap-2 pt-1">
@@ -637,7 +641,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                     </div>}
                   </div>;
                 })()}
-                {activeCase ? <div key={activeCase.id} className="animate-in fade-in slide-in-from-right-2 duration-150"><div className="rounded-xl border border-border/70 p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-xs font-bold text-primary">{activeCase.testCaseId}</p><h2 className="mt-1 text-lg font-bold">{activeCase.testAction}</h2><p className="mt-1 text-xs text-muted-foreground">{activeCase.module?.name || 'Unassigned'} · {activeCase.page}{activeCase.subMenu ? ` · ${activeCase.subMenu}` : ''}</p></div><Badge key={visibleExecutionStatus} variant={statusVariant(visibleExecutionStatus)} className="animate-in zoom-in-90 duration-150">{visibleExecutionStatus}</Badge></div><div className="mt-5 grid gap-4 md:grid-cols-2"><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Steps</p><pre className="min-h-36 whitespace-pre-wrap rounded-lg bg-secondary/50 p-3 text-sm font-sans leading-6">{activeCase.steps || '—'}</pre></div><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected result</p><p className="min-h-36 rounded-lg bg-secondary/50 p-3 text-sm leading-6">{activeCase.expectedResult || '—'}</p></div></div><div className="mt-4 flex items-center justify-between"><Label htmlFor="execution-notes">Execution notes</Label><span className="text-xs text-muted-foreground">{notesDirty ? 'Draft tersimpan lokal' : 'Tersimpan'}</span></div><Textarea id="execution-notes" value={notes} onChange={event => { setNotes(event.target.value); setNotesDirty(true); }} placeholder="Catatan execution..." className="mt-2 min-h-24" /></div><div className="qa-command-bar sticky bottom-0 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-xl p-3"><Button variant="ghost" size="sm" onClick={() => moveCase(-1)} disabled={activeCaseIndex === 0}><ChevronLeft data-icon="inline-start" />Previous</Button><span className="mr-auto text-xs text-muted-foreground">{activeCaseIndex + 1}/{selectedRun.testCases.length}</span>{EXECUTION_ACTIONS.map(action => { const Icon = action.icon; const active = visibleExecutionStatus === action.status; return <Button key={action.status} variant={active ? action.variant : 'outline'} size="sm" onClick={() => void execute(action.status)} disabled={isSaving} aria-pressed={active}><Icon data-icon="inline-start" />{action.label}<kbd className="rounded border border-current/20 px-1 text-xs">{action.shortcut}</kbd></Button>; })}<Button size="sm" onClick={() => moveCase(1)} disabled={activeCaseIndex >= selectedRun.testCases.length - 1}>Next Case<ChevronRight data-icon="inline-end" /></Button></div></div> : <div className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">Tambahkan testcase untuk mulai execution.</div>}
+                {activeCase ? <div key={activeCase.id} className="animate-in fade-in slide-in-from-right-2 duration-150"><div className="rounded-xl border border-border/70 p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-xs font-bold text-primary">{activeCase.testCaseId}</p><h2 className="mt-1 text-lg font-bold">{activeCase.testAction}</h2><p className="mt-1 text-xs text-muted-foreground">{activeCase.module?.name || 'Unassigned'} · {activeCase.page}{activeCase.subMenu ? ` · ${activeCase.subMenu}` : ''}</p></div><Badge key={visibleExecutionStatus} variant={statusVariant(visibleExecutionStatus)} className="animate-in zoom-in-90 duration-150">{visibleExecutionStatus}</Badge></div><div className="mt-5 grid gap-4 md:grid-cols-2"><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Steps</p><pre className="min-h-36 whitespace-pre-wrap rounded-lg bg-secondary/50 p-3 text-sm font-sans leading-6">{activeCase.steps || '—'}</pre></div><div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected result</p><p className="min-h-36 rounded-lg bg-secondary/50 p-3 text-sm leading-6">{activeCase.expectedResult || '—'}</p></div></div><div className="mt-4 flex items-center justify-between"><Label htmlFor="execution-notes">Execution notes</Label><span className="text-xs text-muted-foreground">{notesDirty ? 'Draft tersimpan lokal' : 'Tersimpan'}</span></div><Textarea readOnly={!canEdit} id="execution-notes" value={notes} onChange={event => { setNotes(event.target.value); setNotesDirty(true); }} placeholder="Catatan execution..." className="mt-2 min-h-24" /></div><div className="qa-command-bar sticky bottom-0 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-xl p-3"><Button variant="ghost" size="sm" onClick={() => moveCase(-1)} disabled={activeCaseIndex === 0}><ChevronLeft data-icon="inline-start" />Previous</Button><span className="mr-auto text-xs text-muted-foreground">{activeCaseIndex + 1}/{selectedRun.testCases.length}</span>{EXECUTION_ACTIONS.map(action => { const Icon = action.icon; const active = visibleExecutionStatus === action.status; return <Button key={action.status} variant={active ? action.variant : 'outline'} size="sm" onClick={() => void execute(action.status)} disabled={!canEdit || isSaving} aria-pressed={active}><Icon data-icon="inline-start" />{action.label}<kbd className="rounded border border-current/20 px-1 text-xs">{action.shortcut}</kbd></Button>; })}<Button size="sm" onClick={() => moveCase(1)} disabled={activeCaseIndex >= selectedRun.testCases.length - 1}>Next Case<ChevronRight data-icon="inline-end" /></Button></div></div> : <div className="rounded-xl border border-dashed border-border/70 p-8 text-center text-sm text-muted-foreground">Tambahkan testcase untuk mulai execution.</div>}
               </CardContent>
             </>
           )}
@@ -650,7 +654,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {
-  return <div className="rounded-xl border border-border/70 bg-secondary/30 p-3"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold">{value}</p></div>;
+  return <div className="min-w-0 rounded-lg bg-secondary/30 p-3"><p className="qa-module-meta">{label}</p><p className="mt-1 text-xl font-semibold tabular-nums">{value}</p></div>;
 }
 
 function ExecutionContextPanel({ selectedRun, activeCase, activeExecution, activeEvidence, activities, projectId, isSaving, isDraggingEvidence, uploadEvidence, removeEvidence, createBug }: {
@@ -666,9 +670,10 @@ function ExecutionContextPanel({ selectedRun, activeCase, activeExecution, activ
   removeEvidence: (id: string) => Promise<void>;
   createBug: () => Promise<void>;
 }) {
-  return <div className="flex flex-col gap-3">
-    <section className="rounded-xl border border-border/70 bg-card p-4"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Execution</p><p className="mt-3 text-sm font-medium">{activeExecution ? new Date(activeExecution.createdAt).toLocaleString() : 'Belum dijalankan'}</p><p className="mt-1 text-xs text-muted-foreground">{activeExecution?.tester || selectedRun.assignedTo || 'Tester belum ditentukan'}</p>{activeExecution?.status === TEST_EXECUTION_STATUS.FAILED && <Button variant="destructive" className="mt-4 w-full" onClick={() => void createBug()} disabled={isSaving}><Bug data-icon="inline-start" />Create Bug</Button>}</section>
-    <section className="rounded-xl border border-border/70 bg-card p-4"><p className="text-sm font-semibold">Evidence</p><label className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-3 py-5 text-center text-xs transition-colors ${isDraggingEvidence ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-secondary/50'}`}><input type="file" className="sr-only" accept="image/*,video/mp4,video/webm,application/pdf" disabled={isSaving || !activeExecution} onChange={event => { void uploadEvidence(event.target.files?.[0]); event.currentTarget.value = ''; }} /><UploadCloud className="mb-2" />Drop, paste, atau pilih file</label><div className="mt-3 flex flex-col gap-2">{activeEvidence.length ? activeEvidence.map(item => <div key={item.id} className="flex items-center gap-2 rounded-lg bg-secondary/40 px-3 py-2 text-xs"><a className="min-w-0 flex-1 truncate text-primary hover:underline" href={`/api/test-runs/${selectedRun.id}/executions/${activeExecution?.id}/evidence/${item.id}?projectId=${encodeURIComponent(projectId)}`} target="_blank" rel="noreferrer">{item.fileName}</a><Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={() => void removeEvidence(item.id)} disabled={isSaving}>Hapus</Button></div>) : <p className="text-xs text-muted-foreground">{activeExecution ? 'Belum ada evidence.' : 'Jalankan testcase sebelum menambah evidence.'}</p>}</div>{activeEvidence.length && activeExecution?.id ? <ExecutionEvidencePreview evidence={activeEvidence} testRunId={selectedRun.id} executionId={activeExecution.id} projectId={projectId} onReplace={(id, file) => void uploadEvidence(file, id)} /> : null}</section>
+  const { canEdit } = useWorkspaceAccess();
+  return <div className="qa-module-form qa-module-toolbar flex min-w-0 flex-col gap-4">
+    <section className="rounded-xl border border-border/70 bg-card p-4"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Execution</p><p className="mt-3 text-sm font-medium">{activeExecution ? new Date(activeExecution.createdAt).toLocaleString() : 'Belum dijalankan'}</p><p className="mt-1 text-xs text-muted-foreground">{activeExecution?.tester || selectedRun.assignedTo || 'Tester belum ditentukan'}</p>{activeExecution?.status === TEST_EXECUTION_STATUS.FAILED && <><Button variant="destructive" className="mt-4 w-full" onClick={() => void createBug()} disabled={!canEdit || isSaving}><Bug data-icon="inline-start" />Create Bug</Button><p className="mt-2 text-xs text-muted-foreground">Create Bug menghubungkan execution gagal dengan testcase inventory. Retest Bug diselesaikan melalui status/hasil testcase inventory.</p></>}</section>
+    <section className="rounded-xl border border-border/70 bg-card p-4"><p className="text-sm font-semibold">Evidence</p><label className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-3 py-5 text-center text-xs transition-colors ${isDraggingEvidence ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-secondary/50'}`}><input type="file" className="sr-only" accept="image/*,video/mp4,video/webm,application/pdf" disabled={!canEdit || isSaving || !activeExecution} onChange={event => { void uploadEvidence(event.target.files?.[0]); event.currentTarget.value = ''; }} /><UploadCloud className="mb-2" />Drop, paste, atau pilih file</label><div className="mt-3 flex flex-col gap-2">{activeEvidence.length ? activeEvidence.map(item => <div key={item.id} className="flex items-center gap-2 rounded-lg bg-secondary/40 px-3 py-2 text-xs"><a className="min-w-0 flex-1 truncate text-primary hover:underline" href={`/api/test-runs/${selectedRun.id}/executions/${activeExecution?.id}/evidence/${item.id}?projectId=${encodeURIComponent(projectId)}`} target="_blank" rel="noreferrer">{item.fileName}</a><Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={() => void removeEvidence(item.id)} disabled={!canEdit || isSaving}>Hapus</Button></div>) : <p className="text-xs text-muted-foreground">{activeExecution ? 'Belum ada evidence.' : 'Jalankan testcase sebelum menambah evidence.'}</p>}</div>{activeEvidence.length && activeExecution?.id ? <ExecutionEvidencePreview evidence={activeEvidence} testRunId={selectedRun.id} executionId={activeExecution.id} projectId={projectId} onReplace={canEdit ? (id, file) => void uploadEvidence(file, id) : undefined} /> : null}</section>
     <section className="rounded-xl border border-border/70 bg-card p-4"><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground"><History className="size-4" /> History</p><div className="mt-3 max-h-52 space-y-3 overflow-y-auto">{activities.length ? activities.slice(0, 12).map(activity => <div key={activity.id} className="border-l-2 border-primary/30 pl-3"><p className="text-xs font-semibold">{activity.action}{activity.field ? ` · ${activity.field}` : ''}</p><p className="text-xs text-muted-foreground">{new Date(activity.createdAt).toLocaleString()}</p></div>) : <p className="text-xs text-muted-foreground">Belum ada history.</p>}</div></section>
     {activeCase && <p className="px-1 text-xs text-muted-foreground">Context aktif: <span className="font-mono text-foreground">{activeCase.testCaseId}</span></p>}
   </div>;

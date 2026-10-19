@@ -40,11 +40,11 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
 
   return (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
-            <CardHeader className="border-b border-border/40 pb-3">
+          <Card padding="none" className="gap-0 border-border bg-card shadow-none">
+            <CardHeader className="border-b border-border p-4 sm:px-5">
               <div className="flex items-center gap-2">
                 <RefreshCw className="h-4 w-4 text-cyan-500" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Antrian Retest</CardTitle>
+                <CardTitle className="qa-module-heading">Antrian Retest</CardTitle>
               </div>
             </CardHeader>
             <CardContent
@@ -82,11 +82,11 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
             </CardContent>
           </Card>
 
-          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
-            <CardHeader className="border-b border-border/40 pb-3">
+          <Card padding="none" className="gap-0 border-border bg-card shadow-none">
+            <CardHeader className="border-b border-border p-4 sm:px-5">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-amber-500" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Umur Bug</CardTitle>
+                <CardTitle className="qa-module-heading">Umur Bug</CardTitle>
               </div>
             </CardHeader>
             <CardContent
@@ -124,11 +124,11 @@ export function DashboardQueuesAndRisks({ stats, onOpenDetail, onModuleRiskClick
             </CardContent>
           </Card>
 
-          <Card variant="majestic" className="border-border/40 bg-card shadow-sm">
-            <CardHeader className="border-b border-border/40 pb-3">
+          <Card padding="none" className="gap-0 border-border bg-card shadow-none">
+            <CardHeader className="border-b border-border p-4 sm:px-5">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-rose-500" />
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Risiko per Module</CardTitle>
+                <CardTitle className="qa-module-heading">Risiko per Module</CardTitle>
               </div>
             </CardHeader>
             <CardContent

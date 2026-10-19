@@ -1,0 +1,5086 @@
+{
+  "identity": {
+    "gitSha": "0deffe3b79648614e98f30dafc1be382aef16790",
+    "branch": "codex/frontend-design-system-motion-optimization",
+    "workingTree": "Includes uncommitted Phase6C,7,7.1 source changes; no staging or production edits in Phase8A.",
+    "sourceHash": "28534dc79c891b5cf9286a58db3d670ea96d6297bad23b5d329c8efaf10c2fbc",
+    "buildId": "ESutzoQzEi__YXUHx008_",
+    "origin": "http://127.0.0.1:3119",
+    "fixture": "Disposable synthetic SQLite; no real user data",
+    "deviceScaleFactor": 1,
+    "reducedMotion": "reduce",
+    "startedAt": "2026-10-16T09:31:48.271Z",
+    "relay": "Browser HTTP to compiled port3001 forwarded to unmodified owned relay3117 with private synthetic logs/video. WebSocket3001 blocked. RELAY OFFLINE reflects disabled live socket, not a test of user relay.",
+    "browser": "149.0.7827.55"
+  },
+  "screens": [
+    {
+      "id": "UI-001",
+      "module": "Dashboard",
+      "key": "overview",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-001-dashboard-overview.png",
+      "screenName": "Dashboard \u2014 overview",
+      "state": "overview",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Dashboard",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:18.690Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "29b268d8b2195408d3007f727772f53a8e0d6e05403bead2ddbe19a78ee561fd",
+        "expected": "RELEASE DECISION"
+      },
+      "sha256": "1f0eb6d99613fd3429c4beb145f4795372d95de483cf5261ce1f5bf63faec039",
+      "pdfPage": 4
+    },
+    {
+      "id": "UI-002",
+      "module": "Dashboard",
+      "key": "attention",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-002-dashboard-attention.png",
+      "screenName": "Dashboard \u2014 attention",
+      "state": "attention",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Dashboard",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 1288,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 1288
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:18.864Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "29b268d8b2195408d3007f727772f53a8e0d6e05403bead2ddbe19a78ee561fd",
+        "expected": "Dashboard"
+      },
+      "sha256": "3796ed1186e88c91ccc923bb742ff7cbd2692c15c6ae1b7b6a3671ac0974082b",
+      "pdfPage": 5
+    },
+    {
+      "id": "UI-003",
+      "module": "Dashboard",
+      "key": "module-progress",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-003-dashboard-module-progress.png",
+      "screenName": "Dashboard \u2014 module-progress",
+      "state": "module-progress",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Dashboard",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 1837,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 1837
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:19.023Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "29b268d8b2195408d3007f727772f53a8e0d6e05403bead2ddbe19a78ee561fd",
+        "expected": "Dashboard"
+      },
+      "sha256": "4a557e9f3f5fc2e95a755b128f5d27652ce7832bea19625e5069bc3f32697ac9",
+      "pdfPage": 6
+    },
+    {
+      "id": "UI-004",
+      "module": "Cases",
+      "key": "table",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-004-cases-table.png",
+      "screenName": "Cases \u2014 table",
+      "state": "table",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:00.881Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2e93eaf0b1a03e1c4b2a692af7ba07539754878a17bc4f731266da97bf8ee492",
+        "expected": "AUTH-001"
+      },
+      "sha256": "8b3cced117e1f82a825a08932466bb7ca0c210edabda2565655d34917f10c08d",
+      "pdfPage": 10
+    },
+    {
+      "id": "UI-005",
+      "module": "Cases",
+      "key": "compact-density",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-005-cases-compact-density.png",
+      "screenName": "Cases \u2014 compact-density",
+      "state": "compact-density",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:08.159Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2e93eaf0b1a03e1c4b2a692af7ba07539754878a17bc4f731266da97bf8ee492",
+        "expected": "Cases"
+      },
+      "sha256": "60bcf8cc9216c2d0eefa6afd93c5411ca8437ae5e162160132030ce0c7313664",
+      "pdfPage": 11
+    },
+    {
+      "id": "UI-006",
+      "module": "Cases",
+      "key": "filters",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-006-cases-filters.png",
+      "screenName": "Cases \u2014 filters",
+      "state": "filters",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:08.381Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "e79d9ab2454108553fb9b78fc8fd923dce9bf25914d4022654d310798ab6c1a1",
+        "expected": "Cases"
+      },
+      "sha256": "e11af855af06eb37d167c53b9b47af235a40f98a5cd55331e98290353da2c3c9",
+      "pdfPage": 12
+    },
+    {
+      "id": "UI-007",
+      "module": "Cases",
+      "key": "date-picker",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-007-cases-date-picker.png",
+      "screenName": "Cases \u2014 date-picker",
+      "state": "date-picker",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:08.630Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "f5a393e1721504490c4a875fbeb6197390da7d4c3f8748c006e82a4170683087",
+        "expected": "Cases"
+      },
+      "sha256": "8428254d1fec3bcb02364b85137e9b781735e8a07f20d49cdfa721a4ad0f13d9",
+      "pdfPage": 13
+    },
+    {
+      "id": "UI-008",
+      "module": "Cases",
+      "key": "columns",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-008-cases-columns.png",
+      "screenName": "Cases \u2014 columns",
+      "state": "columns",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:08.863Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "b2bd6b6194728032aa3f3e6158f27bfe8290fb380051019eb2d42ee0999d7687",
+        "expected": "Cases"
+      },
+      "sha256": "2804d2ee4faa05ae6c91958988c7039f2f0ba5321aae40bbd5e31e68c74c929a",
+      "pdfPage": 14
+    },
+    {
+      "id": "UI-009",
+      "module": "Cases",
+      "key": "saved-views",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-009-cases-saved-views.png",
+      "screenName": "Cases \u2014 saved-views",
+      "state": "saved-views",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:09.134Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "679414d2d0dcb7a0458f02b256c98cdba1182a5bb681c9164dc7ee4e3df85a63",
+        "expected": "Cases"
+      },
+      "sha256": "400bb9c394d64d59358ce5bde7e277f35e2ede319f3f2020e2af52f419bd1eb7",
+      "pdfPage": 15
+    },
+    {
+      "id": "UI-010",
+      "module": "Cases",
+      "key": "export-menu",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-010-cases-export-menu.png",
+      "screenName": "Cases \u2014 export-menu",
+      "state": "export-menu",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:09.464Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "a6be3912b7ba3ccb35767410b740a2badb4d371acd7e444afc43c53eef5b613d",
+        "expected": "Cases"
+      },
+      "sha256": "465906653a37dc5aa90856d9f77f03c23caff7abbcd69a8da83d666d4f47a5e2",
+      "pdfPage": 16
+    },
+    {
+      "id": "UI-011",
+      "module": "Cases",
+      "key": "row-menu",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-011-cases-row-menu.png",
+      "screenName": "Cases \u2014 row-menu",
+      "state": "row-menu",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:09.748Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "28528b598200f1ff307afb569d33522ce039c3a76815f4ea21f973b6b213b6c3",
+        "expected": "Cases"
+      },
+      "sha256": "b192f2f68317f5085b6386403ca5c0a7722aa09312f250978634ee81ce6344d0",
+      "pdfPage": 17
+    },
+    {
+      "id": "UI-012",
+      "module": "Cases",
+      "key": "status-menu",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-012-cases-status-menu.png",
+      "screenName": "Cases \u2014 status-menu",
+      "state": "status-menu",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:10.132Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "3af610d3a917fb9ee4f834aa5e0f8c1ed6d3834395e08ad26a4bc1ca552d7d60",
+        "expected": "Cases"
+      },
+      "sha256": "5a67f2b199275a5853a228fdf814b6381d9583bcdbded6d1f6f498ef424cfe4d",
+      "pdfPage": 18
+    },
+    {
+      "id": "UI-013",
+      "module": "Cases",
+      "key": "create",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-013-cases-create.png",
+      "screenName": "Cases \u2014 create",
+      "state": "create",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:10.905Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "55cac29220aa3f22e1e1705c2d0a5de029a3ec1e43e88613d3ddd7e32af17c03",
+        "expected": "Cases"
+      },
+      "sha256": "073833aa16c339fb0020dd2a35a8976dfab39094cac88e93e0f389bd66059c47",
+      "pdfPage": 19
+    },
+    {
+      "id": "UI-014",
+      "module": "Cases",
+      "key": "validation",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-014-cases-validation.png",
+      "screenName": "Cases \u2014 validation",
+      "state": "validation",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": "dialog",
+            "x": 0,
+            "y": 289
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:33:11.232Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "b6bf29f184f9dd6d1b757f35fb91caf1154a300b625af43ce2846dd96f301357",
+        "expected": "Cases"
+      },
+      "sha256": "06e85c35bbe7a3f1e88fe417a918b3fd9e167b57bfa59a63efe5ad237f089391",
+      "pdfPage": 20
+    },
+    {
+      "id": "UI-015",
+      "module": "Cases",
+      "key": "edit",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-015-cases-edit.png",
+      "screenName": "Cases \u2014 edit",
+      "state": "edit",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:01.306Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "68c592936fd263557c3ce0ec2c63cd646352a291538de697d453ad87609ca9bf",
+        "expected": "Cases"
+      },
+      "sha256": "6a68ed13e04bb7b17d089289fe72be0cefec79d7c4819f8eab28e9988d6a0835",
+      "pdfPage": 21
+    },
+    {
+      "id": "UI-016",
+      "module": "Cases",
+      "key": "bulk-actions",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-016-cases-bulk-actions.png",
+      "screenName": "Cases \u2014 bulk-actions",
+      "state": "bulk-actions",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:01.554Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "f9d4aedca26785b81f33894e075c3fba6a4341965e747ca7a9a796f1cfb06268",
+        "expected": "Cases"
+      },
+      "sha256": "9a79145a7e74215d91e11de3b9464a09f4c3424944615f2667bcbefdd5ebd614",
+      "pdfPage": 22
+    },
+    {
+      "id": "UI-017",
+      "module": "Cases",
+      "key": "bulk-status",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-017-cases-bulk-status.png",
+      "screenName": "Cases \u2014 bulk-status",
+      "state": "bulk-status",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:01.887Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "66d825369fdb4bc75e57ef4bc62769931a343dce65c4763e3e9bd8ce1faea410",
+        "expected": "Cases"
+      },
+      "sha256": "03e2dbe43e45ecc3ffbcaddac5e19ce622112cc2cc5087f2c415a9de91e79244",
+      "pdfPage": 23
+    },
+    {
+      "id": "UI-018",
+      "module": "Cases",
+      "key": "bulk-assign",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-018-cases-bulk-assign.png",
+      "screenName": "Cases \u2014 bulk-assign",
+      "state": "bulk-assign",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:02.242Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "d378cf71d3e3824306a53315fa5db9241d0885e6fbd5c3d68e307456a670d8af",
+        "expected": "Cases"
+      },
+      "sha256": "43f427f2e83cf039795d9bffba663f83c8b3dbb4b931d8bf003e984d1e36139f",
+      "pdfPage": 24
+    },
+    {
+      "id": "UI-019",
+      "module": "Cases",
+      "key": "bulk-execute",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-019-cases-bulk-execute.png",
+      "screenName": "Cases \u2014 bulk-execute",
+      "state": "bulk-execute",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:02.705Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "4029830a93da8e99a54679ad6620b7066d073744c18b86db3a775b61acc043e5",
+        "expected": "Cases"
+      },
+      "sha256": "cbd4696e935b1d1b73c1167b690f0310698bbb977c997f08b830f7e506445d4e",
+      "pdfPage": 25
+    },
+    {
+      "id": "UI-020",
+      "module": "Cases",
+      "key": "delete-confirm",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-020-cases-delete-confirm.png",
+      "screenName": "Cases \u2014 delete-confirm",
+      "state": "delete-confirm",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:03.287Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "317f0f571ceb7bc85222a37148163ef55cc0d8a50ceb163993266b95d4fd0e73",
+        "expected": "Cases"
+      },
+      "sha256": "00f8d2f888525da21cdfe5556445e6c729c97e0b022fd1700e12f024b0d7ed46",
+      "pdfPage": 26
+    },
+    {
+      "id": "UI-021",
+      "module": "Cases",
+      "key": "empty-search",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-021-cases-empty-search.png",
+      "screenName": "Cases \u2014 empty-search",
+      "state": "empty-search",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:04.509Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "3701b60fb32a40c8af998b3c11d1d1fe914a602f0ea4597ba76762c6153bade5",
+        "expected": "Cases"
+      },
+      "sha256": "c1a6d0d1ccd065e927737209de3849ef26afb30bdcf4baeaee67a464d4520d62",
+      "pdfPage": 27
+    },
+    {
+      "id": "UI-022",
+      "module": "Cases",
+      "key": "import-preview",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-022-cases-import-preview.png",
+      "screenName": "Cases \u2014 import-preview",
+      "state": "import-preview",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:42:20.223Z",
+      "notes": "Preview only; import not committed. Duplicate display ID included deliberately to show validation.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "3eb303191030ae9c768295f081dd7d17be72f70932cab00c4e6beaccccfe6ea2",
+        "expected": "Cases"
+      },
+      "sha256": "1b4bb8868730b399198cb593d02dc42d4f56604dacbbc0436e11ac22f683e505",
+      "pdfPage": 28
+    },
+    {
+      "id": "UI-023",
+      "module": "Cases",
+      "key": "ai-generator",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-023-cases-ai-generator.png",
+      "screenName": "Cases \u2014 ai-generator",
+      "state": "ai-generator",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:34:06.149Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "e26084f7abaf22867b437e5a3702177d7b39971d0f94249f8dd6988f937ce6a4",
+        "expected": "Cases"
+      },
+      "sha256": "2f279b800c8963a0e98fd257574456fa41eacabd912ae219958e6896fed3120a",
+      "pdfPage": 29
+    },
+    {
+      "id": "UI-024",
+      "module": "Inspector",
+      "key": "overview",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-024-inspector-overview.png",
+      "screenName": "Inspector \u2014 overview",
+      "state": "overview",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:39:11.500Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "bf9ab44eb171873581bb05ebc18f75ae8b8d1fa1b955c6412f87d14b4f719201",
+        "expected": "Detail Test Case"
+      },
+      "sha256": "0d7ce265bf70cfbc945c06e98eb77bd773e0cc959eb54b3dee535e82b3cfd722",
+      "pdfPage": 35
+    },
+    {
+      "id": "UI-025",
+      "module": "Inspector",
+      "key": "overview-bottom",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-025-inspector-overview-bottom.png",
+      "screenName": "Inspector \u2014 overview-bottom",
+      "state": "overview-bottom",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 100,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 100
+          },
+          {
+            "tag": "DIV",
+            "role": null,
+            "x": 0,
+            "y": 179
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:39:11.699Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "bf9ab44eb171873581bb05ebc18f75ae8b8d1fa1b955c6412f87d14b4f719201",
+        "expected": "Inspector"
+      },
+      "sha256": "2b2f3ab66232021fc97ef5721f6c4373fc96251fd808b198763fa4d44b5d5ef3",
+      "pdfPage": 36
+    },
+    {
+      "id": "UI-026",
+      "module": "Inspector",
+      "key": "steps",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-026-inspector-steps.png",
+      "screenName": "Inspector \u2014 steps",
+      "state": "steps",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:39:16.275Z",
+      "notes": "Tab body stayed empty after switching. Closing and reopening the same testcase WITHOUT route reload preserved the selected tab and mounted its content. Screenshot shows that recovered actual UI. No source or DOM style changes.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "d2a1fa29a8f4e36579382f355fe2ece154daac5f17162c33750df066d815e3f1",
+        "expected": "Test steps"
+      },
+      "sha256": "4da9f1ff8687719fa9292c3d4160e0cffd63486b24d0b962a65c5710ef2c98a7",
+      "pdfPage": 37
+    },
+    {
+      "id": "UI-027",
+      "module": "Inspector",
+      "key": "traceability",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-027-inspector-traceability.png",
+      "screenName": "Inspector \u2014 traceability",
+      "state": "traceability",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:39:18.843Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "05b76d0c4d9359114a3cbd6945e298e038df65ce967edaeb29089bb82d2b5124",
+        "expected": "Requirement"
+      },
+      "sha256": "ceda9403d1a5e3343c9b7f645bdfe4c5dd1f0de3e75859e9582ee411b7b0f04e",
+      "pdfPage": 38
+    },
+    {
+      "id": "UI-028",
+      "module": "Inspector",
+      "key": "execution",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-028-inspector-execution.png",
+      "screenName": "Inspector \u2014 execution",
+      "state": "execution",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:39:21.166Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "8047d22529dd6838826c265564414b75d14069d8786419babd7aba1232a205fa",
+        "expected": "Execution workspace history"
+      },
+      "sha256": "8f89de9166d9c2750aa7855dc2e37b12e0921a696a157a1cd6b28237755ff032",
+      "pdfPage": 39
+    },
+    {
+      "id": "UI-029",
+      "module": "Inspector",
+      "key": "evidence",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-029-inspector-evidence.png",
+      "screenName": "Inspector \u2014 evidence",
+      "state": "evidence",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:48:08.609Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "24b6adad56eec54abb541370979a2ee21adcc13b00dcc423103fd7df6eae2311",
+        "expected": "synthetic-release-readiness.png"
+      },
+      "sha256": "d70eca037a0d737e184db1aaea4e4d2c65f6c89c27e488191497a9e0945a5169",
+      "pdfPage": 40
+    },
+    {
+      "id": "UI-030",
+      "module": "Inspector",
+      "key": "bugs",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-030-inspector-bugs.png",
+      "screenName": "Inspector \u2014 bugs",
+      "state": "bugs",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:49:09.555Z",
+      "notes": "Tab content recovered by closing/reopening inspector without route reload.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "fbdd0df178fcb2e95d26b369fd9fe63e7152ed6e057d165aa4d567686164f481",
+        "expected": "Buka data bug"
+      },
+      "sha256": "94a648500ab9e04f153b71beb568005fb51e4481a3a6e0667094884578519612",
+      "pdfPage": 41
+    },
+    {
+      "id": "UI-031",
+      "module": "Inspector",
+      "key": "history",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-031-inspector-history.png",
+      "screenName": "Inspector \u2014 history",
+      "state": "history",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:49:11.009Z",
+      "notes": "Tab content recovered by closing/reopening inspector without route reload.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "f35156657967bad7038b501e9f8b6a800b9ec14443ac2787cef8842df2f9836b",
+        "expected": "Before:"
+      },
+      "sha256": "40d92c762bfb31106c5efdb70413059b1c421ca2f92f2c1d15e4950157ef9465",
+      "pdfPage": 42
+    },
+    {
+      "id": "UI-032",
+      "module": "Inspector",
+      "key": "comments",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-032-inspector-comments.png",
+      "screenName": "Inspector \u2014 comments",
+      "state": "comments",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:39:32.737Z",
+      "notes": "Tab body stayed empty after switching. Closing and reopening the same testcase WITHOUT route reload preserved the selected tab and mounted its content. Screenshot shows that recovered actual UI. No source or DOM style changes.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "e45c27be50c173b7559e8d3fe7894cea8adeb1ac94e00e47a6293db3151408ec",
+        "expected": "Komentar"
+      },
+      "sha256": "3d9b444eccc93ace9e3c7fb6e6450cfc1a396ae36ad67518ba17252aa0270300",
+      "pdfPage": 43
+    },
+    {
+      "id": "UI-033",
+      "module": "Inspector",
+      "key": "automation",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-033-inspector-automation.png",
+      "screenName": "Inspector \u2014 automation",
+      "state": "automation",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": "tablist",
+            "x": 39,
+            "y": 0
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:47:22.814Z",
+      "notes": "Synthetic recording and logs from owned relay3117; initial tab navigation required close/reopen. RELAY OFFLINE refers to deliberately blocked live WebSocket.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "d96a978e04a311d53d905279cff844e2a7eb1d5b8f253eae4135de7d3c80a4ac",
+        "expected": "Inspector"
+      },
+      "sha256": "b69731c9822b34d5d1ace398385cb0d64409d75df10db4c6b3814623d103475b",
+      "pdfPage": 44
+    },
+    {
+      "id": "UI-034",
+      "module": "Inspector",
+      "key": "automation-network",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-034-inspector-automation-network.png",
+      "screenName": "Inspector \u2014 automation-network",
+      "state": "automation-network",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": "tablist",
+            "x": 39,
+            "y": 0
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:47:23.238Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "49b696dc6d15486e65002e08ee2f3c160329d8ad29d8efed2c96219965b2f200",
+        "expected": "Inspector"
+      },
+      "sha256": "a80381f15c660165deb550ab3158551918f64bed8459d3dab35df016ee1ce885",
+      "pdfPage": 45
+    },
+    {
+      "id": "UI-035",
+      "module": "Inspector",
+      "key": "automation-network-detail",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-035-inspector-automation-network-detail.png",
+      "screenName": "Inspector \u2014 automation-network-detail",
+      "state": "automation-network-detail",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": "tablist",
+            "x": 39,
+            "y": 0
+          },
+          {
+            "tag": "DIV",
+            "role": null,
+            "x": 0,
+            "y": 428
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:47:23.636Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "b5988caa269ee2caeefd69f0329112936f69ccb52716e805ae08f72fd7977400",
+        "expected": "Inspector"
+      },
+      "sha256": "c3dc312237f395cc374851352d7fd6e8562c21d9100b34fae2406a92927c5726",
+      "pdfPage": 46
+    },
+    {
+      "id": "UI-036",
+      "module": "Inspector",
+      "key": "automation-console",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-036-inspector-automation-console.png",
+      "screenName": "Inspector \u2014 automation-console",
+      "state": "automation-console",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": "tablist",
+            "x": 39,
+            "y": 0
+          },
+          {
+            "tag": "DIV",
+            "role": null,
+            "x": 0,
+            "y": 428
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:47:24.152Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "03c0a9fa4fdfb64b7bf604aef62ced6333bf1470ab366369f3ee46f6c9b6bd22",
+        "expected": "Inspector"
+      },
+      "sha256": "ef52e9f171a41c83daa37978f3ea83bd5192b78f3105e8332f21d3d85222b249",
+      "pdfPage": 47
+    },
+    {
+      "id": "UI-037",
+      "module": "Inspector",
+      "key": "automation-execution",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-037-inspector-automation-execution.png",
+      "screenName": "Inspector \u2014 automation-execution",
+      "state": "automation-execution",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": "tablist",
+            "x": 39,
+            "y": 0
+          },
+          {
+            "tag": "DIV",
+            "role": null,
+            "x": 0,
+            "y": 428
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:47:24.723Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "ea7c02f123ff29de924fe8b34e7825d3caeac5578b27c98697d7d57721f62139",
+        "expected": "Inspector"
+      },
+      "sha256": "f6ee4fc14e637c3c25e9cd2ca4c3072a2c96726bf3f099bf78a5835be5b44f38",
+      "pdfPage": 48
+    },
+    {
+      "id": "UI-038",
+      "module": "Inspector",
+      "key": "automation-fullscreen",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-038-inspector-automation-fullscreen.png",
+      "screenName": "Inspector \u2014 automation-fullscreen",
+      "state": "automation-fullscreen",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": null,
+            "x": 0,
+            "y": 367
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:47:25.212Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "ceb1b4c16d963e84320375cfb5bbf6b7ecdfc9ae378cde8873de359ed9fb8830",
+        "expected": "Inspector"
+      },
+      "sha256": "31bc45aeeb5d6e4c243e4844c18404efd145ab5ea8c001b184d0c367a49a414b",
+      "pdfPage": 49
+    },
+    {
+      "id": "UI-039",
+      "module": "Inspector",
+      "key": "automation-event-detail",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-039-inspector-automation-event-detail.png",
+      "screenName": "Inspector \u2014 automation-event-detail",
+      "state": "automation-event-detail",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": null,
+            "x": 0,
+            "y": 367
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:47:25.692Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "3555ab50fa712ce41e2f0d25ed4fc59e475fc0d699bda7e901d6f768f557ba4d",
+        "expected": "Inspector"
+      },
+      "sha256": "ea7f5ceba121e25f326f8486d52567d0e5d52c2659b9a5bd55158fcbe0f1cdc9",
+      "pdfPage": 50
+    },
+    {
+      "id": "UI-040",
+      "module": "Inspector",
+      "key": "automation-timeline",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-040-inspector-automation-timeline.png",
+      "screenName": "Inspector \u2014 automation-timeline",
+      "state": "automation-timeline",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": null,
+            "x": 0,
+            "y": 34
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:47:26.808Z",
+      "notes": "Actual fullscreen review UI playing a three-second synthetic recording of the captured QADesk dashboard. This is fixture media, not a real tested website recording.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "199669f78485faf8cdc7f66461058eb6ef5765eba55d84f268f5bb3707c7324d",
+        "expected": "Inspector"
+      },
+      "sha256": "f405e6aea4a9a794b538799fef63d015879561f3eb141bf542a25d569d9ee932",
+      "pdfPage": 51
+    },
+    {
+      "id": "UI-041",
+      "module": "Inspector",
+      "key": "ai-refiner",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-041-inspector-ai-refiner.png",
+      "screenName": "Inspector \u2014 ai-refiner",
+      "state": "ai-refiner",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": "tablist",
+            "x": 4,
+            "y": 0
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:39:36.257Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "b6762e04a77764535720f3485178fa234417848b80038bfb58c1648c9ca8ac93",
+        "expected": "Inspector"
+      },
+      "sha256": "e8076edc85d70d95f34eb2df92601404ff37f89b418f21c6388a3d8c120b151c",
+      "pdfPage": 52
+    },
+    {
+      "id": "UI-042",
+      "module": "Inspector",
+      "key": "evidence-report",
+      "category": "desktop",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-042-inspector-evidence-report.png",
+      "screenName": "Inspector \u2014 evidence-report",
+      "state": "evidence-report",
+      "route": "/api/evidence",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:48:08.887Z",
+      "notes": "Actual inline HTML evidence report endpoint. Export template has its own fixed light appearance; no style override, no download flag.",
+      "pageIdentity": {
+        "title": "QA Evidence - AUTH-001",
+        "textSha256": "e2541d1c88cb0952cf5423bd3e3fa4d3dd668b2312f6c6a0aa8de40792c7b8d0",
+        "expected": "Inspector"
+      },
+      "sha256": "89e027d5570d4993b49549712fa4d6ca78ba03316dbe322152e51b2ed4de8aab",
+      "pdfPage": 53
+    },
+    {
+      "id": "UI-043",
+      "module": "Bugs",
+      "key": "active",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-043-bugs-active.png",
+      "screenName": "Bugs \u2014 active",
+      "state": "active",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/bugs",
+      "navigationPath": "Bugs",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:37:04.160Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "cf1447259cdc32d521009d3c5d942407216468ad117fcca305e6d0088b56b7dd",
+        "expected": "Bugs"
+      },
+      "sha256": "9de0cb6af2caae64ca9099b530466a90cc6d9a1e7fd0813999136d398cb363d7",
+      "pdfPage": 58
+    },
+    {
+      "id": "UI-044",
+      "module": "Bugs",
+      "key": "resolved",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-044-bugs-resolved.png",
+      "screenName": "Bugs \u2014 resolved",
+      "state": "resolved",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/bugs",
+      "navigationPath": "Bugs",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:37:06.155Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "a3985a20cb8081bf8839e4e4df8c8d099a9c74adb2a2b393eee55ee753a2bb9e",
+        "expected": "Bugs"
+      },
+      "sha256": "9f4f6154396b591a0e2a32e683c3d533e2be1237b93d34858a5f5ffa57f09c05",
+      "pdfPage": 59
+    },
+    {
+      "id": "UI-045",
+      "module": "Bugs",
+      "key": "status-menu",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-045-bugs-status-menu.png",
+      "screenName": "Bugs \u2014 status-menu",
+      "state": "status-menu",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/bugs",
+      "navigationPath": "Bugs",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:37:04.672Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "5534a1a4ae7c5279bea488d95ab0cbe5a9454fbb0855b2bbfb7415e8312b0625",
+        "expected": "Bugs"
+      },
+      "sha256": "b98b8649c47c1f539ad3ec6a597704ad194eda15ae63a3075853007d21735fa1",
+      "pdfPage": 60
+    },
+    {
+      "id": "UI-046",
+      "module": "Bugs",
+      "key": "detail-lifecycle",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-046-bugs-detail-lifecycle.png",
+      "screenName": "Bugs \u2014 detail-lifecycle",
+      "state": "detail-lifecycle",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/bugs",
+      "navigationPath": "Bugs",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:37:05.764Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "d9f0f7fe104f489cd05f7410b9c00947495409c9999c4f41beb6f3df59b9a5f4",
+        "expected": "Bugs"
+      },
+      "sha256": "64c70c466f15d6595d9d474ab76754fed4c910280f1da0629aad56c52011b2f8",
+      "pdfPage": 61
+    },
+    {
+      "id": "UI-047",
+      "module": "Bugs",
+      "key": "empty",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-047-bugs-empty.png",
+      "screenName": "Bugs \u2014 empty",
+      "state": "empty",
+      "route": "/projects/cmvareinv001cwqv0s6lwpgfu/bugs",
+      "navigationPath": "Project selector \u2192 Mercury Mobile - Empty \u2192 Bugs",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Mobile - Empty",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:44:56.967Z",
+      "notes": "Empty synthetic project Mercury Mobile - Empty.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "b5c0feb79ddcd940cd9fb6cd140186f0056e6f2fa13fd0b60fbf5c8dca9fe359",
+        "expected": "Bugs"
+      },
+      "sha256": "b2c9340a2c87b5608fc133df3abb9439eae9d27fa6cdd64d1cadfc45a051da33",
+      "pdfPage": 62
+    },
+    {
+      "id": "UI-048",
+      "module": "Test Cycles",
+      "key": "list",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-048-test-cycles-list.png",
+      "screenName": "Test Cycles \u2014 list",
+      "state": "list",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:11.311Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "41d2ecaa32b84cd87750b4169cfe5571fd426c0d45814ed4014e70fb446dea46",
+        "expected": "Test Cycles"
+      },
+      "sha256": "445b56916db6218c085a849a5ba9ab64882d7fa01e3a3ca2312137471cd7ec86",
+      "pdfPage": 66
+    },
+    {
+      "id": "UI-049",
+      "module": "Test Cycles",
+      "key": "workspace",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-049-test-cycles-workspace.png",
+      "screenName": "Test Cycles \u2014 workspace",
+      "state": "workspace",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 19,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 19
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:11.577Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "ba945b0ea0a7eae1628261f15f19cefaf4b6c893137ce073a40a70acfc372342",
+        "expected": "Test Cycles"
+      },
+      "sha256": "d267396b40f6ea5f11e52d48707ed2026f48d808da64bff11373d81532530248",
+      "pdfPage": 67
+    },
+    {
+      "id": "UI-050",
+      "module": "Test Cycles",
+      "key": "notes-evidence",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-050-test-cycles-notes-evidence.png",
+      "screenName": "Test Cycles \u2014 notes-evidence",
+      "state": "notes-evidence",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 883,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 883
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:08.377Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "50d802883971f8e50c310112c63e1459ac3daae37d62a2a08095a0efdbf5c6a0",
+        "expected": "Test Cycles"
+      },
+      "sha256": "b58a01d061fec5ce38e69ad06ebccf3334c17384f079c491c5d213d1b7c7cf2e",
+      "pdfPage": 68
+    },
+    {
+      "id": "UI-051",
+      "module": "Test Cycles",
+      "key": "create-bug",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-051-test-cycles-create-bug.png",
+      "screenName": "Test Cycles \u2014 create-bug",
+      "state": "create-bug",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 883,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 883
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:08.576Z",
+      "notes": "Contextual Create Bug control for failed execution. No second dialog is implemented; click directly links the failed execution to inventory.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "50d802883971f8e50c310112c63e1459ac3daae37d62a2a08095a0efdbf5c6a0",
+        "expected": "Test Cycles"
+      },
+      "sha256": "b58a01d061fec5ce38e69ad06ebccf3334c17384f079c491c5d213d1b7c7cf2e",
+      "pdfPage": 69
+    },
+    {
+      "id": "UI-052",
+      "module": "Test Cycles",
+      "key": "new-cycle",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-052-test-cycles-new-cycle.png",
+      "screenName": "Test Cycles \u2014 new-cycle",
+      "state": "new-cycle",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 176,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 176
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:09.274Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "dce55570574e428ef95d094a20650b06e5133ae29bd9b9acb26eeb3df5ea259c",
+        "expected": "Test Cycles"
+      },
+      "sha256": "c936392fd41dc97d5ff9d9b2b5b9ca566841f20ab0525143e964fd000b401f79",
+      "pdfPage": 70
+    },
+    {
+      "id": "UI-053",
+      "module": "Test Cycles",
+      "key": "cycle-dates",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-053-test-cycles-cycle-dates.png",
+      "screenName": "Test Cycles \u2014 cycle-dates",
+      "state": "cycle-dates",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 176,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 176
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:09.501Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "0dc6e6a905b46748857598b2553c07e4cce1c34c2fd18b9345af7b3b0db47a65",
+        "expected": "Test Cycles"
+      },
+      "sha256": "6228b65f8c4b3f760d5816e987df11de6533dbfbf96652c9db4e7d3582339c44",
+      "pdfPage": 71
+    },
+    {
+      "id": "UI-054",
+      "module": "Test Cycles",
+      "key": "edit-cycle",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-054-test-cycles-edit-cycle.png",
+      "screenName": "Test Cycles \u2014 edit-cycle",
+      "state": "edit-cycle",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 176,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 176
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:09.039Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "865d4fc94f389d5ab89bcfd4d96c9b01786edbf54b5f7d6835d4006283773e13",
+        "expected": "Test Cycles"
+      },
+      "sha256": "5f231cf5d032c364a941e2877c5404e246913ea198f151c3f2fcbd3931f2dff2",
+      "pdfPage": 72
+    },
+    {
+      "id": "UI-055",
+      "module": "Test Cycles",
+      "key": "assign-cases",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-055-test-cycles-assign-cases.png",
+      "screenName": "Test Cycles \u2014 assign-cases",
+      "state": "assign-cases",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 176,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 176
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:08.829Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "522254b2bcf7fbea9ac183a3aafeb5a03ced7f9b6ee7c369c19767b240358a12",
+        "expected": "Test Cycles"
+      },
+      "sha256": "ae03f11f0da2fd4b001f54b6ccd0e502a520441bc70d456a045656b299ad9bec",
+      "pdfPage": 73
+    },
+    {
+      "id": "UI-056",
+      "module": "Test Cycles",
+      "key": "empty",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-056-test-cycles-empty.png",
+      "screenName": "Test Cycles \u2014 empty",
+      "state": "empty",
+      "route": "/projects/cmvareinv001cwqv0s6lwpgfu/test-runs",
+      "navigationPath": "Project selector \u2192 Mercury Mobile - Empty \u2192 Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Mobile - Empty",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:44:57.793Z",
+      "notes": "Empty synthetic project Mercury Mobile - Empty.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "9ce168dbff97caa0af885f672a59539863ce63c11d623073dc5a1d7beaf06797",
+        "expected": "Test Cycles"
+      },
+      "sha256": "c25864eb6194988062010942d1a9ea000a2b70297f2ac1c1bd7003d1fd926891",
+      "pdfPage": 74
+    },
+    {
+      "id": "UI-057",
+      "module": "Traceability",
+      "key": "lanes",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-057-traceability-lanes.png",
+      "screenName": "Traceability \u2014 lanes",
+      "state": "lanes",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/traceability",
+      "navigationPath": "Traceability",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:51.783Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "84feb124c7b06605b0f4f06f55171d42dc6cddbac4c95c303ae17130a380dbac",
+        "expected": "Traceability"
+      },
+      "sha256": "2a1512f95488f927280cd3c5b9c999b2139b1fd966c7e43e26da75702f74a74a",
+      "pdfPage": 78
+    },
+    {
+      "id": "UI-058",
+      "module": "Traceability",
+      "key": "uncovered",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-058-traceability-uncovered.png",
+      "screenName": "Traceability \u2014 uncovered",
+      "state": "uncovered",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/traceability",
+      "navigationPath": "Traceability",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:51.931Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "5d81cbaadebab0214eb43eba0a68a8fece5e50c5be2019052a7d08b45f38594e",
+        "expected": "Traceability"
+      },
+      "sha256": "05f84349295427b4ef6334241de5a200ed365a72e650b2ce2d0707cf1fb27f26",
+      "pdfPage": 79
+    },
+    {
+      "id": "UI-059",
+      "module": "Traceability",
+      "key": "new-relation",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-059-traceability-new-relation.png",
+      "screenName": "Traceability \u2014 new-relation",
+      "state": "new-relation",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/traceability",
+      "navigationPath": "Traceability",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:52.215Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "bb88d76a44aff3a62c1527f860930273cef7a17f84a3b767b15211cff5463a2d",
+        "expected": "Traceability"
+      },
+      "sha256": "ce4ebed2905d36d04bb3d86f48c9ac0477cf63cfbfad7b00355ed06ff3f0b263",
+      "pdfPage": 80
+    },
+    {
+      "id": "UI-060",
+      "module": "Traceability",
+      "key": "new-relation-bottom",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-060-traceability-new-relation-bottom.png",
+      "screenName": "Traceability \u2014 new-relation-bottom",
+      "state": "new-relation-bottom",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/traceability",
+      "navigationPath": "Traceability",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": "dialog",
+            "x": 0,
+            "y": 146
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:52.367Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "bb88d76a44aff3a62c1527f860930273cef7a17f84a3b767b15211cff5463a2d",
+        "expected": "Traceability"
+      },
+      "sha256": "9f0d147f8fbeb7afc169b737a1f590c86449eb4ead8f06ce67d527825d59c423",
+      "pdfPage": 81
+    },
+    {
+      "id": "UI-061",
+      "module": "Traceability",
+      "key": "manage-relation",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-061-traceability-manage-relation.png",
+      "screenName": "Traceability \u2014 manage-relation",
+      "state": "manage-relation",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/traceability",
+      "navigationPath": "Traceability",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:52.644Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "5e355bba105a1e23286cdb07f29b7e15d489b756f05657050d7e46b863bb4aea",
+        "expected": "Traceability"
+      },
+      "sha256": "5e8bab183ca1e7119905f6b901140fd32a0ba3aa104a143f988747738c015900",
+      "pdfPage": 82
+    },
+    {
+      "id": "UI-062",
+      "module": "Traceability",
+      "key": "empty",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-062-traceability-empty.png",
+      "screenName": "Traceability \u2014 empty",
+      "state": "empty",
+      "route": "/projects/cmvareinv001cwqv0s6lwpgfu/traceability",
+      "navigationPath": "Project selector \u2192 Mercury Mobile - Empty \u2192 Traceability",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Mobile - Empty",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:44:58.731Z",
+      "notes": "Empty synthetic project Mercury Mobile - Empty.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2c4665817619115dacda90c59b3db04d5e45ca82071768822abe408f5de81d57",
+        "expected": "Traceability"
+      },
+      "sha256": "bb7b4f38205cd9bccd808c759c925f2d239f88e8d6e46f13c9c8517a42a1f31d",
+      "pdfPage": 83
+    },
+    {
+      "id": "UI-063",
+      "module": "Reports",
+      "key": "list",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-063-reports-list.png",
+      "screenName": "Reports \u2014 list",
+      "state": "list",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:14.631Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "3d040979fe3d48bdf4328d097b73a6d8bb3affa85e4838d9852d2ab6466bd9e3",
+        "expected": "Reports"
+      },
+      "sha256": "2b90b6f57e141d67520b89e3ba5fa525d88f79d3fd379bd699df6d8d7d3907dc",
+      "pdfPage": 86
+    },
+    {
+      "id": "UI-064",
+      "module": "Reports",
+      "key": "create-status",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-064-reports-create-status.png",
+      "screenName": "Reports \u2014 create-status",
+      "state": "create-status",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:14.791Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "ec4cb85a27d342d1e4891cb51c9595313c8ded5c84ebf307757318522ec23ecb",
+        "expected": "Reports"
+      },
+      "sha256": "d2834f9fb3f65fdda1c7b507702df7cb49cf6060b80d4c8cb4a334b9934f4049",
+      "pdfPage": 87
+    },
+    {
+      "id": "UI-065",
+      "module": "Reports",
+      "key": "source-select",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-065-reports-source-select.png",
+      "screenName": "Reports \u2014 source-select",
+      "state": "source-select",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:14.989Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "762691e3d0d0aa82775a6b3568d373985718ea17166c493b8be70d90def53921",
+        "expected": "Reports"
+      },
+      "sha256": "52e90edf9784c67f76eb2e2267aa9176bc71e929d80bacef0ca0955c1d6f3256",
+      "pdfPage": 88
+    },
+    {
+      "id": "UI-066",
+      "module": "Reports",
+      "key": "date-picker",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-066-reports-date-picker.png",
+      "screenName": "Reports \u2014 date-picker",
+      "state": "date-picker",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:15.230Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "711cea6cd7f0632d65b980792d6e9cf0c81d70a4be7624b7bb344929aad63130",
+        "expected": "Reports"
+      },
+      "sha256": "a66e43f8218bf92d26a57d99fdad3c62d3d858072c8b8c269488c8b0e0cbba62",
+      "pdfPage": 89
+    },
+    {
+      "id": "UI-067",
+      "module": "Reports",
+      "key": "create-planning",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-067-reports-create-planning.png",
+      "screenName": "Reports \u2014 create-planning",
+      "state": "create-planning",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:15.494Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2aae6358e011d12644b59eef4713ab0dc85ccef16a5223f0662419281779ddac",
+        "expected": "Reports"
+      },
+      "sha256": "b413e8636aec81e57a55cb98be7e43c62934a9d24471839644db6a5c902d0522",
+      "pdfPage": 90
+    },
+    {
+      "id": "UI-068",
+      "module": "Reports",
+      "key": "form-bottom",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-068-reports-form-bottom.png",
+      "screenName": "Reports \u2014 form-bottom",
+      "state": "form-bottom",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 1112,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 1112
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:15.636Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2aae6358e011d12644b59eef4713ab0dc85ccef16a5223f0662419281779ddac",
+        "expected": "Reports"
+      },
+      "sha256": "f475642b634c864d257c3667e543158cb11a9e0fe22b0f6853538638b5bba99f",
+      "pdfPage": 91
+    },
+    {
+      "id": "UI-069",
+      "module": "Reports",
+      "key": "draft-preview",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-069-reports-draft-preview.png",
+      "screenName": "Reports \u2014 draft-preview",
+      "state": "draft-preview",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:38:04.181Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2f81d56020ace680f55d8dfc3d07e65467c3c504a1930046f76fcb69e8f0020b",
+        "expected": "Reports"
+      },
+      "sha256": "52dd8160292e67c388e61a96d6be82a5b5ef8d2f11b3b20f3c2ef62a1d1c293d",
+      "pdfPage": 92
+    },
+    {
+      "id": "UI-070",
+      "module": "Reports",
+      "key": "draft-bottom",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-070-reports-draft-bottom.png",
+      "screenName": "Reports \u2014 draft-bottom",
+      "state": "draft-bottom",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 1272,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 1272
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:38:04.349Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2f81d56020ace680f55d8dfc3d07e65467c3c504a1930046f76fcb69e8f0020b",
+        "expected": "Reports"
+      },
+      "sha256": "4fde36e3aef915d2f6b5407af61fb718332adbfc1fad01fcb589f64f529d9d01",
+      "pdfPage": 93
+    },
+    {
+      "id": "UI-071",
+      "module": "Reports",
+      "key": "final-preview",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-071-reports-final-preview.png",
+      "screenName": "Reports \u2014 final-preview",
+      "state": "final-preview",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:38:05.215Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "d6f15a2a2ed287a36c9aa9b9d2be47386ed070eb6a1f3d89aec211054c9f458b",
+        "expected": "Reports"
+      },
+      "sha256": "416f3fe299236632373e22ecd8327fdbf5dbdaeba4e617f513d24cb02f7db3b3",
+      "pdfPage": 94
+    },
+    {
+      "id": "UI-072",
+      "module": "Reports",
+      "key": "planning-preview",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-072-reports-planning-preview.png",
+      "screenName": "Reports \u2014 planning-preview",
+      "state": "planning-preview",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:38:06.409Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "b6f0abcfd406ec6344ec0fcb3bba5ae6f9cf9a3e50d4f77fc4fde52b23f8aa85",
+        "expected": "Reports"
+      },
+      "sha256": "2a8eebe8ae86f05d647f8743e61e9e47b47c61090ceec625b2eda48257d530c7",
+      "pdfPage": 95
+    },
+    {
+      "id": "UI-073",
+      "module": "Reports",
+      "key": "new-version",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-073-reports-new-version.png",
+      "screenName": "Reports \u2014 new-version",
+      "state": "new-version",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:47:35.715Z",
+      "notes": "Actual version action previously created this new synthetic draft (1.0.1). Existing result read back; action not repeated.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "f930fa402b8bb105e8d17c39994078ecf3bef1ba4b8b23aaefc0b71944af2e06",
+        "expected": "Reports"
+      },
+      "sha256": "af975c2c25057c9dcf3ab5a0d385f7d7488730a586d96069603cdee4ea327d2f",
+      "pdfPage": 96
+    },
+    {
+      "id": "UI-074",
+      "module": "Reports",
+      "key": "empty",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-074-reports-empty.png",
+      "screenName": "Reports \u2014 empty",
+      "state": "empty",
+      "route": "/projects/cmvareinv001cwqv0s6lwpgfu/reports",
+      "navigationPath": "Project selector \u2192 Mercury Mobile - Empty \u2192 Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Mobile - Empty",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:44:59.748Z",
+      "notes": "Empty synthetic project Mercury Mobile - Empty.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "b43ab9ea758dbd5648d74ad93f14022bdf9e30688f221331c62887860b38300f",
+        "expected": "Reports"
+      },
+      "sha256": "33b18aed869fac85f92bac9fc0421bb1b81e07af58aec267ffe4155209f6f802",
+      "pdfPage": 97
+    },
+    {
+      "id": "UI-075",
+      "module": "Reports",
+      "key": "error",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-075-reports-error.png",
+      "screenName": "Reports \u2014 error",
+      "state": "error",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:44:12.364Z",
+      "notes": "CONTROLLED ERROR: browser intercepted reports GET and returned500. Existing error UI rendered; not an observed server regression.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2338a37e25710a07f40f884a1f692849e59b8087308c534d3973e4b48a05751f",
+        "expected": "Reports"
+      },
+      "sha256": "d2263f51cc5b6bc3363ba454c60a104475404e0e6bdc513b038ac6aa34ae3c7f",
+      "pdfPage": 98
+    },
+    {
+      "id": "UI-076",
+      "module": "Settings",
+      "key": "system",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-076-settings-system.png",
+      "screenName": "Settings \u2014 system",
+      "state": "system",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:55.661Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2a5a4d6fdd8643056dd02c4ff7aa63bcbb930a500ca5a856c8fde060a2e5d605",
+        "expected": "Database migrations"
+      },
+      "sha256": "fe9d5442904c3609b5aa4d0637224ca46d2b88ba90f57a59d7a86a34bf26e20a",
+      "pdfPage": 103
+    },
+    {
+      "id": "UI-077",
+      "module": "Settings",
+      "key": "team",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-077-settings-team.png",
+      "screenName": "Settings \u2014 team",
+      "state": "team",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:55.911Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "1078298e6dedf0eb87fbd225a789371cd0d565d857ab884a2afda1a77b99b51b",
+        "expected": "Settings"
+      },
+      "sha256": "b6e4f02d96fc562d1ee870ec587022e28b04d1dadd4c8815704cc2aa1424093b",
+      "pdfPage": 104
+    },
+    {
+      "id": "UI-078",
+      "module": "Settings",
+      "key": "ai",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-078-settings-ai.png",
+      "screenName": "Settings \u2014 ai",
+      "state": "ai",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:56.126Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "b685857b7b7070200546adab19f18e8cbb42973b39f481d0eb2582f2e961c6d7",
+        "expected": "Settings"
+      },
+      "sha256": "b954467cf5e5eafee86c897381fe84c83860e7ad0104e64579d9f5d43b54a7e0",
+      "pdfPage": 105
+    },
+    {
+      "id": "UI-079",
+      "module": "Settings",
+      "key": "ai-bottom",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-079-settings-ai-bottom.png",
+      "screenName": "Settings \u2014 ai-bottom",
+      "state": "ai-bottom",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:56.260Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "b685857b7b7070200546adab19f18e8cbb42973b39f481d0eb2582f2e961c6d7",
+        "expected": "Settings"
+      },
+      "sha256": "b954467cf5e5eafee86c897381fe84c83860e7ad0104e64579d9f5d43b54a7e0",
+      "pdfPage": 106
+    },
+    {
+      "id": "UI-080",
+      "module": "Settings",
+      "key": "projects",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-080-settings-projects.png",
+      "screenName": "Settings \u2014 projects",
+      "state": "projects",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:56.447Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "eca1e91a566556dd5c7f58e533bdad113e0335fc78a39e8c2627cea354be5a10",
+        "expected": "Settings"
+      },
+      "sha256": "211e4a6f0ff6bc1663a08d5528e14e077b9b76b48e56aa36e03d1cec289a6881",
+      "pdfPage": 107
+    },
+    {
+      "id": "UI-081",
+      "module": "Settings",
+      "key": "create-project",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-081-settings-create-project.png",
+      "screenName": "Settings \u2014 create-project",
+      "state": "create-project",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:04.307Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "6b0d5533941387c5e5a5b51e9fdcfdbe342e4e67ea3c87201cddaf22ae7cce3d",
+        "expected": "Settings"
+      },
+      "sha256": "61b6c8ee2637bdf09844e9c740242a01394c5f4738647e793ec30b5333885e58",
+      "pdfPage": 108
+    },
+    {
+      "id": "UI-082",
+      "module": "Settings",
+      "key": "knowledge",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-082-settings-knowledge.png",
+      "screenName": "Settings \u2014 knowledge",
+      "state": "knowledge",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:56.765Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "485d6fe9133508dcf19a6219d13ff5c8cb2179dfcb2200e6d50682c997293787",
+        "expected": "Settings"
+      },
+      "sha256": "ae57b1b44ebcd0de2de44784a7a49d7a0e66feecebe70c95aca5f9833fea0f1d",
+      "pdfPage": 109
+    },
+    {
+      "id": "UI-083",
+      "module": "Settings",
+      "key": "knowledge-edit",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-083-settings-knowledge-edit.png",
+      "screenName": "Settings \u2014 knowledge-edit",
+      "state": "knowledge-edit",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:05.012Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "80447b3634757da5ab9d4430e6a1c82f5282ed71546c15cfc09e8d5035381438",
+        "expected": "Settings"
+      },
+      "sha256": "fd38cf045b46cdada633750c4099371219510e254794cfcc84c54ad660a3cc47",
+      "pdfPage": 110
+    },
+    {
+      "id": "UI-084",
+      "module": "Settings",
+      "key": "integrations",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-084-settings-integrations.png",
+      "screenName": "Settings \u2014 integrations",
+      "state": "integrations",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:56.959Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "84e58bf00a5b29d01d3561532effcfdf55793217ab81aa8ade70285bf5ec2bea",
+        "expected": "Settings"
+      },
+      "sha256": "c13c6e0952d14f47ae5647ad4299139d979bb4688d490a9fd1c5b4e32dc9a80d",
+      "pdfPage": 111
+    },
+    {
+      "id": "UI-085",
+      "module": "Settings",
+      "key": "modules",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-085-settings-modules.png",
+      "screenName": "Settings \u2014 modules",
+      "state": "modules",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:35:57.137Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "9605f7e1c9c6c6eaed53be83cccdbf7300dede1f80e4bf318ed425390a6dc328",
+        "expected": "Settings"
+      },
+      "sha256": "216f24e1866584b05100c814402d41b44484d6a7ebe229ecc49f23c667321566",
+      "pdfPage": 112
+    },
+    {
+      "id": "UI-086",
+      "module": "Settings",
+      "key": "create-module",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-086-settings-create-module.png",
+      "screenName": "Settings \u2014 create-module",
+      "state": "create-module",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:04.634Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "ed86d203e0a1df66f0c8e9ce4f3646ba5f551a7450da36db4b22bda0827f9ef1",
+        "expected": "Settings"
+      },
+      "sha256": "598d1aa35e8722c2ff98286b0c563efdaca64caa741be36422b9cb55a5b9e339",
+      "pdfPage": 113
+    },
+    {
+      "id": "UI-087",
+      "module": "Settings",
+      "key": "viewer-team",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-087-settings-viewer-team.png",
+      "screenName": "Settings \u2014 viewer-team",
+      "state": "viewer-team",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "VIEWER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:19.404Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "7e15314882500aa0525647ae3b46a98f42d1dd0b146bbe9913e54ab08756f99b",
+        "expected": "Settings"
+      },
+      "sha256": "7d40d74ba6eb82b594fe0d58461f5e48cdb4eeb92565b7f6fed93a867287ea6b",
+      "pdfPage": 114
+    },
+    {
+      "id": "UI-088",
+      "module": "Automation",
+      "key": "history",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-088-automation-history.png",
+      "screenName": "Automation \u2014 history",
+      "state": "history",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/automation",
+      "navigationPath": "Automation",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:30.091Z",
+      "notes": "Real UI populated with synthetic JSONL fixture; private relay3117, never user3001.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "35ee622ca642111243f1f5e62afd4beadf35f86f70f4157f1967eb369683487d",
+        "expected": "Automation"
+      },
+      "sha256": "29d36b9ae25a679596d34943865bbb7ed819aca115da8e9725db7bd5cab99b86",
+      "pdfPage": 118
+    },
+    {
+      "id": "UI-089",
+      "module": "Automation",
+      "key": "record-detail",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-089-automation-record-detail.png",
+      "screenName": "Automation \u2014 record-detail",
+      "state": "record-detail",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/automation",
+      "navigationPath": "Automation",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:48:09.835Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "d42de54e81e7db129952650af1f2155a55e87e745b7ae21067a910744cac771d",
+        "expected": "Automation"
+      },
+      "sha256": "1ec4195df78a946a1830196ac13d06913bd32e5ff4246ef3f8694b80762a07d4",
+      "pdfPage": 119
+    },
+    {
+      "id": "UI-090",
+      "module": "Automation",
+      "key": "empty",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-090-automation-empty.png",
+      "screenName": "Automation \u2014 empty",
+      "state": "empty",
+      "route": "/projects/cmvareinv001cwqv0s6lwpgfu/automation",
+      "navigationPath": "Project selector \u2192 Mercury Mobile - Empty \u2192 Automation",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Mobile - Empty",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:45:00.641Z",
+      "notes": "Empty synthetic project Mercury Mobile - Empty.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "68cfc06ae0b1af01a58b87ad40e31785b8bff1348bd42b6ba4824aca521c7268",
+        "expected": "Automation"
+      },
+      "sha256": "eda8f7ec971a1af5977ad36c0725225be110d401469779396cccec77d5c6ef4a",
+      "pdfPage": 120
+    },
+    {
+      "id": "UI-091",
+      "module": "Global",
+      "key": "notifications",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-091-global-notifications.png",
+      "screenName": "Global \u2014 notifications",
+      "state": "notifications",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Global",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:00.472Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "4a53502590a3bb2ff93c038f0eba40d3c761f4202690937392a30b00ba67e5d1",
+        "expected": "Global"
+      },
+      "sha256": "c38f63b18d9283e9816444624af07c61d2d2c6f7f148cde9ef34392dc61af7c7",
+      "pdfPage": 121
+    },
+    {
+      "id": "UI-092",
+      "module": "Global",
+      "key": "command-search",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-092-global-command-search.png",
+      "screenName": "Global \u2014 command-search",
+      "state": "command-search",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Global",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:00.888Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "3ff196aff0577e410164d8e33de4421a43531d2e85411bdf7f580123e717b858",
+        "expected": "Global"
+      },
+      "sha256": "d4d60425f387c5ddcccbb215f01516cc63b853c73cbae6bd2fa2953ecbd7d3b3",
+      "pdfPage": 122
+    },
+    {
+      "id": "UI-093",
+      "module": "Global",
+      "key": "project-menu",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-093-global-project-menu.png",
+      "screenName": "Global \u2014 project-menu",
+      "state": "project-menu",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Global",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:01.411Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2b064ca35d89ab995c11c6346bc443a42bea8ff91d8e9568252ba9dc9a617b1c",
+        "expected": "Global"
+      },
+      "sha256": "b8539190093cdcbc2fbb9ce2146004b844a3153acc6d8ae7f53c886c0c8b21df",
+      "pdfPage": 123
+    },
+    {
+      "id": "UI-094",
+      "module": "Global",
+      "key": "account-menu",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-094-global-account-menu.png",
+      "screenName": "Global \u2014 account-menu",
+      "state": "account-menu",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Global",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:01.698Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "8d47c23a60744118fce8343561c2f349980c6bf7c2a011f9d4cadbbc06ff3c20",
+        "expected": "Global"
+      },
+      "sha256": "ea2a7b474656e4a82a60be0a175ceb4bf152e2d4f4ee53d65d419ff2ca02ea0c",
+      "pdfPage": 124
+    },
+    {
+      "id": "UI-095",
+      "module": "Global",
+      "key": "theme-menu",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-095-global-theme-menu.png",
+      "screenName": "Global \u2014 theme-menu",
+      "state": "theme-menu",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Global",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:02.213Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "af3600b69529e54e6171a54152ebae3daee4b6918d8fe6ec5f2977a4c29206c0",
+        "expected": "Global"
+      },
+      "sha256": "e0b772d15830b20068d29548e0f21943dfd873cea4a1a2ec4254f9ec30e89acb",
+      "pdfPage": 125
+    },
+    {
+      "id": "UI-096",
+      "module": "Global",
+      "key": "ai-chat",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-096-global-ai-chat.png",
+      "screenName": "Global \u2014 ai-chat",
+      "state": "ai-chat",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Global",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:02.668Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "09558e3785aee6c2e3f0cc51c0e3f2332f6099f88371d98d20e9c62c8790275a",
+        "expected": "Global"
+      },
+      "sha256": "51c4ad806c76c8a09a7187a0b131a39fde65d8177d84a1cb0fa964efaaa05e8e",
+      "pdfPage": 126
+    },
+    {
+      "id": "UI-097",
+      "module": "Global",
+      "key": "viewer-cases",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-097-global-viewer-cases.png",
+      "screenName": "Global \u2014 viewer-cases",
+      "state": "viewer-cases",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Global",
+      "role": "VIEWER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:36:18.809Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "a3e88b32a77edf50f732ec7a593d6e385280716984317406d342dea37587ca4a",
+        "expected": "Global"
+      },
+      "sha256": "8d43269a661aa36f18dc218338ba39bc6d07eec4e0edaa34c12f33d1971f6296",
+      "pdfPage": 127
+    },
+    {
+      "id": "UI-098",
+      "module": "Global",
+      "key": "login",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-098-global-login.png",
+      "screenName": "Global \u2014 login",
+      "state": "login",
+      "route": "/login",
+      "navigationPath": "Global",
+      "role": "ANONYMOUS",
+      "workspace": "No authenticated workspace",
+      "project": "No selected project",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:44:08.604Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "8e0e32216ad5b8355a59e3d09e11d6ee6cbafce8ededa152f2ba35d85c9cda70",
+        "expected": "Global"
+      },
+      "sha256": "30c9f596b5ec9622cca999d155fd9a5bcf44b1c7e68beeee4bd9987365adcb11",
+      "pdfPage": 128
+    },
+    {
+      "id": "UI-099",
+      "module": "Global",
+      "key": "login-validation",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-099-global-login-validation.png",
+      "screenName": "Global \u2014 login-validation",
+      "state": "login-validation",
+      "route": "/login",
+      "navigationPath": "Global",
+      "role": "ANONYMOUS",
+      "workspace": "No authenticated workspace",
+      "project": "No selected project",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:44:08.827Z",
+      "notes": "Native required-field validation on an empty form; no credentials entered.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "8e0e32216ad5b8355a59e3d09e11d6ee6cbafce8ededa152f2ba35d85c9cda70",
+        "expected": "Global"
+      },
+      "sha256": "f1bd2b347e01827cbaa194f90ac455db3f7638b5eb8c1fc45c221fa555215b96",
+      "pdfPage": 129
+    },
+    {
+      "id": "UI-100",
+      "module": "Global",
+      "key": "loading",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/desktop/UI-100-global-loading.png",
+      "screenName": "Global \u2014 loading",
+      "state": "loading",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Global",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:44:15.174Z",
+      "notes": "CONTROLLED LOADING: held real testcase GET before releasing it. Deliberate skeleton capture, not a settled populated screen.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "97e916cafdab53d37148817d63db6f98e460ae78af83efe5482c0153f9f4c9e7",
+        "expected": "Global"
+      },
+      "sha256": "04bb24c8ed1eb3402c52db6e388bb381d8ff69c6215d34eae62d7e0ae6883ce6",
+      "pdfPage": 130
+    },
+    {
+      "id": "UI-101",
+      "module": "Dashboard",
+      "key": "compact",
+      "category": "compact",
+      "theme": "dark",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/compact/UI-101-dashboard-compact.png",
+      "screenName": "Dashboard \u2014 compact",
+      "state": "compact",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Dashboard",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1366,
+      "imageHeight": 768,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:42:58.788Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "fff32acb9b5fc768d6bcef2bdcdfa5c8050345373c93f5960dcbf39f590f0d4a",
+        "expected": "Dashboard"
+      },
+      "sha256": "caf32b8a9b1857957bc41141d9804611dcb5e0613d087188fdb604cd1142f1dc",
+      "pdfPage": 7
+    },
+    {
+      "id": "UI-102",
+      "module": "Cases",
+      "key": "compact",
+      "category": "compact",
+      "theme": "dark",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/compact/UI-102-cases-compact.png",
+      "screenName": "Cases \u2014 compact",
+      "state": "compact",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1366,
+      "imageHeight": 768,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:42:59.495Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2e93eaf0b1a03e1c4b2a692af7ba07539754878a17bc4f731266da97bf8ee492",
+        "expected": "Cases"
+      },
+      "sha256": "7518a6494db3a4bba3667a8219886514afec17eae5c50dcff2833ac3876a3e2b",
+      "pdfPage": 30
+    },
+    {
+      "id": "UI-103",
+      "module": "Bugs",
+      "key": "compact",
+      "category": "compact",
+      "theme": "dark",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/compact/UI-103-bugs-compact.png",
+      "screenName": "Bugs \u2014 compact",
+      "state": "compact",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/bugs",
+      "navigationPath": "Bugs",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1366,
+      "imageHeight": 768,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:01.083Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "cf1447259cdc32d521009d3c5d942407216468ad117fcca305e6d0088b56b7dd",
+        "expected": "Bugs"
+      },
+      "sha256": "83f5d94b31482738f649aac9ce2c0d4251c94b8938e93a9bda9eeca5939daf36",
+      "pdfPage": 63
+    },
+    {
+      "id": "UI-104",
+      "module": "Test Cycles",
+      "key": "compact",
+      "category": "compact",
+      "theme": "dark",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/compact/UI-104-test-cycles-compact.png",
+      "screenName": "Test Cycles \u2014 compact",
+      "state": "compact",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1366,
+      "imageHeight": 768,
+      "scroll": {
+        "x": 0,
+        "y": 204,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 204
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:02.504Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "32ddc93e6dbd7b583291e39ee25155d56c02d36e7b9ea9de310d84b43a0295be",
+        "expected": "Test Cycles"
+      },
+      "sha256": "6f31a4564e2bdf81784f5b0896a33c17016638b7bc9389062d8c2c94447f0177",
+      "pdfPage": 75
+    },
+    {
+      "id": "UI-105",
+      "module": "Reports",
+      "key": "compact",
+      "category": "compact",
+      "theme": "dark",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/compact/UI-105-reports-compact.png",
+      "screenName": "Reports \u2014 compact",
+      "state": "compact",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1366,
+      "imageHeight": 768,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:03.451Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "3d040979fe3d48bdf4328d097b73a6d8bb3affa85e4838d9852d2ab6466bd9e3",
+        "expected": "Reports"
+      },
+      "sha256": "b86bfc3adca20b7798939564c2dd0a8c598dd2894da907fbf58f93c56d98bd62",
+      "pdfPage": 99
+    },
+    {
+      "id": "UI-106",
+      "module": "Settings",
+      "key": "compact",
+      "category": "compact",
+      "theme": "dark",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/compact/UI-106-settings-compact.png",
+      "screenName": "Settings \u2014 compact",
+      "state": "compact",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1366,
+      "imageHeight": 768,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:04.377Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "d19b6997b3e0d62bbf73e3988b0368226e2a9bb7c1cd432d37d54d6f16b04e67",
+        "expected": "Settings"
+      },
+      "sha256": "dd6f99184468c6ea70d574da3e3bd71cde648cfded2a7a65298bb717537ec633",
+      "pdfPage": 115
+    },
+    {
+      "id": "UI-107",
+      "module": "Dashboard",
+      "key": "narrow",
+      "category": "narrow",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/narrow/UI-107-dashboard-narrow.png",
+      "screenName": "Dashboard \u2014 narrow",
+      "state": "narrow",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Dashboard",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 390,
+      "imageHeight": 844,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:19.856Z",
+      "notes": "Actual responsive rendering; no mobile layout modifications.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "9f592e5cfa724bca522b13da15875ad78e1af1202266a0d78406effda912f175",
+        "expected": "Dashboard"
+      },
+      "sha256": "cd736de35b38165f74911455737ffd0682f1f8adbe6f0b6aec82bfeeda4ac0c2",
+      "pdfPage": 8
+    },
+    {
+      "id": "UI-108",
+      "module": "Cases",
+      "key": "narrow",
+      "category": "narrow",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/narrow/UI-108-cases-narrow.png",
+      "screenName": "Cases \u2014 narrow",
+      "state": "narrow",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 390,
+      "imageHeight": 844,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:20.965Z",
+      "notes": "Actual responsive rendering; no mobile layout modifications.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "c678b282f571f084b6ad230287ca8dca236dfd8a546b440fa75bd99d94187896",
+        "expected": "Cases"
+      },
+      "sha256": "bf3036975cdc39e5c9747f101e24258d361b10a94fc6d4297651438696e365ed",
+      "pdfPage": 31
+    },
+    {
+      "id": "UI-109",
+      "module": "Inspector",
+      "key": "narrow",
+      "category": "narrow",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/narrow/UI-109-inspector-narrow.png",
+      "screenName": "Inspector \u2014 narrow",
+      "state": "narrow",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 390,
+      "imageHeight": 844,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:27.853Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "a86d6babb15aae604d27069e4366c1a6b5a60a8f33e56e8701f3b84eb7e52004",
+        "expected": "Inspector"
+      },
+      "sha256": "f4f7d9ef1d88fd6e89d2f2566adf18c62e03f091288f2478930be3298e345b16",
+      "pdfPage": 54
+    },
+    {
+      "id": "UI-110",
+      "module": "Bugs",
+      "key": "narrow",
+      "category": "narrow",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/narrow/UI-110-bugs-narrow.png",
+      "screenName": "Bugs \u2014 narrow",
+      "state": "narrow",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/bugs",
+      "navigationPath": "Bugs",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 390,
+      "imageHeight": 844,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:22.124Z",
+      "notes": "Actual responsive rendering; no mobile layout modifications.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "24639b7cfa78ee362344172c9d2562619cce69f584d431504e7a8092d790ad13",
+        "expected": "Bugs"
+      },
+      "sha256": "fb7d92be92ae238f8ae98d47d1a5bed6f957f53961c44d6a23da64aa4340b926",
+      "pdfPage": 64
+    },
+    {
+      "id": "UI-111",
+      "module": "Test Cycles",
+      "key": "narrow",
+      "category": "narrow",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/narrow/UI-111-test-cycles-narrow.png",
+      "screenName": "Test Cycles \u2014 narrow",
+      "state": "narrow",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 390,
+      "imageHeight": 844,
+      "scroll": {
+        "x": 0,
+        "y": 15,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 15
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:23.692Z",
+      "notes": "Actual responsive rendering; no mobile layout modifications.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "d1ede4dd9bc1b5d70b04e20b05739da0d7412f5e86d5eea1e19239ae49d5b52c",
+        "expected": "Test Cycles"
+      },
+      "sha256": "a685fabf909325d2114f413545bdf9e6af7e659373cf6e6b13bd14275bcb9080",
+      "pdfPage": 76
+    },
+    {
+      "id": "UI-112",
+      "module": "Traceability",
+      "key": "narrow",
+      "category": "narrow",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/narrow/UI-112-traceability-narrow.png",
+      "screenName": "Traceability \u2014 narrow",
+      "state": "narrow",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/traceability",
+      "navigationPath": "Traceability",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 390,
+      "imageHeight": 844,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:26.184Z",
+      "notes": "Actual responsive rendering; no mobile layout modifications.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "8b27d27815230b280ba8008b6ffc078da8d61cc74097fae8edbe14f5604d238d",
+        "expected": "Traceability"
+      },
+      "sha256": "9e74cd1e611922461bddf0b6cc89ea790f478da49ccc49e14a8bbf80fc6584b0",
+      "pdfPage": 84
+    },
+    {
+      "id": "UI-113",
+      "module": "Reports",
+      "key": "narrow",
+      "category": "narrow",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/narrow/UI-113-reports-narrow.png",
+      "screenName": "Reports \u2014 narrow",
+      "state": "narrow",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 390,
+      "imageHeight": 844,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:24.622Z",
+      "notes": "Actual responsive rendering; no mobile layout modifications.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2b1c1cc2b48386e2c62fb0a3762c71b6eb37057b63a9d0fc469b1ded1803694d",
+        "expected": "Reports"
+      },
+      "sha256": "ed79b7cb4149c50c120d8c11282e97a23a82d973cd336579380e401231ecb820",
+      "pdfPage": 100
+    },
+    {
+      "id": "UI-114",
+      "module": "Settings",
+      "key": "narrow",
+      "category": "narrow",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/narrow/UI-114-settings-narrow.png",
+      "screenName": "Settings \u2014 narrow",
+      "state": "narrow",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 390,
+      "imageHeight": 844,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:25.371Z",
+      "notes": "Actual responsive rendering; no mobile layout modifications.",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "96c6f207f901328c63d5986515fd704d178e367dfbef9884ad59534eadd98f9f",
+        "expected": "Settings"
+      },
+      "sha256": "3ffd88dfdaa551ff14bdfa11c7e5bd697c5d0853933665f8fce39b77233d566a",
+      "pdfPage": 116
+    },
+    {
+      "id": "UI-115",
+      "module": "Global",
+      "key": "narrow",
+      "category": "narrow",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/narrow/UI-115-global-narrow.png",
+      "screenName": "Global \u2014 narrow",
+      "state": "narrow",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Global",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 390,
+      "imageHeight": 844,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:28.407Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "c0cb60ffe1cf55a3fe739e8169236cda72e8544579457ce2237ff70a05ca5251",
+        "expected": "Global"
+      },
+      "sha256": "49e17d1c4d59fdfc046ca100dd9bd44d6068555d50c259e3575db86d894667f3",
+      "pdfPage": 131
+    },
+    {
+      "id": "UI-116",
+      "module": "Dashboard",
+      "key": "light",
+      "category": "alternate-theme",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/alternate-theme/UI-116-dashboard-light.png",
+      "screenName": "Dashboard \u2014 light",
+      "state": "light",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/dashboard",
+      "navigationPath": "Dashboard",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:07.546Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "6ce6638a21953833148e0d63ca12d06739a9bc851356e055d8f064fd0dc679bc",
+        "expected": "Dashboard"
+      },
+      "sha256": "df1ba30806c9efa1702306eaa8ff70332650e19931cf028864d1f4d6b98e9709",
+      "pdfPage": 9
+    },
+    {
+      "id": "UI-117",
+      "module": "Cases",
+      "key": "light",
+      "category": "alternate-theme",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/alternate-theme/UI-117-cases-light.png",
+      "screenName": "Cases \u2014 light",
+      "state": "light",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:08.372Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2e93eaf0b1a03e1c4b2a692af7ba07539754878a17bc4f731266da97bf8ee492",
+        "expected": "Cases"
+      },
+      "sha256": "8e5c01735e62a3e46cb552a21cf18b1da1ea7d81037c5cf7692ec06db84f2e49",
+      "pdfPage": 32
+    },
+    {
+      "id": "UI-118",
+      "module": "Inspector",
+      "key": "light",
+      "category": "alternate-theme",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/alternate-theme/UI-118-inspector-light.png",
+      "screenName": "Inspector \u2014 light",
+      "state": "light",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:18.087Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "bf9ab44eb171873581bb05ebc18f75ae8b8d1fa1b955c6412f87d14b4f719201",
+        "expected": "Inspector"
+      },
+      "sha256": "faf3a975ac48329eea1212b3f659ad04a5ab960628e34fd694ac1da9f8b67bf4",
+      "pdfPage": 55
+    },
+    {
+      "id": "UI-119",
+      "module": "Bugs",
+      "key": "light",
+      "category": "alternate-theme",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/alternate-theme/UI-119-bugs-light.png",
+      "screenName": "Bugs \u2014 light",
+      "state": "light",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/bugs",
+      "navigationPath": "Bugs",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:09.723Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "cf1447259cdc32d521009d3c5d942407216468ad117fcca305e6d0088b56b7dd",
+        "expected": "Bugs"
+      },
+      "sha256": "162c68130dfb291b14fdbeda72c92889a25306795c0ff4e5557f9c97c5822caa",
+      "pdfPage": 65
+    },
+    {
+      "id": "UI-120",
+      "module": "Test Cycles",
+      "key": "light",
+      "category": "alternate-theme",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/alternate-theme/UI-120-test-cycles-light.png",
+      "screenName": "Test Cycles \u2014 light",
+      "state": "light",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-runs",
+      "navigationPath": "Test Cycles",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 19,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 19
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:11.729Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "990341825ded9743e0e26e85ded0174ebe7520a501f81c6d55c23bfafb653894",
+        "expected": "Test Cycles"
+      },
+      "sha256": "2ba5b7e1445d5a131b1207fcaa200ff1edb6821a976754e834f0ce1d28c0a153",
+      "pdfPage": 77
+    },
+    {
+      "id": "UI-121",
+      "module": "Traceability",
+      "key": "light",
+      "category": "alternate-theme",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/alternate-theme/UI-121-traceability-light.png",
+      "screenName": "Traceability \u2014 light",
+      "state": "light",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/traceability",
+      "navigationPath": "Traceability",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:15.609Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "0d2cd8888c186db2037c8ffab904e4f6ee157af171ef4ca092712d6c6338cec8",
+        "expected": "Traceability"
+      },
+      "sha256": "b3e35e67449acb63346f78b8c603673364bcc26602a65ba947d4cf3bd4080ff8",
+      "pdfPage": 85
+    },
+    {
+      "id": "UI-122",
+      "module": "Reports",
+      "key": "light",
+      "category": "alternate-theme",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/alternate-theme/UI-122-reports-light.png",
+      "screenName": "Reports \u2014 light",
+      "state": "light",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:13.106Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "3d040979fe3d48bdf4328d097b73a6d8bb3affa85e4838d9852d2ab6466bd9e3",
+        "expected": "Reports"
+      },
+      "sha256": "54e60108fd748b07867c8ec707680c7093952c09eed40708fea0e334f7cf01bf",
+      "pdfPage": 101
+    },
+    {
+      "id": "UI-123",
+      "module": "Settings",
+      "key": "light",
+      "category": "alternate-theme",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/alternate-theme/UI-123-settings-light.png",
+      "screenName": "Settings \u2014 light",
+      "state": "light",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/settings",
+      "navigationPath": "Settings",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:14.420Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "f36eff64b9482c5de34af8d6e70e7dba3235d93007aed5370f32c4e949395829",
+        "expected": "Settings"
+      },
+      "sha256": "f56d905ad52ec3be58217dcc593bdda410b3e9a8e829d05493413a227f2f1f79",
+      "pdfPage": 117
+    },
+    {
+      "id": "UI-124",
+      "module": "Global",
+      "key": "light",
+      "category": "alternate-theme",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "filename": "screenshots/alternate-theme/UI-124-global-light.png",
+      "screenName": "Global \u2014 light",
+      "state": "light",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Global",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:43:18.860Z",
+      "notes": "",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "cee0ec3e29cde63459a2f26edf64427bc6bd7275b7872951b480a36249462dcc",
+        "expected": "Global"
+      },
+      "sha256": "fada777bcc05219f6dd93ae93455fdcd9777eda3e3191b272374eb2328eb98e7",
+      "pdfPage": 132
+    },
+    {
+      "id": "UI-125",
+      "module": "Cases",
+      "key": "table-bottom",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "notes": "",
+      "filename": "screenshots/desktop/UI-125-cases-table-bottom.png",
+      "screenName": "Cases \u2014 table-bottom",
+      "state": "table-bottom",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 100,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 100
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:49:14.453Z",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2e93eaf0b1a03e1c4b2a692af7ba07539754878a17bc4f731266da97bf8ee492",
+        "expected": "Cases"
+      },
+      "sha256": "88687e59233b63e1f3dcf72e1aeb5bc2220ff3e41b6bb5ad499394217f617d75",
+      "pdfPage": 33
+    },
+    {
+      "id": "UI-126",
+      "module": "Cases",
+      "key": "create-bottom",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "notes": "",
+      "filename": "screenshots/desktop/UI-126-cases-create-bottom.png",
+      "screenName": "Cases \u2014 create-bottom",
+      "state": "create-bottom",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Cases",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 100,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 100
+          },
+          {
+            "tag": "DIV",
+            "role": "dialog",
+            "x": 0,
+            "y": 289
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:49:15.132Z",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "55cac29220aa3f22e1e1705c2d0a5de029a3ec1e43e88613d3ddd7e32af17c03",
+        "expected": "Cases"
+      },
+      "sha256": "b3b5847f5dee2877180f82d2dff40bd12fbf587fcd9f15544d71235136cbccb8",
+      "pdfPage": 34
+    },
+    {
+      "id": "UI-127",
+      "module": "Inspector",
+      "key": "transition-empty-body",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "notes": "Observed defect: Steps selected but no Test steps section mounted after normal tab switch. Other tab captures use documented close/reopen recovery. Source unchanged.",
+      "filename": "screenshots/desktop/UI-127-inspector-transition-empty-body.png",
+      "screenName": "Inspector \u2014 transition-empty-body",
+      "state": "transition-empty-body",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": []
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:49:13.326Z",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "97fcdaae212e2da971437b257b710c1f91e93e9161f57ea8064115f8a787afa4",
+        "expected": "Inspector"
+      },
+      "sha256": "add61a77b515f82f19350251dc8c0ceba610e5df464101a83848fd3768d9e6e5",
+      "pdfPage": 56
+    },
+    {
+      "id": "UI-128",
+      "module": "Reports",
+      "key": "draft-middle",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "notes": "",
+      "filename": "screenshots/desktop/UI-128-reports-draft-middle.png",
+      "screenName": "Reports \u2014 draft-middle",
+      "state": "draft-middle",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/reports",
+      "navigationPath": "Reports",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 829,
+        "containers": [
+          {
+            "tag": "HTML",
+            "role": null,
+            "x": 0,
+            "y": 829
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:49:16.347Z",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "2f81d56020ace680f55d8dfc3d07e65467c3c504a1930046f76fcb69e8f0020b",
+        "expected": "Reports"
+      },
+      "sha256": "5cb164bc8fae49f5c717b598d80e80da9f9cbad7bc60023bd94354bce91ff6c2",
+      "pdfPage": 102
+    },
+    {
+      "id": "UI-129",
+      "module": "Inspector",
+      "key": "timeline-event-menu",
+      "category": "desktop",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "CAPTURED",
+      "notes": "Two actual synthetic events share a timestamp; native popover lists individual events.",
+      "filename": "screenshots/desktop/UI-129-inspector-timeline-event-menu.png",
+      "screenName": "Inspector \u2014 timeline-event-menu",
+      "state": "timeline-event-menu",
+      "route": "/projects/cmvareinh001awqv0ega8hh7s/test-cases",
+      "navigationPath": "Inspector",
+      "role": "OWNER",
+      "workspace": "Mercury Quality Workspace",
+      "project": "Mercury Commerce QA",
+      "imageWidth": 1440,
+      "imageHeight": 900,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "containers": [
+          {
+            "tag": "DIV",
+            "role": "tablist",
+            "x": 39,
+            "y": 0
+          }
+        ]
+      },
+      "documentHorizontalOverflow": false,
+      "capturedAt": "2026-10-16T09:52:47.391Z",
+      "pageIdentity": {
+        "title": "QADesk - Test Intelligence Console",
+        "textSha256": "6079293960187bba02506b618a40fd746d10664d8fe08dbd57d556e77d9b4f18",
+        "expected": "Inspector"
+      },
+      "sha256": "7832d451d1795f5054fdba90e5c61c1f1731763b6874c8d01a055c80b5721005",
+      "pdfPage": 57
+    }
+  ],
+  "unavailable": [
+    {
+      "screen": "Standalone Requirements / Test Plans / Evidence / Project Knowledge routes",
+      "status": "NOT IMPLEMENTED",
+      "notes": "Existing features are nested in Traceability, inspector, execution workspace and Settings."
+    },
+    {
+      "screen": "First-owner bootstrap",
+      "status": "NOT TESTED",
+      "notes": "Requires a database without any account. Populated synthetic login captured instead."
+    }
+  ],
+  "summary": {
+    "verdict": "COMPLETE WITH LIMITATIONS",
+    "primaryRoutes": 8,
+    "inventoriedCaptureStates": 129,
+    "captured": 129,
+    "byCategory": {
+      "desktop": 105,
+      "compact": 6,
+      "narrow": 9,
+      "alternate-theme": 9
+    },
+    "byTheme": {
+      "dark": 119,
+      "light": 10
+    },
+    "pdfPages": 132,
+    "limitations": [
+      "First-owner bootstrap was not captured: the isolated database already contains synthetic accounts. Normal login and required-field validation were captured.",
+      "No real AI inference, Figma sync, manual browser launch, external website execution, destructive confirmation, or security/performance acceptance was performed. Forms and existing feedback states were captured only.",
+      "The compiled relay URL is port3001. Browser HTTP was forwarded to unmodified owned relay3117; live WebSocket3001 was blocked. No request reached the personal relay. Relay Offline and readiness warnings reflect this isolated configuration.",
+      "The three-second recording is synthetic fixture media built from the actual dashboard screenshot, not proof of a real website test. Original screenshot PNGs were never transformed.",
+      "Several inspector tab switches left the body empty. Their content was captured after closing/reopening the same testcase without route reload; UI-127 preserves the empty-body defect.",
+      "Viewport captures and bounded scroll segments cover important regions, not every table permutation, every report version, or every branch of every external integration.",
+      "Screenshots establish visual evidence only. They do not prove WCAG conformance, keyboard completeness, successful mutations, 60 FPS, or release readiness."
+    ],
+    "productionFilesVerified": 282,
+    "productionSourceChanged": false,
+    "isolatedSourceParity": true
+  },
+  "environmentCleanup": {
+    "ownedPortsStopped": [
+      3117,
+      3119
+    ],
+    "syntheticSessionsRevoked": true,
+    "privateCredentialFilesRemoved": true,
+    "originalUserPortsPreserved": [
+      3000,
+      3001
+    ],
+    "productionFilesUnchanged": 282,
+    "mainBuildPreserved": true
+  }
+}

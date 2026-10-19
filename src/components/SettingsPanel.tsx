@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import { BookOpen, Bot, Edit3, Eye, EyeOff, FolderOpen, FolderPlus, Layers, Link, Loader2, Plus, RefreshCw, Save, ServerCog, Trash, Upload, UsersRound, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
@@ -72,6 +73,7 @@ export function SettingsPanel({
   onDeleteProject,
   onDeleteModule,
 }: SettingsPanelProps) {
+  const { canEdit, canAdmin, canManageTeam, canCreateProject } = useWorkspaceAccess();
   const [knowledgeItems, setKnowledgeItems] = useState<ProjectKnowledge[]>([]);
   const [knowledgeLoading, setKnowledgeLoading] = useState(false);
   const [knowledgeSaving, setKnowledgeSaving] = useState(false);
@@ -239,11 +241,11 @@ export function SettingsPanel({
       initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0 }}
-      className="space-y-6 pb-8"
+      className="qa-module-page qa-module-form qa-settings-page flex flex-col gap-5"
     >
       <Tabs defaultValue="system" className="gap-5">
-      <div className="w-full overflow-x-auto rounded-xl scrollbar-thin scrollbar-thumb-border/40">
-        <TabsList className="h-auto w-max min-w-full justify-start gap-1 border border-border/60 bg-secondary/35 p-1">
+      <div className="qa-module-tabs w-full overflow-x-auto rounded-xl scrollbar-thin scrollbar-thumb-border/40">
+        <TabsList aria-label="Bagian pengaturan" className="h-auto w-max min-w-full justify-start gap-1 border border-border bg-card p-1">
           <TabsTrigger value="system" className="min-w-max flex-none"><ServerCog className="size-4" />System</TabsTrigger>
           <TabsTrigger value="team" className="min-w-max flex-none"><UsersRound className="size-4" />Team</TabsTrigger>
           <TabsTrigger value="ai" className="min-w-max flex-none"><Bot className="size-4" />AI</TabsTrigger>
@@ -257,28 +259,28 @@ export function SettingsPanel({
         <SystemReadinessCard />
       </TabsContent>
       <TabsContent value="team" className="mt-0">
-        <WorkspaceMembersCard />
+        {canManageTeam ? <WorkspaceMembersCard /> : <p className="rounded-xl border border-border bg-card p-5 text-sm leading-6 text-muted-foreground">Administrasi team memerlukan ADMIN pada workspace aktif. Endpoint team saat ini menggunakan workspace administrasi default akun.</p>}
       </TabsContent>
       <TabsContent value="ai" className="mt-0">
-      <AISettingsCard
+      <fieldset disabled={!canAdmin}><AISettingsCard
         projectId={selectedProject}
         provider={aiProvider}
         ollamaBaseUrl={ollamaBaseUrl}
         groqStatus={groqStatus}
         geminiStatus={geminiStatus}
         message={aiMessage}
-      />
+      /></fieldset>
       </TabsContent>
 
       {/* Projects Card */}
       <TabsContent value="projects" className="mt-0">
       <Card variant="majestic">
         <CardHeader className="pb-3 border-b border-border/40 mb-4">
-          <div className="flex items-center justify-between">
+          <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-lg font-semibold tracking-tight">Projects</CardTitle>
-            <Button onClick={onCreateProject} size="sm">
+            {canCreateProject && <Button title="Project dibuat pada workspace administrasi default akun." onClick={onCreateProject} size="sm">
               <FolderPlus className="w-3.5 h-3.5" /> Project Baru
-            </Button>
+            </Button>}
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -303,7 +305,7 @@ export function SettingsPanel({
                       <FolderOpen className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">{project.name}</p>
+                      <p className="break-words text-sm font-semibold text-foreground">{project.name}</p>
                       {project.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{project.description}</p>}
                       <div className="flex items-center gap-2 mt-1.5">
                         <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground text-xs font-medium uppercase rounded-lg">
@@ -324,9 +326,9 @@ export function SettingsPanel({
                     >
                       {selectedProject === project.id ? 'Aktif' : 'Pilih'}
                     </Button>
-                    <AlertDialog>
+                    {selectedProject === project.id && canAdmin && <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 rounded-xl text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:text-status-failed dark:hover:bg-red-500/10">
+                        <Button variant="ghost" size="icon" aria-label={`Hapus project ${project.name}`} className="size-9 text-destructive hover:bg-destructive/10 hover:text-destructive">
                           <Trash className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -344,7 +346,7 @@ export function SettingsPanel({
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
-                    </AlertDialog>
+                    </AlertDialog>}
                   </div>
                 </motion.div>
               ))}
@@ -355,32 +357,33 @@ export function SettingsPanel({
       </TabsContent>
 
       <TabsContent value="knowledge" className="mt-0">
-      <ProjectKnowledgeCard {...knowledgeCardProps} mode="knowledge" />
+      <fieldset disabled={!canEdit}><ProjectKnowledgeCard {...knowledgeCardProps} mode="knowledge" /></fieldset>
       </TabsContent>
 
       <TabsContent value="integrations" className="mt-0">
-      <ProjectKnowledgeCard {...knowledgeCardProps} mode="integrations" />
+      <fieldset disabled={!canEdit}><ProjectKnowledgeCard {...knowledgeCardProps} mode="integrations" /></fieldset>
       </TabsContent>
 
       {/* Modules Card */}
       <TabsContent value="modules" className="mt-0">
       <Card variant="majestic" className="overflow-hidden border-border/40 shadow-sm">
         <CardHeader className="border-b border-border/60 pb-3">
-          <div className="flex items-center justify-between">
+          <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle className="text-lg font-semibold tracking-tight">Modules</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground font-medium">
                 Kelompokkan test case berdasarkan area fungsi.
               </p>
             </div>
-            <Button
+            <MutationAction><Button
               onClick={onCreateModule}
               size="sm"
               disabled={!selectedProject}
-              className="gap-1.5 rounded-xl bg-secondary/50 hover:bg-secondary/80 text-foreground font-bold text-xs uppercase border border-border/50 shadow-sm transition duration-200"
+              variant="outline"
+              className="gap-2"
             >
               <FolderPlus className="w-3.5 h-3.5 text-primary" /> Module Baru
-            </Button>
+            </Button></MutationAction>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
@@ -414,14 +417,14 @@ export function SettingsPanel({
                       <p className="text-xs font-semibold text-muted-foreground/60 uppercase">{module._count?.testCases || 0} Cases</p>
                     </div>
                   </div>
-                  <Button
+                  <MutationAction><Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-lg text-muted-foreground/40 hover:text-red-600 hover:bg-red-50 dark:hover:text-status-failed dark:hover:bg-red-500/10 opacity-100 sm:opacity-0 sm:group-hover/mod:opacity-100 transition"
+                    className="size-9 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={() => onDeleteModule(module.id)}
                   >
                     <X className="w-3.5 h-3.5" />
-                  </Button>
+                  </Button></MutationAction>
                 </motion.div>
               ))}
             </div>

@@ -24,7 +24,7 @@ export async function previewExcelImport(input: {
   createModules: boolean;
   mappings?: Record<string, Record<string, string>>;
 }) {
-  const res = await fetch('/api/excel', {
+  const res = await fetch(`/api/excel?projectId=${encodeURIComponent(input.projectId)}`, {
     method: 'POST',
     body: buildExcelImportFormData({ ...input, mode: 'preview' }),
   });
@@ -38,7 +38,7 @@ export async function importExcel(input: {
   createModules: boolean;
   mappings?: Record<string, Record<string, string>>;
 }) {
-  const res = await fetch('/api/excel', {
+  const res = await fetch(`/api/excel?projectId=${encodeURIComponent(input.projectId)}`, {
     method: 'POST',
     body: buildExcelImportFormData({ ...input, mode: 'import' }),
   });

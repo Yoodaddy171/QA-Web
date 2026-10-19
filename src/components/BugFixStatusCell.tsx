@@ -27,7 +27,7 @@ export const BugFixStatusCell = memo(function BugFixStatusCell({ id, displayId, 
   const [open, setOpen] = useState(false);
   const label = `Status for bug ${displayId}`;
   const optionsId = `bug-status-options-${id}`;
-  const triggerClass = cn('h-7 w-[140px] rounded-lg border px-2 text-xs font-bold uppercase tracking-wider shadow-none', color);
+  const triggerClass = cn('h-8 w-[178px] rounded-lg border px-2 text-xs font-semibold shadow-none', color);
   const activate = () => { setActivated(true); setOpen(true); };
 
   if (!activated) return (

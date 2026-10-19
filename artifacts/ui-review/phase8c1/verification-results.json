@@ -1,0 +1,134 @@
+{
+  "scope": "Targeted Phase8C.1 only, synthetic data, no full security/performance certification",
+  "isolatedBuildId": "AT3ss2TStDvzDe7oQIL2_",
+  "primaryBuildId": "oMEWn85xB97Dk_3l5dWYm",
+  "parity": [
+    {
+      "file": "src/app/globals.css",
+      "sha256": "7d2004c52068d6c5d05938c3442a2c4d655bbcd47fbdcfe202bf0607f3b9b717",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/ui/table.tsx",
+      "sha256": "f065ef57c5ba9e83214f6221a6f84d54d9755ddb01ab2e14e9d63e4305813071",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/TestCaseTableBody.tsx",
+      "sha256": "d064efec17c2b3182725e086ba82a0df4016a6d8828e16c64739743cb5d426e8",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/TestCaseTable.tsx",
+      "sha256": "6e0c23b196d5ad4e222b991b72bcf02464b340469d4cfda13a43a24ec3dd01ba",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/BugFixPanel.tsx",
+      "sha256": "14fd957b1db82c293d76b33c8d0e32bb8ee8d17c2cb18a422fcc40009559cfd0",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/BugFixStatusCell.tsx",
+      "sha256": "6b7a13c8b281128843b5e3d03158d85915faa3797c1797911e18599d13237cb0",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/BugFixStatsCards.tsx",
+      "sha256": "e042b9f74ddb49a653ae9dd58a58116183782f710b798bf82f71c142049c45cb",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/TestCaseDialog.tsx",
+      "sha256": "588493b020c4829cbed78dcc233b11e038af55083c5424af5553ee4654943759",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/TestCaseDetailDialog.tsx",
+      "sha256": "5a935b409ba3f15180fe75ddc980138102cfacc61d3771b1737161a1343733c1",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/TestCaseDetailDialogHeader.tsx",
+      "sha256": "7e6a39e9843fee136712d599380a7045ba9245a5e2e03af90eba444b4b684548",
+      "isolatedMatch": true
+    },
+    {
+      "file": "src/components/TestCaseDetailDialogFooter.tsx",
+      "sha256": "133d233e99a65c9272e4694277cbbac33f996afb46cf3d8e8aea0aca8db90573",
+      "isolatedMatch": true
+    }
+  ],
+  "tests": [
+    {
+      "title": "8C1-INSPECTOR direct switching mounts every tab without close/reopen",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 3059,
+          "density": []
+        }
+      ]
+    },
+    {
+      "title": "8C1-TABLE scroll, density, search, filter, sorting and status",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 4971,
+          "density": [
+            {
+              "normal": 57,
+              "compact": 45
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "8C1-FORM create, retained validation, edit, empty tags, focus and persistence",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 4635,
+          "density": []
+        }
+      ]
+    },
+    {
+      "title": "8C1-BUG lazy selector and source-case lifecycle remain synchronized",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 2148,
+          "density": []
+        }
+      ]
+    },
+    {
+      "title": "8C1-ROLE Viewer and cross-workspace downgrade stay read-only",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 3135,
+          "density": []
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "startTime": "2026-10-19T02:36:40.786Z",
+    "duration": 19436.105000000003,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "screenshots": 30,
+  "pageErrors": []
+}

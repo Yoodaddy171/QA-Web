@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { AppShell } from '@/components/AppShell';
+import { WorkspaceAccessProvider, useWorkspacePermissions } from '@/components/WorkspaceAccess';
 import type { BugFixItem } from '@/components/BugFixPanel';
 import type { TestCaseDraftInput } from '@/components/TestCaseDialog';
 import type { TestCaseDraft } from '@/components/FloatingAIChat';
@@ -102,6 +103,7 @@ export default function TestCaseManager() {
     handleCreateModule: createModule,
     handleDeleteModule,
   } = useProjects();
+  const access = useWorkspacePermissions(projects.find(project => project.id === selectedProject)?.workspaceId);
   const {
     testCases,
     setTestCases,
@@ -452,7 +454,7 @@ export default function TestCaseManager() {
       switch (e.key) {
         case 'n':
         case 'N':
-          if (!e.ctrlKey && !e.metaKey && selectedProject && activeTab === 'testcases') {
+          if (!e.ctrlKey && !e.metaKey && selectedProject && access.canEdit && activeTab === 'testcases') {
             e.preventDefault();
             openCreateDialog();
           }
@@ -477,7 +479,7 @@ export default function TestCaseManager() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedProject, activeTab, showTestCaseDialog, showDetailDialog, showAIDialog, showAIRefineDialog, showImportDialog]);
+  }, [access.canEdit, selectedProject, activeTab, showTestCaseDialog, showDetailDialog, showAIDialog, showAIRefineDialog, showImportDialog]);
 
   // ============== HANDLERS ==============
   const handleCreateProject = async () => {
@@ -781,6 +783,7 @@ export default function TestCaseManager() {
   // ============== MAIN RENDER ==============
   return (
     <ErrorBoundary>
+    <WorkspaceAccessProvider value={access}>
     <div>
       <AppShell
         projects={projects}
@@ -798,7 +801,7 @@ export default function TestCaseManager() {
           automated: workspaceViews.automated,
           testRuns: <TestRunsPanel key={selectedProject} projectId={selectedProject} />,
           traceability: <TraceabilityPanel key={selectedProject} projectId={selectedProject} />,
-          reports: <ReportsPanel projectId={selectedProject} onNavigate={(tab) => handleActiveTabChange(tab)} />,
+          reports: <ReportsPanel key={selectedProject} projectId={selectedProject} onNavigate={(tab) => handleActiveTabChange(tab)} />,
           settings: workspaceViews.settings,
         }}
       </AppShell>
@@ -820,7 +823,7 @@ export default function TestCaseManager() {
       />}
 
       {/* Create/Edit Test Case Dialog */}
-      {showTestCaseDialog && <TestCaseDialog
+      {access.canEdit && showTestCaseDialog && <TestCaseDialog
         open={showTestCaseDialog}
         onOpenChange={(open) => {
           setShowTestCaseDialog(open);
@@ -834,7 +837,7 @@ export default function TestCaseManager() {
       />}
 
       {/* Detail View Dialog */}
-      {viewTestCase && <TestCaseDetailDialog
+      {viewTestCase?.projectId === selectedProject && <TestCaseDetailDialog
         open={showDetailDialog}
         onOpenChange={setShowDetailDialog}
         viewTestCase={viewTestCase}
@@ -961,7 +964,7 @@ export default function TestCaseManager() {
       />}
 
       {/* AI Generate Dialog */}
-      {FEATURES.aiTestcaseFlows && (
+      {access.canEdit && FEATURES.aiTestcaseFlows && (
         <>
           {showAIDialog && <AIGenerateDialog
             open={showAIDialog}
@@ -1000,6 +1003,7 @@ export default function TestCaseManager() {
         </>
       )}
     </div>
+    </WorkspaceAccessProvider>
     </ErrorBoundary>
   );
 }

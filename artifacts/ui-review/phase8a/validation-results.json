@@ -1,0 +1,948 @@
+{
+  "createdAt": "2026-10-16T09:53:34.362997+00:00",
+  "pngChecks": [
+    {
+      "id": "UI-001",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2398.77,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-002",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1469.05,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-003",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1702.37,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-004",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2725.09,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-005",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2731.35,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-006",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2729.12,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-007",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2801.8,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-008",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2847.22,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-009",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2748.12,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-010",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2850.71,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-011",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2786.45,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-012",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2849.38,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-013",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 953.22,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-014",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1992.71,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-015",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1538.24,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-016",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2849.28,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-017",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1118.73,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-018",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 927.08,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-019",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 966.24,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-020",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 922.05,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-021",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1764.69,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-022",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2058.09,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-023",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1576.06,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-024",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1939.21,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-025",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1961.21,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-026",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1525.1,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-027",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1912.22,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-028",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1610.87,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-029",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1288.68,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-030",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1305.34,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-031",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1743.06,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-032",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1467.9,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-033",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2473.57,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-034",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2470.69,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-035",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2354.93,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-036",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2136.03,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-037",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2610.72,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-038",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1216.84,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-039",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1277.98,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-040",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2533.56,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-041",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1307.84,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-042",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 23919.39,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-043",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1902.35,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-044",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1622.7,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-045",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1987.66,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-046",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1937.99,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-047",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1403.98,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-048",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1609.2,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-049",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2656.55,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-050",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2732.76,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-051",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2732.76,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-052",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2452.22,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-053",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2389.42,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-054",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2927.23,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-055",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2656.16,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-056",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1369.2,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-057",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2050.88,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-058",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1925.5,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-059",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1879.83,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-060",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2140.09,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-061",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2547.2,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-062",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1372.3,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-063",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1835.8,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-064",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1801.01,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-065",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1960.96,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-066",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1694.1,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-067",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1787.51,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-068",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1259.73,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-069",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 3135.47,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-070",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1843.54,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-071",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2861.89,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-072",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 3050.7,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-073",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 3125.25,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-074",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1177.59,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-075",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2111.49,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-076",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1899.6,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-077",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1624.02,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-078",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1943.25,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-079",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1943.25,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-080",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1600.66,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-081",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 880.29,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-082",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1505.52,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-083",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2158.65,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-084",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1173.23,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-085",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1165.37,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-086",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 768.93,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-087",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 806.73,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-088",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1379.6,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-089",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1861.66,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-090",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1267.2,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-091",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2517.22,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-092",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 722.1,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-093",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2503.38,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-094",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2429.47,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-095",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2438.11,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-096",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2299.91,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-097",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2214.39,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-098",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1442.63,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-099",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1544.59,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-100",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1459.8,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-101",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2840.1,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-102",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2908.69,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-103",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2272.55,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-104",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2592.2,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-105",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2210.95,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-106",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2235.06,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-107",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 4053.4,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-108",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 3791.67,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-109",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 3527.81,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-110",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2966.5,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-111",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 3761.72,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-112",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 4270.55,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-113",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 6033.29,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-114",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 3000.37,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-115",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1906.48,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-116",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2111.13,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-117",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2329.26,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-118",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 6191.33,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-119",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1507.96,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-120",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2177.75,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-121",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1463.07,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-122",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1483.76,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-123",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1598.73,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-124",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2270.21,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-125",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 2701.7,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-126",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1044.44,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-127",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1053.6,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-128",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 1981.19,
+      "sha256Match": true
+    },
+    {
+      "id": "UI-129",
+      "pngIntegrity": true,
+      "dimensionsMatch": true,
+      "nonblankVariance": 3140.64,
+      "sha256Match": true
+    }
+  ],
+  "pdfPages": 132,
+  "pdfTitleAndImageCorrespondence": true,
+  "pdfNoBlankPagesByTextAndImage": true,
+  "originalPngCount": 129,
+  "missingManifestFiles": 0,
+  "duplicateIds": 0,
+  "notes": "Representative source screenshots and rendered PDF pages additionally inspected visually. Static gallery has no external dependencies.",
+  "renderedPdfPages": [
+    1,
+    2,
+    3,
+    10,
+    38,
+    51,
+    104,
+    31,
+    32,
+    56,
+    57
+  ],
+  "offlineGallery": {
+    "browserOpened": true,
+    "cards": 129,
+    "fullResolutionLinkNaturalWidth": 1440,
+    "externalDependencies": false
+  },
+  "cleanup": {
+    "ownedPortsStopped": [
+      3117,
+      3119
+    ],
+    "syntheticSessionsRevoked": true,
+    "privateCredentialFilesRemoved": true,
+    "originalUserPortsPreserved": [
+      3000,
+      3001
+    ],
+    "productionFilesUnchanged": 282,
+    "mainBuildPreserved": true
+  }
+}

@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import type { GraphFocus, TraceGraphNode } from '@/lib/traceability-graph';
 import { MutationAction } from '@/components/WorkspaceAccess';
 import { AlertCircle, CheckCircle2, ChevronRight, GitBranch, Link2, ListChecks, PencilLine, Plus, RefreshCw, Route, Settings2, Unlink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +35,11 @@ const stateStyle = {
   uncovered: { label: 'Uncovered', icon: AlertCircle, badge: 'failed' as const, className: 'border-red-500/30' },
 };
 
+const TraceabilityGraphView = dynamic(() => import('./TraceabilityGraphView').then(module => module.TraceabilityGraphView), { loading: () => <Skeleton className="h-[560px] w-full" /> });
+
 export function TraceabilityPanel({ projectId }: { projectId: string }) {
+  const [viewMode, setViewMode] = useState<'lanes' | 'graph'>('lanes');
+  const [graphFocus, setGraphFocus] = useState<{ projectId: string; focus: GraphFocus } | null>(null);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [testPlans, setTestPlans] = useState<TestPlan[]>([]);
   const [testCases, setTestCases] = useState<TestCaseOption[]>([]);
@@ -89,6 +95,7 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
   useEffect(() => {
+    if (viewMode === 'graph') return;
     if (!selectedRequirementId) {
       const timer = window.setTimeout(() => setTraceability(null), 0);
       return () => window.clearTimeout(timer);
@@ -99,7 +106,7 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
         .catch(error => { if (error instanceof Error && error.name !== 'AbortError') setMessage(error.message); });
     });
     return () => controller.abort();
-  }, [loadTraceability, selectedRequirementId]);
+  }, [loadTraceability, selectedRequirementId, viewMode]);
 
   const summary = useMemo(() => requirements.reduce((result, requirement) => { result[coverageState(requirement)] += 1; return result; }, { covered: 0, partial: 0, uncovered: 0 }), [requirements]);
   const visibleRequirements = useMemo(() => uncoveredOnly ? requirements.filter(item => coverageState(item) !== 'covered') : requirements, [requirements, uncoveredOnly]);
@@ -156,6 +163,18 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
   const navigate = (tab: string, target: Record<string, string | undefined>) => {
     window.localStorage.setItem(`qaDesk.navigationTarget.v1.${projectId}`, JSON.stringify(target));
     window.dispatchEvent(new CustomEvent('qa-desk:set-tab', { detail: tab }));
+    if (target.entityType === 'TestCase') window.dispatchEvent(new CustomEvent('qa-desk:navigate-entity', { detail: target }));
+  };
+
+  const openGraphNode = (node: TraceGraphNode) => {
+    if (node.type === 'Requirement') { setSelectedRequirementId(node.entityId); setUncoveredOnly(false); setViewMode('lanes'); }
+    else if (node.type === 'TestCase') navigate('testcases', { entityType: 'TestCase', entityId: node.entityId });
+    else if (node.type === 'BugFix') navigate('bugfix', { entityType: 'BugFix', entityId: node.entityId });
+    else if (node.type === 'TestRun') navigate('testRuns', { entityType: 'TestRun', entityId: node.entityId, testRunId: node.entityId });
+    else if (node.type === 'Execution' && typeof node.details?.['Cycle ID'] === 'string') {
+      const runId = node.details['Cycle ID'];
+      navigate('testRuns', { entityType: 'TestRun', entityId: runId, testRunId: runId });
+    }
   };
 
   const selectedRequirement = traceability?.requirement;
@@ -173,8 +192,10 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
   }, [selectedRequirement]);
 
   return <div className="qa-module-page flex flex-col gap-5">
-    <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"><div><h2 className="qa-module-heading">Traceability</h2><p className="qa-module-meta mt-1">Requirement → Test Cases → Test Plans → Test Cycles</p></div><div className="flex flex-wrap gap-2"><Button variant={uncoveredOnly ? 'secondary' : 'outline'} onClick={() => setUncoveredOnly(value => !value)}><AlertCircle data-icon="inline-start" />View Uncovered Gaps {summary.uncovered + summary.partial}</Button><MutationAction><Button onClick={() => setCreateOpen(true)}><Plus data-icon="inline-start" />Buat Relation</Button></MutationAction><MutationAction><Button variant="outline" onClick={() => setManageOpen(true)} disabled={!selectedRequirementId} title={!selectedRequirementId ? 'Pilih atau buat requirement terlebih dahulu' : undefined}><Settings2 data-icon="inline-start" />Manage Relations</Button></MutationAction><Button variant="outline" size="icon" onClick={() => void load()} disabled={loading} aria-label="Muat ulang"><RefreshCw /></Button></div></div>
+    <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"><div><h2 className="qa-module-heading">Traceability</h2><p className="qa-module-meta mt-1">Requirement → Test Cases → Test Plans → Test Cycles</p></div><div className="flex flex-wrap gap-2"><Button variant={uncoveredOnly ? 'secondary' : 'outline'} onClick={() => { setViewMode('lanes'); setUncoveredOnly(value => !value); }}><AlertCircle data-icon="inline-start" />View Uncovered Gaps {summary.uncovered + summary.partial}</Button><MutationAction><Button onClick={() => setCreateOpen(true)}><Plus data-icon="inline-start" />Buat Relation</Button></MutationAction><MutationAction><Button variant="outline" onClick={() => setManageOpen(true)} disabled={!selectedRequirementId} title={!selectedRequirementId ? 'Pilih atau buat requirement terlebih dahulu' : undefined}><Settings2 data-icon="inline-start" />Manage Relations</Button></MutationAction><Button variant="outline" size="icon" onClick={() => void load()} disabled={loading} aria-label="Muat ulang"><RefreshCw /></Button></div></div>
     {message && <div className="rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-sm" role="status">{message}</div>}
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Tampilan Traceability"><Button variant={viewMode === 'lanes' ? 'secondary' : 'outline'} aria-pressed={viewMode === 'lanes'} onClick={() => setViewMode('lanes')}><ListChecks data-icon="inline-start" />Existing Traceability View</Button><Button variant={viewMode === 'graph' ? 'secondary' : 'outline'} aria-pressed={viewMode === 'graph'} onClick={() => setViewMode('graph')}><GitBranch data-icon="inline-start" />Graph View</Button></div>
+    {viewMode === 'graph' ? <TraceabilityGraphView key={projectId} projectId={projectId} onOpenNode={openGraphNode} initialFocus={graphFocus?.projectId === projectId ? graphFocus.focus : undefined} onFocusChange={focus => setGraphFocus({ projectId, focus })} /> : <>
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Metric label="Requirements" value={requirements.length} /><Metric label="Covered" value={summary.covered} tone="success" /><Metric label="Partial" value={summary.partial} tone="warning" /><Metric label="Uncovered" value={summary.uncovered} tone="failed" /></div>
 
     {loading && !requirements.length ? <div className="grid gap-3 lg:grid-cols-4"><Skeleton className="h-96" /><Skeleton className="h-96" /><Skeleton className="h-96" /><Skeleton className="h-96" /></div> : <div className="overflow-x-auto rounded-xl border border-border/70 bg-card p-3"><div className="grid min-w-[1120px] grid-cols-4 gap-3">
@@ -184,6 +205,7 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
       <TraceLane title="Test Runs" count={linkedRuns.length} icon={CheckCircle2}>{linkedRuns.map(run => <button key={run.id} type="button" onClick={() => navigate('testRuns', { entityType: 'TestRun', entityId: run.id, testRunId: run.id })} className="qa-interactive w-full rounded-lg border border-border/70 p-3 text-left hover:border-primary/30 hover:bg-secondary/50"><span className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{run.name}</span><Badge variant={run.status === 'COMPLETED' ? 'success' : run.status === 'IN PROGRESS' ? 'inprogress' : 'outline'} className="text-xs">{run.status}</Badge></span><span className="mt-2 block truncate text-xs text-muted-foreground">{run.planName}</span></button>)}{selectedRequirement && !linkedRuns.length && <EmptyLane text="Belum ada execution cycle." />}</TraceLane>
     </div></div>}
 
+    </>}
     <Sheet open={createOpen} onOpenChange={setCreateOpen}>
       <SheetContent side="right" className="qa-module-form w-full overflow-y-auto p-0 sm:max-w-xl">
         <SheetHeader className="border-b border-border p-5"><SheetTitle>Buat Relation</SheetTitle><SheetDescription>Buat requirement atau Test Plan baru, kemudian hubungkan ke object QA yang sesuai.</SheetDescription></SheetHeader>

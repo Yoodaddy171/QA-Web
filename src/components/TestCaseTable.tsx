@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -469,6 +469,14 @@ export function TestCaseTable({
             className="hidden"
             onChange={handleImportExcel}
           />
+              <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => handleExportExcel('qa-report')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
+                <FileSpreadsheet className="w-4 h-4 mr-2 text-primary" /> QA Report XLSX (Summary + Cases)
+              </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Format legacy untuk import kembali</DropdownMenuLabel>
           <MutationAction><Button onClick={openImportDialog} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
             <Upload className="w-4 h-4 text-primary" /> Import Excel
           </Button></MutationAction>
@@ -478,12 +486,13 @@ export function TestCaseTable({
                 <FileSpreadsheet className="w-4 h-4 text-primary" /> Export
               </Button>
             </DropdownMenuTrigger>
+              </DropdownMenuGroup>
             <DropdownMenuContent className="bg-card border border-border/50 text-foreground rounded-2xl shadow-xl">
               <DropdownMenuItem onClick={() => handleExportExcel('xlsx')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
-                <FileDown className="w-4 h-4 mr-2 text-primary" /> Export XLSX (1 Sheet)
+                <FileDown className="w-4 h-4 mr-2 text-primary" /> Legacy XLSX (1 Sheet)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { if (!selectedProject) return; window.open(`/api/excel?projectId=${selectedProject}&format=xlsx&multiSheet=true`, '_blank'); }} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
-                <FileDown className="w-4 h-4 mr-2 text-primary" /> Export XLSX (Per Module)
+                <FileDown className="w-4 h-4 mr-2 text-primary" /> Legacy XLSX (Per Module)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExportExcel('csv')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
                 <FileDown className="w-4 h-4 mr-2 text-primary" /> Export CSV
@@ -509,7 +518,17 @@ export function TestCaseTable({
               <MutationAction><Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-8 gap-1.5"><Settings2 className="h-3.5 w-3.5" /> Status</Button></MutationAction>
               <MutationAction><Button onClick={() => setShowBulkExecution(true)} variant="outline" size="sm" className="h-8 gap-1.5"><CalendarClock className="h-3.5 w-3.5" /> Execute</Button></MutationAction>
               <MutationAction><Button onClick={() => setShowBulkAssign(true)} variant="outline" size="sm" className="h-8 gap-1.5"><UserRound className="h-3.5 w-3.5" /> Assign</Button></MutationAction>
-              <Button onClick={() => handleExportExcel('xlsx', [...selectedIds])} variant="outline" size="sm" className="h-8 gap-1.5"><FileDown className="h-3.5 w-3.5" /> Export</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5"><FileDown className="h-3.5 w-3.5" /> Export selected</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={() => handleExportExcel('qa-report', [...selectedIds])}>QA Report XLSX (selected)</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExportExcel('xlsx', [...selectedIds])}>Legacy XLSX (selected)</DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <MutationAction><Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-8 gap-1.5"><Trash2 className="h-3.5 w-3.5" /> Delete</Button></MutationAction>
             </div>
           </motion.div>

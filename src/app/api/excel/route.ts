@@ -13,6 +13,9 @@ import {
 } from '@/lib/services/excel-export-service';
 import { calculatedWeightFor, getCalculatedWeightMap } from '@/lib/services/weight-service';
 import { createNotification } from '@/lib/services/notification-service';
+import { createQaReport } from '@/lib/services/excel-qa-report';
+import { isQaReportWorkbook, QA_REPORT_IMPORT_ERROR } from '@/lib/services/excel-export-contract';
+import { uniqueExcelSheetName } from '@/lib/services/excel-export-service';
 
 // ============== IMPORT (POST) ==============
 export async function POST(req: NextRequest) {
@@ -54,6 +57,9 @@ export async function POST(req: NextRequest) {
 
     if (!workbook.SheetNames.length) {
       return NextResponse.json({ error: 'Workbook tidak memiliki sheet.' }, { status: 400 });
+    }
+    if (isQaReportWorkbook(workbook)) {
+      return NextResponse.json({ error: QA_REPORT_IMPORT_ERROR }, { status: 400 });
     }
 
     if (mode === 'preview') {
@@ -131,8 +137,15 @@ export async function GET(req: NextRequest) {
     const format = url.searchParams.get('format') || 'xlsx';
     const multiSheet = url.searchParams.get('multiSheet') === 'true';
     const selectedIds = (url.searchParams.get('ids') || '').split(',').map(id => id.trim()).filter(Boolean);
+    const template = url.searchParams.get('template') || 'legacy';
 
     if (!projectId) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
+    if (!['legacy', 'qa-report'].includes(template) || !['xlsx', 'csv'].includes(format)) {
+      return NextResponse.json({ error: 'Format atau template export tidak valid.' }, { status: 400 });
+    }
+    if (template === 'qa-report' && (format !== 'xlsx' || multiSheet)) {
+      return NextResponse.json({ error: 'QA Report menggunakan XLSX dengan Summary dan Test Cases.' }, { status: 400 });
+    }
 
     const rawTestCases = await db.testCase.findMany({
       where: { projectId, ...(selectedIds.length ? { id: { in: selectedIds } } : {}) },
@@ -151,10 +164,22 @@ export async function GET(req: NextRequest) {
     });
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
+    if (template === 'qa-report') {
+      const report = createQaReport({ projectName: project.name, testCases, selectedOnly: selectedIds.length > 0 });
+      const buffer = await report.xlsx.writeBuffer();
+      const date = report.created.toISOString().slice(0, 10);
+      return new NextResponse(buffer, { headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="qadesk-qa-report-${date}.xlsx"`,
+        'Cache-Control': 'private, no-store',
+      } });
+    }
+
     // ============== ExcelJS styled export matching user's Excel format ==============
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Test Case Manager';
     workbook.created = new Date();
+    const usedSheetNames = new Set<string>();
 
     if (multiSheet) {
       // Group by module (sheet per module, matching user's format)
@@ -173,7 +198,7 @@ export async function GET(req: NextRequest) {
 
       // Create a sheet per module
       for (const [modName, cases] of moduleGroups) {
-        const sheetName = modName.substring(0, 31);
+        const sheetName = uniqueExcelSheetName(modName, usedSheetNames);
         const ws = workbook.addWorksheet(sheetName);
 
         // Set column widths matching user's Excel
@@ -188,7 +213,7 @@ export async function GET(req: NextRequest) {
 
       // Ungrouped test cases
       if (ungrouped.length > 0) {
-        const ws = workbook.addWorksheet('Ungrouped');
+        const ws = workbook.addWorksheet(uniqueExcelSheetName('Ungrouped', usedSheetNames));
         setStandardColumnWidths(ws);
         writeHeaderRow(ws, 1);
         writeExportTestCaseRows(ws, ungrouped, 2);
@@ -202,7 +227,7 @@ export async function GET(req: NextRequest) {
       }
     } else {
       // Single sheet with all test cases, matching user's original Excel format
-      const ws = workbook.addWorksheet(project?.name || 'Test Cases');
+      const ws = workbook.addWorksheet(uniqueExcelSheetName(project.name, usedSheetNames));
 
       // Set column widths matching user's Excel
       setStandardColumnWidths(ws);

@@ -63,9 +63,9 @@ export function useExcelImportExport(selectedProject: string, onImportSuccess: (
         description: `${data.importableRows}/${data.totalRows} row siap import dari ${data.totalSheets} sheet`,
         variant: data.canImport ? undefined : 'destructive',
       });
-    } catch {
+    } catch (error) {
       resetImportPreview();
-      toast({ title: 'Preview Gagal', description: 'Terjadi kesalahan saat membaca file', variant: 'destructive' });
+      toast({ title: 'Preview Gagal', description: error instanceof Error ? error.message : 'Terjadi kesalahan saat membaca file', variant: 'destructive' });
     }
     setPreviewingImport(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -96,8 +96,8 @@ export function useExcelImportExport(selectedProject: string, onImportSuccess: (
       setLastImportBatchId(data.batchId);
       onImportSuccess();
       resetImportPreview();
-    } catch {
-      toast({ title: 'Import Gagal', description: 'Terjadi kesalahan saat import', variant: 'destructive' });
+    } catch (error) {
+      toast({ title: 'Import Gagal', description: error instanceof Error ? error.message : 'Terjadi kesalahan saat import', variant: 'destructive' });
     }
     setImporting(false);
   };

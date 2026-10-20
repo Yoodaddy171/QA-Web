@@ -1,4 +1,10 @@
 import type { ImportPreview } from '@/components/ImportExcelDialog';
+import { excelExportParams } from '@/lib/services/excel-export-contract';
+
+async function excelError(res: Response) {
+  const data = await res.json().catch(() => ({}));
+  return new Error(typeof data.error === 'string' ? data.error : 'Format file tidak sesuai');
+}
 
 export type ExcelImportMode = 'preview' | 'import';
 
@@ -28,7 +34,7 @@ export async function previewExcelImport(input: {
     method: 'POST',
     body: buildExcelImportFormData({ ...input, mode: 'preview' }),
   });
-  if (!res.ok) throw new Error('Format file tidak sesuai');
+  if (!res.ok) throw await excelError(res);
   return res.json() as Promise<ImportPreview>;
 }
 
@@ -42,7 +48,7 @@ export async function importExcel(input: {
     method: 'POST',
     body: buildExcelImportFormData({ ...input, mode: 'import' }),
   });
-  if (!res.ok) throw new Error('Format file tidak sesuai');
+  if (!res.ok) throw await excelError(res);
   return res.json() as Promise<{ imported: number; sheets: Array<{ sheet: string; imported: number; skipped: number }>; totalSheets: number; batchId: string }>;
 }
 
@@ -54,7 +60,6 @@ export async function undoExcelImport(projectId: string, batchId: string) {
 }
 
 export function openExcelExport(projectId: string, format = 'xlsx', testCaseIds?: string[]) {
-  const params = new URLSearchParams({ projectId, format });
-  if (testCaseIds?.length) params.set('ids', testCaseIds.join(','));
+  const params = excelExportParams(projectId, format, testCaseIds);
   window.open(`/api/excel?${params.toString()}`, '_blank');
 }

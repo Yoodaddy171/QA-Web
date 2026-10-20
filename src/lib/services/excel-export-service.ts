@@ -10,6 +10,18 @@ export type ExportTestCase = Awaited<ReturnType<typeof db.testCase.findMany>>[nu
 export const HEADERS = ['ID', 'Page', 'Sub Menu', 'Feature', 'Bobot', 'Test', 'Action', 'Step', 'Expected Result', 'Actual Result', 'Status', 'Progress', 'Remarks of Test', 'Tags'];
 export const COL_WIDTHS = [5.5, 5.75, 17.5, 42.63, 13, 54.13, 57, 62, 87.63, 38.13, 13, 13, 13, 24];
 
+export function uniqueExcelSheetName(name: string, used: Set<string>) {
+  const base = name.replace(/[\\/*?:\[\]\u0000-\u001f]/g, ' ').replace(/^'+|'+$/g, '').trim() || 'Test Cases';
+  let candidate = base.slice(0, 31).replace(/'+$/g, '');
+  let suffix = 2;
+  while (used.has(candidate.toLowerCase()) || candidate.toLowerCase() === 'history') {
+    const tail = ` (${suffix++})`;
+    candidate = `${base.slice(0, 31 - tail.length)}${tail}`;
+  }
+  used.add(candidate.toLowerCase());
+  return candidate;
+}
+
 const HEADER_FILL: ExcelJS.Fill = {
   type: 'pattern',
   pattern: 'solid',

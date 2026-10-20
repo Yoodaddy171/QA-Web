@@ -4,6 +4,7 @@ import fsPromises from 'node:fs/promises';
 import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { assertDurableEvidenceRoot, resolveEvidenceStorageRoot } from './evidence-storage-path.mjs';
 
 export interface EvidenceStorage {
   put(stream: ReadableStream<Uint8Array>, key: string, maxBytes: number): Promise<{ key: string; size: number; hash: string }>;
@@ -11,10 +12,8 @@ export interface EvidenceStorage {
   delete(key: string): Promise<void>;
 }
 
-export const evidenceStorageRoot = path.resolve(/*turbopackIgnore: true*/
-  process.env.QA_EVIDENCE_STORAGE_DIR
-    || path.join(/*turbopackIgnore: true*/ process.env.QA_RUNTIME_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'evidence'), 'execution-evidence'),
-);
+export const evidenceStorageRoot = resolveEvidenceStorageRoot();
+if (fs.existsSync(/*turbopackIgnore: true*/ evidenceStorageRoot)) assertDurableEvidenceRoot(fs.realpathSync(/*turbopackIgnore: true*/ evidenceStorageRoot));
 
 function safeRelativeKey(key: string) {
   const normalized = key.replaceAll('\\', '/').replace(/^\/+/, '');
@@ -23,7 +22,7 @@ function safeRelativeKey(key: string) {
 }
 
 export class LocalEvidenceStorage implements EvidenceStorage {
-  constructor(private readonly root = evidenceStorageRoot) {}
+  constructor(private readonly root = evidenceStorageRoot) { assertDurableEvidenceRoot(root); }
 
   private resolveKey(key: string) {
     const absolute = path.isAbsolute(key) ? path.resolve(/*turbopackIgnore: true*/ key) : path.resolve(/*turbopackIgnore: true*/ this.root, safeRelativeKey(key));
@@ -45,13 +44,17 @@ export class LocalEvidenceStorage implements EvidenceStorage {
         callback(null, chunk);
       },
     });
+    // Open before the cleanup block. EEXIST must never remove the previous file.
+    const file = await fsPromises.open(resolved.absolute, 'wx');
     try {
-      await pipeline(Readable.fromWeb(stream as never), meter, fs.createWriteStream(resolved.absolute, { flags: 'wx' }));
+      await pipeline(Readable.fromWeb(stream as never), meter, file.createWriteStream());
       if (!size) throw new Error('Evidence kosong.');
       return { key: resolved.key, size, hash: hash.digest('hex') };
     } catch (error) {
       await fsPromises.rm(resolved.absolute, { force: true }).catch(() => undefined);
       throw error;
+    } finally {
+      await file.close().catch(() => undefined);
     }
   }
 

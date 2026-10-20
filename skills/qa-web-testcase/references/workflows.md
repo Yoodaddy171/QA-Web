@@ -56,6 +56,12 @@ Record an actual execution E using `web_post_test_runs_by_id_executions`:
 ```
 This creates a record; it does not launch a browser. Execution `actualResult` is prose. `tester` comes from the authenticated actor. Use PASSED/FAILED only after observing the corresponding result. Testcase display IDs, run IDs, membership IDs and execution IDs are distinct.
 
+For execution POST, GET filtering and bulk execution, `testCaseId` may now be the internal ID T or the exact display ID (for example `CRS-04`), resolved within project P. Run and execution IDs remain internal. POST automatically adds the case to the run if needed, so the separate add-cases call is optional. Unknown IDs return 404; an ambiguous display/internal collision returns 409.
+
+Creating/updating an execution synchronizes the testcase badge in the same transaction: PASSED/VERIFIED → DONE/As Expected, FAILED → FAILED/Not As Expected, BLOCKED → BLOCKED/-, IN PROGRESS → IN PROGRESS/-, RETEST → READY TO RETEST/-. Existing bug lifecycle synchronization is also applied. Read `data.testCaseSync` for `applied`, `reason`, `previousStatus`, `status`, `actualResult` and optional `warning`. NOT RUN leaves the existing verdict alone. Latest is determined across runs by completedAt, then startedAt/createdAt fallback, with recording order for ties. Supply real historical timestamps when importing old results; an older result is recorded with a warning and does not overwrite a newer verdict or active run execution.
+
+Evidence upload accepts multiple entries in MCP `files`, all using field `file`; omit `mimeType` to infer it from bytes. Up to 20 files and 25 MB total per request are accepted. A one-file response remains the evidence object; a multi-file response is `{evidence:[...],uploadedCount}`. The entire batch is validated and committed atomically; verify every intended file through evidence GET. `replaceEvidenceId` only accepts one file. Explicitly incorrect MIME is still rejected.
+
 ## Browser and evidence
 
 Use the same `qa_browser` instance throughout the scenario. Before opening the target, resolve testcase T from QA-Web; T is the testcase object's internal database `id`, not its display `testCaseId`.

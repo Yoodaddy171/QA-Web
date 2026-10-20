@@ -101,6 +101,10 @@ The chain is **Test Run → Test Run Case → Execution → Evidence / Bug**.
 - `POST /api/test-runs/<runId>/executions` with `{ projectId, testCaseId, status, actualResult?, notes?, startedAt?, completedAt? }` creates one execution. `tester` is taken from the authenticated session and cannot be passed in.
 - `PUT /api/test-runs/<runId>/executions` updates one, keyed by `executionId` in the body.
 
+Execution creation/filtering/bulk accepts internal case IDs or exact display IDs scoped by `projectId`; execution/run IDs remain internal. Unknown case/run IDs return 404; ambiguous identifiers return 409. POST creates run membership automatically. Creation/update/bulk synchronizes case verdict and bugs transactionally and returns `testCaseSync` metadata. Historical results, identified by completedAt or startedAt/createdAt fallback, cannot overwrite newer results across runs; NOT RUN does not reset an existing verdict.
+
+Evidence POST accepts repeated multipart `file` fields (MCP `files` array), up to 20 files and 25 MB combined. MIME is inferred from content when omitted; generic application/octet-stream is checked by magic bytes, while an explicit MIME mismatch is rejected. All files are validated first, stored with rollback cleanup, and metadata/activity committed in one transaction. Single-file responses retain the evidence object; batches return `{evidence,uploadedCount}`. Replacement remains single-file only.
+
 Status enums:
 
 - Test Run `status`: `DRAFT`, `READY`, `IN PROGRESS`, `COMPLETED`, `ARCHIVED`.

@@ -33,7 +33,7 @@ const shape = {
   query: z.record(z.any()).optional().describe('Query parameters. Include projectId for scoped endpoints, also for multipart uploads.'),
   body: z.record(z.any()).optional().describe('JSON request body. Read qa_web_contract first.'),
   form: z.record(z.any()).optional().describe('Multipart text fields; exclusive with body.'),
-  files: z.array(z.object({ path: z.string(), field: z.string().optional(), name: z.string().optional(), mimeType: z.string().optional() })).optional().describe('Local files to upload, e.g. evidence or Excel. Default field=file. Max 25MB.'),
+  files: z.array(z.object({ path: z.string(), field: z.string().optional(), name: z.string().optional(), mimeType: z.string().optional() })).optional().describe('Local files to upload; default field=file. MIME inferred from content when omitted. Execution evidence accepts up to 20 files, max 25MB total per request; replacement accepts one file.'),
   confirmation: z.string().optional().describe('DELETE challenge returned by prior call for this exact payload.'),
   userConfirmed: z.boolean().optional().describe('Set true ONLY after the user approves the exact deletion warning; never self-approve.'),
 };

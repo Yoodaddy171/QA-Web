@@ -2,6 +2,7 @@ import { isTestExecutionStatus } from '@/lib/domain/test-run';
 import { bulkExecuteTestCases } from '@/lib/services/test-run-service';
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestActor } from '@/lib/request-actor';
+import { mutationFailure } from '@/lib/services/mutation-error';
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const result = await bulkExecuteTestCases({ projectId, testRunId: id, testCaseIds, status, tester: actor.name, notes: typeof body.notes === 'string' ? body.notes.trim() || null : null });
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Gagal menjalankan testcase secara bulk.' }, { status: 500 });
+    const failure = mutationFailure(error, 'POST bulk executions', 'Gagal menjalankan testcase secara bulk.');
+    return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
 }

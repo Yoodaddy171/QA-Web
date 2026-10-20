@@ -5,6 +5,7 @@ import { parseEnv } from 'node:util';
 import { createRequire } from 'node:module';
 import { DeletionGuard, normalizeBody } from './guard.mjs';
 import { resolvePath } from './catalog.mjs';
+import { uploadMime, transportFailure } from './transport.mjs';
 
 export class Runtime {
   guard = new DeletionGuard();
@@ -77,13 +78,14 @@ export class Runtime {
         const filePath = path.resolve(file.path);
         if (/(^|[/\\])\.env(?:\.|$)|\.pem$|\.key$/i.test(filePath)) throw new Error('Credential files cannot be uploaded as evidence.');
         if ((await fs.stat(filePath)).size > 25 * 1024 * 1024) throw new Error('Upload exceeds 25 MB.');
-        payload.append(file.field || 'file', new Blob([await fs.readFile(filePath)], { type: file.mimeType || 'application/octet-stream' }), file.name || path.basename(filePath));
+        const bytes = await fs.readFile(filePath);
+        payload.append(file.field || 'file', new Blob([bytes], { type: file.mimeType || uploadMime(bytes) }), file.name || path.basename(filePath));
       }
     } else if (body !== undefined) { headers['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
     const start = Date.now();
     let response;
     try { response = await fetch(url, { method: op.method, headers, body: payload, redirect: 'error', signal: AbortSignal.timeout(op.name === 'relay_post_manual_exec' ? 130000 : 120000) }); }
-    catch { throw new Error(`Request failed or timed out: ${op.method} ${endpoint}. For mutations, outcome UNKNOWN; read state before retrying.`); }
+    catch (error) { throw new Error(transportFailure(error, op.method, endpoint, op.target === 'relay' ? 'QA-Web relay' : 'QA-Web server')); }
     const type = response.headers.get('content-type') || '';
     let data;
     if (type.includes('application/json')) data = await response.json();

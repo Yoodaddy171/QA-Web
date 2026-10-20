@@ -3,6 +3,8 @@ import { createTestExecution, updateTestExecution } from '@/lib/services/test-ru
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestActor } from '@/lib/request-actor';
+import { mutationFailure } from '@/lib/services/mutation-error';
+import { resolveExecutionTestCase } from '@/lib/services/execution-result-service';
 
 const cleanText = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 
@@ -23,7 +25,15 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   if (!await db.testRun.findFirst({ where: { id, projectId }, select: { id: true } })) return errorResponse('Test Run tidak ditemukan.', 404);
   const limit = Math.min(100, Math.max(1, Number(req.nextUrl.searchParams.get('limit') || 50)));
   const cursor = req.nextUrl.searchParams.get('cursor') || undefined;
-  const testCaseId = req.nextUrl.searchParams.get('testCaseId') || undefined;
+  const reference = req.nextUrl.searchParams.get('testCaseId') || undefined;
+  let testCaseId: string | undefined;
+  if (reference) {
+    try { testCaseId = (await resolveExecutionTestCase(db, projectId, reference)).id; }
+    catch (error) {
+      const failure = mutationFailure(error, 'GET executions', 'Gagal memuat execution.');
+      return errorResponse(failure.error, failure.status);
+    }
+  }
   const rows = await db.testExecution.findMany({
     where: { testRunId: id, ...(testCaseId ? { testCaseId } : {}) },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -60,8 +70,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     });
     return NextResponse.json(execution, { status: 201 });
   } catch (error) {
-    console.error('POST /api/test-runs/[id]/executions error:', error);
-    return errorResponse(error instanceof Error ? error.message : 'Gagal membuat execution.', 500);
+    const failure = mutationFailure(error, 'POST executions', 'Gagal membuat execution.');
+    return errorResponse(failure.error, failure.status);
   }
 }
 
@@ -87,7 +97,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     if (!execution) return errorResponse('Execution tidak ditemukan.', 404);
     return NextResponse.json(execution);
   } catch (error) {
-    console.error('PUT /api/test-runs/[id]/executions error:', error);
-    return errorResponse('Gagal mengubah execution.', 500);
+    const failure = mutationFailure(error, 'PUT executions', 'Gagal mengubah execution.');
+    return errorResponse(failure.error, failure.status);
   }
 }

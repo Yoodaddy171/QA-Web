@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createNotification } from '@/lib/services/notification-service';
 import { evidenceStorage } from '@/lib/storage/evidence-storage';
 import { MAX_EVIDENCE_FILE_SIZE, validateEvidenceFile } from '@/lib/storage/evidence-file-validation';
+import { MutationError, mutationFailure } from '@/lib/services/mutation-error';
+import type { TestExecutionEvidence } from '@prisma/client';
 
 
 function errorResponse(message: string, status = 400) {
@@ -48,66 +50,64 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const execution = await findExecution(projectId, id, executionId);
   if (!execution) return errorResponse('Execution tidak ditemukan.', 404);
 
+  const staged: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number; storagePath: string; sha256: string }> = [];
+  let committed = false;
   try {
     const contentLength = Number(req.headers.get('content-length') || 0);
     if (contentLength > MAX_EVIDENCE_FILE_SIZE + 1024 * 1024) return errorResponse('Request upload melebihi batas 25 MB.', 413);
     const formData = await req.formData();
-    const file = formData.get('file');
+    const files = formData.getAll('file');
     const replaceEvidenceId = String(formData.get('replaceEvidenceId') || '').trim();
-    if (!(file instanceof File)) return errorResponse('File evidence wajib dipilih.');
-    let detectedMime: string;
+    if (!files.length || files.some(file => !(file instanceof File))) return errorResponse('File evidence wajib dipilih.');
+    if (files.length > 20) return errorResponse('Maksimal 20 file evidence per request.');
+    if (replaceEvidenceId && files.length !== 1) return errorResponse('Penggantian evidence hanya menerima satu file.');
+    const uploads: Array<{ file: File; mimeType: string }> = [];
     try {
-      detectedMime = await validateEvidenceFile(file);
+      for (const file of files as File[]) uploads.push({ file, mimeType: await validateEvidenceFile(file) });
     } catch (error) {
       return errorResponse(error instanceof Error ? error.message : 'Evidence tidak valid.');
     }
-    const [projectUsage, globalUsage] = await Promise.all([
-      db.testExecutionEvidence.aggregate({
-        where: { execution: { testRun: { projectId } } },
-        _sum: { sizeBytes: true },
-      }),
-      db.testExecutionEvidence.aggregate({ _sum: { sizeBytes: true } }),
-    ]);
-    if ((projectUsage._sum.sizeBytes || 0) + file.size > PROJECT_QUOTA_BYTES) return errorResponse('Quota evidence project sudah penuh.', 413);
-    if ((globalUsage._sum.sizeBytes || 0) + file.size > GLOBAL_QUOTA_BYTES) return errorResponse('Quota evidence global sudah penuh.', 413);
-
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-160) || 'evidence';
-    const evidenceId = crypto.randomUUID();
-    const stored = await evidenceStorage.put(
-      file.stream(),
-      `${projectId}/${executionId}/${evidenceId}-${safeName}`,
-      MAX_EVIDENCE_FILE_SIZE,
-    );
-
-    try {
-      const evidence = await db.testExecutionEvidence.create({
-        data: {
-          id: evidenceId,
-          executionId,
-          fileName: file.name,
-          mimeType: detectedMime,
-          sizeBytes: stored.size,
-          storagePath: stored.key,
-          sha256: stored.hash,
-        },
-        select: { id: true, executionId: true, fileName: true, mimeType: true, sizeBytes: true, sha256: true, createdAt: true, updatedAt: true },
-      });
-      await recordActivity({ projectId, entityType: 'TestExecution', entityId: executionId, action: 'EVIDENCE_ADDED', afterValue: { id: evidence.id, fileName: evidence.fileName } });
-      if (replaceEvidenceId && replaceEvidenceId !== evidence.id) {
-        const previous = await db.testExecutionEvidence.findFirst({ where: { id: replaceEvidenceId, executionId } });
-        if (previous) {
-          await evidenceStorage.delete(previous.storagePath);
-          await db.testExecutionEvidence.delete({ where: { id: previous.id } });
-          await recordActivity({ projectId, entityType: 'TestExecution', entityId: executionId, action: 'EVIDENCE_REMOVED', beforeValue: { id: previous.id, fileName: previous.fileName }, afterValue: { replacedBy: evidence.id } });
-        }
-      }
-      return NextResponse.json(evidence, { status: 201 });
-    } catch (error) {
-      await evidenceStorage.delete(stored.key);
-      throw error;
+    const totalBytes = uploads.reduce((total, { file }) => total + file.size, 0);
+    if (totalBytes > MAX_EVIDENCE_FILE_SIZE) return errorResponse('Total upload melebihi batas 25 MB per request.', 413);
+    // Validate the complete batch before writing any file. Metadata/activity commit together.
+    for (const { file, mimeType } of uploads) {
+      const id = crypto.randomUUID();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-160) || 'evidence';
+      const stored = await evidenceStorage.put(file.stream(), `${projectId}/${executionId}/${id}-${safeName}`, MAX_EVIDENCE_FILE_SIZE);
+      staged.push({ id, fileName: file.name, mimeType, sizeBytes: stored.size, storagePath: stored.key, sha256: stored.hash });
     }
+    const saved = await db.$transaction(async tx => {
+      const previous = replaceEvidenceId ? await tx.testExecutionEvidence.findFirst({ where: { id: replaceEvidenceId, executionId } }) : null;
+      if (replaceEvidenceId && !previous) throw new MutationError(404, 'Evidence pengganti tidak ditemukan pada execution ini.');
+      const [projectUsage, globalUsage] = await Promise.all([
+        tx.testExecutionEvidence.aggregate({ where: { execution: { testRun: { projectId } } }, _sum: { sizeBytes: true } }),
+        tx.testExecutionEvidence.aggregate({ _sum: { sizeBytes: true } }),
+      ]);
+      if ((projectUsage._sum.sizeBytes || 0) + totalBytes - (previous?.sizeBytes || 0) > PROJECT_QUOTA_BYTES) throw new Error('Quota evidence project sudah penuh.');
+      if ((globalUsage._sum.sizeBytes || 0) + totalBytes - (previous?.sizeBytes || 0) > GLOBAL_QUOTA_BYTES) throw new Error('Quota evidence global sudah penuh.');
+      const evidence: Array<Omit<TestExecutionEvidence, 'storagePath'>> = [];
+      for (const item of staged) {
+        const row = await tx.testExecutionEvidence.create({ data: { ...item, executionId },
+          select: { id: true, executionId: true, fileName: true, mimeType: true, sizeBytes: true, sha256: true, createdAt: true, updatedAt: true } });
+        await recordActivity({ projectId, entityType: 'TestExecution', entityId: executionId, action: 'EVIDENCE_ADDED', afterValue: { id: row.id, fileName: row.fileName } }, tx);
+        evidence.push(row);
+      }
+      if (previous) {
+        await tx.testExecutionEvidence.delete({ where: { id: previous.id } });
+        await recordActivity({ projectId, entityType: 'TestExecution', entityId: executionId, action: 'EVIDENCE_REMOVED', beforeValue: { id: previous.id, fileName: previous.fileName }, afterValue: { replacedBy: evidence[0].id } }, tx);
+      }
+      return { evidence, previous };
+    }, { isolationLevel: 'Serializable' });
+    committed = true;
+    if (saved.previous) {
+      // A storage cleanup failure must not claim that the committed upload failed.
+      await evidenceStorage.delete(saved.previous.storagePath).catch(() => console.warn('Replaced evidence file cleanup pending.'));
+    }
+    return NextResponse.json(saved.evidence.length === 1 ? saved.evidence[0] : { evidence: saved.evidence, uploadedCount: saved.evidence.length }, { status: 201 });
   } catch (error) {
-    console.error('POST execution evidence error:', error);
+    if (!committed) await Promise.allSettled(staged.map(item => evidenceStorage.delete(item.storagePath)));
+    if (error instanceof Error && /^Quota evidence/.test(error.message)) return errorResponse(error.message, 413);
+    const failure = mutationFailure(error, 'POST execution evidence', 'Gagal menyimpan evidence.');
     await createNotification({
       projectId,
       type: 'EVIDENCE_UPLOAD_FAILED',
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       metadata: { tab: 'testRuns', testRunId: id },
       dedupeKey: `evidence-upload-failed:${executionId}:${Date.now()}`,
     }).catch(() => undefined);
-    return errorResponse('Gagal menyimpan evidence.', 500);
+    return errorResponse(failure.error, failure.status);
   }
 }
 

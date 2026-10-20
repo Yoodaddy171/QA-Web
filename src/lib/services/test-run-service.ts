@@ -2,7 +2,9 @@ import { db } from '@/lib/db';
 import { TEST_EXECUTION_STATUS, TEST_RUN_STATUS } from '@/lib/domain/test-run';
 import { recordActivity } from '@/lib/services/activity-history-service';
 import { createNotification } from '@/lib/services/notification-service';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { resolveExecutionTestCase, synchronizeExecutionResult } from './execution-result-service';
+import { MutationError } from './mutation-error';
 
 type DbClient = typeof db;
 type TransactionClient = Prisma.TransactionClient;
@@ -44,7 +46,6 @@ export async function getTestRunCasesPage(projectId: string, id: string, options
     where: { testRunId: id },
     include: {
       testCase: { include: { module: { select: { id: true, name: true } } } },
-      executions: { orderBy: { createdAt: 'desc' }, take: 1 },
     },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     take: limit + 1,
@@ -52,8 +53,21 @@ export async function getTestRunCasesPage(projectId: string, id: string, options
   });
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
+  // Keep the case-list's active execution consistent with the persisted latestStatus,
+  // even when an older result was imported after a recent result.
+  const latestIds = page.length ? await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT "id" FROM (
+      SELECT "id", ROW_NUMBER() OVER (
+        PARTITION BY "testRunCaseId"
+        ORDER BY COALESCE("completedAt", "startedAt", "createdAt") DESC, "createdAt" DESC, "id" DESC
+      ) AS position
+      FROM "TestExecution" WHERE "testRunCaseId" IN (${Prisma.join(page.map(item => item.id))})
+    ) AS ranked WHERE position = 1
+  `) : [];
+  const latest = await db.testExecution.findMany({ where: { id: { in: latestIds.map(item => item.id) } } });
+  const byMembership = new Map(latest.map(item => [item.testRunCaseId, item]));
   return {
-    items: page.map(item => ({ ...item.testCase, membershipId: item.id, assignedTo: item.assignedTo, executions: item.executions })),
+    items: page.map(item => ({ ...item.testCase, membershipId: item.id, assignedTo: item.assignedTo, executions: byMembership.has(item.id) ? [byMembership.get(item.id)!] : [] })),
     hasMore,
     nextCursor: hasMore ? page.at(-1)?.id || null : null,
   };
@@ -184,15 +198,18 @@ export async function addTestCasesToRun(projectId: string, testRunId: string, te
 export async function bulkExecuteTestCases(input: { projectId: string; testRunId: string; testCaseIds: string[]; status: string; tester?: string | null; notes?: string | null }) {
   return db.$transaction(async tx => {
     const run = await assertTestRun(tx, input.projectId, input.testRunId);
-    const testCases = await tx.testCase.findMany({ where: { projectId: input.projectId, id: { in: input.testCaseIds } }, select: { id: true, testCaseId: true } });
-    if (testCases.length !== input.testCaseIds.length) throw new Error('Satu atau lebih testcase tidak ditemukan pada project ini.');
+    const testCases: Array<{ id: string; testCaseId: string }> = [];
+    for (const reference of input.testCaseIds) {
+      const testCase = await resolveExecutionTestCase(tx, input.projectId, reference);
+      if (!testCases.some(item => item.id === testCase.id)) testCases.push(testCase);
+    }
     const now = new Date();
     const tester = input.tester || run.assignedTo || 'local-user';
-    const executions: Array<{ id: string; status: string }> = [];
+    const executions: Array<{ id: string; status: string; testCaseSync: Awaited<ReturnType<typeof synchronizeExecutionResult>> }> = [];
     for (const testCase of testCases) {
       const membership = await tx.testRunCase.upsert({ where: { testRunId_testCaseId: { testRunId: input.testRunId, testCaseId: testCase.id } }, create: { testRunId: input.testRunId, testCaseId: testCase.id }, update: {} });
       const execution = await tx.testExecution.create({ data: { testRunId: input.testRunId, testCaseId: testCase.id, testRunCaseId: membership.id, tester, status: input.status, notes: input.notes || null, startedAt: now, completedAt: now } });
-      await tx.testRunCase.update({ where: { id: membership.id }, data: { latestStatus: input.status, latestExecutionAt: execution.createdAt } });
+      const testCaseSync = await synchronizeExecutionResult(tx, execution, input.projectId);
       await recordActivity({ projectId: input.projectId, entityType: 'TestExecution', entityId: execution.id, action: 'CREATED', afterValue: { testRunId: input.testRunId, testCaseId: testCase.id, status: input.status }, actor: tester }, tx);
       await createExecutionNotification({
         projectId: input.projectId,
@@ -202,10 +219,10 @@ export async function bulkExecuteTestCases(input: { projectId: string; testRunId
         displayId: testCase.testCaseId,
         status: input.status,
       }, tx);
-      executions.push({ id: execution.id, status: execution.status });
+      executions.push({ id: execution.id, status: execution.status, testCaseSync });
     }
     return { executed: executions.length, executions };
-  });
+  }, { isolationLevel: 'Serializable' });
 }
 
 export async function removeTestCaseFromRun(projectId: string, testRunId: string, testCaseId: string) {
@@ -233,8 +250,8 @@ export async function createTestExecution(input: {
 }) {
   return db.$transaction(async tx => {
     const run = await assertTestRun(tx, input.projectId, input.testRunId);
-    const testCase = await tx.testCase.findFirst({ where: { id: input.testCaseId, projectId: input.projectId }, select: { id: true, testCaseId: true } });
-    if (!testCase) throw new Error('Testcase tidak ditemukan pada project ini.');
+    const testCase = await resolveExecutionTestCase(tx, input.projectId, input.testCaseId);
+    input = { ...input, testCaseId: testCase.id };
 
     const membership = await tx.testRunCase.upsert({
       where: { testRunId_testCaseId: { testRunId: input.testRunId, testCaseId: input.testCaseId } },
@@ -251,7 +268,7 @@ export async function createTestExecution(input: {
       : [TEST_EXECUTION_STATUS.RETEST, TEST_EXECUTION_STATUS.VERIFIED].includes(executionStatus as never)
         ? await tx.bugFix.findFirst({ where: { sourceTestCaseId: input.testCaseId, projectId: input.projectId, status: { not: 'VERIFIED & FIXED' } }, orderBy: { updatedAt: 'desc' }, select: { id: true } })
         : null;
-    if (input.bugFixId && !linkedBug) throw new Error('Bug retest tidak ditemukan untuk testcase ini.');
+    if (input.bugFixId && !linkedBug) throw new MutationError(404, 'Bug retest tidak ditemukan untuk testcase ini.');
     const execution = await tx.testExecution.create({
       data: {
         testRunId: input.testRunId,
@@ -263,10 +280,10 @@ export async function createTestExecution(input: {
         actualResult: input.actualResult || null,
         notes: input.notes || null,
         startedAt: input.startedAt || now,
-        completedAt: input.completedAt || (isCompleted ? now : null),
+        completedAt: input.completedAt || (isCompleted ? input.startedAt || now : null),
       },
     });
-    await tx.testRunCase.update({ where: { id: membership.id }, data: { latestStatus: execution.status, latestExecutionAt: execution.createdAt } });
+    const testCaseSync = await synchronizeExecutionResult(tx, execution, input.projectId);
     await recordActivity({ projectId: input.projectId, entityType: 'TestExecution', entityId: execution.id, action: 'CREATED', afterValue: { testRunId: input.testRunId, testCaseId: input.testCaseId, status: execution.status }, actor: execution.tester }, tx);
     await createExecutionNotification({
       projectId: input.projectId,
@@ -276,40 +293,36 @@ export async function createTestExecution(input: {
       displayId: testCase.testCaseId,
       status: execution.status,
     }, tx);
-    return execution;
-  });
+    return { ...execution, testCaseSync };
+  }, { isolationLevel: 'Serializable' });
 }
 
 export async function updateTestExecution(projectId: string, id: string, data: Record<string, unknown>) {
-  const execution = await db.testExecution.findFirst({ where: { id, testRun: { projectId } }, select: { id: true, status: true, notes: true, tester: true, startedAt: true, completedAt: true, testRunCaseId: true } });
+  return db.$transaction(async tx => {
+  const execution = await tx.testExecution.findFirst({ where: { id, testRun: { projectId } } });
   if (!execution) return null;
   const nextStatus = typeof data.status === 'string' ? data.status : execution.status;
   const isCompleted = ![TEST_EXECUTION_STATUS.NOT_RUN, TEST_EXECUTION_STATUS.IN_PROGRESS].includes(nextStatus as never);
   const updateData = {
     ...data,
     ...(data.status !== undefined && !execution.startedAt && { startedAt: new Date() }),
-    ...(data.status !== undefined && isCompleted && !execution.completedAt && { completedAt: new Date() }),
+    ...(data.status !== undefined && isCompleted && !execution.completedAt && data.completedAt === undefined && { completedAt: new Date() }),
+    ...(data.status !== undefined && !isCompleted && { completedAt: null }),
   } as Prisma.TestExecutionUncheckedUpdateInput;
-  const updated = await db.testExecution.update({ where: { id }, data: updateData });
-  if (execution.testRunCaseId && data.status !== undefined) {
-    const newer = await db.testExecution.findFirst({
-      where: { testRunCaseId: execution.testRunCaseId },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: { id: true },
-    });
-    if (newer?.id === execution.id) await db.testRunCase.update({ where: { id: execution.testRunCaseId }, data: { latestStatus: updated.status, latestExecutionAt: updated.createdAt } });
-  }
+  const updated = await tx.testExecution.update({ where: { id }, data: updateData });
+  const testCaseSync = await synchronizeExecutionResult(tx, updated, projectId);
   for (const field of ['status', 'notes', 'tester'] as const) {
     if (data[field] !== undefined && data[field] !== execution[field]) {
-      await recordActivity({ projectId, entityType: 'TestExecution', entityId: id, action: 'UPDATED', field, beforeValue: execution[field], afterValue: data[field] });
+      await recordActivity({ projectId, entityType: 'TestExecution', entityId: id, action: 'UPDATED', field, beforeValue: execution[field], afterValue: data[field] }, tx);
     }
   }
-  return updated;
+  return { ...updated, testCaseSync };
+  }, { isolationLevel: 'Serializable' });
 }
 
 async function assertTestRun(client: DbClient | TransactionClient, projectId: string, id: string) {
   const run = await client.testRun.findFirst({ where: { id, projectId }, select: { id: true, assignedTo: true } });
-  if (!run) throw new Error('Test Run tidak ditemukan pada project ini.');
+  if (!run) throw new MutationError(404, 'Test Run tidak ditemukan pada project ini.');
   return run;
 }
 

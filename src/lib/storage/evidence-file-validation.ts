@@ -18,6 +18,6 @@ export async function validateEvidenceFile(file: File) {
   if (file.size <= 0 || file.size > MAX_EVIDENCE_FILE_SIZE) throw new Error('Ukuran file harus lebih dari 0 dan maksimal 25 MB.');
   const detectedMime = detectEvidenceMime(new Uint8Array(await file.slice(0, 32).arrayBuffer()));
   if (!detectedMime || !SUPPORTED.has(detectedMime)) throw new Error('Isi file tidak dikenali sebagai PNG, JPEG, WebP, GIF, MP4, WebM, atau PDF yang valid.');
-  if (file.type && file.type !== detectedMime) throw new Error(`Tipe file tidak cocok: browser mengirim ${file.type}, tetapi isi file adalah ${detectedMime}.`);
+  if (file.type && file.type !== 'application/octet-stream' && file.type !== detectedMime) throw new Error(`Tipe file tidak cocok: browser mengirim ${file.type}, tetapi isi file adalah ${detectedMime}.`);
   return detectedMime;
 }

@@ -59,6 +59,27 @@ Example execution evidence upload:
 {"params":{"id":"<run-id>","executionId":"<execution-id>"},"query":{"projectId":"<project-id>"},"files":[{"path":"C:/evidence/screenshot.png","mimeType":"image/png"}]}
 ```
 
+Execution POST, GET filtering and bulk execution accept the exact display case ID
+(e.g. `CRS-04`) or its internal database ID within `projectId`. POST adds missing run
+membership automatically. Execution/run IDs remain internal; unknown case/run IDs
+return 404, and ambiguous ID collisions return 409.
+
+Creation, updates and bulk execution synchronize the testcase status/badge and bug
+lifecycle in the same transaction. Read `testCaseSync` in the response for the before/after
+status and any warning. Latest is based on completedAt, falling back to startedAt/createdAt,
+with recording order breaking ties, across all runs. Historical imports preserve newer
+verdicts; NOT RUN does not reset the case verdict. Supply actual historical timestamps.
+
+Evidence uploads support up to 20 files and 25 MB total per request. Omit `mimeType`
+for content detection; explicitly wrong MIME types are rejected. Multi-file success
+returns `{evidence:[...],uploadedCount}`; single-file response shape is unchanged.
+Validation and metadata persistence are all-or-nothing, with cleanup of staged files
+on failure. Replacement accepts exactly one file. Always read back the evidence list.
+
+Connection failures distinguish a server not listening (`ECONNREFUSED`), timeouts and
+other transport failures. Mutation transport failures still have UNKNOWN outcome and
+must be reconciled before retrying. HTTP errors retain their status/envelope.
+
 ## Local access and deletion warning
 
 The user explicitly grants the AI owner access on this local machine. The adapter loads `.env`/`.env.local` internally and creates a dedicated seven-day session for the single existing active OWNER; it does not read passwords or change roles. If multiple owners exist, set `QA_MCP_USER_ID` locally. The adapter only writes the authentication session directly; all business data goes through the web APIs and existing RBAC. It renews its session on expiry and revokes it on normal process close. Force-killed processes leave a session until expiry.

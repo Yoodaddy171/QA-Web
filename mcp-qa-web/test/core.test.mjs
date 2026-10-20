@@ -8,6 +8,7 @@ import os from 'node:os';
 import { buildCatalog, resolvePath } from '../catalog.mjs';
 import { DeletionGuard, normalizeBody } from '../guard.mjs';
 import { Runtime } from '../runtime.mjs';
+import { uploadMime, transportFailure } from '../transport.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 test('catalog exposes each exported business HTTP handler once with valid MCP names', () => {
@@ -68,4 +69,31 @@ test('HTTP transport preserves envelopes; guard blocks network; multipart and bi
     assert.match(received.type,/multipart/);assert.match(received.url,/projectId=p/);assert.match(received.body,/observed/);
     const binary=await runtime.execute({...op,path:'/binary'});assert.equal(await fs.readFile(binary.data.outputPath,'utf8'),'bytes');
   } finally {await new Promise(r=>server.close(r));await fs.rm(temp,{recursive:true,force:true});}
+});
+
+test('FILE-MIME: hints use content, not extension, and preserve explicit type', async () => {
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'qa-mcp-mime-'));
+  const file=path.join(directory,'fixture.bin');
+  await fs.writeFile(file,Buffer.from([137,80,78,71,13,10,26,10,0]));
+  const parts=[];
+  const server=http.createServer(async(req,res)=>{let bytes='';for await(const c of req)bytes+=c;parts.push(bytes);res.setHeader('Content-Type','application/json');res.end('{}');});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const runtime=new Runtime(directory,{QA_MCP_WEB_URL:`http://127.0.0.1:${server.address().port}`},async()=>'synthetic-session');
+  const op={name:'upload',path:'/upload',target:'web',method:'POST'};
+  try {
+    await runtime.execute(op,{files:[{path:file}]});assert.match(parts[0],/Content-Type: image\/png/);
+    await runtime.execute(op,{files:[{path:file,mimeType:'image/jpeg'}]});assert.match(parts[1],/Content-Type: image\/jpeg/);
+    assert.equal(uploadMime(Buffer.from('not evidence')),'application/octet-stream');
+  }finally{await new Promise(resolve=>server.close(resolve));await fs.rm(directory,{recursive:true,force:true});}
+});
+test('SERVER-OFFLINE: real refused connection identifies server and keeps unknown outcome only for mutations',async()=>{
+  const server=http.createServer();await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const port=server.address().port;await new Promise(resolve=>server.close(resolve));
+  const runtime=new Runtime(os.tmpdir(),{QA_MCP_WEB_URL:`http://127.0.0.1:${port}`},async()=>'fixture-session');
+  await assert.rejects(runtime.execute({name:'read',path:'/api/projects',method:'GET',target:'web'}),e=>/not running.*ECONNREFUSED/.test(e.message)&&!e.message.includes('UNKNOWN'));
+  await assert.rejects(runtime.execute({name:'write',path:'/api/projects',method:'POST',target:'web'},{body:{name:'fixture'}}),/ECONNREFUSED.*Outcome UNKNOWN/);
+});
+test('SERVER-OFFLINE: timeout and connection reset have distinct diagnostics',()=>{
+  assert.match(transportFailure({name:'TimeoutError'},'GET','/api/projects','QA-Web server'),/request timed out/);
+  assert.match(transportFailure({cause:{code:'ECONNRESET'}},'POST','/api/projects','QA-Web server'),/connection failed \(ECONNRESET\).*Outcome UNKNOWN/);
+  assert.doesNotMatch(transportFailure({name:'TimeoutError'},'GET','/api/projects','QA-Web server'),/UNKNOWN/);
 });

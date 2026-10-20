@@ -948,6 +948,7 @@ export function TestCaseDetailDialog({
           testCaseList={testCaseList}
           navigationIndex={navigationIndex}
           onNavigate={onNavigate}
+          onCopyId={onCopyId}
           getStatusIcon={getStatusIcon}
           getStatusBadgeVariant={getStatusBadgeVariant}
         />

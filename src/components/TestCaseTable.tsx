@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import { useCommittedActions } from '@/hooks/use-committed-actions';
 import {
   ArrowUpDown, Bookmark, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
-  FileSpreadsheet, MoreHorizontal, Plus, RefreshCw, Search, Settings2, SlidersHorizontal,
+  FileSpreadsheet, MoreHorizontal, Plus, RefreshCw, Search, Settings2,
   Sparkles, Trash2, Upload, UserRound, X
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -23,10 +23,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';
 import { DateRangePicker } from '@/components/ui/date-picker';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { TestCase, TestCaseTableProps } from './TestCaseTable.types';
 import { TestCaseTableBody } from './TestCaseTableBody';
+import { TestCaseFilterPanel } from './TestCaseFilterPanel';
 import { DataTableDensityToggle } from '@/components/DataTableDensityToggle';
 import { useTableDensity } from '@/hooks/use-table-density';
 import { useTableViewport } from '@/hooks/use-table-viewport';
@@ -264,6 +264,15 @@ export function TestCaseTable({
     window.localStorage.setItem(TESTCASE_COLUMN_STORAGE_KEY, JSON.stringify(visibleColumns));
   }, [visibleColumns]);
 
+  const [showTableTools, setShowTableTools] = useState(false);
+  const tableToolsId = useId();
+  const dateFilter = <DateRangePicker
+    from={filterCreatedFrom} to={filterCreatedTo}
+    onFromChange={(value) => { setFilterCreatedFrom(value); resetPage(); }}
+    onToChange={(value) => { setFilterCreatedTo(value); resetPage(); }}
+    label="Tanggal dibuat"
+  />;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -272,37 +281,23 @@ export function TestCaseTable({
       className="qa-data-workspace flex min-w-0 flex-col gap-4"
     >
       <div className="qa-workspace-toolbar rounded-xl border border-border bg-card p-3 sm:p-4">
-        <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(260px,1fr)_auto_minmax(220px,auto)_auto]">
-        <div className="relative min-w-0">
+        <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-[minmax(260px,1fr)_auto_minmax(220px,auto)_auto]">
+        <div className="relative col-span-2 min-w-0 md:col-span-3 xl:col-span-1">
           <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 size-4 text-primary', isLoading && 'opacity-60')} />
           <Input
             data-search-input
+            aria-label="Cari testcase berdasarkan ID, page, action, atau steps"
             placeholder="Cari ID, page, action, atau steps..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-            className="h-10 rounded-lg border-border/70 bg-background pl-9 pr-9 text-sm shadow-none"
+            className="h-11 rounded-lg border-border/70 bg-background pl-9 pr-9 text-base shadow-none sm:h-10 sm:text-sm"
           />
           <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:block">/</kbd>
         </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="outline" className="h-10 justify-center gap-2 rounded-lg border-border/70 bg-background px-3 font-semibold">
-              <SlidersHorizontal /> Filter
-              {activeFilterChips.filter(chip => !['search', 'from', 'to'].includes(chip.key)).length > 0 ? (
-                <Badge variant="secondary" className="min-w-5 justify-center px-1.5 font-mono text-xs">
-                  {activeFilterChips.filter(chip => !['search', 'from', 'to'].includes(chip.key)).length}
-                </Badge>
-              ) : null}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-[min(680px,calc(100vw-2rem))] p-4">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div><p className="text-sm font-semibold">Filter testcase</p><p className="mt-0.5 text-xs text-muted-foreground">Persempit daftar berdasarkan atribut QA.</p></div>
-              <Button type="button" variant="ghost" size="sm" onClick={resetFilters} disabled={!hasActiveFilters}>Reset</Button>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <TestCaseFilterPanel activeCount={activeFilterChips.filter(chip => chip.key !== 'search').length} canReset={hasActiveFilters} onReset={resetFilters} mobileDateFilter={dateFilter}>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 [&_[data-slot=select-trigger]]:min-h-11 [&_input]:min-h-11 [&_input]:text-base sm:[&_input]:text-sm">
           <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); resetPage(); }}>
-            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger aria-label="Status testcase" className="h-10 w-full"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Status</SelectItem>
               <SelectItem value="DONE" className="rounded-lg text-xs font-medium">Done</SelectItem>
@@ -315,7 +310,7 @@ export function TestCaseTable({
             </SelectContent>
           </Select>
           <Select value={filterTestType} onValueChange={(v) => { setFilterTestType(v); resetPage(); }}>
-            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Test Type" /></SelectTrigger>
+            <SelectTrigger aria-label="Tipe testcase" className="h-10 w-full"><SelectValue placeholder="Test Type" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Types</SelectItem>
               <SelectItem value="Positive" className="rounded-lg text-xs font-medium">Positive</SelectItem>
@@ -323,7 +318,7 @@ export function TestCaseTable({
             </SelectContent>
           </Select>
           <Select value={filterPriority} onValueChange={(v) => { setFilterPriority(v); resetPage(); }}>
-            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Priority" /></SelectTrigger>
+            <SelectTrigger aria-label="Prioritas testcase" className="h-10 w-full"><SelectValue placeholder="Priority" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Priorities</SelectItem>
               <SelectItem value="Critical" className="rounded-lg text-xs font-medium">Critical</SelectItem>
@@ -334,7 +329,7 @@ export function TestCaseTable({
           </Select>
           {(modules.length > 0 || hasUnassignedModule || filterModule === 'unassigned') && (
             <Select value={filterModule} onValueChange={(v) => { setFilterModule(v); resetPage(); }}>
-              <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Module" /></SelectTrigger>
+              <SelectTrigger aria-label="Module testcase" className="h-10 w-full"><SelectValue placeholder="Module" /></SelectTrigger>
               <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
                 <SelectItem value="all" className="rounded-lg text-xs font-medium">All Modules</SelectItem>
                 {modules.map((m) => (
@@ -347,7 +342,7 @@ export function TestCaseTable({
             </Select>
           )}
           <Select value={filterSubMenu} onValueChange={(v) => { setFilterSubMenu(v); resetPage(); }}>
-            <SelectTrigger className="h-10 w-full">
+            <SelectTrigger aria-label="Sub Menu testcase" className="h-10 w-full">
               <SelectValue placeholder="Sub Menu" />
             </SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
@@ -360,14 +355,14 @@ export function TestCaseTable({
             </SelectContent>
           </Select>
           <Select value={filterTestRun} onValueChange={(v) => { setFilterTestRun(v); resetPage(); }}>
-            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Test Run" /></SelectTrigger>
+            <SelectTrigger aria-label="Test Run testcase" className="h-10 w-full"><SelectValue placeholder="Test Run" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Test Runs</SelectItem>
               {testRunOptions.map(run => <SelectItem key={run.id} value={run.id} className="rounded-lg text-xs font-medium">{run.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterBug} onValueChange={(v) => { setFilterBug(v); resetPage(); }}>
-            <SelectTrigger className="h-10 w-full"><SelectValue placeholder="Bug" /></SelectTrigger>
+            <SelectTrigger aria-label="Relasi Bug testcase" className="h-10 w-full"><SelectValue placeholder="Bug" /></SelectTrigger>
             <SelectContent className="bg-card border border-border/50 text-foreground rounded-xl shadow-lg">
               <SelectItem value="all" className="rounded-lg text-xs font-medium">All Bugs</SelectItem>
               <SelectItem value="yes" className="rounded-lg text-xs font-medium">Has Bug</SelectItem>
@@ -376,18 +371,11 @@ export function TestCaseTable({
           </Select>
           <Input value={filterTag} onChange={(event) => { setFilterTag(event.target.value); resetPage(); }} placeholder="Tag" aria-label="Filter tag" className="h-10" />
             </div>
-          </PopoverContent>
-        </Popover>
-        <DateRangePicker
-          from={filterCreatedFrom}
-          to={filterCreatedTo}
-          onFromChange={(value) => { setFilterCreatedFrom(value); resetPage(); }}
-          onToChange={(value) => { setFilterCreatedTo(value); resetPage(); }}
-          label="Tanggal dibuat"
-        />
+        </TestCaseFilterPanel>
+        <div className="hidden md:block">{dateFilter}</div>
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" className="h-10 w-full justify-center gap-2 rounded-lg border-border/70 bg-background px-3 font-semibold">
+              <Button type="button" variant="outline" className="h-11 w-full justify-center gap-2 rounded-lg border-border/70 bg-background px-3 font-semibold sm:h-10">
                 <Bookmark /> Views{savedViews.length ? ` (${savedViews.length})` : ''}
               </Button>
             </DropdownMenuTrigger>
@@ -416,22 +404,24 @@ export function TestCaseTable({
           )}
         </AnimatePresence>
 
-      <p className="mt-3 text-xs leading-5 text-muted-foreground">Status inventory: retest Bug diselesaikan dengan Done / As Expected pada testcase terkait.</p>
+      <p className="mt-3 hidden text-xs leading-5 text-muted-foreground sm:block">Status inventory: retest Bug diselesaikan dengan Done / As Expected pada testcase terkait.</p>
       {!canEdit && <p className="text-xs leading-5 text-muted-foreground">Mode baca saja. Perubahan memerlukan role QA atau lebih tinggi pada workspace ini.</p>}
       <div className="mt-3 flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-        <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <MutationAction><Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-9 rounded-lg gap-1.5 font-bold shadow-sm transition duration-150">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <MutationAction><Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-11 rounded-lg gap-1.5 font-bold shadow-sm transition duration-150 sm:h-9">
             <Plus className="w-4 h-4" /> Add Test Case
             <kbd className="ml-0.5 hidden rounded border border-primary-foreground/30 px-1 font-mono text-xs leading-4 opacity-70 lg:inline-block">N</kbd>
           </Button></MutationAction>
           {aiEnabled && (
-            <MutationAction><Button onClick={openAIDialog} size="sm" variant="outline">
+            <MutationAction><Button onClick={openAIDialog} size="sm" variant="outline" className="h-11 sm:h-8">
               <Sparkles className="w-4 h-4" /> Generate AI
             </Button></MutationAction>
           )}
         </div>
-        <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
-          <Badge key={showingLabel} variant="outline" className="col-span-2 h-9 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-1 animate-in zoom-in-95 duration-200 tabular-nums">
+        <Button type="button" variant="outline" className="h-11 sm:hidden" aria-expanded={showTableTools} aria-controls={tableToolsId} onClick={() => setShowTableTools(value => !value)}><MoreHorizontal /> Opsi tabel</Button>
+        <p className="w-full text-xs text-muted-foreground sm:hidden" aria-live="polite">{showingLabel}</p>
+        <div id={tableToolsId} className={cn('min-w-0 flex-wrap items-center gap-2 sm:flex lg:justify-end', showTableTools ? 'flex' : 'hidden')}>
+          <Badge key={showingLabel} variant="outline" className="hidden h-9 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:inline-flex tabular-nums">
             {showingLabel}
           </Badge>
           <DataTableDensityToggle value={density} onValueChange={setDensity} />
@@ -469,14 +459,6 @@ export function TestCaseTable({
             className="hidden"
             onChange={handleImportExcel}
           />
-              <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => handleExportExcel('qa-report')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
-                <FileSpreadsheet className="w-4 h-4 mr-2 text-primary" /> QA Report XLSX (Summary + Cases)
-              </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Format legacy untuk import kembali</DropdownMenuLabel>
           <MutationAction><Button onClick={openImportDialog} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
             <Upload className="w-4 h-4 text-primary" /> Import Excel
           </Button></MutationAction>
@@ -486,8 +468,15 @@ export function TestCaseTable({
                 <FileSpreadsheet className="w-4 h-4 text-primary" /> Export
               </Button>
             </DropdownMenuTrigger>
-              </DropdownMenuGroup>
             <DropdownMenuContent className="bg-card border border-border/50 text-foreground rounded-2xl shadow-xl">
+              <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => handleExportExcel('qa-report')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
+                <FileSpreadsheet className="w-4 h-4 mr-2 text-primary" /> QA Report XLSX (Summary + Cases)
+              </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Format legacy untuk import kembali</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => handleExportExcel('xlsx')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
                 <FileDown className="w-4 h-4 mr-2 text-primary" /> Legacy XLSX (1 Sheet)
               </DropdownMenuItem>
@@ -497,6 +486,7 @@ export function TestCaseTable({
               <DropdownMenuItem onClick={() => handleExportExcel('csv')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
                 <FileDown className="w-4 h-4 mr-2 text-primary" /> Export CSV
               </DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button aria-label="Refresh test cases" title="Refresh test cases (shortcut: R)" onClick={refreshList} variant="ghost" size="sm" className="h-9 w-9 rounded-xl border border-border/50 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/65 transition">

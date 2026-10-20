@@ -2,17 +2,7 @@
 
 import { Activity, ArrowUpRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-type ActivityItem = {
-  id: string;
-  entityType: string;
-  entityId: string;
-  action: string;
-  field: string | null;
-  afterValue: unknown;
-  actor: string | null;
-  createdAt: string;
-};
+import { activityEntityLabel, activityFieldLabel, summarizeActivities, type DashboardActivity } from '@/lib/client/activity-summary';
 
 const ACTION_LABELS: Record<string, string> = {
   CREATED: 'dibuat',
@@ -24,14 +14,7 @@ const ACTION_LABELS: Record<string, string> = {
   CASE_REMOVED: 'menghapus testcase',
 };
 
-function activityDetail(value: unknown) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const record = value as Record<string, unknown>;
-  for (const key of ['testCaseId', 'name', 'status']) {
-    if (typeof record[key] === 'string' && record[key]) return String(record[key]);
-  }
-  return null;
-}
+const ENTITY_LABELS: Record<string, string> = { TestCase: 'Testcase', TestRun: 'Test Run', TestExecution: 'Eksekusi', BugFix: 'Bug', Requirement: 'Requirement', TestPlan: 'Test Plan' };
 
 function activityTarget(entityType: string): 'testRuns' | 'testcases' | 'bugfix' | null {
   if (entityType === 'TestRun' || entityType === 'TestExecution') return 'testRuns';
@@ -44,7 +27,7 @@ export function DashboardActivityTimeline({
   activities,
   onNavigate,
 }: {
-  activities: ActivityItem[];
+  activities: DashboardActivity[];
   onNavigate?: (tab: 'testRuns' | 'testcases' | 'bugfix') => void;
 }) {
   return (
@@ -57,29 +40,29 @@ export function DashboardActivityTimeline({
       <CardContent className="p-0">
         {activities.length ? (
           <ol className="divide-y divide-border/45">
-            {activities.slice(0, 6).map((item, index) => {
+            {summarizeActivities(activities).slice(0, 6).map(({ item, events }) => {
               const target = activityTarget(item.entityType);
-              const detail = activityDetail(item.afterValue);
+              const label = activityEntityLabel(item);
               return (
                 <li key={item.id} className="group relative flex gap-3 px-4 py-3 transition-colors duration-150 hover:bg-secondary/25">
                   <span className="relative mt-1.5 flex h-2.5 w-2.5 shrink-0">
-                    {index === 0 && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/50 motion-reduce:animate-none" />}
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full border-2 border-card bg-primary" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground">
-                      {item.entityType} {ACTION_LABELS[item.action] || item.action.toLowerCase()}
-                      {item.field ? <span className="font-normal text-muted-foreground"> · {item.field}</span> : null}
+                      {ENTITY_LABELS[item.entityType] || item.entityType} {ACTION_LABELS[item.action] || item.action.toLowerCase()}
                     </p>
+                    <p className="mt-1 break-words text-sm font-medium text-foreground">{label}</p>
+                    {events.some(event => event.field) ? <p className="mt-1 text-sm text-muted-foreground">{events.map(event => event.field ? activityFieldLabel(event.field) : null).filter(Boolean).join(' · ')}</p> : null}
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       <span>{item.actor || 'local-user'}</span>
                       <span aria-hidden="true">·</span>
                       <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</time>
-                      {detail ? <span className="font-mono text-primary">{detail}</span> : null}
+                      {events.length > 1 ? <span>{events.length} perubahan terkait</span> : null}
                     </div>
                   </div>
                   {target && onNavigate ? (
-                    <button type="button" onClick={() => onNavigate(target)} aria-label={`Buka ${item.entityType}`} className="flex size-9 shrink-0 items-center justify-center self-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">
+                    <button type="button" onClick={() => onNavigate(target)} aria-label={`Buka daftar ${ENTITY_LABELS[item.entityType] || item.entityType}`} className="flex size-11 shrink-0 items-center justify-center self-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-primary focus-visible:outline-2 focus-visible:outline-ring sm:size-9">
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </button>
                   ) : null}

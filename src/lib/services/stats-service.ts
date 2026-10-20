@@ -71,7 +71,13 @@ export async function getProjectStats(projectId: string) {
     select: { executions: { orderBy: { createdAt: 'desc' }, take: 1, select: { status: true } } },
   }) : [];
   const stats = calculateDashboardStats(allTestCases, bugFixItems, projectModules);
-  return { ...stats, releaseReadiness: buildReleaseReadiness(selectedRun ? [{ ...selectedRun, testCases: runCases }] : [], bugFixItems), recentActivities };
+  // Reuse already-scoped records: no extra queries or client-side full inventory.
+  const activityLabels = new Map<string, string>([
+    ...allTestCases.map(item => [`TestCase:${item.id}`, item.testCaseId] as const),
+    ...bugFixItems.map(item => [`BugFix:${item.id}`, item.testCaseId] as const),
+    ...testRuns.map(item => [`TestRun:${item.id}`, item.name] as const),
+  ]);
+  return { ...stats, releaseReadiness: buildReleaseReadiness(selectedRun ? [{ ...selectedRun, testCases: runCases }] : [], bugFixItems), recentActivities: recentActivities.map(item => ({ ...item, entityLabel: activityLabels.get(`${item.entityType}:${item.entityId}`) || null })) };
 }
 
 export function buildReleaseReadiness(testRuns: Array<{ id: string; name: string; status: string; testCases: Array<{ executions: Array<{ status: string }> }> }>, bugFixItems: Array<{ id: string; priority: string; status: string }>) {

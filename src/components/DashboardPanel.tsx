@@ -174,6 +174,7 @@ export interface DashboardStats {
     id: string;
     entityType: string;
     entityId: string;
+    entityLabel?: string | null;
     action: string;
     field: string | null;
     afterValue: unknown;

@@ -13,6 +13,7 @@ interface TestCaseDetailDialogHeaderProps {
   testCaseList?: TestCase[];
   navigationIndex: number;
   onNavigate?: (testCase: TestCase) => void;
+  onCopyId: (id: string) => void;
   getStatusIcon: (status: string) => ReactNode;
   getStatusBadgeVariant: (status: string) => 'success' | 'failed' | 'warning' | 'info' | 'notdone' | 'inprogress' | 'blocked' | 'readyretest' | 'verifiedfixed' | 'tba' | 'outline';
 }
@@ -22,6 +23,7 @@ export function TestCaseDetailDialogHeader({
   testCaseList,
   navigationIndex,
   onNavigate,
+  onCopyId,
   getStatusBadgeVariant,
   getStatusIcon,
 }: TestCaseDetailDialogHeaderProps) {
@@ -42,7 +44,7 @@ export function TestCaseDetailDialogHeader({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 rounded-xl p-0 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+              className="size-11 rounded-lg p-0 sm:size-8"
               disabled={navigationIndex <= 0}
               onClick={() => navigationIndex > 0 && onNavigate(testCaseList[navigationIndex - 1])}
               aria-label="Previous test case"
@@ -55,7 +57,7 @@ export function TestCaseDetailDialogHeader({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 rounded-xl p-0 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+              className="size-11 rounded-lg p-0 sm:size-8"
               disabled={navigationIndex >= testCaseList.length - 1}
               onClick={() => navigationIndex < testCaseList.length - 1 && onNavigate(testCaseList[navigationIndex + 1])}
               aria-label="Next test case"
@@ -68,7 +70,7 @@ export function TestCaseDetailDialogHeader({
       {viewTestCase && (
         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 pl-7 text-xs text-muted-foreground">
           <span><span className="font-semibold uppercase tracking-wider">Display ID</span> <code className="ml-1 font-mono font-bold text-primary">{viewTestCase.testCaseId}</code></span>
-          <span className="flex min-w-0 items-center gap-1"><span className="font-semibold uppercase tracking-wider">UUID</span> <code className="max-w-[240px] truncate font-mono text-foreground/70" title={viewTestCase.id}>{viewTestCase.id}</code><button type="button" onClick={() => void navigator.clipboard.writeText(viewTestCase.id)} className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Copy testcase UUID"><Copy className="h-3 w-3" /></button></span>
+          <span className="flex min-w-0 items-center gap-1"><span className="font-semibold uppercase tracking-wider">UUID</span> <code className="max-w-[min(200px,48vw)] truncate font-mono text-foreground/70" title={viewTestCase.id}>{viewTestCase.id}</code><Button type="button" variant="ghost" size="icon" onClick={() => onCopyId(viewTestCase.id)} className="size-11 sm:size-8" aria-label="Copy testcase UUID"><Copy /></Button></span>
         </div>
       )}
       <DialogDescription className="sr-only">

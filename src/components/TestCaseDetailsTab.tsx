@@ -1,16 +1,12 @@
 'use client';
 
-import { Copy, Layers } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ChevronDown, Copy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { TabsContent } from '@/components/ui/tabs';
 import { BulletTextView } from '@/components/TestCaseDetailDialog.helpers';
 import type { TestCase } from '@/components/TestCaseTable';
-import { cn } from '@/lib/utils';
 
 interface TestCaseDetailsTabProps {
   viewTestCase: TestCase;
@@ -21,153 +17,55 @@ interface TestCaseDetailsTabProps {
 
 export function TestCaseDetailsTab({ viewTestCase, onCopyId, getTestTypeColor, getPriorityColor }: TestCaseDetailsTabProps) {
   return (
-<TabsContent value="details" className="space-y-6 mt-0 outline-none">
-  <p className="text-xs text-muted-foreground">Status di sini adalah status inventory. Retest Bug diselesaikan melalui Done / As Expected pada testcase terkait, bukan Pass di Test Run.</p>
-  <motion.div
-    key="details"
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-    transition={{ duration: 0.2 }}
-  >
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div className="space-y-4">
-        <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Identification</p>
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Test Case ID (Display)</p>
-              <p className="font-mono text-base font-bold text-foreground">{viewTestCase.testCaseId}</p>
-            </div>
-            <div>
-              <div className="mb-1">
-                <p className="text-[11px] text-muted-foreground/70" title="ID internal ini dipakai Katalon/automation untuk menautkan log ke test case.">
-                  ID Internal (untuk automation log)
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="flex-1 truncate rounded border border-border/60 bg-muted/30 px-2 py-1 font-mono text-[11px] text-muted-foreground shadow-inner">
-                  {viewTestCase.id}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 border-border/60 bg-secondary/50 p-0 text-muted-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-500/10 dark:hover:text-status-in-progress"
-                  onClick={() => onCopyId(viewTestCase.id)}
-                >
-                  <Copy className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+    <TabsContent value="details" className="mt-0 flex flex-col gap-6 outline-none">
+      <section className="flex flex-col gap-3" aria-label="Test action">
+        <h3 className="max-w-prose break-words text-lg font-semibold leading-7 text-foreground sm:text-xl">{viewTestCase.testAction || 'Test action belum diisi'}</h3>
+        <dl className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <div className="flex min-w-0 gap-2"><dt className="text-muted-foreground">Page</dt><dd className="break-words font-medium">{viewTestCase.page || '—'}</dd></div>
+          <div className="flex min-w-0 gap-2"><dt className="text-muted-foreground">Module</dt><dd className="break-words font-medium">{viewTestCase.module?.name || 'Tanpa Module'}</dd></div>
+          <div className="flex items-center gap-2"><dt className="sr-only">Tipe test</dt><dd><Badge variant="outline" className={getTestTypeColor(viewTestCase.testType)}>{viewTestCase.testType}</Badge></dd></div>
+          <div className="flex items-center gap-2"><dt className="sr-only">Prioritas</dt><dd><Badge className={getPriorityColor(viewTestCase.priority)}>{viewTestCase.priority}</Badge></dd></div>
+        </dl>
+      </section>
 
-        <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Classification</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Page / Menu</p>
-              <p className="font-bold text-foreground">{viewTestCase.page}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Sub Menu</p>
-              <p className="text-sm font-medium">{viewTestCase.subMenu || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Tipe Test</p>
-              <Badge variant="outline" className={getTestTypeColor(viewTestCase.testType)}>{viewTestCase.testType}</Badge>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Prioritas</p>
-              <Badge className={getPriorityColor(viewTestCase.priority)}>{viewTestCase.priority}</Badge>
-            </div>
-          </div>
-        </div>
+      <Separator />
+      <div className="grid gap-6 md:grid-cols-2">
+        <section className="flex min-w-0 flex-col gap-3" aria-labelledby="overview-test-steps">
+          <h3 id="overview-test-steps" className="text-sm font-semibold">Test steps</h3>
+          <BulletTextView value={viewTestCase.steps || '—'} className="break-words whitespace-pre-wrap text-base leading-7 text-foreground sm:text-sm" />
+        </section>
+        <section className="flex min-w-0 flex-col gap-3" aria-labelledby="overview-expected-result">
+          <h3 id="overview-expected-result" className="text-sm font-semibold">Expected result</h3>
+          <BulletTextView value={viewTestCase.expectedResult || '—'} className="break-words whitespace-pre-wrap text-base leading-7 text-foreground sm:text-sm" />
+        </section>
       </div>
 
-      <div className="space-y-4">
-        <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Project Tracking</p>
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Module</p>
-              <div className="flex items-center gap-2">
-                <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="font-semibold text-foreground">{viewTestCase.module?.name || 'Tanpa Module'}</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Bobot Transaksi</p>
-                <Badge variant="secondary" className="border-indigo-200 bg-indigo-50 font-mono text-indigo-700 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-status-in-progress">
-                  {viewTestCase.calculatedWeight != null ? `${viewTestCase.calculatedWeight.toFixed(2)}%` : (viewTestCase.weight || '-')}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Progress</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Progress value={viewTestCase.progress} className="h-2 flex-1" />
-                  <span className="text-xs font-bold text-foreground">{viewTestCase.progress}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      <section className="flex flex-col gap-3 border-t border-border pt-5" aria-label="Hasil dan catatan inventory">
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="text-sm font-semibold">Actual result</h3>
+          <Badge variant={viewTestCase.actualResult === 'As Expected' ? 'success' : viewTestCase.actualResult === 'Not As Expected' ? 'failed' : 'outline'}>{viewTestCase.actualResult || 'Belum diuji'}</Badge>
         </div>
+        <div className="flex flex-col gap-1">
+          <h4 className="text-sm font-medium text-muted-foreground">Catatan</h4>
+          <p className="break-words whitespace-pre-wrap text-base leading-7 sm:text-sm">{viewTestCase.remarks?.trim() || 'Belum ada catatan.'}</p>
+        </div>
+        <p className="text-sm leading-6 text-muted-foreground">Ini adalah hasil inventory, bukan hasil Test Run. Retest Bug diselesaikan melalui Done / As Expected pada testcase terkait.</p>
+      </section>
 
-        <div className="rounded-xl border border-border/60 bg-secondary/30 p-4">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Test Status</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Actual Result</p>
-              <Badge className={cn(viewTestCase.actualResult === 'As Expected' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-status-passed' : viewTestCase.actualResult === 'Not As Expected' ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-status-failed' : 'border-border bg-muted text-muted-foreground dark:border-slate-500/20 dark:bg-slate-500/10 dark:text-foreground')}>
-                {viewTestCase.actualResult || 'BELUM DI-TEST'}
-              </Badge>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Terakhir Diupdate</p>
-              <p className="text-[10px] font-medium text-muted-foreground">
-                {new Date(viewTestCase.updatedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <Separator className="my-6" />
-
-    <div className="grid grid-cols-1 gap-6">
-      <div className="space-y-2">
-        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Test Action</Label>
-        <div className="rounded-xl border border-border/60 bg-secondary/30 p-4 text-sm italic leading-relaxed text-muted-foreground">
-          "{viewTestCase.testAction}"
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Test Steps</Label>
-          <BulletTextView
-            value={viewTestCase.steps}
-            className="min-h-[120px] whitespace-pre-wrap rounded-xl border border-border/60 bg-secondary/30 p-4 text-sm font-medium leading-relaxed text-foreground shadow-inner"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Expected Result</Label>
-          <BulletTextView
-            value={viewTestCase.expectedResult}
-            className="min-h-[120px] rounded-xl border border-emerald-500/15 bg-emerald-500/10 p-4 text-sm font-semibold leading-relaxed text-foreground shadow-inner"
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Remarks / Catatan</Label>
-        <div className="min-h-[72px] whitespace-pre-wrap rounded-xl border border-amber-500/15 bg-amber-500/10 p-4 text-sm italic text-foreground shadow-inner">
-          {viewTestCase.remarks?.trim() || '-'}
-        </div>
-      </div>
-    </div>
-  </motion.div>
-</TabsContent>
-
+      <details className="group border-t border-border pt-2">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-md text-sm font-semibold focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+          Metadata testcase
+          <ChevronDown className="size-4 group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-4 py-4 text-sm sm:grid-cols-2">
+          <div><dt className="text-muted-foreground">Display ID</dt><dd className="mt-1 break-words font-mono font-medium">{viewTestCase.testCaseId}</dd></div>
+          <div><dt className="text-muted-foreground">Sub Menu</dt><dd className="mt-1 break-words">{viewTestCase.subMenu || '—'}</dd></div>
+          <div><dt className="text-muted-foreground">Bobot transaksi</dt><dd className="mt-1 tabular-nums">{viewTestCase.calculatedWeight != null ? `${viewTestCase.calculatedWeight.toFixed(2)}%` : (viewTestCase.weight || '—')}</dd></div>
+          <div><dt className="text-muted-foreground">Progress inventory</dt><dd className="mt-1 tabular-nums">{viewTestCase.progress}%</dd></div>
+          <div><dt className="text-muted-foreground">Terakhir diperbarui</dt><dd className="mt-1">{new Date(viewTestCase.updatedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</dd></div>
+          <div className="min-w-0"><dt className="text-muted-foreground">UUID untuk automation</dt><dd className="mt-1 flex min-w-0 items-center gap-2"><code className="min-w-0 flex-1 break-all text-xs">{viewTestCase.id}</code><Button variant="ghost" size="icon" className="size-11 sm:size-9" onClick={() => onCopyId(viewTestCase.id)} aria-label="Salin UUID testcase"><Copy /></Button></dd></div>
+        </dl>
+      </details>
+    </TabsContent>
   );
 }

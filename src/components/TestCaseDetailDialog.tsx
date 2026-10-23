@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MutationAction } from '@/components/WorkspaceAccess';
 import { useCommittedActions } from '@/hooks/use-committed-actions';
 import { createPortal } from 'react-dom';
@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useWorkspaceAccess } from '@/components/WorkspaceAccess';
+import type { GuestPermission } from '@/lib/domain/guest-access';
 import type { TestCase } from '@/components/TestCaseTable';
 import type { ManualCaptureBrowserMode, ManualCaptureMode, ManualRecordingMeta } from '@/hooks/useAutomationLogs';
 import {
@@ -53,6 +55,8 @@ import { SyncedVideoEventsPanel } from '@/components/SyncedVideoEventsPanel';
 import { RecordingVideoPanel } from '@/components/RecordingVideoPanel';
 import { RecordingEvidencePanel } from '@/components/RecordingEvidencePanel';
 import { DevLogGuide } from '@/components/DevLogGuide';
+import { PlaywrightScriptPanel, scriptArtifactUrl, type ScriptRun } from '@/components/PlaywrightScriptPanel';
+import type { AutomationLogEntry } from '@/hooks/useAutomationLogs';
 
 import {
   DEFAULT_NETWORK_FILTERS,
@@ -162,7 +166,7 @@ export function TestCaseDetailDialog({
   onOpenChange,
   viewTestCase,
   socketReady,
-  liveLogs,
+  liveLogs: captureLiveLogs,
   activeDevLogTab,
   expandedLogId,
   isLoadingHistory,
@@ -171,7 +175,7 @@ export function TestCaseDetailDialog({
   isSummarizing,
   manualCaptureTargetUrl,
   manualCaptureSessionId,
-  manualRecording,
+  manualRecording: captureRecording,
   isManualCaptureActive,
   isStartingManualCapture,
   isStoppingManualCapture,
@@ -200,6 +204,37 @@ export function TestCaseDetailDialog({
   onNavigate,
 }: TestCaseDetailDialogProps) {
   const [activeMainTab, setActiveMainTab] = useState('details');
+  const { guest, canAdmin } = useWorkspaceAccess();
+  const [scriptSelection, setScriptSelection] = useState<{ testCaseId: string; runId: string; artifactId?: string; logs: AutomationLogEntry[]; recording: ManualRecordingMeta | null } | null>(null);
+  const [scriptDraftState, setScriptDraftState] = useState<{ testCaseId: string; dirty: boolean } | null>(null);
+  const hasUnsavedScript = scriptDraftState?.testCaseId === viewTestCase?.id && scriptDraftState?.dirty;
+  const setHasUnsavedScript = useCallback((dirty: boolean) => setScriptDraftState({ testCaseId: viewTestCase?.id || '', dirty }), [viewTestCase?.id]);
+  const selectedScript = scriptSelection?.testCaseId === viewTestCase?.id ? scriptSelection : null;
+  const liveLogs: LogEntry[] = selectedScript?.logs || captureLiveLogs;
+  const manualRecording = selectedScript ? selectedScript.recording : captureRecording;
+  const inspectScriptRun = (run: ScriptRun, logs: AutomationLogEntry[], artifactId?: string, activate = false) => {
+    if (!viewTestCase) return;
+    setScriptSelection(previous => {
+      if (!activate && (previous?.runId !== run.runId || previous.testCaseId !== viewTestCase.id)) return previous;
+      const selectedId = artifactId || (previous?.runId === run.runId ? previous.artifactId : undefined);
+      const video = run.artifacts.find(item => item.id === selectedId && item.kind === 'video') || run.artifacts.find(item => item.kind === 'video');
+      const videoStart = video?.startedAtRelativeMs ?? logs.find(item => item.event === 'video.started')?.relativeMs;
+      return { testCaseId: viewTestCase.id, runId: run.runId, artifactId: video?.id, logs,
+        recording: video ? { mode: 'video', sessionId: run.runId, testCaseId: viewTestCase.id, targetUrl: 'Playwright script', startedAt: run.startedAt || run.createdAt,
+          stoppedAt: run.endedAt, frameIntervalMs: 0, status: 'stopped', frames: [], video: { file: video.name, url: scriptArtifactUrl(viewTestCase.projectId, viewTestCase.id, run.runId, video.id), mimeType: 'video/webm', status: 'ready', startedAtRelativeMs: videoStart || 0, durationMs: run.durationMs, sizeBytes: video.size } } : null };
+    });
+  };
+  useEffect(() => {
+    if (!hasUnsavedScript) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hasUnsavedScript]);
+  const canInspect = (tab: string) => {
+    if (!guest || tab === 'details' || tab === 'steps' || tab === 'lifecycle') return true;
+    const permissions: Record<string, GuestPermission[]> = { traceability: ['traceability.view'], execution: ['traceability.view', 'runs.view'], evidence: ['traceability.view', 'evidence.view'], bugs: ['traceability.view', 'bugs.view'], history: ['history.view'], comments: ['history.view'] };
+    return Boolean(permissions[tab]?.every(permission => guest.permissions.includes(permission)));
+  };
   const inspectorSurface = useRef<HTMLDivElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const [contentReady, setContentReady] = useState(false);
@@ -862,7 +897,7 @@ export function TestCaseDetailDialog({
   };
 
   const systemDevLogHeaderProps = {
-    socketReady, openSystemDevLogFullscreen, isSummarizing, generateAISummary,
+    socketReady: !selectedScript && socketReady, scriptMode: Boolean(selectedScript), openSystemDevLogFullscreen, isSummarizing, generateAISummary,
     activeDevLogTab, setActiveDevLogTab, groupedConsoleLogs, groupedNetworkLogs,
     loadedRunLabel, loadCurrentLogRun, isLoadingHistory, loadLogHistory, clearLogs,
   };
@@ -912,7 +947,7 @@ export function TestCaseDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => {
-      if (!nextOpen && hasUnsavedComment && !window.confirm('Komentar belum disimpan. Tutup detail dan buang draft?')) return;
+      if (!nextOpen && (hasUnsavedComment || hasUnsavedScript) && !window.confirm('Ada draft yang belum disimpan ke server. Tetap tutup detail? Draft script disimpan lokal jika penyimpanan browser tersedia.')) return;
       onOpenChange(nextOpen);
     }}>
       <DialogContent
@@ -956,7 +991,7 @@ export function TestCaseDetailDialog({
         {viewTestCase && (
           <div className="min-h-0 flex-1 overflow-hidden outline-none">
             <div className="flex h-full min-h-0 flex-col p-4 pt-3 sm:p-6 sm:pt-4">
-              <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="min-h-0 w-full flex-1 gap-0">
+              <Tabs value={canInspect(activeMainTab) ? activeMainTab : 'details'} onValueChange={setActiveMainTab} className="min-h-0 w-full flex-1 gap-0">
                 <div className="sticky top-0 z-10 mb-4 w-full shrink-0 overflow-x-auto rounded-xl bg-card pb-1 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
                   <TabsList aria-label="Bagian detail testcase" className="qa-inspector-tabs flex h-auto w-max min-w-full justify-start gap-1 border border-border bg-muted p-1">
                   <TabsTrigger value="details" className="min-w-max flex-none gap-2">
@@ -970,21 +1005,21 @@ export function TestCaseDetailDialog({
                       <History className="w-4 h-4" /> Lifecycle
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="traceability" className="min-w-max flex-none gap-2">
+                  <TabsTrigger disabled={!canInspect('traceability')} value="traceability" className="min-w-max flex-none gap-2">
                     <Link2 className="w-4 h-4" /> Traceability
                   </TabsTrigger>
-                  <TabsTrigger value="execution" className="min-w-max flex-none gap-2">
+                  <TabsTrigger disabled={!canInspect('execution')} value="execution" className="min-w-max flex-none gap-2">
                     <PlayCircle className="w-4 h-4" /> Execution
                   </TabsTrigger>
-                  <TabsTrigger value="evidence" className="min-w-max flex-none gap-2">
+                  <TabsTrigger disabled={!canInspect('evidence')} value="evidence" className="min-w-max flex-none gap-2">
                     <Paperclip className="w-4 h-4" /> Evidence
                   </TabsTrigger>
-                  <TabsTrigger value="bugs" className="min-w-max flex-none gap-2"><Bug className="w-4 h-4" /> Bugs</TabsTrigger>
-                  <TabsTrigger value="history" className="min-w-max flex-none gap-2"><History className="w-4 h-4" /> History</TabsTrigger>
-                  <TabsTrigger value="comments" className="min-w-max flex-none gap-2">
+                  <TabsTrigger disabled={!canInspect('bugs')} value="bugs" className="min-w-max flex-none gap-2"><Bug className="w-4 h-4" /> Bugs</TabsTrigger>
+                  <TabsTrigger disabled={!canInspect('history')} value="history" className="min-w-max flex-none gap-2"><History className="w-4 h-4" /> History</TabsTrigger>
+                  <TabsTrigger disabled={!canInspect('comments')} value="comments" className="min-w-max flex-none gap-2">
                     <MessageSquare className="w-4 h-4" /> Comments
                   </TabsTrigger>
-                  <TabsTrigger value="logs" className="min-w-max flex-none gap-2">
+                  {!guest && <TabsTrigger value="logs" className="min-w-max flex-none gap-2">
                     <div className="relative">
                       <Wrench className="w-4 h-4" />
                       {socketReady && (
@@ -995,7 +1030,7 @@ export function TestCaseDetailDialog({
                       )}
                     </div>
                     Automation
-                  </TabsTrigger>
+                  </TabsTrigger>}
                 </TabsList>
                 </div>
                 <p className="py-2 text-xs leading-5 text-muted-foreground">Geser tab untuk melihat bagian lainnya, atau gunakan tombol panah saat tab terfokus.</p>
@@ -1031,25 +1066,25 @@ export function TestCaseDetailDialog({
                       formatDateTime={formatDateTime}
                     />
                   )}
-                  {activeMainTab === 'traceability' && (
+                  {canInspect('traceability') && activeMainTab === 'traceability' && (
                     <TestCaseTraceabilityTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
                   )}
-                  {activeMainTab === 'execution' && (
+                  {canInspect('execution') && activeMainTab === 'execution' && (
                     <TestCaseExecutionTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
                   )}
-                  {activeMainTab === 'evidence' && (
+                  {canInspect('evidence') && activeMainTab === 'evidence' && (
                     <TestCaseEvidenceTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
                   )}
-                  {activeMainTab === 'bugs' && (
+                  {canInspect('bugs') && activeMainTab === 'bugs' && (
                     <TestCaseBugsTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
                   )}
-                  {activeMainTab === 'history' && (
+                  {canInspect('history') && activeMainTab === 'history' && (
                     <TestCaseHistoryTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
                   )}
-                  {activeMainTab === 'comments' && (
+                  {canInspect('comments') && activeMainTab === 'comments' && (
                     <TestCaseCommentsTab key={viewTestCase.id} projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} onDirtyChange={setHasUnsavedComment} />
                   )}
-                  {activeMainTab === 'logs' && (
+                  {!guest && activeMainTab === 'logs' && (
                     <TabsContent value="logs" className="space-y-4 mt-0 outline-none h-full flex flex-col">
                       <motion.div
                         key="logs"
@@ -1060,7 +1095,9 @@ export function TestCaseDetailDialog({
                         className="h-full flex flex-col"
                       >
                         <div className="flex flex-col flex-1 min-h-0">
-                          <DevLogGuide expandedGuide={expandedGuide} setExpandedGuide={setExpandedGuide} />
+                          {canAdmin && <PlaywrightScriptPanel key={viewTestCase.id} projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} onInspect={inspectScriptRun} onDirtyChange={setHasUnsavedScript} />}
+                          {selectedScript && <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg bg-muted px-4 py-3 text-sm"><p>Viewer: hasil script Playwright · {selectedScript.logs.length} event</p><Button type="button" variant="outline" size="sm" onClick={() => setScriptSelection(null)}>Kembali ke capture manual</Button></div>}
+                          {!selectedScript && <><DevLogGuide expandedGuide={expandedGuide} setExpandedGuide={setExpandedGuide} />
 
 
                           <div className="hidden shrink-0 mt-4 items-start gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm" aria-hidden="true">
@@ -1107,6 +1144,7 @@ export function TestCaseDetailDialog({
                             </div>
 
                           <MutationAction><ManualCaptureCommand {...manualCaptureCommandProps} /></MutationAction>
+                          </>}
 
                           <ManualRecordingPreview {...manualRecordingPreviewProps} />{/*
                                       Memproses video{videoProcessingPercent !== null && isVideoFinalizing ? ` — ${videoProcessingPercent}%` : ''}
@@ -1115,7 +1153,7 @@ export function TestCaseDetailDialog({
                           <SystemDevLogHeader {...systemDevLogHeaderProps} />
 
                           <div className="flex h-[min(680px,calc(100dvh-8rem))] min-h-[360px] max-h-[680px] min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white font-mono text-[11.5px] shadow-xl dark:border-border dark:bg-background dark:shadow-2xl">
-                            {aiSummary && (
+                            {aiSummary && !selectedScript && (
                               <div className="border-b border-indigo-100 bg-indigo-50 p-4 animate-in fade-in slide-in-from-top-2 duration-500 dark:border-indigo-900/50 dark:bg-indigo-950/30">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider dark:text-status-in-progress">

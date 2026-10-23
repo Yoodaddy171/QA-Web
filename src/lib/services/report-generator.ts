@@ -196,9 +196,9 @@ export async function calculateProjectMetrics(projectId: string, testRunId?: str
     },
     testRunSummary,
     appendix: [
-      { documentName: 'Test Case Inventory', description: 'Daftar test case dan hasil eksekusi dari QA-Web.', location: 'QA-Web Cases' },
-      { documentName: 'Bug Report', description: 'Daftar defect yang tercatat selama periode pelaporan.', location: 'QA-Web Bugs' },
-      { documentName: 'Evidence Report', description: 'Bukti pengujian, log, screenshot, atau recording jika tersedia.', location: 'QA-Web Evidence' },
+      { documentName: 'Test Case Inventory', description: 'Daftar test case dan hasil eksekusi dari Traceva.', location: 'Traceva Cases' },
+      { documentName: 'Bug Report', description: 'Daftar defect yang tercatat selama periode pelaporan.', location: 'Traceva Bugs' },
+      { documentName: 'Evidence Report', description: 'Bukti pengujian, log, screenshot, atau recording jika tersedia.', location: 'Traceva Evidence' },
     ],
   };
 }
@@ -214,7 +214,7 @@ async function defaultDocumentParts(input: CreateReportInput, projectName: strin
     revisionLog: input.metadata?.revisionLog || [{ date: new Date().toLocaleDateString('id-ID'), version: input.version, changes: 'Initial document', author: input.author || '' }],
     references: input.metadata?.references || [
       { type: 'External', title: 'ISO/IEC/IEEE 29119 - Software Testing' },
-      { type: 'Internal', title: `QA-Web Project ${projectName}` },
+      { type: 'Internal', title: `Traceva Project ${projectName}` },
       ...knowledge.map(k => ({ type: 'Internal' as const, title: k.title })),
     ],
     glossary: input.metadata?.glossary || defaultGlossary,
@@ -239,7 +239,7 @@ async function defaultDocumentParts(input: CreateReportInput, projectName: strin
     suspensionCriteria: 'Pengujian dapat ditangguhkan jika environment tidak tersedia atau terdapat blocker kritikal.',
     testDeliverables: 'Test Plan, Test Case, Bug Report, Evidence Report, dan Test Status Report.',
     remainingTestTasks: 'Melengkapi testcase, menyiapkan data uji, menjalankan eksekusi, dan melakukan retest defect.',
-    environmentalNeeds: 'Browser modern, environment aplikasi yang dapat diakses, data uji, dan tools pendukung QA-Web/Katalon/Postman jika diperlukan.',
+    environmentalNeeds: 'Browser modern, environment aplikasi yang dapat diakses, data uji, dan tools pendukung Traceva/Katalon/Postman jika diperlukan.',
     responsibilities: 'QA bertanggung jawab pada eksekusi dan dokumentasi hasil pengujian. Developer bertanggung jawab pada perbaikan defect.',
     schedule: 'Schedule mengikuti periode dokumen dan prioritas modul.',
     planningRisks: 'Keterbatasan dokumentasi, perubahan requirement, environment tidak stabil, dan defect kritikal.',

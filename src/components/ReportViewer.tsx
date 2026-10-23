@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { MutationAction } from '@/components/WorkspaceAccess';
+import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import { Badge } from '@/components/ui/badge';
 import { Download, FileText, FilePlus2, Pencil, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,7 @@ const ACTION_SUCCESS: Record<ReportAction, string> = {
 
 export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: ReportViewerProps) {
   const { toast } = useToast();
+  const { canExportReports } = useWorkspaceAccess();
   const formatDate = (date?: Date) => date ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(date)) : '-';
   const { metrics, sections, metadata } = report;
   const isPlanning = report.reportType === 'TEST_PLANNING_DOCUMENT';
@@ -94,8 +95,8 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
             {report.status !== 'FINAL' && <MutationAction><Button variant="outline" onClick={() => postAction('refresh')}><RefreshCcw className="mr-2 h-4 w-4" />Refresh Snapshot</Button></MutationAction>}
             {report.status !== 'FINAL' && <MutationAction minimum="QA_LEAD"><Button onClick={() => postAction('finalize')}><ShieldCheck className="mr-2 h-4 w-4" />Finalize</Button></MutationAction>}
             {report.status === 'FINAL' && <MutationAction><Button variant="outline" onClick={() => postAction('versions')}><FilePlus2 className="mr-2 h-4 w-4" />New Version</Button></MutationAction>}
-            <Button variant="outline" onClick={handleExportHTML}><Download className="mr-2 h-4 w-4" />HTML</Button>
-            <Button variant="outline" asChild><a href={`/api/reports/${report.id}/export/docx`}><Download className="mr-2 h-4 w-4" />DOCX</a></Button>
+            {canExportReports && <><Button variant="outline" onClick={handleExportHTML}><Download className="mr-2 h-4 w-4" />HTML</Button>
+            <Button variant="outline" asChild><a href={`/api/reports/${report.id}/export/docx`}><Download className="mr-2 h-4 w-4" />DOCX</a></Button></>}
           </div>
         </div>
 

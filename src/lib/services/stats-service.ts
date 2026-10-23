@@ -55,6 +55,7 @@ export async function getProjectStats(projectId: string) {
         entityId: true,
         action: true,
         field: true,
+        beforeValue: true,
         afterValue: true,
         actor: true,
         createdAt: true,
@@ -76,6 +77,17 @@ export async function getProjectStats(projectId: string) {
     ...allTestCases.map(item => [`TestCase:${item.id}`, item.testCaseId] as const),
     ...bugFixItems.map(item => [`BugFix:${item.id}`, item.testCaseId] as const),
     ...testRuns.map(item => [`TestRun:${item.id}`, item.name] as const),
+  ]);
+  // Resolve only the few entities in this feed, always within this project.
+  // Select labels only: guest tokens, account credentials and payloads stay private.
+  const ids = (type: string) => [...new Set(recentActivities.filter(item => item.entityType === type && !activityLabels.has(`${type}:${item.entityId}`)).map(item => item.entityId))];
+  await Promise.all([
+    ids('TestExecution').length ? db.testExecution.findMany({ where: { id: { in: ids('TestExecution') }, testRun: { projectId }, testCase: { projectId } }, select: { id: true, testCase: { select: { testCaseId: true } }, testRun: { select: { name: true } } } }).then(rows => rows.forEach(row => activityLabels.set(`TestExecution:${row.id}`, `${row.testCase.testCaseId} · ${row.testRun.name}`))) : null,
+    ids('GuestAccessGrant').length ? db.guestAccessGrant.findMany({ where: { id: { in: ids('GuestAccessGrant') }, projects: { some: { projectId } } }, select: { id: true, label: true } }).then(rows => rows.forEach(row => activityLabels.set(`GuestAccessGrant:${row.id}`, row.label))) : null,
+    ids('WorkspaceMembership').length ? db.workspaceMembership.findMany({ where: { id: { in: ids('WorkspaceMembership') }, workspace: { projects: { some: { id: projectId } } } }, select: { id: true, user: { select: { name: true } } } }).then(rows => rows.forEach(row => activityLabels.set(`WorkspaceMembership:${row.id}`, row.user.name))) : null,
+    ids('Requirement').length ? db.requirement.findMany({ where: { id: { in: ids('Requirement') }, projectId }, select: { id: true, title: true } }).then(rows => rows.forEach(row => activityLabels.set(`Requirement:${row.id}`, row.title))) : null,
+    ids('TestPlan').length ? db.testPlan.findMany({ where: { id: { in: ids('TestPlan') }, projectId }, select: { id: true, name: true } }).then(rows => rows.forEach(row => activityLabels.set(`TestPlan:${row.id}`, row.name))) : null,
+    ids('TestRun').length ? db.testRun.findMany({ where: { id: { in: ids('TestRun') }, projectId }, select: { id: true, name: true } }).then(rows => rows.forEach(row => activityLabels.set(`TestRun:${row.id}`, row.name))) : null,
   ]);
   return { ...stats, releaseReadiness: buildReleaseReadiness(selectedRun ? [{ ...selectedRun, testCases: runCases }] : [], bugFixItems), recentActivities: recentActivities.map(item => ({ ...item, entityLabel: activityLabels.get(`${item.entityType}:${item.entityId}`) || null })) };
 }

@@ -2,19 +2,7 @@
 
 import { Activity, ArrowUpRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { activityEntityLabel, activityFieldLabel, summarizeActivities, type DashboardActivity } from '@/lib/client/activity-summary';
-
-const ACTION_LABELS: Record<string, string> = {
-  CREATED: 'dibuat',
-  UPDATED: 'diperbarui',
-  DELETED: 'dihapus',
-  IMPORTED: 'diimpor',
-  COMMENTED: 'dikomentari',
-  CASES_ADDED: 'menerima testcase',
-  CASE_REMOVED: 'menghapus testcase',
-};
-
-const ENTITY_LABELS: Record<string, string> = { TestCase: 'Testcase', TestRun: 'Test Run', TestExecution: 'Eksekusi', BugFix: 'Bug', Requirement: 'Requirement', TestPlan: 'Test Plan' };
+import { activityActorLabel, activityDetail, activityEntityLabel, activityEntityTypeLabel, activityFieldLabel, activityTitle, summarizeActivities, type DashboardActivity } from '@/lib/client/activity-summary';
 
 function activityTarget(entityType: string): 'testRuns' | 'testcases' | 'bugfix' | null {
   if (entityType === 'TestRun' || entityType === 'TestExecution') return 'testRuns';
@@ -43,6 +31,7 @@ export function DashboardActivityTimeline({
             {summarizeActivities(activities).slice(0, 6).map(({ item, events }) => {
               const target = activityTarget(item.entityType);
               const label = activityEntityLabel(item);
+              const detail = activityDetail(item);
               return (
                 <li key={item.id} className="group relative flex gap-3 px-4 py-3 transition-colors duration-150 hover:bg-secondary/25">
                   <span className="relative mt-1.5 flex h-2.5 w-2.5 shrink-0">
@@ -50,19 +39,20 @@ export function DashboardActivityTimeline({
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground">
-                      {ENTITY_LABELS[item.entityType] || item.entityType} {ACTION_LABELS[item.action] || item.action.toLowerCase()}
+                      {activityTitle(item)}
                     </p>
                     <p className="mt-1 break-words text-sm font-medium text-foreground">{label}</p>
-                    {events.some(event => event.field) ? <p className="mt-1 text-sm text-muted-foreground">{events.map(event => event.field ? activityFieldLabel(event.field) : null).filter(Boolean).join(' · ')}</p> : null}
+                    {detail ? <p className="mt-1 break-words text-sm text-muted-foreground">{detail}</p> : null}
+                    {events.some(event => event.field && (event.field !== 'status' || events.length > 1)) ? <p className="mt-1 text-sm text-muted-foreground">Diperbarui: {events.map(event => event.field ? activityFieldLabel(event.field) : null).filter(Boolean).join(' · ')}</p> : null}
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                      <span>{item.actor || 'local-user'}</span>
+                      <span className="break-words">{activityActorLabel(item.actor)}</span>
                       <span aria-hidden="true">·</span>
                       <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</time>
                       {events.length > 1 ? <span>{events.length} perubahan terkait</span> : null}
                     </div>
                   </div>
                   {target && onNavigate ? (
-                    <button type="button" onClick={() => onNavigate(target)} aria-label={`Buka daftar ${ENTITY_LABELS[item.entityType] || item.entityType}`} className="flex size-11 shrink-0 items-center justify-center self-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-primary focus-visible:outline-2 focus-visible:outline-ring sm:size-9">
+                    <button type="button" onClick={() => onNavigate(target)} aria-label={`Buka daftar ${activityEntityTypeLabel(item.entityType)}`} className="flex size-11 shrink-0 items-center justify-center self-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-primary focus-visible:outline-2 focus-visible:outline-ring sm:size-9">
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </button>
                   ) : null}
@@ -73,7 +63,8 @@ export function DashboardActivityTimeline({
         ) : (
           <div className="flex min-h-40 flex-col items-center justify-center px-5 text-center">
             <Activity className="mb-2 h-7 w-7 text-muted-foreground/35" />
-            <p className="text-xs font-semibold text-muted-foreground">Aktivitas akan muncul setelah tim mulai mengubah atau menjalankan testcase.</p>
+            <p className="text-sm font-medium text-foreground">Belum ada aktivitas QA.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Perubahan testcase, Test Run, evidence, bug, dan akses project akan tampil di sini.</p>
           </div>
         )}
       </CardContent>

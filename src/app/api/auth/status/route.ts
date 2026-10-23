@@ -16,6 +16,7 @@ export async function GET() {
       id: session.user.id,
       email: session.user.email,
       name: session.user.name,
+      guest: session.guest,
       memberships: session.user.memberships.map(item => ({ role: item.role, workspace: item.workspace })),
     } : null,
   }, { headers: { 'Cache-Control': 'no-store' } });

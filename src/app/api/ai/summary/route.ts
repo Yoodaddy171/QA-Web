@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'node:fs/promises';
 import path from 'path';
-import os from 'os';
+import storagePaths from '@/lib/storage/data-storage-path.cjs';
 import { generateCopilotJson } from '@/lib/ai-provider';
 import { compactLogLine, formatClassifiedLogs, IMPORTANT_LOG_PATTERN, limitText, PASS_EVIDENCE_PATTERN } from './summary-log-utils';
 import { z } from 'zod';
@@ -24,10 +24,7 @@ const AI_SUMMARY_MODELS = {
   ollama: process.env.AI_SUMMARY_MODEL || process.env.OLLAMA_SUMMARY_MODEL || process.env.OLLAMA_MODEL,
 };
 const summarySchema = z.object({ summary: z.string().min(1).max(12000) });
-const RUNTIME_DIR = process.env.QA_RUNTIME_DIR
-  || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
-const LOGS_DIR = path.join(RUNTIME_DIR, 'logs');
-const RECORDINGS_DIR = path.join(RUNTIME_DIR, 'recordings');
+const { logs: LOGS_DIR, recordings: RECORDINGS_DIR } = storagePaths.runtimePaths(process.env);
 const LEGACY_LOGS_DIR = process.env.QA_LEGACY_LOGS_DIR
   || path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
 const LEGACY_RECORDINGS_DIR = process.env.QA_LEGACY_RECORDINGS_DIR

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionByToken, hasMinimumRole, isAllowedRequestOrigin, SESSION_COOKIE, type WorkspaceRole } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { guestRoutePermission } from '@/lib/domain/guest-access';
 
-const PUBLIC_PATHS = ['/login', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/bootstrap'];
+const PUBLIC_PATHS = ['/login', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/bootstrap', '/api/auth/guest'];
 const PROJECT_SCOPED_API = ['/api/activity', '/api/ai', '/api/automation', '/api/bugfix', '/api/evidence', '/api/excel', '/api/modules', '/api/notifications', '/api/project-knowledge', '/api/reports', '/api/requirements', '/api/stats', '/api/testcases', '/api/test-plans', '/api/test-runs', '/api/traceability'];
 class RequestGuardError extends Error {
   constructor(public readonly status: number, message: string) { super(message); }
@@ -109,6 +110,7 @@ async function entityProjectIds(pathname: string, req: NextRequest, body: Record
 }
 
 function requiredRole(pathname: string, method: string): WorkspaceRole {
+  if (pathname === '/api/automation/scripts') return 'ADMIN';
   if (pathname.startsWith('/api/workspaces')) return 'ADMIN';
   if (pathname === '/api/ai/governance' && method === 'PATCH') return 'ADMIN';
   if (method === 'GET' || method === 'HEAD') return 'VIEWER';
@@ -148,6 +150,31 @@ async function authorizeRequest(req: NextRequest) {
   if (['GET', 'HEAD'].includes(req.method) && ['/api/testcases', '/api/bugfix', '/api/modules'].includes(pathname)
     && !req.nextUrl.searchParams.get('projectId')) return jsonError('Project scope wajib diisi.', 400);
   const projectIds = pathname.startsWith('/api/') ? await entityProjectIds(pathname, req, body) : new Set<string>();
+  if (session.guest) {
+    const guest = session.guest;
+    if (pathname.startsWith('/api/')) {
+      const permission = guestRoutePermission(pathname, req.method);
+      if (!permission || (permission !== 'common' && !guest.permissions.includes(permission))) return jsonError('Akses tamu tidak memiliki izin untuk tindakan ini.', 403);
+      if (pathname !== '/api/projects' && !projectIds.size) return jsonError('Project scope wajib diisi.', 400);
+      if ([...projectIds].some(id => !guest.projectIds.includes(id))) return jsonError('Project di luar cakupan akses tamu.', 403);
+      if (permission === 'evidence.upload' || permission === 'bugs.create') {
+        const executionId = decodeURIComponent(pathname.split('/')[5] || '');
+        const owned = await db.activityHistory.findFirst({ where: { entityType: 'TestExecution', entityId: executionId, action: 'CREATED', actorUserId: session.user.id, projectId: { in: guest.projectIds } }, select: { id: true } });
+        if (!owned) return jsonError('Tamu hanya dapat menambah evidence atau melaporkan bug dari execution sendiri.', 403);
+      }
+    } else {
+      const segments = pathname.split('/').filter(Boolean);
+      if (segments[0] === 'projects' && !guest.projectIds.includes(decodeURIComponent(segments[1] || ''))) return jsonError('Project di luar cakupan akses tamu.', 403);
+    }
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('x-qa-user-id', session.user.id);
+    requestHeaders.set('x-qa-user-email', session.user.email);
+    requestHeaders.set('x-qa-user-name', encodeURIComponent(session.user.name));
+    requestHeaders.set('x-qa-workspace-id', guest.workspaceId);
+    requestHeaders.set('x-qa-role', 'VIEWER');
+    requestHeaders.set('x-qa-guest-access', encodeURIComponent(JSON.stringify(guest)));
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
   const memberships = new Map(session.user.memberships.map(item => [item.workspaceId, item]));
   const projects = projectIds.size
     ? await db.project.findMany({ where: { id: { in: [...projectIds] }, deletionState: 'ACTIVE' }, select: { id: true, workspaceId: true } })
@@ -167,6 +194,7 @@ async function authorizeRequest(req: NextRequest) {
   if (!selectedMembership || !hasMinimumRole(selectedMembership.role, minimumRole)) return jsonError('Workspace role tidak mencukupi.', 403);
 
   const requestHeaders = new Headers(req.headers);
+  requestHeaders.delete('x-qa-guest-access');
   requestHeaders.set('x-qa-user-id', session.user.id);
   requestHeaders.set('x-qa-user-email', session.user.email);
   requestHeaders.set('x-qa-user-name', encodeURIComponent(session.user.name));

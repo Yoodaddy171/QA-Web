@@ -131,6 +131,9 @@ export function TestCaseTable({
   toggleSelect,
   clearSelection,
   toggleSort,
+  sortBy,
+  sortOrder,
+  toggleNewestSort,
   openViewDialog,
   openEditDialog,
   handleDuplicate,
@@ -219,7 +222,7 @@ export function TestCaseTable({
     filterTag ? { key: 'tag', label: `Tag: ${filterTag}`, clear: () => setFilterTag('') } : null,
   ].filter((item): item is { key: string; label: string; clear: () => void } => Boolean(item));
   const selectTriggerClass = 'h-9 rounded-md border-border/60 bg-secondary/50 text-foreground text-sm shadow-sm';
-  const { canEdit } = useWorkspaceAccess();
+  const { canEdit, canExport } = useWorkspaceAccess();
   const toolbarButtonClass = 'h-9 rounded-md gap-1.5 font-semibold';
   const formatLastRun = (dateStr: string | null) => {
     if (!dateStr) return 'Belum dites';
@@ -408,6 +411,17 @@ export function TestCaseTable({
       {!canEdit && <p className="text-xs leading-5 text-muted-foreground">Mode baca saja. Perubahan memerlukan role QA atau lebih tinggi pada workspace ini.</p>}
       <div className="mt-3 flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={sortBy === 'updatedAt' && sortOrder === 'desc' ? 'secondary' : 'outline'}
+            size="sm"
+            aria-pressed={sortBy === 'updatedAt' && sortOrder === 'desc'}
+            title="Urutkan berdasarkan aktivitas terakhir: baru dibuat atau diedit. Klik lagi untuk kembali ke urutan ID."
+            onClick={toggleNewestSort}
+            className="h-11 gap-1.5 sm:h-9"
+          >
+            <CalendarClock data-icon="inline-start" /> Terbaru
+          </Button>
           <MutationAction><Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-11 rounded-lg gap-1.5 font-bold shadow-sm transition duration-150 sm:h-9">
             <Plus className="w-4 h-4" /> Add Test Case
             <kbd className="ml-0.5 hidden rounded border border-primary-foreground/30 px-1 font-mono text-xs leading-4 opacity-70 lg:inline-block">N</kbd>
@@ -427,7 +441,7 @@ export function TestCaseTable({
           <DataTableDensityToggle value={density} onValueChange={setDensity} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
+              <Button disabled={!canExport} title={!canExport ? 'Export tidak diizinkan oleh admin' : undefined} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
                 <Settings2 className="w-4 h-4" /> Columns
               </Button>
             </DropdownMenuTrigger>
@@ -464,7 +478,7 @@ export function TestCaseTable({
           </Button></MutationAction>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
+              <Button disabled={!canExport} title={!canExport ? 'Export tidak diizinkan oleh admin' : undefined} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
                 <FileSpreadsheet className="w-4 h-4 text-primary" /> Export
               </Button>
             </DropdownMenuTrigger>
@@ -510,7 +524,7 @@ export function TestCaseTable({
               <MutationAction><Button onClick={() => setShowBulkAssign(true)} variant="outline" size="sm" className="h-8 gap-1.5"><UserRound className="h-3.5 w-3.5" /> Assign</Button></MutationAction>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5"><FileDown className="h-3.5 w-3.5" /> Export selected</Button>
+                  <Button disabled={!canExport} variant="outline" size="sm" className="h-8 gap-1.5"><FileDown className="h-3.5 w-3.5" /> Export selected</Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuGroup>

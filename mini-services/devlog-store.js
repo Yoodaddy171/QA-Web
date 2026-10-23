@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs/promises');
-const os = require('os');
+const { runtimePaths } = require('../src/lib/storage/data-storage-path.cjs');
 
 function loadDatabaseUrl() {
   if (process.env.POSTGRES_DATABASE_URL || process.env.DATABASE_URL) return;
@@ -265,12 +265,11 @@ function connectDevlogStore() {
   try {
     // SQLite uses the main generated client and its existing Devlog tables.
     const { PrismaClient } = require(url.startsWith('file:') ? '@prisma/client' : '@prisma/devlog-client');
-    const runtimeRoot = process.env.QA_RUNTIME_DIR
-      || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
+    const { recordings } = runtimePaths(process.env, path.join(__dirname, 'logs'));
     return createDevlogStore(new PrismaClient({ datasourceUrl: url }), {
       sqlite: url.startsWith('file:'),
       mediaRoots: [
-        path.join(runtimeRoot, 'recordings'),
+        recordings,
         path.join(__dirname, 'recordings'),
       ],
     });

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { promisify } from 'node:util';
 import { db } from '@/lib/db';
+import { isGuestPermission, type GuestAccess } from '@/lib/domain/guest-access';
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -66,6 +67,7 @@ export async function getSessionByToken(token?: string | null) {
     include: {
       user: {
         include: {
+          guestAccess: { include: { workspace: { select: { id: true, name: true, slug: true } }, projects: { include: { project: { select: { id: true, deletionState: true, workspaceId: true } } } } } },
           memberships: { include: { workspace: { select: { id: true, name: true, slug: true } } } },
         },
       },
@@ -75,10 +77,20 @@ export async function getSessionByToken(token?: string | null) {
     if (session) await db.session.delete({ where: { id: session.id } }).catch(() => undefined);
     return null;
   }
+  let guest: GuestAccess | null = null;
+  if (session.user.isGuest) {
+    const grant = session.user.guestAccess;
+    if (!grant || grant.revokedAt || grant.expiresAt <= new Date() || !Array.isArray(grant.permissions) || !grant.permissions.length || !grant.permissions.every(isGuestPermission)) return null;
+    const projectIds = grant.projects.filter(link => link.project.deletionState === 'ACTIVE' && link.project.workspaceId === grant.workspaceId).map(link => link.projectId);
+    if (!projectIds.length) return null;
+    guest = { id: grant.id, workspaceId: grant.workspaceId, projectIds, permissions: grant.permissions, expiresAt: grant.expiresAt.toISOString() };
+    // UI compatibility only: the proxy still checks the grant's explicit project and action allowlists.
+    session.user.memberships = [{ id: `guest:${grant.id}`, userId: session.user.id, workspaceId: grant.workspaceId, role: 'VIEWER', createdAt: grant.createdAt, updatedAt: grant.createdAt, workspace: grant.workspace }];
+  }
   if (Date.now() - session.lastSeenAt.getTime() > 5 * 60 * 1000) {
     void db.session.update({ where: { id: session.id }, data: { lastSeenAt: new Date() } }).catch(() => undefined);
   }
-  return session;
+  return { ...session, guest };
 }
 
 export function sessionCookieOptions(expiresAt?: Date) {

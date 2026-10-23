@@ -245,7 +245,7 @@
   <div class="document-container">
 
     <section class="cover">
-      <span class="eyebrow">QA-Web User &amp; Developer Guide</span>
+      <span class="eyebrow">Traceva User &amp; Developer Guide</span>
       <h1>Automation Capture User Guide</h1>
       <p class="subtitle">Panduan lengkap untuk Manual Capture dan Katalon Capture, mulai dari setup, mapping test case, validasi Devlog, troubleshooting, hingga referensi developer.</p>
       <div class="meta">
@@ -256,7 +256,7 @@
     </section>
 
     <h2>1. Overview</h2>
-    <p>Automation Capture membantu tim melihat apa yang terjadi selama pengujian, bukan hanya status lulus atau gagal. Devlog menampilkan execution step, browser console, network activity, screenshot, evidence, dan history pada test case QA-Web yang tepat.</p>
+    <p>Automation Capture membantu tim melihat apa yang terjadi selama pengujian, bukan hanya status lulus atau gagal. Devlog menampilkan execution step, browser console, network activity, screenshot, evidence, dan history pada test case Traceva yang tepat.</p>
     <div class="callout"><b>Dua mode, satu pipeline.</b> Manual Capture memakai browser yang dikontrol relay. Katalon Capture memakai browser Selenium yang dikontrol Katalon. Keduanya baru menyatu setelah event dinormalisasi.</div>
     <p><b>Evidence</b> adalah artefak pendukung seperti screenshot atau recording. <b>History</b> adalah hasil run sebelumnya yang disimpan relay untuk membantu perbandingan.</p>
 
@@ -266,11 +266,11 @@
         <tr><th>Komponen</th><th>Kebutuhan</th></tr>
       </thead>
       <tbody>
-        <tr><td>QA-Web</td><td>Aplikasi berjalan lokal dan test case target sudah tersedia.</td></tr>
+        <tr><td>Traceva</td><td>Aplikasi berjalan lokal dan test case target sudah tersedia.</td></tr>
         <tr><td>Relay</td><td><code>mini-services/ws-server.js</code> berjalan dan dapat diakses.</td></tr>
         <tr><td>Browser</td><td>Chrome atau Edge Chromium yang kompatibel.</td></tr>
         <tr><td>Katalon Studio</td><td>Dibutuhkan untuk Katalon Capture.</td></tr>
-        <tr><td>Mapping</td><td>Katalon test case dipetakan ke internal QA-Web <code>testCaseId</code>.</td></tr>
+        <tr><td>Mapping</td><td>Katalon test case dipetakan ke internal Traceva <code>testCaseId</code>.</td></tr>
         <tr><td>Network</td><td>Katalon dan browser dapat mengakses relay URL.</td></tr>
       </tbody>
     </table>
@@ -283,7 +283,7 @@
         <tr><td>webQaEnabled</td><td>true</td><td>Mengaktifkan pengiriman event.</td></tr>
         <tr><td>webQaRelayUrl</td><td>http://127.0.0.1:3001/log</td><td>Endpoint ingestion legacy-compatible.</td></tr>
         <tr><td>webQaRelayToken</td><td>token acak dari <code>npm run relay:token</code></td><td>Bearer token wajib untuk seluruh request relay.</td></tr>
-        <tr><td>webQaProjectId</td><td>kosong</td><td>Project QA-Web opsional.</td></tr>
+        <tr><td>webQaProjectId</td><td>kosong</td><td>Project Traceva opsional.</td></tr>
         <tr><td>webQaDefaultTestCaseId</td><td>kosong</td><td>Fallback sementara saja.</td></tr>
         <tr><td>webQaCaptureNetwork</td><td>true</td><td>Mengaktifkan network capture.</td></tr>
         <tr><td>webQaCaptureConsole</td><td>true</td><td>Mengaktifkan browser console capture.</td></tr>
@@ -326,8 +326,8 @@
       <li>Pastikan project memiliki <code>Keywords/com/utils/DevLog.groovy</code>, <code>Test Listeners/DevLogListener.groovy</code>, dan <code>Include/testcase-map.json</code>.</li>
       <li>Pilih execution profile yang benar. Set <code>webQaEnabled=true</code>, <code>webQaRelayUrl=http://127.0.0.1:3001/log</code>, dan <code>webQaRelayToken</code> sama dengan <code>QA_RELAY_TOKEN</code>.</li>
       <li>Set <code>webQaCaptureNetwork=true</code> dan screenshot sesuai kebutuhan.</li>
-      <li>Tambahkan mapping path test case Katalon ke internal QA-Web <code>testCaseId</code>.</li>
-      <li>Jalankan QA-Web dan relay, lalu buka Devlog test case yang sudah dipetakan.</li>
+      <li>Tambahkan mapping path test case Katalon ke internal Traceva <code>testCaseId</code>.</li>
+      <li>Jalankan Traceva dan relay, lalu buka Devlog test case yang sudah dipetakan.</li>
       <li>Jalankan test case Katalon, misalnya <b>QA WEB automation</b>.</li>
       <li>Verifikasi <code>run.started</code>, step, network, console, dan <code>run.finished</code>.</li>
     </ol>
@@ -338,14 +338,14 @@ CustomKeywords.'com.utils.DevLog.captureScreenshot'('checkout-result')</pre>
     <p><code>DevLogListener</code> menangani start dan finish run secara otomatis. Jangan membuat <code>runId</code> baru untuk setiap step.</p>
 
     <h2>6. Katalon Test Case Mapping</h2>
-    <p><code>Include/testcase-map.json</code> menghubungkan path test case Katalon dengan internal database ID test case QA-Web.</p>
+    <p><code>Include/testcase-map.json</code> menghubungkan path test case Katalon dengan internal database ID test case Traceva.</p>
     <pre>{
     "Test Cases/QA Web automation": "00000000-0000-0000-0000-000000000001",
     "Test Cases/Checkout/Happy Path": "00000000-0000-0000-0000-000000000002"
 }</pre>
-    <p>Ganti placeholder dengan internal QA-Web <code>testCaseId</code>, bukan display ID seperti E-124. Jika mapping hilang, DevLog mengirim warning dan memakai ID bertanda <code>unmapped:&lt;katalon-path&gt;</code>, atau fallback sementara bila dikonfigurasi.</p>
+    <p>Ganti placeholder dengan internal Traceva <code>testCaseId</code>, bukan display ID seperti E-124. Jika mapping hilang, DevLog mengirim warning dan memakai ID bertanda <code>unmapped:&lt;katalon-path&gt;</code>, atau fallback sementara bila dikonfigurasi.</p>
     <ol>
-      <li>Salin internal database ID dari detail test case QA-Web.</li>
+      <li>Salin internal database ID dari detail test case Traceva.</li>
       <li>Salin path lengkap test case Katalon, termasuk prefix <code>Test Cases/</code>.</li>
       <li>Tambahkan pasangan path dan ID, validasi JSON, lalu jalankan ulang test.</li>
     </ol>
@@ -360,7 +360,7 @@ CustomKeywords.'com.utils.DevLog.captureScreenshot'('checkout-result')</pre>
       <tbody>
         <tr><td>schemaVersion, eventId, runId</td><td>Versi kontrak, ID unik event, dan ID stabil untuk satu run.</td></tr>
         <tr><td>mode, source, eventType</td><td>Mode capture, sumber event, dan jenis event.</td></tr>
-        <tr><td>testCaseId, testCaseName</td><td>Identitas test case QA-Web dan nama/path test case.</td></tr>
+        <tr><td>testCaseId, testCaseName</td><td>Identitas test case Traceva dan nama/path test case.</td></tr>
         <tr><td>message, timestamp</td><td>Pesan dan waktu event.</td></tr>
         <tr><td>url, method, responseStatus</td><td>Informasi network.</td></tr>
         <tr><td>cdpAvailable, fallbackUsed</td><td>Status CDP dan fallback capture.</td></tr>
@@ -389,7 +389,7 @@ CustomKeywords.'com.utils.DevLog.captureScreenshot'('checkout-result')</pre>
         <tr><th>Problem</th><th>Possible Cause</th><th>How To Fix</th></tr>
       </thead>
       <tbody>
-        <tr><td>Devlog tidak menampilkan log</td><td>Relay offline atau WebSocket belum terhubung</td><td>Restart relay lalu refresh QA-Web.</td></tr>
+        <tr><td>Devlog tidak menampilkan log</td><td>Relay offline atau WebSocket belum terhubung</td><td>Restart relay lalu refresh Traceva.</td></tr>
         <tr><td>Network event tidak muncul</td><td>CDP gagal, network capture mati, atau filter menyembunyikan resource</td><td>Set network capture aktif, cek CDP, dan aktifkan filter yang sesuai.</td></tr>
         <tr><td>Console event tidak muncul</td><td>Browser log tidak tersedia</td><td>Cek browser, driver, dan Desired Capabilities.</td></tr>
         <tr><td>Katalon berjalan tetapi Devlog kosong</td><td>Capture mati, URL salah, atau mapping hilang</td><td>Perbaiki profile, URL, dan mapping.</td></tr>
@@ -427,7 +427,7 @@ CustomKeywords.'com.utils.DevLog.captureScreenshot'('checkout-result')</pre>
     <h2>12. For Developers</h2>
     <table>
       <thead>
-        <tr><th>QA-Web File</th><th>Tanggung Jawab</th></tr>
+        <tr><th>Traceva File</th><th>Tanggung Jawab</th></tr>
       </thead>
       <tbody>
         <tr><td>mini-services/ws-server.js</td><td>Relay HTTP, WebSocket broadcast, Manual Capture, dan JSONL storage.</td></tr>
@@ -448,7 +448,7 @@ CustomKeywords.'com.utils.DevLog.captureScreenshot'('checkout-result')</pre>
         <tr><td>Scripts/QA Web automation/Script1777866267090.groovy</td><td>Flow automation dan pemanggilan step/network penting.</td></tr>
         <tr><td>Test Listeners/DevLogListener.groovy</td><td>Memulai dan menyelesaikan run.</td></tr>
         <tr><td>Keywords/com/utils/DevLog.groovy</td><td>Capture, normalisasi, dan pengiriman event.</td></tr>
-        <tr><td>Include/testcase-map.json</td><td>Mapping Katalon path ke QA-Web testCaseId.</td></tr>
+        <tr><td>Include/testcase-map.json</td><td>Mapping Katalon path ke Traceva testCaseId.</td></tr>
         <tr><td>Profiles/default.glbl</td><td>Konfigurasi capture.</td></tr>
         <tr><td>README-AUTOMATION-CAPTURE.md</td><td>Catatan integrasi Katalon.</td></tr>
       </tbody>

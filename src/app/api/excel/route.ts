@@ -170,7 +170,7 @@ export async function GET(req: NextRequest) {
       const date = report.created.toISOString().slice(0, 10);
       return new NextResponse(buffer, { headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="qadesk-qa-report-${date}.xlsx"`,
+        'Content-Disposition': `attachment; filename="traceva-qa-report-${date}.xlsx"`,
         'Cache-Control': 'private, no-store',
       } });
     }

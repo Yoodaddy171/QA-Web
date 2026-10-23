@@ -3,6 +3,7 @@ import { devlogDb } from '@/lib/devlog-db';
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import storagePaths from '@/lib/storage/data-storage-path.cjs';
 import { calculatedWeightFor, getCalculatedWeightMap } from '@/lib/services/weight-service';
 
 const testCaseSelect = {
@@ -39,7 +40,7 @@ type LegacyFileMeta = {
 const legacyMetaCache = new Map<string, { mtimeMs: number; size: number; meta: LegacyFileMeta }>();
 
 async function legacyHistory(projectId: string, weightMap: Awaited<ReturnType<typeof getCalculatedWeightMap>>) {
-  const logsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
+  const logsDir = storagePaths.runtimePaths(process.env, process.env.QA_LEGACY_LOGS_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs')).logs;
   let names: string[] = [];
   try {
     names = await fs.readdir(logsDir);

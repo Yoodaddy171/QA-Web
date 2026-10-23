@@ -23,9 +23,11 @@ import { AISettingsCard } from '@/components/AISettingsCard';
 import { ProjectKnowledgeCard } from '@/components/ProjectKnowledgeCard';
 import { SystemReadinessCard } from '@/components/SystemReadinessCard';
 import { WorkspaceMembersCard } from '@/components/WorkspaceMembersCard';
+import { GuestAccessCard } from '@/components/GuestAccessCard';
 
 interface Project {
   id: string;
+  workspaceId?: string;
   name: string;
   description?: string;
   automationContext?: string;
@@ -248,6 +250,7 @@ export function SettingsPanel({
         <TabsList aria-label="Bagian pengaturan" className="h-auto w-max min-w-full justify-start gap-1 border border-border bg-card p-1">
           <TabsTrigger value="system" className="min-w-max flex-none"><ServerCog className="size-4" />System</TabsTrigger>
           <TabsTrigger value="team" className="min-w-max flex-none"><UsersRound className="size-4" />Team</TabsTrigger>
+          {canAdmin && <TabsTrigger value="guests" className="min-w-max flex-none"><UsersRound className="size-4" />Akses tamu</TabsTrigger>}
           <TabsTrigger value="ai" className="min-w-max flex-none"><Bot className="size-4" />AI</TabsTrigger>
           <TabsTrigger value="projects" className="min-w-max flex-none"><FolderOpen className="size-4" />Projects</TabsTrigger>
           <TabsTrigger value="knowledge" className="min-w-max flex-none"><BookOpen className="size-4" />Knowledge</TabsTrigger>
@@ -261,6 +264,7 @@ export function SettingsPanel({
       <TabsContent value="team" className="mt-0">
         {canManageTeam ? <WorkspaceMembersCard /> : <p className="rounded-xl border border-border bg-card p-5 text-sm leading-6 text-muted-foreground">Administrasi team memerlukan ADMIN pada workspace aktif. Endpoint team saat ini menggunakan workspace administrasi default akun.</p>}
       </TabsContent>
+      {canAdmin && <TabsContent value="guests" className="mt-0">{projects.find(project => project.id === selectedProject)?.workspaceId ? <GuestAccessCard key={projects.find(project => project.id === selectedProject)!.workspaceId} workspaceId={projects.find(project => project.id === selectedProject)!.workspaceId!} projects={projects} /> : <p className="text-sm text-muted-foreground">Pilih project untuk mengelola akses tamu workspace.</p>}</TabsContent>}
       <TabsContent value="ai" className="mt-0">
       <fieldset disabled={!canAdmin}><AISettingsCard
         projectId={selectedProject}

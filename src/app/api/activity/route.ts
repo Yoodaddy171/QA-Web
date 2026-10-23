@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { guestSafeResponse } from '@/lib/services/guest-response';
 import { listEntityActivity, recordActivity } from '@/lib/services/activity-history-service';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
   if (!projectId || !entityType || !entityId) return NextResponse.json({ error: 'projectId, entityType, dan entityId wajib diisi.' }, { status: 400 });
 
   try {
-    return NextResponse.json({ activities: await listEntityActivity(projectId, entityType, entityId, action) });
+    return NextResponse.json(await guestSafeResponse({ activities: await listEntityActivity(projectId, entityType, entityId, action) }));
   } catch (error) {
     console.error('GET /api/activity error:', error);
     return NextResponse.json({ error: 'Gagal memuat activity history.' }, { status: 500 });

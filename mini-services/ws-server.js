@@ -14,6 +14,7 @@ const { connectDevlogStore } = require('./devlog-store');
 const { createVideoFrameWriter, getVideoFrameCopies, markInterruptedVideoFailed } = require('./video-frame-writer');
 const { createRelaySecurity } = require('./relay-security');
 const { createRelayLogStore } = require('./relay-log-store');
+const { runtimePaths } = require('../src/lib/storage/data-storage-path.cjs');
 let sharp = null;
 try {
   sharp = require('sharp');
@@ -42,10 +43,7 @@ function createRecordingId() {
     : crypto.randomBytes(16).toString('hex');
 }
 
-const RUNTIME_DIR = process.env.QA_RUNTIME_DIR
-  || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
-const LOGS_DIR = process.env.QA_RELAY_LOGS_DIR || path.join(__dirname, 'logs');
-const RECORDINGS_DIR = path.join(RUNTIME_DIR, 'recordings');
+const { logs: LOGS_DIR, recordings: RECORDINGS_DIR } = runtimePaths(process.env, path.join(__dirname, 'logs'));
 const LEGACY_RECORDINGS_DIR = path.join(__dirname, 'recordings');
 const logStore = createRelayLogStore({ directory: LOGS_DIR });
 logStore.initialize().catch(error => console.error('Log store initialization failed:', error.message));

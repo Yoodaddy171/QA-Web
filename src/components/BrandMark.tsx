@@ -1,27 +1,22 @@
-import { Command } from 'lucide-react';
+import { useId } from 'react';
 
 interface BrandMarkProps {
   compact?: boolean;
 }
 
 export function BrandMark({ compact = false }: BrandMarkProps) {
+  const clipId = useId();
   return (
-    <div className={`group/brand flex cursor-default items-center ${compact ? 'gap-0' : 'gap-2.5'}`}>
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm transition-transform duration-500 group-hover/brand:rotate-[360deg] motion-reduce:group-hover/brand:rotate-0">
-        <Command className="h-4.5 w-4.5" strokeWidth={2.25} />
-      </div>
-
-      <div className={compact
-        ? 'flex max-w-0 translate-x-1 flex-col overflow-hidden opacity-0 transition-[opacity,transform] duration-[var(--motion-duration)] ease-[var(--motion-ease)] motion-reduce:transition-none'
-        : 'flex max-w-24 translate-x-0 flex-col opacity-100 transition-[opacity,transform] duration-[var(--motion-duration)] ease-[var(--motion-ease)] motion-reduce:transition-none'
-      }>
-        <span className="text-sm font-bold tracking-tight text-sidebar-foreground leading-none">
-          QADesk
-        </span>
-        <span className="text-[10px] font-medium tracking-wider text-sidebar-foreground/55 uppercase mt-0.5 leading-none">
-          Console
-        </span>
-      </div>
-    </div>
+    <span role="img" aria-label="Traceva" className="inline-flex shrink-0 items-center gap-1.5">
+      <svg aria-hidden="true" viewBox="45 365 430 355" className="size-9 shrink-0" focusable="false">
+        <defs><clipPath id={clipId}><polygon points="0,0 1448,0 1448,458 435,458 435,1086 0,1086" /></clipPath></defs>
+        <image href="/traceva-logo.png" width="1448" height="1086" clipPath={`url(#${clipId})`} />
+      </svg>
+      {!compact && (
+        <svg aria-hidden="true" viewBox="438 465 970 220" className="h-7 w-[7.75rem] dark:brightness-0 dark:invert" focusable="false">
+          <image href="/traceva-logo.png" width="1448" height="1086" />
+        </svg>
+      )}
+    </span>
   );
 }

@@ -52,6 +52,15 @@ export async function createTestCaseRecord(input: CreateTestCaseInput) {
       data: testCaseData,
       include: { module: { select: { id: true, name: true } } },
     });
+    if (testCase.status === TESTCASE_STATUS.FAILED) {
+      await syncBugFixForTestCaseStatus({
+        client: tx,
+        sourceTestCaseId: testCase.id,
+        source: testCase,
+        finalStatus: testCase.status,
+        finalActualResult: testCase.actualResult,
+      });
+    }
     await recordActivity({
       projectId: testCase.projectId,
       entityType: 'TestCase',

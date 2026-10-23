@@ -24,6 +24,17 @@ async function roundtrip(workbook: ExcelJS.Workbook) {
 }
 
 describe('QA Report workbook', () => {
+  it('uses Traceva branding while still recognizing historical QADesk reports', () => {
+    const workbook = createQaReport({ projectName: 'Brand check', testCases: [], generatedAt: at });
+    expect(workbook.creator).toBe('Traceva');
+    expect(workbook.getWorksheet('Summary')!.getCell('A1').value).toBe('Traceva QA Report v1');
+    expect(workbook.getWorksheet('Summary')!.headerFooter.oddFooter).toBe('Traceva | &P / &N');
+    expect(workbook.getWorksheet('Test Cases')!.headerFooter.oddFooter).toBe('Traceva | &P / &N');
+    expect(isQaReportWorkbook({ Sheets: { Summary: { A1: { v: 'QADesk QA Report v1' } } } })).toBe(true);
+    expect(isQaReportWorkbook({ Sheets: { Summary: { A1: { v: 'Traceva QA Report v1' } } } })).toBe(true);
+    expect(isQaReportWorkbook({ Sheets: { Data: { A1: { v: 'Test Case ID' } } } })).toBe(false);
+  });
+
   it('serializes real typed values, all text, UUIDs, navigation and a single flat table', async () => {
     const text = '=HYPERLINK("https://example.invalid","literal")\nSecond line';
     const workbook = createQaReport({ projectName: 'QA / Team', testCases: [tc({ testAction: text })], generatedAt: at });

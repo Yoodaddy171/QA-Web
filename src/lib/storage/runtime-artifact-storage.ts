@@ -1,13 +1,13 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
+import storagePaths from './data-storage-path.cjs';
 
-const runtimeDir = path.resolve(/*turbopackIgnore: true*/ process.env.QA_RUNTIME_DIR || path.join(/*turbopackIgnore: true*/ process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime'));
+const paths = storagePaths.runtimePaths(process.env, process.env.QA_LEGACY_LOGS_DIR || path.resolve(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs'));
 const recordingRoots = [
-  path.join(/*turbopackIgnore: true*/ runtimeDir, 'recordings'),
+  paths.recordings,
   path.resolve(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'recordings'),
 ];
-const logsRoot = path.resolve(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
+const logsRoot = paths.logs;
 
 function assertInside(roots: string[], candidate: string) {
   const target = path.resolve(/*turbopackIgnore: true*/ candidate);

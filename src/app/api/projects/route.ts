@@ -15,13 +15,13 @@ export async function GET() {
     const actor = await getRequestActor();
     if (!actor) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
     const projects = await db.project.findMany({
-      where: { deletionState: 'ACTIVE', workspace: { memberships: { some: { userId: actor.userId } } } },
+      where: { deletionState: 'ACTIVE', ...(actor.guest ? { id: { in: actor.guest.projectIds }, workspaceId: actor.guest.workspaceId } : { workspace: { memberships: { some: { userId: actor.userId } } } }) },
       include: {
         _count: { select: { testCases: true, modules: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
-    return NextResponse.json(projects);
+    return NextResponse.json(actor.guest ? projects.map(project => ({ id: project.id, name: project.name, description: project.description, workspaceId: project.workspaceId, createdAt: project.createdAt, updatedAt: project.updatedAt, _count: project._count })) : projects);
   } catch (error) {
     console.error('GET /api/projects error:', error);
     return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });

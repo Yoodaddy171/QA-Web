@@ -17,22 +17,23 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "QADesk - Test Intelligence Console",
+  title: "Traceva - Test Intelligence Console",
   description: "Quality assurance dashboard for testcase management, bug fix tracking, automation logs, and AI summaries.",
   keywords: ["QA", "testcase", "bug fix", "automation", "test management"],
-  authors: [{ name: "QADesk" }],
+  applicationName: "Traceva",
+  authors: [{ name: "Traceva" }],
   icons: {
-    icon: "/logo.svg",
+    icon: { url: "/brand-icon.svg", type: "image/svg+xml" },
   },
   openGraph: {
-    title: "QADesk",
+    title: "Traceva",
     description: "Test intelligence console for QA operations",
-    siteName: "QADesk",
+    siteName: "Traceva",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "QADesk",
+    title: "Traceva",
     description: "Test intelligence console for QA operations",
   },
 };

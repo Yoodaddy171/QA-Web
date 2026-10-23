@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <!-- Traceva / Signal Paths. Coordinate system deliberately matches the approved 1672x941 background. -->
+  <defs>
+    <filter id="soft-signal" x="-300%" y="-300%" width="700%" height="700%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <path id="incoming" d="M 919 -24 C 918 75, 967 125, 1027 191 S 1094 249, 1130 284"/>
+    <path id="downstream" d="M 1130 284 C 1220 284, 1320 279, 1388 310 S 1456 366, 1475 423"/>
+    <path id="lower" d="M -28 570 C 56 576, 91 717, 126 782 S 215 790, 285 790 L 449 790 C 496 790, 530 849, 560 849"/>
+  </defs>
+  <style>
+    /* Intentional: two tiny signals on paths already present in the static artwork. No particles. */
+    .track { fill:none; stroke:#b0a1ff; stroke-width:1.1; stroke-linecap:round; opacity:.12 }
+    .signal { fill:#d6cbff; opacity:0; }
+    .glow { fill:#aca0ff; opacity:0; filter:url(#soft-signal) }
+    .one { animation:one 18s linear infinite; }
+    .two { animation:two 18s linear infinite; }
+    .breath { animation:breath 18s ease-in-out infinite; }
+    @keyframes one { 0%,5% {opacity:0} 8%,27%{opacity:.62} 35%,100%{opacity:0} }
+    @keyframes two { 0%,53% {opacity:0} 57%,77%{opacity:.48} 84%,100%{opacity:0} }
+    @keyframes breath {0%,21%,42%,100% {opacity:0} 30% {opacity:.10} }
+    @media (prefers-reduced-motion:reduce) {
+      .signal,.glow,.breath { display:none!important; animation:none!important }
+      .track { opacity:0 }
+    }
+  </style>
+  <!-- Keep the original visible image 100% unchanged; the only new lines are nearly transparent echoes. -->
+  <use href="#incoming" class="track" />
+  <use href="#lower" class="track" style="opacity:.055" />
+
+  <!-- Quiet point travelling along the background's existing incoming trace. -->
+  <circle class="glow one" r="12"><animateMotion dur="18s" repeatCount="indefinite" calcMode="linear" keyTimes="0;.35;1" keyPoints="0;1;1"><mpath href="#incoming"/></animateMotion></circle>
+  <circle class="signal one" r="3.2"><animateMotion dur="18s" repeatCount="indefinite" calcMode="linear" keyTimes="0;.35;1" keyPoints="0;1;1"><mpath href="#incoming"/></animateMotion></circle>
+
+  <!-- One slower return pulse on the existing lower trace; staggered, never a particle field. -->
+  <circle class="glow two" r="10"><animateMotion dur="18s" repeatCount="indefinite" calcMode="linear" keyTimes="0;.5;.84;1" keyPoints="0;0;1;1"><mpath href="#lower"/></animateMotion></circle>
+  <circle class="signal two" r="2.8"><animateMotion dur="18s" repeatCount="indefinite" calcMode="linear" keyTimes="0;.5;.84;1" keyPoints="0;0;1;1"><mpath href="#lower"/></animateMotion></circle>
+
+  <!-- Tiny highlight at the first real junction; no oscillating scale, shimmer or confetti. -->
+  <circle class="breath" cx="1130" cy="284" r="21" fill="#cbc1ff" filter="url(#soft-signal)" />
+</svg>

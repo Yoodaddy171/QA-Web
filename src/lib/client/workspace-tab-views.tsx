@@ -24,7 +24,7 @@ filterTestRun, setFilterTestRun, filterBug, setFilterBug, filterTag, setFilterTa
 testRecordById, fileInputRef, setSearch, setFilterStatus, setFilterTestType, setFilterPriority, setFilterModule,
  setFilterSubMenu, setPage, setLimit, setShowBulkAction, setShowBulkExecution, setShowBulkAssign, setShowDeleteConfirm, openCreateDialog, openAIDialog,
 setShowImportDialog, handleImportExcel, handleExportExcel, isLoadingTestCases, handleQuickStatusChange,
-toggleSelectAll, toggleSelect, clearSelection, toggleSort, openEditDialog, handleDuplicate, setEditingTestCase,
+toggleSelectAll, toggleSelect, clearSelection, toggleSort, sortBy, sortOrder, toggleNewestSort, openEditDialog, handleDuplicate, setEditingTestCase,
 getStatusColor, getStatusIcon, getStatusBadgeVariant, getPriorityColor, getTestTypeColor,
 bugFixFilterModules, hasUnassignedBugFixItems, visibleBugFixItems, bugFixSearch, bugFixFilterStatus,
 bugFixFilterModule, bugFixTab, setBugFixSearch, setBugFixFilterStatus, setBugFixFilterModule, setBugFixTab,
@@ -118,6 +118,9 @@ projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleD
       toggleSelect={toggleSelect}
       clearSelection={clearSelection}
       toggleSort={toggleSort}
+      sortBy={sortBy}
+      sortOrder={sortOrder}
+      toggleNewestSort={toggleNewestSort}
       openViewDialog={(tc) => handleOpenDetail(tc, testCases)}
       openEditDialog={openEditDialog}
       handleDuplicate={handleDuplicate}

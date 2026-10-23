@@ -5,6 +5,7 @@ import { createNotification } from '@/lib/services/notification-service';
 import { Prisma } from '@prisma/client';
 import { resolveExecutionTestCase, synchronizeExecutionResult } from './execution-result-service';
 import { MutationError } from './mutation-error';
+import { guestSafeResponse } from './guest-response';
 
 type DbClient = typeof db;
 type TransactionClient = Prisma.TransactionClient;
@@ -66,11 +67,11 @@ export async function getTestRunCasesPage(projectId: string, id: string, options
   `) : [];
   const latest = await db.testExecution.findMany({ where: { id: { in: latestIds.map(item => item.id) } } });
   const byMembership = new Map(latest.map(item => [item.testRunCaseId, item]));
-  return {
+  return guestSafeResponse({
     items: page.map(item => ({ ...item.testCase, membershipId: item.id, assignedTo: item.assignedTo, executions: byMembership.has(item.id) ? [byMembership.get(item.id)!] : [] })),
     hasMore,
     nextCursor: hasMore ? page.at(-1)?.id || null : null,
-  };
+  });
 }
 
 export async function getTestRun(projectId: string, id: string, options: { caseCursor?: string; caseLimit?: number } = {}) {

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
-import os from 'node:os';
+import storagePaths from '../src/lib/storage/data-storage-path.cjs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { parseEnv } from 'node:util';
@@ -16,9 +16,10 @@ const { createDevlogStore } = require('../mini-services/devlog-store');
 const db = new PrismaClient({ datasourceUrl: url });
 const store = createDevlogStore(db, { allowOrphans: true, sqlite: url.startsWith('file:') });
 const root = path.resolve('.');
-const logsDir = path.join(root, 'mini-services', 'logs');
+const paths = storagePaths.runtimePaths(process.env, path.join(root, 'mini-services', 'logs'));
+const logsDir = paths.logs;
 const recordingRoots = [
-  path.join(process.env.QA_RUNTIME_DIR || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime'), 'recordings'),
+  paths.recordings,
   path.join(root, 'mini-services', 'recordings'),
 ];
 

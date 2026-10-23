@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { evidenceStorage } from '@/lib/storage/evidence-storage';
+import { getRequestActor } from '@/lib/request-actor';
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string; executionId: string; evidenceId: string }> }) {
   const { id, executionId, evidenceId } = await context.params;
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   if (!evidence) return NextResponse.json({ error: 'Evidence tidak ditemukan.' }, { status: 404 });
 
   try {
+    const actor = await getRequestActor();
     const file = await evidenceStorage.read(evidence.storagePath);
     const inlineSafe = ['image/png', 'image/jpeg', 'image/webp', 'video/mp4', 'video/webm'].includes(evidence.mimeType);
     const safeName = evidence.fileName.replace(/["\r\n]/g, '_');
@@ -20,7 +22,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       'Content-Type': evidence.mimeType,
       'Content-Length': String(evidence.sizeBytes),
       'Content-Disposition': `${inlineSafe ? 'inline' : 'attachment'}; filename="${safeName}"`,
-      'Cache-Control': 'private, max-age=3600',
+      'Cache-Control': actor?.guest ? 'private, no-store' : 'private, max-age=3600',
+      'Vary': 'Cookie',
       'X-Content-Type-Options': 'nosniff',
       'Content-Security-Policy': "default-src 'none'; sandbox",
     } });

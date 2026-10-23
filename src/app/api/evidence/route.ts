@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { renderHtml } from './evidence-renderer';
 import fs from 'node:fs/promises';
 import path from 'path';
-import os from 'os';
+import storagePaths from '@/lib/storage/data-storage-path.cjs';
 
 export const maxDuration = 60;
 
@@ -91,11 +91,10 @@ export type EvidenceVideo = {
   mimeType: string;
 };
 
-const RUNTIME_DIR = process.env.QA_RUNTIME_DIR
-  || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'web-qa-runtime');
-const RECORDINGS_DIR = path.join(/*turbopackIgnore: true*/ RUNTIME_DIR, 'recordings');
+const runtimePaths = storagePaths.runtimePaths(process.env, process.env.QA_LEGACY_LOGS_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs'));
+const RECORDINGS_DIR = runtimePaths.recordings;
 const LEGACY_RECORDINGS_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'recordings');
-const LOGS_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), 'mini-services', 'logs');
+const LOGS_DIR = runtimePaths.logs;
 const IMPORTANT_LOG_PATTERN = /error|failed|failure|exception|timeout|severe|warn|warning|status["':= ]+(4|5)\d\d|success[:= ]+false/i;
 
 function escapeHtml(value: unknown) {

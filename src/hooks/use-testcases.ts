@@ -180,7 +180,7 @@ export function useTestCases(selectedProject: string) {
       setIsLoadingTestCases(false);
       // The server owns retest/result rules; never invent a successful status.
       setTestCases(prev => prev.map(tc => tc.id === testCaseId ? { ...tc, ...saved } : tc));
-      if (query.filterStatus !== 'all' || query.sortBy === 'status' || hadPendingRead) void query.loadTestCases(selectedProject);
+      if (query.filterStatus !== 'all' || query.sortBy === 'status' || query.sortBy === 'updatedAt' || hadPendingRead) void query.loadTestCases(selectedProject);
       loadStats(selectedProject);
       toast({ variant: 'success', title: 'Status updated', description: `Status diubah ke ${saved.status}` });
     } catch {
@@ -266,6 +266,13 @@ export function useTestCases(selectedProject: string) {
     }
   }, [sortBy, sortOrder]);
 
+  const toggleNewestSort = useCallback(() => {
+    const active = sortBy === 'updatedAt' && sortOrder === 'desc';
+    setSortBy(active ? 'testCaseId' : 'updatedAt');
+    setSortOrder(active ? 'asc' : 'desc');
+    setPage(1);
+  }, [sortBy, sortOrder]);
+
   const toggleSelectAll = useCallback(() => {
     if (selectedIds.size === testCases.length) {
       setSelectedIds(new Set());
@@ -331,6 +338,7 @@ export function useTestCases(selectedProject: string) {
     handleBulkStatusUpdate,
     handleDuplicate,
     toggleSort,
+    toggleNewestSort,
     toggleSelectAll,
     toggleSelect,
   };

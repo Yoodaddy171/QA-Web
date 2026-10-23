@@ -7,6 +7,7 @@ import { fetchAutomationHistory } from '@/lib/client/api/automation-client';
 import type { TestCase } from '@/lib/client/api/types';
 
 export function useAutomationDevlog(input: {
+  enabled?: boolean;
   viewTestCase: TestCase | null;
   setViewTestCase: Dispatch<SetStateAction<TestCase | null>>;
 }) {
@@ -55,7 +56,7 @@ export function useAutomationDevlog(input: {
   }, [automatedItems]);
 
   const loadAutomated = async (projId: string) => {
-    if (!projId) return;
+    if (!projId || input.enabled === false) return;
     setAutomatedLoading(true);
     try {
       const data = await fetchAutomationHistory(projId);

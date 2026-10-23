@@ -157,7 +157,7 @@ export const getManualFrameUrl = (frameUrl?: string) => (
 );
 
 export const getManualVideoUrl = (videoUrl?: string) => (
-  videoUrl ? buildDevlogRelayUrl(videoUrl) : ''
+  videoUrl?.startsWith('/api/automation/scripts?') ? videoUrl : videoUrl ? buildDevlogRelayUrl(videoUrl) : ''
 );
 
 export const blobToDataUrl = async (blob: Blob) => (

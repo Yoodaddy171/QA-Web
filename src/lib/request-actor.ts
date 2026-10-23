@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import type { GuestAccess } from '@/lib/domain/guest-access';
 
 export interface RequestActor {
   userId: string;
@@ -6,6 +7,7 @@ export interface RequestActor {
   name: string;
   workspaceId: string;
   role: string;
+  guest?: GuestAccess | null;
 }
 
 export async function getRequestActor(): Promise<RequestActor | null> {
@@ -19,6 +21,7 @@ export async function getRequestActor(): Promise<RequestActor | null> {
       name: decodeURIComponent(values.get('x-qa-user-name') || '') || values.get('x-qa-user-email') || userId,
       workspaceId: values.get('x-qa-workspace-id') || '',
       role: values.get('x-qa-role') || 'VIEWER',
+      guest: values.get('x-qa-guest-access') ? JSON.parse(decodeURIComponent(values.get('x-qa-guest-access')!)) : null,
     };
   } catch {
     return null;

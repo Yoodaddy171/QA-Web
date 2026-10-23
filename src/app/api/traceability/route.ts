@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { guestSafeResponse } from '@/lib/services/guest-response';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -18,13 +19,13 @@ export async function GET(req: NextRequest) {
       },
     });
     if (!testCase) return NextResponse.json({ error: 'Testcase tidak ditemukan.' }, { status: 404 });
-    return NextResponse.json({
+    return NextResponse.json(await guestSafeResponse({
       testCase: {
         ...testCase,
         requirements: testCase.requirementLinks,
         testRuns: testCase.testRunCases,
       },
-    });
+    }));
   }
 
   const requirement = await db.requirement.findFirst({

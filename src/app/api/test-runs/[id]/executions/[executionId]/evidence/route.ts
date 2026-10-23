@@ -6,6 +6,7 @@ import { evidenceStorage } from '@/lib/storage/evidence-storage';
 import { MAX_EVIDENCE_FILE_SIZE, validateEvidenceFile } from '@/lib/storage/evidence-file-validation';
 import { MutationError, mutationFailure } from '@/lib/services/mutation-error';
 import type { TestExecutionEvidence } from '@prisma/client';
+import { getRequestActor } from '@/lib/request-actor';
 
 
 function errorResponse(message: string, status = 400) {
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const formData = await req.formData();
     const files = formData.getAll('file');
     const replaceEvidenceId = String(formData.get('replaceEvidenceId') || '').trim();
+    if (replaceEvidenceId && (await getRequestActor())?.guest) return errorResponse('Tamu hanya dapat menambah evidence baru, bukan mengganti evidence.', 403);
     if (!files.length || files.some(file => !(file instanceof File))) return errorResponse('File evidence wajib dipilih.');
     if (files.length > 20) return errorResponse('Maksimal 20 file evidence per request.');
     if (replaceEvidenceId && files.length !== 1) return errorResponse('Penggantian evidence hanya menerima satu file.');

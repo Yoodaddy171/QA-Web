@@ -35,6 +35,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { UI_MOTION, contentTransition } from '@/lib/client/ui-motion';
+import { useWorkspaceAccess } from '@/components/WorkspaceAccess';
+import { guestTabPermission } from '@/lib/domain/guest-access';
+
+function useAllowedTabs() {
+  const { guest } = useWorkspaceAccess();
+  return NAV_ITEMS.filter(item => !guest || Boolean(guestTabPermission(item.value) && guest.permissions.includes(guestTabPermission(item.value)!)));
+}
 
 interface Project {
   id: string;
@@ -79,7 +86,9 @@ const NAV_ITEMS = [
 function WorkspaceCommandPalette({ open, onOpenChange, setActiveTab }: { open: boolean; onOpenChange: (open: boolean) => void; setActiveTab: (value: string) => void }) {
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
-  const filteredItems = NAV_ITEMS.filter(item => `${item.label} ${item.description}`.toLowerCase().includes(normalizedQuery));
+  const { canEdit, guest } = useWorkspaceAccess();
+  const allowed = useAllowedTabs();
+  const filteredItems = allowed.filter(item => `${item.label} ${item.description}`.toLowerCase().includes(normalizedQuery));
 
   const navigate = (value: string, focusSearch = false) => {
     setActiveTab(value);
@@ -110,13 +119,13 @@ function WorkspaceCommandPalette({ open, onOpenChange, setActiveTab }: { open: b
                 </button>
               );
             })}
-            {!normalizedQuery || 'search test cases'.includes(normalizedQuery) ? (
+            {(!guest || guest.permissions.includes('cases.view')) && (!normalizedQuery || 'search test cases'.includes(normalizedQuery)) ? (
               <button type="button" onClick={() => navigate('testcases', true)} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
                 <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:text-primary"><Search className="size-4" /></span>
                 <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Cari testcase</span><span className="block truncate text-xs text-muted-foreground">Buka Cases dan fokus ke pencarian</span></span>
               </button>
             ) : null}
-            {!normalizedQuery || 'add create new testcase'.includes(normalizedQuery) ? (
+            {canEdit && (!normalizedQuery || 'add create new testcase'.includes(normalizedQuery)) ? (
               <button type="button" onClick={() => { navigate('testcases'); window.setTimeout(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' })), 140); }} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
                 <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:text-primary"><Plus className="size-4" /></span>
                 <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Buat testcase</span><span className="block truncate text-xs text-muted-foreground">Mulai testcase baru dari mana saja</span></span>
@@ -141,6 +150,7 @@ function WorkspaceSidebar({
   setActiveTab,
 }: Omit<AppShellProps, 'children'>) {
   const { state, isMobile, setOpenMobile } = useSidebar();
+  const allowedTabs = useAllowedTabs();
   const expanded = state === 'expanded' || isMobile;
   const reduceMotion = useReducedMotion();
 
@@ -196,7 +206,7 @@ function WorkspaceSidebar({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
-              {NAV_ITEMS.map((item) => {
+              {allowedTabs.map((item) => {
                 const Icon = item.icon;
                 const active = activeTab === item.value;
                 return (
@@ -299,6 +309,15 @@ export function AppShell({
 }: AppShellProps) {
   const [mounted, setMounted] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const { guest, ready } = useWorkspaceAccess();
+  const allowedTabs = useAllowedTabs();
+  const tabAllowed = allowedTabs.some(item => item.value === activeTab);
+  const firstAllowed = allowedTabs[0]?.value;
+  useEffect(() => {
+    if (!ready || tabAllowed || !firstAllowed) return;
+    const timer = window.setTimeout(() => setActiveTab(firstAllowed), 0);
+    return () => window.clearTimeout(timer);
+  }, [ready, tabAllowed, firstAllowed, setActiveTab]);
   const reduceMotion = useReducedMotion();
   const activeItem = useMemo(
     () => NAV_ITEMS.find((item) => item.value === activeTab) || NAV_ITEMS[0],
@@ -315,11 +334,11 @@ export function AppShell({
   useEffect(() => {
     const navigate = (event: Event) => {
       const tab = (event as CustomEvent<string>).detail;
-      if (NAV_ITEMS.some(item => item.value === tab)) setActiveTab(tab);
+      if (NAV_ITEMS.some(item => item.value === tab) && (!guest || Boolean(guestTabPermission(tab) && guest.permissions.includes(guestTabPermission(tab)!)))) setActiveTab(tab);
     };
     window.addEventListener('qa-desk:set-tab', navigate);
     return () => window.removeEventListener('qa-desk:set-tab', navigate);
-  }, [setActiveTab]);
+  }, [setActiveTab, guest]);
 
   useEffect(() => {
     const handleCommandShortcut = (event: KeyboardEvent) => {
@@ -375,10 +394,11 @@ export function AppShell({
           </header>
 
           <WorkspaceCommandPalette open={commandOpen} onOpenChange={setCommandOpen} setActiveTab={setActiveTab} />
+          {guest && <div role="status" className="border-b border-border bg-secondary px-4 py-3 text-sm text-muted-foreground sm:px-6 lg:px-8">Akses tamu · {guest.permissions.includes('execution.run') ? 'Tester' : 'Reviewer'} · berakhir {new Date(guest.expiresAt).toLocaleString('id-ID')}. Hanya project dan tindakan yang diberikan admin yang tersedia.</div>}
 
           <div className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
             <div className="mx-auto w-full max-w-[1600px]">
-              {projectsLoading ? (
+              {projectsLoading || !ready || !tabAllowed ? (
                 <div className="flex flex-col gap-4" aria-label="Memuat workspace">
                   <Skeleton className="h-32 w-full rounded-xl" />
                   <div className="grid gap-4 md:grid-cols-3"><Skeleton className="h-36 rounded-xl" /><Skeleton className="h-36 rounded-xl" /><Skeleton className="h-36 rounded-xl" /></div>

@@ -11,6 +11,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { AppShell } from '@/components/AppShell';
 import { WorkspaceAccessProvider, useWorkspacePermissions } from '@/components/WorkspaceAccess';
+import { guestTabPermission } from '@/lib/domain/guest-access';
 import type { BugFixItem } from '@/components/BugFixPanel';
 import type { TestCaseDraftInput } from '@/components/TestCaseDialog';
 import type { TestCaseDraft } from '@/components/FloatingAIChat';
@@ -133,6 +134,7 @@ export default function TestCaseManager() {
     testRunOptions,
     sortBy,
     sortOrder,
+    toggleNewestSort,
     page,
     setPage,
     totalPages,
@@ -269,7 +271,7 @@ export default function TestCaseManager() {
     generateAISummary,
     loadLogHistory,
     filterConsoleLogs,
-  } = useAutomationDevlog({ viewTestCase, setViewTestCase });
+  } = useAutomationDevlog({ viewTestCase, setViewTestCase, enabled: access.ready && !access.guest });
   const selectedProjectName = useMemo(
     () => projects.find(project => project.id === selectedProject)?.name,
     [projects, selectedProject]
@@ -412,14 +414,15 @@ export default function TestCaseManager() {
   }, [activeTab]);
   // Load shared project data first, then fetch tab-specific data on demand.
   useEffect(() => {
-    if (!selectedProject) return;
+    if (!selectedProject || !access.ready) return;
     const timer = window.setTimeout(() => {
-      void Promise.all([loadModules(selectedProject), loadStats(selectedProject)]);
+      if (!access.guest || access.guest.permissions.includes('cases.view')) void loadModules(selectedProject);
+      if (!access.guest || access.guest.permissions.includes('dashboard.view')) void loadStats(selectedProject);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [selectedProject]);
+  }, [selectedProject, access.ready, access.guest?.id]);
   useEffect(() => {
-    if (!selectedProject) return;
+    if (!selectedProject || !access.ready || (access.guest && (!guestTabPermission(activeTab) || !access.guest.permissions.includes(guestTabPermission(activeTab)!)))) return;
     const timer = window.setTimeout(() => {
       if (activeTab === 'testcases') {
         void Promise.all([loadTestCases(selectedProject), loadAutomated(selectedProject)]);
@@ -432,15 +435,15 @@ export default function TestCaseManager() {
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [activeTab, selectedProject]);
+  }, [activeTab, selectedProject, access.ready, access.guest?.id]);
   // Auto-refresh dashboard every 60s when on dashboard tab
   useEffect(() => {
-    if (activeTab !== 'dashboard' || !selectedProject) return;
+    if (activeTab !== 'dashboard' || !selectedProject || !access.ready || (access.guest && !access.guest.permissions.includes('dashboard.view'))) return;
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible') loadStats(selectedProject);
     }, 60000);
     return () => window.clearInterval(interval);
-  }, [activeTab, selectedProject]);
+  }, [activeTab, selectedProject, access.ready, access.guest?.id]);
 
   // ============== KEYBOARD SHORTCUTS ==============
   useEffect(() => {
@@ -762,7 +765,7 @@ export default function TestCaseManager() {
     testRecordById, fileInputRef, setSearch, setFilterStatus, setFilterTestType, setFilterPriority, setFilterModule,
     setFilterSubMenu, setPage, setLimit, setShowBulkAction, setShowBulkExecution, setShowBulkAssign, setShowDeleteConfirm, openCreateDialog, openAIDialog,
     setShowImportDialog, handleImportExcel, handleExportExcel, isLoadingTestCases, handleQuickStatusChange,
-    toggleSelectAll, toggleSelect, toggleSort, openEditDialog, handleDuplicate, setEditingTestCase,
+    toggleSelectAll, toggleSelect, toggleSort, sortBy, sortOrder, toggleNewestSort, openEditDialog, handleDuplicate, setEditingTestCase,
     clearSelection: () => setSelectedIds(new Set()),
     getStatusColor, getStatusIcon, getStatusBadgeVariant, getPriorityColor, getTestTypeColor,
     bugFixFilterModules, hasUnassignedBugFixItems, visibleBugFixItems, bugFixSearch, bugFixFilterStatus,

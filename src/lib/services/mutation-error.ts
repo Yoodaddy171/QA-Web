@@ -1,5 +1,5 @@
 export class MutationError extends Error {
-  constructor(public readonly status: 400 | 404 | 409, message: string) { super(message); }
+  constructor(public readonly status: 400 | 401 | 403 | 404 | 409, message: string) { super(message); }
 }
 
 export function mutationFailure(error: unknown, context: string, fallback: string) {

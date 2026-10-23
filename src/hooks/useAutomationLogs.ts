@@ -101,6 +101,7 @@ interface AutomationLogTestCase {
 }
 
 interface UseAutomationLogsOptions<TTestCase extends AutomationLogTestCase> {
+  enabled?: boolean;
   viewTestCase: TTestCase | null;
   setViewTestCase: Dispatch<SetStateAction<TTestCase | null>>;
 }
@@ -181,6 +182,7 @@ export function getAutomationRunnerFromLogs(logs: AutomationLogEntry[]): Automat
 }
 
 export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
+  enabled = true,
   viewTestCase,
   setViewTestCase,
 }: UseAutomationLogsOptions<TTestCase>) {
@@ -259,7 +261,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   useEffect(() => {
     currentViewIdRef.current = viewTestCase?.id || null;
 
-    if (!viewTestCase?.id) return;
+    if (!enabled || !viewTestCase?.id) return;
     const targetId = viewTestCase.id;
 
     const timer = window.setTimeout(() => {
@@ -273,9 +275,10 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [viewTestCase?.id]);
+  }, [enabled, viewTestCase?.id]);
 
   useEffect(() => {
+    if (!enabled) return;
     let ws: WebSocket | null = null;
     let reconnectTimer: number | null = null;
     let closedByHook = false;
@@ -369,7 +372,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
       ws?.close();
     };
-  }, [setViewTestCase]);
+  }, [enabled, setViewTestCase]);
 
   useEffect(() => {
     if (liveLogs.length > 0) {

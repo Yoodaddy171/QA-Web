@@ -58,7 +58,7 @@ function reportValues(tc: ExportTestCase): ExcelJS.CellValue[] {
 /** Numeric results are cached for non-calculating readers; Excel recalculates formulas on open. */
 export function createQaReport({ projectName, testCases, selectedOnly = false, generatedAt = new Date() }: ReportOptions) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'QADesk';
+  workbook.creator = 'Traceva';
   workbook.created = generatedAt;
   workbook.modified = generatedAt;
   workbook.calcProperties.fullCalcOnLoad = true;
@@ -95,7 +95,7 @@ export function createQaReport({ projectName, testCases, selectedOnly = false, g
     }
   }
   cases.pageSetup = { orientation: 'landscape', paperSize: 9, scale: 85, fitToPage: false, printTitlesRow: '1:1', printTitlesColumn: 'A:B' };
-  cases.headerFooter.oddFooter = 'QADesk | &P / &N';
+  cases.headerFooter.oddFooter = 'Traceva | &P / &N';
 
   [32, 18, 18, 18, 18, 18, 18, 18].forEach((width, i) => { summary.getColumn(i + 1).width = width; });
   summary.getCell('A1').value = QA_REPORT_MARKER;
@@ -165,6 +165,6 @@ export function createQaReport({ projectName, testCases, selectedOnly = false, g
     body(summary.getRow(next)); summary.getRow(next).height = 30;
   }
   summary.pageSetup = { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printArea: `A3:H${next}` };
-  summary.headerFooter.oddFooter = 'QADesk | &P / &N';
+  summary.headerFooter.oddFooter = 'Traceva | &P / &N';
   return workbook;
 }

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 type SystemDevLogHeaderProps = Record<string, any>;
 
 export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
-  const { socketReady, openSystemDevLogFullscreen, isSummarizing, generateAISummary, activeDevLogTab, setActiveDevLogTab, groupedConsoleLogs, groupedNetworkLogs, loadedRunLabel, loadCurrentLogRun, isLoadingHistory, loadLogHistory, clearLogs } = props;
+  const { socketReady, scriptMode = false, openSystemDevLogFullscreen, isSummarizing, generateAISummary, activeDevLogTab, setActiveDevLogTab, groupedConsoleLogs, groupedNetworkLogs, loadedRunLabel, loadCurrentLogRun, isLoadingHistory, loadLogHistory, clearLogs } = props;
   return (
                           <div className="flex flex-wrap items-center justify-between gap-4 mb-4 shrink-0">
                             <div className="flex items-center gap-3">
@@ -19,6 +19,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 <h4 className="text-sm font-semibold text-foreground leading-tight uppercase tracking-tight dark:text-foreground">System DevLog</h4>
                                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Execution Telemetry</p>
                               </div>
+                              {scriptMode && <span className="text-xs text-muted-foreground">Playwright run</span>}
                               {socketReady && (
                                 <div className="flex items-center gap-2 ml-4 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 shadow-sm">
                                   <span className="relative flex h-2 w-2">
@@ -39,6 +40,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 <Maximize2 className="h-3.5 w-3.5" />
                                 Fullscreen
                               </Button>
+                              {!scriptMode && <>
                               <Separator orientation="vertical" className="h-5 mx-0.5 bg-border" />
                               <Button
                                 variant="ghost"
@@ -55,6 +57,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 AI Summary
                               </Button>
                               <Separator orientation="vertical" className="h-5 mx-0.5 bg-border" />
+                              </>}
                               <Button
                                 variant={activeDevLogTab === 'execution' ? 'default' : 'ghost'}
                                 size="sm"
@@ -89,7 +92,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                                 Network ({groupedNetworkLogs.length})
                               </Button>
                               <Separator orientation="vertical" className="h-5 mx-0.5 bg-border" />
-                              <Button
+                              {!scriptMode && <><Button
                                 variant={loadedRunLabel === 'current' || loadedRunLabel === 'live' ? 'default' : 'ghost'}
                                 size="sm"
                                 className={cn(
@@ -126,6 +129,7 @@ export function SystemDevLogHeader(props: SystemDevLogHeaderProps) {
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
+                              </>}
                             </div>
                           </div>
   );

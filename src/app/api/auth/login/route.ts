@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   if (!rate.allowed) return NextResponse.json({ error: 'Terlalu banyak percobaan login. Coba lagi nanti.' }, { status: 429, headers: { 'Retry-After': String(Math.ceil((rate.resetAt - Date.now()) / 1000)) } });
 
   const user = email ? await db.user.findUnique({ where: { email } }) : null;
-  const valid = user && !user.disabledAt ? await verifyPassword(password, user.passwordHash).catch(() => false) : false;
+  const valid = user && !user.disabledAt && !user.isGuest ? await verifyPassword(password, user.passwordHash).catch(() => false) : false;
   if (!user || !valid) return NextResponse.json({ error: 'Email atau password tidak valid.' }, { status: 401 });
 
   clearLoginAttempts(key);

@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SimpleTooltip } from '@/components/ui/tooltip';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { UI_MOTION } from '@/lib/client/ui-motion';
 import { cn } from '@/lib/utils';
 import type { TestRun } from './types';
@@ -86,31 +87,31 @@ export const TestRunCyclesOverview = React.memo(function TestRunCyclesOverview({
     >
       {/* Top KPI Metrics Strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-border/80 bg-card p-4 transition-colors hover:border-border">
+        <div className="rounded-xl border border-border/80 bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-xs">
           <span className="text-xs font-medium text-muted-foreground">Total Siklus</span>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-mono text-2xl font-bold tabular-nums text-foreground">{totalCycles}</span>
+            <AnimatedNumber value={totalCycles} className="font-mono text-2xl font-bold tabular-nums text-foreground" />
             <span className="text-xs text-muted-foreground">cycle</span>
           </div>
         </div>
-        <div className="rounded-xl border border-border/80 bg-card p-4 transition-colors hover:border-border">
+        <div className="rounded-xl border border-border/80 bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-xs">
           <span className="text-xs font-medium text-muted-foreground">Sedang Berjalan</span>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-mono text-2xl font-bold tabular-nums text-status-in-progress">{inProgressCycles}</span>
+            <AnimatedNumber value={inProgressCycles} className="font-mono text-2xl font-bold tabular-nums text-status-in-progress" />
             <span className="text-xs text-muted-foreground">aktif</span>
           </div>
         </div>
-        <div className="rounded-xl border border-border/80 bg-card p-4 transition-colors hover:border-border">
+        <div className="rounded-xl border border-border/80 bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-xs">
           <span className="text-xs font-medium text-muted-foreground">Siklus Selesai</span>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-mono text-2xl font-bold tabular-nums text-status-passed">{completedCycles}</span>
+            <AnimatedNumber value={completedCycles} className="font-mono text-2xl font-bold tabular-nums text-status-passed" />
             <span className="text-xs text-muted-foreground">final</span>
           </div>
         </div>
-        <div className="rounded-xl border border-border/80 bg-card p-4 transition-colors hover:border-border">
+        <div className="rounded-xl border border-border/80 bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-xs">
           <span className="text-xs font-medium text-muted-foreground">Total Kasus Diuji</span>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-mono text-2xl font-bold tabular-nums text-primary">{totalCasesInRuns}</span>
+            <AnimatedNumber value={totalCasesInRuns} className="font-mono text-2xl font-bold tabular-nums text-primary" />
             <span className="text-xs text-muted-foreground">({avgPass}% pass)</span>
           </div>
         </div>

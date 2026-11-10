@@ -22,9 +22,14 @@ type Props = {
 export const TestCaseStatusCell = memo(function TestCaseStatusCell({ id, displayId, status, onChange, celebrate, color, icon }: Props) {
   const [activated, setActivated] = useState(false);
   const [open, setOpen] = useState(false);
+  const [justChanged, setJustChanged] = useState(false);
   const label = `Status for ${displayId}`;
   const optionsId = `status-options-${id}`;
-  const triggerClass = cn('h-8 w-[178px] rounded-lg text-xs font-bold shadow-none gap-1 px-2', color(status));
+  const triggerClass = cn(
+    'h-8 w-[178px] rounded-lg text-xs font-bold shadow-none gap-1 px-2 transition-transform duration-150 ease-[var(--motion-ease)] active:scale-[0.97]',
+    justChanged && 'scale-[1.03]',
+    color(status)
+  );
   const activate = () => { setActivated(true); setOpen(true); };
   if (!activated) return (
     <button type="button" role="combobox" data-slot="select-trigger" data-size="default" data-state="closed" aria-label={label} aria-controls={optionsId} aria-expanded={false} aria-haspopup="listbox" className={cn(SELECT_TRIGGER_CLASSES, triggerClass)} onClick={activate} onKeyDown={event => {
@@ -37,6 +42,8 @@ export const TestCaseStatusCell = memo(function TestCaseStatusCell({ id, display
   return (
     <Select open={open} onOpenChange={setOpen} value={status} onValueChange={value => {
       if (value === 'DONE' && status !== 'DONE') celebrate?.(id);
+      setJustChanged(true);
+      window.setTimeout(() => setJustChanged(false), 180);
       onChange(id, value);
     }}>
       <SelectTrigger aria-label={label} aria-controls={optionsId} className={triggerClass}>{icon(status)} <SelectValue /></SelectTrigger>

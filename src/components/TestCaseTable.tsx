@@ -538,16 +538,22 @@ export function TestCaseTable({
       <AnimatePresence initial={false}>
         {selectedIds.size > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.96 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, y: 18, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 480, damping: 32 }}
             className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-border/80 bg-card/95 px-4 py-2.5 shadow-2xl backdrop-blur-md max-w-[calc(100vw-2rem)] flex-wrap sm:flex-nowrap ring-1 ring-border/50"
           >
             <div className="flex items-center gap-2 pr-3 border-r border-border/70">
-              <span className="flex size-6 items-center justify-center rounded-md bg-primary/15 font-mono text-xs font-bold text-primary">
+              <motion.span
+                key={selectedIds.size}
+                initial={{ scale: 0.78, opacity: 0.65 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 520, damping: 24 }}
+                className="flex size-6 items-center justify-center rounded-md bg-primary/15 font-mono text-xs font-bold text-primary tabular-nums"
+              >
                 {selectedIds.size}
-              </span>
+              </motion.span>
               <span className="text-xs font-semibold text-foreground whitespace-nowrap">
                 skenario terpilih
               </span>

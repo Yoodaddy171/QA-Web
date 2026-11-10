@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { LatestRequest } from '@/lib/client/latest-request';
 import { RunDraft, readLocal, resumeKey } from '@/lib/client/run-draft';
-import { UI_MOTION, contentTransition } from '@/lib/client/ui-motion';
+import { UI_MOTION, contentTransition, directionalSlideVariants } from '@/lib/client/ui-motion';
 import { useCommittedActions } from '@/hooks/use-committed-actions';
 import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import {
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -80,6 +81,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
   const [isDraggingEvidence, setIsDraggingEvidence] = useState(false);
   const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
   const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<number>(1);
   const [caseSearch, setCaseSearch] = useState('');
   const [caseStatusFilter, setCaseStatusFilter] = useState<'ALL' | 'FAILED' | 'BLOCKED' | 'PASSED' | 'NOT_RUN'>('ALL');
   const [cycleSearch, setCycleSearch] = useState('');
@@ -444,18 +446,22 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
     }
   }, [canExecute, activeCase, notes, notesProjectScope, projectId, selectedRun, toast, draft]);
 
-  const chooseCase = useCallback((nextIndex: number) => {
+  const chooseCase = useCallback((nextIndex: number, direction?: number) => {
     if (!selectedRun || isSaving || !draft.flush()) return;
+    setSlideDirection(direction ?? (nextIndex >= activeCaseIndex ? 1 : -1));
     setActiveCaseIndex(nextIndex);
     setCasePage(Math.floor(nextIndex / RUN_CASES_PER_PAGE));
     const nextCase = selectedRun.testCases[nextIndex];
     const savedNotes = readLocal(notesStorageKey(notesProjectScope, selectedRun.id, nextCase.id));
     setNotes(savedNotes ?? nextCase?.executions?.[0]?.notes ?? '');
     setNotesDirty(savedNotes !== null);
-  }, [notesProjectScope, selectedRun, isSaving, draft]);
+  }, [notesProjectScope, selectedRun, isSaving, draft, activeCaseIndex]);
 
   const moveCase = useCallback((delta: number) => {
-    if (selectedRun) chooseCase(Math.max(0, Math.min(selectedRun.testCases.length - 1, activeCaseIndex + delta)));
+    if (selectedRun) {
+      const nextIdx = Math.max(0, Math.min(selectedRun.testCases.length - 1, activeCaseIndex + delta));
+      chooseCase(nextIdx, delta >= 0 ? 1 : -1);
+    }
   }, [selectedRun, chooseCase, activeCaseIndex]);
 
   const changeNotes = (value: string) => {
@@ -779,7 +785,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                         style={{ transform: `scaleX(${Math.max(0, Math.min(100, selectedRun.progress)) / 100})` }}
                       />
                     </div>
-                    <span className="font-mono text-xs font-semibold tabular-nums text-foreground">{selectedRun.progress}%</span>
+                    <AnimatedNumber value={selectedRun.progress} suffix="%" className="font-mono text-xs font-semibold tabular-nums text-foreground" />
                     {activeCase && (
                       <span className="font-mono text-[11px] tabular-nums text-muted-foreground border-l border-border/60 pl-2">
                         Case {(selectedRun.casePage?.startOffset || 0) + activeCaseIndex + 1}/{selectedRun.summary.total}
@@ -839,7 +845,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                     style={{ transform: `scaleX(${Math.max(0, Math.min(100, selectedRun.progress)) / 100})` }}
                   />
                 </div>
-                <span className="font-mono text-xs font-semibold tabular-nums text-foreground">{selectedRun.progress}%</span>
+                <AnimatedNumber value={selectedRun.progress} suffix="%" className="font-mono text-xs font-semibold tabular-nums text-foreground" />
                 {activeCase && (
                   <span className="font-mono text-xs tabular-nums text-muted-foreground">
                     Case {(selectedRun.casePage?.startOffset || 0) + activeCaseIndex + 1}/{selectedRun.summary.total}
@@ -880,13 +886,15 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
               {/* COLUMN 2: Unified Main Execution Workbench */}
               <div className="min-w-0 flex flex-col rounded-xl border border-border bg-card shadow-2xs overflow-hidden">
                 {activeCase ? (
-                  <AnimatePresence mode="wait" initial={false}>
+                  <AnimatePresence mode="wait" initial={false} custom={slideDirection}>
                     <motion.div
                       key={activeCase.id}
-                      initial={reducedMotion ? false : { opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-                      transition={{ duration: reducedMotion ? 0 : 0.15, ease: UI_MOTION.ease }}
+                      custom={slideDirection}
+                      variants={directionalSlideVariants(reducedMotion)}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      transition={{ duration: reducedMotion ? 0 : 0.16, ease: UI_MOTION.ease }}
                       className="flex flex-col"
                     >
                       {/* SECTION A: Active Case Header & Inline Execution Metadata Strip */}
@@ -910,9 +918,16 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
-                            <Badge variant={statusVariant(visibleExecutionStatus)} className="text-xs px-2.5 py-0.5">
-                              {visibleExecutionStatus}
-                            </Badge>
+                            <motion.div
+                              key={visibleExecutionStatus}
+                              initial={reducedMotion ? false : { scale: 0.82, opacity: 0.8 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ type: 'spring', stiffness: 500, damping: 24 }}
+                            >
+                              <Badge variant={statusVariant(visibleExecutionStatus)} className="text-xs px-2.5 py-0.5">
+                                {visibleExecutionStatus}
+                              </Badge>
+                            </motion.div>
                           </div>
                         </div>
 
@@ -1236,7 +1251,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
                             disabled={!canExecute || isSaving}
                             aria-pressed={active}
                           >
-                            <Icon className="h-3.5 w-3.5 mr-1" />
+                            <Icon className={cn("h-3.5 w-3.5 mr-1 transition-transform duration-150", active && "scale-110")} />
                             {action.label}
                             <Kbd size="sm" className="ml-1.5 border-current/25 bg-current/10 text-current">
                               {action.shortcut}

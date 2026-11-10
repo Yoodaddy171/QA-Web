@@ -249,7 +249,7 @@ export function BugFixPanel({
     return (
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border/50 bg-card shadow-sm">
         <div className="text-center">
-          <DefectIcon className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30 animate-pulse" />
+          <DefectIcon className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
           <p className="text-sm font-semibold text-muted-foreground">Pilih project untuk melihat bug tracking</p>
         </div>
       </div>
@@ -289,32 +289,52 @@ export function BugFixPanel({
         </Tabs>
 
         <div className="grid w-full min-w-0 grid-cols-2 items-center gap-2 xl:grid-cols-[auto_auto_auto_minmax(160px,1fr)_160px_160px]">
-          <Badge variant="outline" className="h-9 justify-center rounded-lg border border-border/60 bg-secondary/40 px-3 text-xs font-medium text-muted-foreground">
+          <Badge variant="outline" className="h-9 justify-center rounded-lg border border-border/60 bg-secondary/40 px-3 text-xs font-medium text-muted-foreground tabular-nums">
             {visibleBugFixItems.length} Bug {bugFixTab === 'resolved' ? 'Fixed' : 'Aktif'}
           </Badge>
           <DataTableDensityToggle value={density} onValueChange={setDensity} />
-          <div className="flex items-center rounded-lg border border-border/60 bg-muted/40 p-0.5">
+          <div className="flex items-center rounded-lg border border-border/60 bg-secondary/40 p-0.5">
             <SimpleTooltip content="Tampilan Tabel">
-            <Button
-              type="button"
-              variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-7 px-2 text-xs gap-1 font-medium"
-              onClick={() => setViewMode('table')}
-            >
-              <List className="size-3.5" /> Tabel
-            </Button>
+              <button
+                type="button"
+                aria-pressed={viewMode === 'table'}
+                onClick={() => setViewMode('table')}
+                className={cn(
+                  'relative inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors',
+                  viewMode === 'table' ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {viewMode === 'table' && (
+                  <motion.span
+                    layoutId="bugfix-view-mode-pill"
+                    transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+                    className="absolute inset-0 rounded-md border border-border/60 bg-background shadow-2xs"
+                  />
+                )}
+                <List className="relative z-10 size-3.5" />
+                <span className="relative z-10">Tabel</span>
+              </button>
             </SimpleTooltip>
             <SimpleTooltip content="Tampilan Papan Kanban">
-            <Button
-              type="button"
-              variant={viewMode === 'kanban' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-7 px-2 text-xs gap-1 font-medium"
-              onClick={() => setViewMode('kanban')}
-            >
-              <LayoutGrid className="size-3.5" /> Kanban
-            </Button>
+              <button
+                type="button"
+                aria-pressed={viewMode === 'kanban'}
+                onClick={() => setViewMode('kanban')}
+                className={cn(
+                  'relative inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors',
+                  viewMode === 'kanban' ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {viewMode === 'kanban' && (
+                  <motion.span
+                    layoutId="bugfix-view-mode-pill"
+                    transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+                    className="absolute inset-0 rounded-md border border-border/60 bg-background shadow-2xs"
+                  />
+                )}
+                <LayoutGrid className="relative z-10 size-3.5" />
+                <span className="relative z-10">Kanban</span>
+              </button>
             </SimpleTooltip>
           </div>
           <DropdownMenu>

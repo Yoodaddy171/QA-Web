@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, Camera, Check, ChevronsUpDown, Command, FolderOpen, HelpCircle, History, Plus, Search, UserRound, X } from 'lucide-react';
+import { ArrowRight, Camera, Check, ChevronsUpDown, Command, FileSpreadsheet, FolderOpen, GitBranch, HelpCircle, History, Loader2, Plus, Search, UserRound, X } from 'lucide-react';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import {
   DashboardIcon,
@@ -133,6 +133,73 @@ function WorkspaceCommandPalette({
   const allowed = useAllowedTabs();
   const filteredItems = allowed.filter(item => `${item.label} ${item.description}`.toLowerCase().includes(normalizedQuery));
 
+  const [omnisearchLoading, setOmnisearchLoading] = useState(false);
+  const [omnisearchCases, setOmnisearchCases] = useState<Array<{ id: string; testCaseId: string; page: string; status: string }>>([]);
+  const [omnisearchBugs, setOmnisearchBugs] = useState<Array<{ id: string; testCaseId: string; page: string; testAction: string; status: string; priority: string }>>([]);
+  const [omnisearchRequirements, setOmnisearchRequirements] = useState<Array<{ id: string; key: string; title: string; status: string }>>([]);
+  const [omnisearchRuns, setOmnisearchRuns] = useState<Array<{ id: string; name: string; status: string }>>([]);
+
+  useEffect(() => {
+    if (!open || !selectedProject || normalizedQuery.length < 2) {
+      setOmnisearchCases([]);
+      setOmnisearchBugs([]);
+      setOmnisearchRequirements([]);
+      setOmnisearchRuns([]);
+      setOmnisearchLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setOmnisearchLoading(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const canCases = !guest || guest.permissions.includes('cases.view');
+        const canBugs = !guest || guest.permissions.includes('bugs.view');
+        const canTrace = !guest || guest.permissions.includes('traceability.view');
+        const canRuns = !guest || guest.permissions.includes('runs.view');
+
+        const [casesRes, bugsRes, reqsRes, runsRes] = await Promise.all([
+          canCases
+            ? fetch(`/api/testcases?projectId=${encodeURIComponent(selectedProject)}&view=options&limit=5&search=${encodeURIComponent(query.trim())}`, { signal: controller.signal }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+            : Promise.resolve(null),
+          canBugs
+            ? fetch(`/api/bugfix?projectId=${encodeURIComponent(selectedProject)}&limit=4&search=${encodeURIComponent(query.trim())}`, { signal: controller.signal }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+            : Promise.resolve(null),
+          canTrace
+            ? fetch(`/api/requirements?projectId=${encodeURIComponent(selectedProject)}`, { signal: controller.signal }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+            : Promise.resolve(null),
+          canRuns
+            ? fetch(`/api/test-runs?projectId=${encodeURIComponent(selectedProject)}&limit=25`, { signal: controller.signal }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+
+        if (controller.signal.aborted) return;
+
+        setOmnisearchCases(Array.isArray(casesRes?.testCases) ? casesRes.testCases.slice(0, 5) : []);
+        setOmnisearchBugs(Array.isArray(bugsRes?.bugFixItems) ? bugsRes.bugFixItems.slice(0, 4) : []);
+        const matchedReqs = Array.isArray(reqsRes?.requirements)
+          ? reqsRes.requirements.filter((r: any) =>
+              `${r.key} ${r.title} ${r.description || ''}`.toLowerCase().includes(normalizedQuery)
+            ).slice(0, 4)
+          : [];
+        setOmnisearchRequirements(matchedReqs);
+        const matchedRuns = Array.isArray(runsRes?.testRuns)
+          ? runsRes.testRuns.filter((r: any) =>
+              `${r.name} ${r.description || ''}`.toLowerCase().includes(normalizedQuery)
+            ).slice(0, 4)
+          : [];
+        setOmnisearchRuns(matchedRuns);
+      } finally {
+        if (!controller.signal.aborted) setOmnisearchLoading(false);
+      }
+    }, 200);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [open, selectedProject, query, normalizedQuery, guest]);
+
   const filteredProjects = useMemo(() => {
     if (!projects?.length) return [];
     if (!normalizedQuery) return projects;
@@ -151,11 +218,31 @@ function WorkspaceCommandPalette({
     if (focusSearch) window.setTimeout(() => document.querySelector<HTMLInputElement>('[data-search-input]')?.focus(), 120);
   };
 
+  const openEntity = (tab: string, target: Record<string, string>) => {
+    if (selectedProject) {
+      window.localStorage.setItem(`qaDesk.navigationTarget.v1.${selectedProject}`, JSON.stringify(target));
+    }
+    setActiveTab(tab);
+    onOpenChange(false);
+    setQuery('');
+    if (target.entityType === 'TestCase') {
+      window.setTimeout(() => window.dispatchEvent(new CustomEvent('qa-desk:navigate-entity', { detail: target })), 80);
+    } else if (target.entityType === 'Requirement') {
+      window.setTimeout(() => window.dispatchEvent(new CustomEvent('qa-desk:navigate-requirement', { detail: target })), 80);
+    }
+  };
+
   const switchProject = (projectId: string) => {
     setSelectedProject?.(projectId);
     onOpenChange(false);
     setQuery('');
   };
+
+  const hasOmnisearchResults =
+    omnisearchCases.length > 0 ||
+    omnisearchBugs.length > 0 ||
+    omnisearchRequirements.length > 0 ||
+    omnisearchRuns.length > 0;
 
   const cmdListRef = useRef<HTMLDivElement>(null);
   useGSAP(
@@ -175,16 +262,136 @@ function WorkspaceCommandPalette({
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { onOpenChange(nextOpen); if (!nextOpen) setQuery(''); }}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-xl">
-        <DialogHeader className="sr-only"><DialogTitle>Command palette</DialogTitle><DialogDescription>Cari menu atau aksi cepat.</DialogDescription></DialogHeader>
+        <DialogHeader className="sr-only"><DialogTitle>Command palette</DialogTitle><DialogDescription>Cari menu, TC-ID, Bug, Requirement, atau aksi cepat.</DialogDescription></DialogHeader>
         <div className="flex items-center gap-3 border-b border-border px-4">
-          <Search className="size-4 text-muted-foreground" />
-          <Input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari menu, aksi, atau project..." className="h-14 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0" />
+          {omnisearchLoading ? <Loader2 className="size-4 animate-spin text-primary" /> : <Search className="size-4 text-muted-foreground" />}
+          <Input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari TC-ID, Bug, Requirement, Test Cycle, menu, atau project..." className="h-14 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0" />
           <Kbd size="sm">ESC</Kbd>
         </div>
-        <div ref={cmdListRef} className="max-h-[420px] overflow-y-auto p-2">
-          {filteredItems.length > 0 && (
-            <>
-              <p className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Navigasi</p>
+        <div ref={cmdListRef} className="max-h-[440px] overflow-y-auto p-2">
+          {/* Live Omnisearch Entity Results */}
+          {omnisearchCases.length > 0 && (
+            <div className="mb-2">
+              <p className="px-2 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+                Test Cases ({omnisearchCases.length})
+              </p>
+              <div className="flex flex-col gap-1">
+                {omnisearchCases.map((tc) => (
+                  <button
+                    key={tc.id}
+                    type="button"
+                    onClick={() => openEntity('testcases', { entityType: 'TestCase', entityId: tc.id })}
+                    className="group flex items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary">
+                      <TestCasesIcon className="size-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2 text-xs font-bold font-mono text-primary">
+                        <span>{tc.testCaseId}</span>
+                        <Badge variant="outline" className="text-[10px] py-0 h-4">{tc.status}</Badge>
+                      </span>
+                      <span className="block truncate text-xs text-foreground mt-0.5">{tc.page}</span>
+                    </span>
+                    <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {omnisearchBugs.length > 0 && (
+            <div className="mb-2 border-t border-border/40 pt-2">
+              <p className="px-2 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-500">
+                Bugs & Defects ({omnisearchBugs.length})
+              </p>
+              <div className="flex flex-col gap-1">
+                {omnisearchBugs.map((bug) => (
+                  <button
+                    key={bug.id}
+                    type="button"
+                    onClick={() => openEntity('bugfix', { entityType: 'BugFix', entityId: bug.id })}
+                    className="group flex items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-rose-500/30 bg-rose-500/10 text-rose-500">
+                      <DefectIcon className="size-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2 text-xs font-bold font-mono text-foreground">
+                        <span>{bug.testCaseId}</span>
+                        <Badge variant="outline" className="text-[10px] py-0 h-4">{bug.status}</Badge>
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground mt-0.5">{bug.page} · {bug.testAction}</span>
+                    </span>
+                    <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {omnisearchRequirements.length > 0 && (
+            <div className="mb-2 border-t border-border/40 pt-2">
+              <p className="px-2 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Requirements ({omnisearchRequirements.length})
+              </p>
+              <div className="flex flex-col gap-1">
+                {omnisearchRequirements.map((req) => (
+                  <button
+                    key={req.id}
+                    type="button"
+                    onClick={() => openEntity('traceability', { entityType: 'Requirement', entityId: req.id })}
+                    className="group flex items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary">
+                      <GitBranch className="size-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2 text-xs font-bold font-mono text-primary">
+                        <span>{req.key}</span>
+                        <Badge variant="outline" className="text-[10px] py-0 h-4">{req.status}</Badge>
+                      </span>
+                      <span className="block truncate text-xs text-foreground mt-0.5">{req.title}</span>
+                    </span>
+                    <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {omnisearchRuns.length > 0 && (
+            <div className="mb-2 border-t border-border/40 pt-2">
+              <p className="px-2 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Test Cycles ({omnisearchRuns.length})
+              </p>
+              <div className="flex flex-col gap-1">
+                {omnisearchRuns.map((run) => (
+                  <button
+                    key={run.id}
+                    type="button"
+                    onClick={() => openEntity('testRuns', { entityType: 'TestRun', entityId: run.id, testRunId: run.id })}
+                    className="group flex items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary">
+                      <TestCyclesIcon className="size-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                        <span className="truncate">{run.name}</span>
+                        <Badge variant="outline" className="text-[10px] py-0 h-4">{run.status}</Badge>
+                      </span>
+                    </span>
+                    <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(filteredItems.length > 0 || !normalizedQuery) && (
+            <div className={cn(hasOmnisearchResults && 'border-t border-border/50 pt-2')}>
+              <p className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Navigasi & Aksi Cepat</p>
               <div className="flex flex-col gap-1">
                 {filteredItems.map(item => {
                   const Icon = item.icon;
@@ -196,16 +403,30 @@ function WorkspaceCommandPalette({
                     </button>
                   );
                 })}
-                {(!guest || guest.permissions.includes('cases.view')) && (!normalizedQuery || 'search test cases'.includes(normalizedQuery)) ? (
+                {(!guest || guest.permissions.includes('cases.view')) && (!normalizedQuery || 'search test cases cari testcase'.includes(normalizedQuery)) ? (
                   <button type="button" onClick={() => navigate('testcases', true)} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
                     <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:text-primary"><Search className="size-4" /></span>
                     <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Cari testcase</span><span className="block truncate text-xs text-muted-foreground">Buka Cases dan fokus ke pencarian</span></span>
                   </button>
                 ) : null}
-                {canEdit && (!normalizedQuery || 'add create new testcase'.includes(normalizedQuery)) ? (
+                {canEdit && (!normalizedQuery || 'add create new testcase buat'.includes(normalizedQuery)) ? (
                   <button type="button" onClick={() => { navigate('testcases'); window.setTimeout(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' })), 140); }} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
                     <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:text-primary"><Plus className="size-4" /></span>
                     <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Buat testcase</span><span className="block truncate text-xs text-muted-foreground">Mulai testcase baru dari mana saja</span></span>
+                  </button>
+                ) : null}
+                {selectedProject && (!guest || guest.permissions.includes('data.export')) && (!normalizedQuery || 'export excel xlsx unduh laporan'.includes(normalizedQuery)) ? (
+                  <button type="button" onClick={() => { onOpenChange(false); setQuery(''); window.open(`/api/excel?projectId=${encodeURIComponent(selectedProject)}`, '_blank', 'noopener,noreferrer'); }} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
+                    <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:text-primary"><FileSpreadsheet className="size-4" /></span>
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Export Excel (.xlsx)</span><span className="block truncate text-xs text-muted-foreground">Unduh seluruh test case project aktif ke file Excel</span></span>
+                    <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100" />
+                  </button>
+                ) : null}
+                {canEdit && FEATURES.aiTestcaseFlows && (!normalizedQuery || 'copilot ai chat asisten'.includes(normalizedQuery)) ? (
+                  <button type="button" onClick={() => { onOpenChange(false); setQuery(''); window.dispatchEvent(new CustomEvent('qa-desk:toggle-copilot')); }} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
+                    <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:text-primary"><CopilotIcon className="size-4" /></span>
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Buka QA AI Copilot</span><span className="block truncate text-xs text-muted-foreground">Tanya AI atau buat skenario uji otomatis</span></span>
+                    <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100" />
                   </button>
                 ) : null}
                 {(!normalizedQuery || 'profile akun user password sesi keamanan'.includes(normalizedQuery)) ? (
@@ -223,7 +444,7 @@ function WorkspaceCommandPalette({
                   </button>
                 ) : null}
               </div>
-            </>
+            </div>
           )}
 
           {filteredProjects.length > 0 && (
@@ -269,11 +490,11 @@ function WorkspaceCommandPalette({
             </div>
           )}
 
-          {filteredItems.length === 0 && filteredProjects.length === 0 && normalizedQuery && !'search test cases add create new testcase'.includes(normalizedQuery) ? (
-            <p className="px-3 py-8 text-center text-sm text-muted-foreground">Tidak ada menu, aksi, atau project yang cocok.</p>
+          {filteredItems.length === 0 && filteredProjects.length === 0 && !hasOmnisearchResults && !omnisearchLoading && normalizedQuery && !'search test cases add create new testcase'.includes(normalizedQuery) ? (
+            <p className="px-3 py-8 text-center text-sm text-muted-foreground">Tidak ada menu, TC-ID, Bug, Requirement, atau project yang cocok.</p>
           ) : null}
         </div>
-        <div className="flex items-center justify-between border-t border-border bg-secondary/25 px-4 py-2 text-xs text-muted-foreground"><span>Gunakan pencarian untuk berpindah cepat</span><span className="flex items-center gap-1"><Command className="size-3" /> K</span></div>
+        <div className="flex items-center justify-between border-t border-border bg-secondary/25 px-4 py-2 text-xs text-muted-foreground"><span>Ketik minimal 2 karakter untuk mencari TC-ID, Bug, Requirement, atau Test Cycle</span><span className="flex items-center gap-1"><Command className="size-3" /> K</span></div>
       </DialogContent>
     </Dialog>
   );

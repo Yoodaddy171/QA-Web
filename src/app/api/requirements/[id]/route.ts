@@ -26,3 +26,17 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Gagal mengubah requirement.' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  try {
+    const projectId = req.nextUrl.searchParams.get('projectId')?.trim() || '';
+    const current = await db.requirement.findFirst({ where: { id, ...(projectId ? { projectId } : {}) }, select: { id: true } });
+    if (!current) return NextResponse.json({ error: 'Requirement tidak ditemukan.' }, { status: 404 });
+    await db.requirement.delete({ where: { id } });
+    return NextResponse.json({ deleted: 1 });
+  } catch (error) {
+    console.error('DELETE /api/requirements/[id] error:', error);
+    return NextResponse.json({ error: 'Gagal menghapus requirement.' }, { status: 500 });
+  }
+}

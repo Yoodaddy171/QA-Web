@@ -314,17 +314,62 @@ function normalizeTags(value: unknown) {
   return [...new Set(values.map(item => String(item).trim().toLowerCase()).filter(Boolean))].join(', ') || null;
 }
 
-// Bulk status update: { ids: string[], status: string }
+// Bulk update: { ids: string[], status?: string, priority?: string, moduleId?: string | null }
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const ids = Array.isArray(body.ids) ? body.ids.filter((id: unknown) => typeof id === 'string' && id) : [];
     if (ids.length === 0) return validationError('IDs wajib diisi.');
     if (ids.length > 500) return validationError('Maksimal 500 test case per operasi bulk.');
-    if (!isTestCaseStatus(body.status)) return validationError('Status testcase tidak valid.');
 
-    const result = await bulkUpdateTestCaseStatus(ids, body.status);
-    return NextResponse.json(result);
+    const hasStatus = body.status !== undefined && body.status !== '' && body.status !== '__keep__';
+    const hasPriority = body.priority !== undefined && body.priority !== '' && body.priority !== '__keep__';
+    const hasModule = body.moduleId !== undefined && body.moduleId !== '__keep__';
+
+    if (!hasStatus && !hasPriority && !hasModule) {
+      return validationError('Pilih minimal satu atribut (Status, Prioritas, atau Module) untuk diupdate.');
+    }
+
+    if (hasStatus && !isTestCaseStatus(body.status)) {
+      return validationError('Status testcase tidak valid.');
+    }
+    if (hasPriority && !isTestCasePriority(body.priority)) {
+      return validationError('Prioritas testcase tidak valid.');
+    }
+
+    let updatedCount = 0;
+
+    if (hasStatus) {
+      const result = await bulkUpdateTestCaseStatus(ids, body.status);
+      updatedCount = Math.max(updatedCount, result.updated);
+    }
+
+    if (hasPriority || hasModule) {
+      const extraData: Record<string, unknown> = {};
+      if (hasPriority) extraData.priority = body.priority;
+      if (hasModule) {
+        const nextModuleId = body.moduleId === 'unassigned' || body.moduleId === '' || body.moduleId === null ? null : String(body.moduleId);
+        if (nextModuleId) {
+          const mod = await db.module.findUnique({ where: { id: nextModuleId }, select: { id: true } });
+          if (!mod) return NextResponse.json({ error: 'Module tidak ditemukan.' }, { status: 404 });
+        }
+        extraData.moduleId = nextModuleId;
+      }
+
+      const res = await db.testCase.updateMany({
+        where: { id: { in: ids } },
+        data: extraData,
+      });
+      if (hasModule) {
+        await db.bugFix.updateMany({
+          where: { sourceTestCaseId: { in: ids } },
+          data: { moduleId: extraData.moduleId as string | null },
+        });
+      }
+      updatedCount = Math.max(updatedCount, res.count);
+    }
+
+    return NextResponse.json({ updated: updatedCount });
   } catch (error) {
     const failure = mutationFailure(error, 'PATCH /api/testcases', 'Failed to bulk update test cases');
     return NextResponse.json({ error: failure.error }, { status: failure.status });

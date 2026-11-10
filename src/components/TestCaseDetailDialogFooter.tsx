@@ -1,6 +1,6 @@
 'use client';
 
-import { Edit3, FileDown, Sparkles } from 'lucide-react';
+import { Copy, Edit3, FileDown, Sparkles } from 'lucide-react';
 import { MutationAction } from '@/components/WorkspaceAccess';
 import { Button } from '@/components/ui/button';
 import type { TestCase } from '@/components/TestCaseTable';
@@ -10,6 +10,7 @@ interface TestCaseDetailDialogFooterProps {
   isBugFixDetail: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (testCase: TestCase) => void;
+  onClone?: (testCase: TestCase) => void;
   onRefine?: (testCase: TestCase) => void;
   openEvidenceReport: () => void;
 }
@@ -19,6 +20,7 @@ export function TestCaseDetailDialogFooter({
   isBugFixDetail,
   onOpenChange,
   onEdit,
+  onClone,
   onRefine,
   openEvidenceReport,
 }: TestCaseDetailDialogFooterProps) {
@@ -58,6 +60,18 @@ export function TestCaseDetailDialogFooter({
         >
           Tutup
         </Button>
+        {viewTestCase && !isBugFixDetail && onClone && (
+          <MutationAction><Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => { onOpenChange(false); onClone(viewTestCase); }}
+            className="h-8 gap-1.5 rounded-md border-border/70 text-xs font-medium"
+            title="Buat skenario baru dari salinan test case ini"
+          >
+            <Copy className="h-3.5 w-3.5" /> Duplikat
+          </Button></MutationAction>
+        )}
         {viewTestCase && (
           <MutationAction><Button
             type="button"

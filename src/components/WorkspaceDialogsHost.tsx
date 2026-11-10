@@ -230,6 +230,27 @@ export function WorkspaceDialogsHost(props: Record<string, any>) {
           getTestTypeColor={getTestTypeColor}
           getPriorityColor={getPriorityColor}
           onEdit={openEditDialog}
+          onClone={async (tc) => {
+            let suggestedId = `${tc.testCaseId}-COPY`;
+            if (selectedProject && tc.moduleId) {
+              const res = await fetch(`/api/testcases/next-id?projectId=${encodeURIComponent(selectedProject)}&moduleId=${encodeURIComponent(tc.moduleId)}`)
+                .then(r => (r.ok ? r.json() : null))
+                .catch(() => null);
+              if (res?.suggestedTestCaseId) suggestedId = res.suggestedTestCaseId;
+            }
+            openDraftCreateDialog({
+              testCaseId: suggestedId,
+              page: tc.page,
+              subMenu: tc.subMenu || '',
+              weight: tc.weight || '',
+              testType: tc.testType,
+              testAction: tc.testAction,
+              steps: tc.steps,
+              expectedResult: tc.expectedResult,
+              priority: tc.priority,
+              moduleId: tc.moduleId || '',
+            });
+          }}
           onRefine={FEATURES.aiTestcaseFlows ? openAIRefineDialog : undefined}
           onCopyId={(id) => {
             navigator.clipboard.writeText(id);
@@ -292,6 +313,7 @@ export function WorkspaceDialogsHost(props: Record<string, any>) {
           open={showBulkAction}
           selectedCount={selectedIds.size}
           bulkStatus={bulkStatus}
+          modules={modules}
           onOpenChange={setShowBulkAction}
           setBulkStatus={setBulkStatus}
           onSubmit={handleBulkStatusUpdate}

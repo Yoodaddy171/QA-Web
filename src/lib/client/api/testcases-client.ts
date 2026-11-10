@@ -45,11 +45,20 @@ export async function updateTestCase(input: Record<string, unknown>) {
   return data;
 }
 
-export async function bulkUpdateTestCaseStatus(ids: string[], status: string) {
+export async function bulkUpdateTestCaseStatus(
+  ids: string[],
+  status: string,
+  extra?: { priority?: string; moduleId?: string }
+) {
   const res = await fetch('/api/testcases', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ids, status }),
+    body: JSON.stringify({
+      ids,
+      status,
+      ...(extra?.priority ? { priority: extra.priority } : {}),
+      ...(extra?.moduleId !== undefined ? { moduleId: extra.moduleId } : {}),
+    }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Bulk update gagal');

@@ -479,8 +479,8 @@ export default function TestCaseManager() {
     bulkDelete(refreshAll);
   };
 
-  const handleBulkStatusUpdate = async () => {
-    if (await bulkStatusUpdate(bulkStatus, refreshAll)) setShowBulkAction(false);
+  const handleBulkStatusUpdate = async (extra?: { priority?: string; moduleId?: string }) => {
+    if (await bulkStatusUpdate(bulkStatus, refreshAll, extra)) setShowBulkAction(false);
   };
 
   const handleBulkExecution = async () => {

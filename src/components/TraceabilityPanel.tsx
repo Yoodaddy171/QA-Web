@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { GraphFocus, TraceGraphNode } from '@/lib/traceability-graph';
 import { MutationAction } from '@/components/WorkspaceAccess';
-import { AlertCircle, CheckCircle2, ChevronRight, GitBranch, Link2, ListChecks, PencilLine, Plus, RefreshCw, Route, Settings2, Unlink } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronRight, GitBranch, Link2, ListChecks, PencilLine, Plus, RefreshCw, Route, Settings2, Trash2, Unlink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -60,8 +60,11 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
   const [requirementKey, setRequirementKey] = useState('');
   const [requirementTitle, setRequirementTitle] = useState('');
   const [requirementDescription, setRequirementDescription] = useState('');
+  const [requirementPriority, setRequirementPriority] = useState('Medium');
+  const [requirementStatus, setRequirementStatus] = useState('DRAFT');
   const [planName, setPlanName] = useState('');
   const [planDescription, setPlanDescription] = useState('');
+  const [planStatus, setPlanStatus] = useState('DRAFT');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -70,6 +73,12 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
   const [editRequirementKey, setEditRequirementKey] = useState('');
   const [editRequirementTitle, setEditRequirementTitle] = useState('');
   const [editRequirementDescription, setEditRequirementDescription] = useState('');
+  const [editRequirementPriority, setEditRequirementPriority] = useState('Medium');
+  const [editRequirementStatus, setEditRequirementStatus] = useState('DRAFT');
+  const [managedPlanId, setManagedPlanId] = useState('');
+  const [editPlanName, setEditPlanName] = useState('');
+  const [editPlanDescription, setEditPlanDescription] = useState('');
+  const [editPlanStatus, setEditPlanStatus] = useState('DRAFT');
 
   const load = useCallback(async () => {
     if (!projectId) return;
@@ -87,7 +96,22 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
       const nextRequirements = requirementsData.requirements || [];
       setRequirements(nextRequirements);
       setTestPlans(plansData.testPlans || []);
-      setSelectedRequirementId(current => current || nextRequirements[0]?.id || '');
+
+      let navRequirementId = '';
+      try {
+        const rawTarget = window.localStorage.getItem(`qaDesk.navigationTarget.v1.${projectId}`);
+        if (rawTarget) {
+          const parsed = JSON.parse(rawTarget);
+          if (parsed?.entityType === 'Requirement' && typeof parsed.entityId === 'string') {
+            navRequirementId = parsed.entityId;
+            window.localStorage.removeItem(`qaDesk.navigationTarget.v1.${projectId}`);
+          }
+        }
+      } catch {
+        // Ignore storage read errors
+      }
+
+      setSelectedRequirementId(current => navRequirementId || current || nextRequirements[0]?.id || '');
       setMessage('');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Gagal memuat traceability.');
@@ -95,6 +119,20 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
       setLoading(false);
     }
   }, [projectId]);
+
+  useEffect(() => {
+    const onNavigateRequirement = (event: Event) => {
+      const detail = (event as CustomEvent<{ entityId?: string; requirementId?: string }>).detail;
+      const reqId = detail?.entityId || detail?.requirementId;
+      if (reqId) {
+        setViewMode('lanes');
+        setUncoveredOnly(false);
+        setSelectedRequirementId(reqId);
+      }
+    };
+    window.addEventListener('qa-desk:navigate-requirement', onNavigateRequirement);
+    return () => window.removeEventListener('qa-desk:navigate-requirement', onNavigateRequirement);
+  }, []);
 
   useEffect(() => {
     if (!createOpen) return;
@@ -144,16 +182,32 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
   const visibleRequirements = useMemo(() => uncoveredOnly ? requirements.filter(item => coverageState(item) !== 'covered') : requirements, [requirements, uncoveredOnly]);
 
   const createRequirement = async () => {
-    const response = await fetch('/api/requirements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId, key: requirementKey, title: requirementTitle, description: requirementDescription }) });
+    const response = await fetch('/api/requirements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId,
+        key: requirementKey,
+        title: requirementTitle,
+        description: requirementDescription,
+        priority: requirementPriority,
+        status: requirementStatus,
+      }),
+    });
     const data = await response.json();
     if (!response.ok) return setMessage(data.error || 'Gagal membuat requirement.');
-    setRequirementKey(''); setRequirementTitle(''); setRequirementDescription(''); setSelectedRequirementId(data.id); setMessage('Requirement berhasil dibuat.'); await load();
+    setRequirementKey(''); setRequirementTitle(''); setRequirementDescription(''); setRequirementPriority('Medium'); setRequirementStatus('DRAFT');
+    setSelectedRequirementId(data.id); setMessage('Requirement berhasil dibuat.'); await load();
   };
   const createPlan = async () => {
-    const response = await fetch('/api/test-plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId, name: planName, description: planDescription }) });
+    const response = await fetch('/api/test-plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId, name: planName, description: planDescription, status: planStatus }),
+    });
     const data = await response.json();
     if (!response.ok) return setMessage(data.error || 'Gagal membuat Test Plan.');
-    setPlanName(''); setPlanDescription(''); setSelectedPlanId(data.id); setMessage('Test Plan berhasil dibuat.'); await load();
+    setPlanName(''); setPlanDescription(''); setPlanStatus('DRAFT'); setSelectedPlanId(data.id); setMessage('Test Plan berhasil dibuat.'); await load();
   };
   const linkCase = async () => {
     if (!selectedRequirementId || !selectedCaseId) return;
@@ -168,12 +222,65 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
 
   const saveRequirement = async () => {
     if (!selectedRequirementId) return;
-    const response = await fetch(`/api/requirements/${selectedRequirementId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId, key: editRequirementKey, title: editRequirementTitle, description: editRequirementDescription }) });
+    const response = await fetch(`/api/requirements/${selectedRequirementId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId,
+        key: editRequirementKey,
+        title: editRequirementTitle,
+        description: editRequirementDescription,
+        priority: editRequirementPriority,
+        status: editRequirementStatus,
+      }),
+    });
     const data = await response.json();
     if (!response.ok) return setMessage(data.error || 'Gagal memperbarui requirement.');
     setMessage('Requirement berhasil diperbarui.');
     await load();
     await loadTraceability(selectedRequirementId);
+  };
+
+  const deleteRequirement = async () => {
+    if (!selectedRequirementId) return;
+    const response = await fetch(`/api/requirements/${encodeURIComponent(selectedRequirementId)}?projectId=${encodeURIComponent(projectId)}`, { method: 'DELETE' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return setMessage(data.error || 'Gagal menghapus requirement.');
+    setMessage('Requirement berhasil dihapus.');
+    setSelectedRequirementId('');
+    setManageOpen(false);
+    await load();
+  };
+
+  const savePlan = async () => {
+    if (!managedPlanId || !editPlanName.trim()) return;
+    const response = await fetch('/api/test-plans', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: managedPlanId,
+        projectId,
+        name: editPlanName,
+        description: editPlanDescription,
+        status: editPlanStatus,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return setMessage(data.error || 'Gagal memperbarui Test Plan.');
+    setMessage('Test Plan berhasil diperbarui.');
+    await load();
+    if (selectedRequirementId) await loadTraceability(selectedRequirementId);
+  };
+
+  const deletePlan = async () => {
+    if (!managedPlanId) return;
+    const response = await fetch(`/api/test-plans?id=${encodeURIComponent(managedPlanId)}&projectId=${encodeURIComponent(projectId)}`, { method: 'DELETE' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return setMessage(data.error || 'Gagal menghapus Test Plan.');
+    setMessage('Test Plan berhasil dihapus.');
+    setManagedPlanId('');
+    await load();
+    if (selectedRequirementId) await loadTraceability(selectedRequirementId);
   };
 
   const unlinkCase = async (testCaseId: string) => {
@@ -219,26 +326,38 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
       setEditRequirementKey(selectedRequirement.key);
       setEditRequirementTitle(selectedRequirement.title);
       setEditRequirementDescription(selectedRequirement.description || '');
+      setEditRequirementPriority(selectedRequirement.priority || 'Medium');
+      setEditRequirementStatus(selectedRequirement.status || 'DRAFT');
     }, 0);
     return () => window.clearTimeout(timer);
   }, [selectedRequirement]);
 
+  useEffect(() => {
+    const plan = testPlans.find(p => p.id === managedPlanId);
+    if (!plan) return;
+    setEditPlanName(plan.name);
+    setEditPlanDescription(plan.description || '');
+    setEditPlanStatus(plan.status || 'DRAFT');
+  }, [managedPlanId, testPlans]);
+
   return <div className="qa-module-page flex flex-col gap-5">
-    <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"><div><h2 className="qa-module-heading">Traceability</h2><p className="qa-module-meta mt-1">Requirement → Test Cases → Test Plans → Test Cycles</p></div><div className="flex flex-wrap gap-2"><Button variant={uncoveredOnly ? 'secondary' : 'outline'} onClick={() => { setViewMode('lanes'); setUncoveredOnly(value => !value); }}><AlertCircle data-icon="inline-start" />Filter Celah Coverage ({summary.uncovered + summary.partial})</Button><MutationAction><Button onClick={() => setCreateOpen(true)}><Plus data-icon="inline-start" />Buat Relasi</Button></MutationAction><MutationAction><Button variant="outline" onClick={() => setManageOpen(true)} disabled={!selectedRequirementId} title={!selectedRequirementId ? 'Pilih atau buat requirement terlebih dahulu' : undefined}><Settings2 data-icon="inline-start" />Kelola Relasi</Button></MutationAction><Button variant="outline" size="icon" onClick={() => void load()} disabled={loading} aria-label="Muat ulang"><RefreshCw /></Button></div></div>
+    <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"><div><h2 className="qa-module-heading">Traceability</h2><p className="qa-module-meta mt-1">Requirement → Test Cases → Test Plans → Test Cycles</p></div><div className="flex flex-wrap gap-2"><Button variant={uncoveredOnly ? 'secondary' : 'outline'} onClick={() => { setViewMode('lanes'); setUncoveredOnly(value => !value); }}><AlertCircle data-icon="inline-start" />Filter Celah Coverage ({summary.uncovered + summary.partial})</Button><MutationAction><Button onClick={() => setCreateOpen(true)}><Plus data-icon="inline-start" />Buat Relasi</Button></MutationAction><MutationAction><Button variant="outline" onClick={() => setManageOpen(true)} disabled={!selectedRequirementId && !testPlans.length} title={!selectedRequirementId && !testPlans.length ? 'Pilih atau buat requirement/plan terlebih dahulu' : undefined}><Settings2 data-icon="inline-start" />Kelola Relasi</Button></MutationAction><Button variant="outline" size="icon" onClick={() => void load()} disabled={loading} aria-label="Muat ulang"><RefreshCw /></Button></div></div>
     {message && <div className="rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-sm" role="status">{message}</div>}
     <div className="flex flex-wrap gap-2" role="group" aria-label="Tampilan Traceability"><Button variant={viewMode === 'lanes' ? 'secondary' : 'outline'} aria-pressed={viewMode === 'lanes'} onClick={() => setViewMode('lanes')}><ListChecks data-icon="inline-start" />Tampilan Jalur Uji</Button><Button variant={viewMode === 'graph' ? 'secondary' : 'outline'} aria-pressed={viewMode === 'graph'} onClick={() => setViewMode('graph')}><GitBranch data-icon="inline-start" />Tampilan Graf</Button></div>
     {viewMode === 'graph' ? <TraceabilityGraphView key={projectId} projectId={projectId} onOpenNode={openGraphNode} initialFocus={graphFocus?.projectId === projectId ? graphFocus.focus : undefined} onFocusChange={focus => setGraphFocus({ projectId, focus })} /> : <>
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Metric label="Requirements" value={requirements.length} /><Metric label="Covered" value={summary.covered} tone="success" /><Metric label="Partial" value={summary.partial} tone="warning" /><Metric label="Uncovered" value={summary.uncovered} tone="failed" /></div>
 
     {loading && !requirements.length ? <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]"><Skeleton className="h-96" /><Skeleton className="h-96" /></div> : <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)] items-start">
-      <TraceLane title="Requirements" count={visibleRequirements.length} icon={Route}>{visibleRequirements.map(requirement => { const state = coverageState(requirement); const config = stateStyle[state]; const Icon = config.icon; const active = selectedRequirementId === requirement.id; return <button key={requirement.id} type="button" onClick={() => setSelectedRequirementId(requirement.id)} className={cn('qa-interactive relative overflow-hidden w-full rounded-lg border p-3 text-left transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none', config.className, active ? 'border-primary/40 shadow-2xs' : 'hover:bg-secondary/50')}>{active && <span className="qa-selected-row absolute inset-0 rounded-lg pointer-events-none" />}<span className="relative z-10 flex items-start justify-between gap-2"><span className="font-mono text-xs font-bold text-primary">{requirement.key}</span><Badge variant={config.badge} className="gap-1 text-xs"><Icon className="size-3" />{config.label}</Badge></span><span className="relative z-10 mt-1 block truncate text-xs font-semibold">{requirement.title}</span><span className="relative z-10 mt-2 block font-mono text-xs text-muted-foreground">{requirement._count?.testCases || 0} cases · {requirement._count?.testPlans || 0} plans</span></button>; })}{!visibleRequirements.length && <EmptyLane text="Tidak ada gap coverage." />}</TraceLane>
+      <TraceLane title="Requirements" count={visibleRequirements.length} icon={Route}>{visibleRequirements.map(requirement => { const state = coverageState(requirement); const config = stateStyle[state]; const Icon = config.icon; const active = selectedRequirementId === requirement.id; return <button key={requirement.id} type="button" onClick={() => setSelectedRequirementId(requirement.id)} className={cn('qa-interactive relative overflow-hidden w-full rounded-lg border p-3 text-left transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none', config.className, active ? 'border-primary/40 shadow-2xs' : 'hover:bg-secondary/50')}>{active && <span className="qa-selected-row absolute inset-0 rounded-lg pointer-events-none" />}<span className="relative z-10 flex items-start justify-between gap-2"><span className="font-mono text-xs font-bold text-primary">{requirement.key}</span><Badge variant={config.badge} className="gap-1 text-xs"><Icon className="size-3" />{config.label}</Badge></span><span className="relative z-10 mt-1 block truncate text-xs font-semibold">{requirement.title}</span><span className="relative z-10 mt-2 flex flex-wrap items-center gap-1.5 font-mono text-xs text-muted-foreground"><span>{requirement._count?.testCases || 0} cases · {requirement._count?.testPlans || 0} plans</span><Badge variant="outline" className="ml-auto text-[10px] py-0 h-4">{requirement.priority || 'Medium'}</Badge><Badge variant="outline" className="text-[10px] py-0 h-4">{requirement.status || 'DRAFT'}</Badge></span></button>; })}{!visibleRequirements.length && <EmptyLane text="Tidak ada gap coverage." />}</TraceLane>
       <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
         {selectedRequirement ? (
           <div key={`req-header-${selectedRequirement.id}`} className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3 animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs font-bold text-primary">{selectedRequirement.key}</span>
                 <span className="text-sm font-semibold text-foreground">{selectedRequirement.title}</span>
+                <Badge variant="outline" className="text-[10px] py-0 h-4">{selectedRequirement.priority || 'Medium'}</Badge>
+                <Badge variant="outline" className="text-[10px] py-0 h-4">{selectedRequirement.status || 'DRAFT'}</Badge>
               </div>
               {selectedRequirement.description && <p className="mt-1 text-xs text-muted-foreground">{selectedRequirement.description}</p>}
             </div>
@@ -250,7 +369,7 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
             <TraceLane title="Test Cases" count={selectedRequirement?.testCases.length || 0} icon={ListChecks}>{!selectedRequirement ? <EmptyLane text="Pilih Requirement di sebelah kiri untuk melihat relasi test case." /> : selectedRequirement.testCases.map(({ testCase }) => <button key={testCase.id} type="button" onClick={() => navigate('testcases', { entityType: 'TestCase', entityId: testCase.id })} className="qa-interactive w-full rounded-lg border border-border/70 bg-card p-3 text-left hover:border-primary/40 hover:-translate-y-0.5 hover:bg-secondary/50 hover:shadow-2xs transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"><span className="flex items-center justify-between gap-2"><span className="font-mono text-xs font-semibold text-primary">{testCase.testCaseId}</span><Badge variant={testCase.status === 'FAILED' ? 'failed' : testCase.status === 'BLOCKED' ? 'blocked' : 'outline'} className="text-xs">{testCase.status}</Badge></span><span className="mt-1 block truncate text-xs text-muted-foreground">{testCase.page}</span></button>)}{selectedRequirement && !selectedRequirement.testCases.length && <EmptyLane text="Requirement belum memiliki testcase." />}</TraceLane>
           </div>
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-200 delay-75 fill-mode-both">
-            <TraceLane title="Test Plans" count={linkedPlans.length} icon={GitBranch}>{!selectedRequirement ? <EmptyLane text="Pilih Requirement untuk melihat Test Plan terkait." /> : linkedPlans.map(plan => <button key={plan.id} type="button" onClick={() => setSelectedPlanId(plan.id)} className="qa-interactive w-full rounded-lg border border-border/70 bg-card p-3 text-left hover:border-primary/40 hover:-translate-y-0.5 hover:bg-secondary/50 hover:shadow-2xs transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"><span className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{plan.name}</span><Badge variant="outline" className="text-xs">{plan.status}</Badge></span><span className="mt-2 block font-mono text-xs text-muted-foreground">{plan.testRuns.length} Test Runs</span></button>)}{selectedRequirement && !linkedPlans.length && <EmptyLane text="Requirement belum masuk Test Plan." />}</TraceLane>
+            <TraceLane title="Test Plans" count={linkedPlans.length} icon={GitBranch}>{!selectedRequirement ? <EmptyLane text="Pilih Requirement untuk melihat Test Plan terkait." /> : linkedPlans.map(plan => <button key={plan.id} type="button" onClick={() => { setSelectedPlanId(plan.id); setManagedPlanId(plan.id); }} className="qa-interactive w-full rounded-lg border border-border/70 bg-card p-3 text-left hover:border-primary/40 hover:-translate-y-0.5 hover:bg-secondary/50 hover:shadow-2xs transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"><span className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{plan.name}</span><Badge variant="outline" className="text-xs">{plan.status}</Badge></span><span className="mt-2 block font-mono text-xs text-muted-foreground">{plan.testRuns.length} Test Runs</span></button>)}{selectedRequirement && !linkedPlans.length && <EmptyLane text="Requirement belum masuk Test Plan." />}</TraceLane>
           </div>
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-200 delay-150 fill-mode-both">
             <TraceLane title="Test Runs" count={linkedRuns.length} icon={CheckCircle2}>{!selectedRequirement ? <EmptyLane text="Pilih Requirement untuk melihat siklus eksekusi." /> : linkedRuns.map(run => <button key={run.id} type="button" onClick={() => navigate('testRuns', { entityType: 'TestRun', entityId: run.id, testRunId: run.id })} className="qa-interactive w-full rounded-lg border border-border/70 bg-card p-3 text-left hover:border-primary/40 hover:-translate-y-0.5 hover:bg-secondary/50 hover:shadow-2xs transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"><span className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{run.name}</span><Badge variant={run.status === 'COMPLETED' ? 'success' : run.status === 'IN PROGRESS' ? 'inprogress' : 'outline'} className="text-xs">{run.status}</Badge></span><span className="mt-2 block truncate text-xs text-muted-foreground">{run.planName}</span></button>)}{selectedRequirement && !linkedRuns.length && <EmptyLane text="Belum ada execution cycle." />}</TraceLane>
@@ -279,8 +398,46 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
               <ManageSection title="Hubungkan requirement ke Test Plan"><TraceSelect value={selectedPlanId} placeholder="Pilih Test Plan" onChange={setSelectedPlanId} items={testPlans.map(item => ({ value: item.id, label: item.name }))} /><Button onClick={() => void linkRequirement()} disabled={!selectedPlanId || !selectedRequirementId}><Link2 data-icon="inline-start" />Buat relasi Test Plan</Button></ManageSection>
             </TabsContent>
             <TabsContent value="create" className="flex flex-col gap-6 mt-0">
-              <ManageSection title="Requirement baru"><Input value={requirementKey} onChange={event => setRequirementKey(event.target.value)} placeholder="REQ-001" /><Input value={requirementTitle} onChange={event => setRequirementTitle(event.target.value)} placeholder="Judul requirement" /><Textarea value={requirementDescription} onChange={event => setRequirementDescription(event.target.value)} placeholder="Deskripsi" /><Button onClick={() => void createRequirement()} disabled={!requirementKey.trim() || !requirementTitle.trim()}><Plus data-icon="inline-start" />Buat Requirement</Button></ManageSection>
-              <ManageSection title="Test Plan baru"><Input value={planName} onChange={event => setPlanName(event.target.value)} placeholder="Regression v1.2" /><Textarea value={planDescription} onChange={event => setPlanDescription(event.target.value)} placeholder="Deskripsi Test Plan" /><Button onClick={() => void createPlan()} disabled={!planName.trim()}><Plus data-icon="inline-start" />Buat Test Plan</Button></ManageSection>
+              <ManageSection title="Requirement baru">
+                <Input value={requirementKey} onChange={event => setRequirementKey(event.target.value)} placeholder="REQ-001" />
+                <Input value={requirementTitle} onChange={event => setRequirementTitle(event.target.value)} placeholder="Judul requirement" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={requirementPriority} onValueChange={setRequirementPriority}>
+                    <SelectTrigger aria-label="Prioritas requirement"><SelectValue placeholder="Prioritas" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Low">Prioritas: Low</SelectItem>
+                      <SelectItem value="Medium">Prioritas: Medium</SelectItem>
+                      <SelectItem value="High">Prioritas: High</SelectItem>
+                      <SelectItem value="Critical">Prioritas: Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={requirementStatus} onValueChange={setRequirementStatus}>
+                    <SelectTrigger aria-label="Status requirement"><SelectValue placeholder="Status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DRAFT">Status: DRAFT</SelectItem>
+                      <SelectItem value="ACTIVE">Status: ACTIVE</SelectItem>
+                      <SelectItem value="APPROVED">Status: APPROVED</SelectItem>
+                      <SelectItem value="DEPRECATED">Status: DEPRECATED</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Textarea value={requirementDescription} onChange={event => setRequirementDescription(event.target.value)} placeholder="Deskripsi" />
+                <Button onClick={() => void createRequirement()} disabled={!requirementKey.trim() || !requirementTitle.trim()}><Plus data-icon="inline-start" />Buat Requirement</Button>
+              </ManageSection>
+              <ManageSection title="Test Plan baru">
+                <Input value={planName} onChange={event => setPlanName(event.target.value)} placeholder="Regression v1.2" />
+                <Select value={planStatus} onValueChange={setPlanStatus}>
+                  <SelectTrigger aria-label="Status Test Plan"><SelectValue placeholder="Status Test Plan" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">Status: DRAFT</SelectItem>
+                    <SelectItem value="ACTIVE">Status: ACTIVE</SelectItem>
+                    <SelectItem value="COMPLETED">Status: COMPLETED</SelectItem>
+                    <SelectItem value="ARCHIVED">Status: ARCHIVED</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Textarea value={planDescription} onChange={event => setPlanDescription(event.target.value)} placeholder="Deskripsi Test Plan" />
+                <Button onClick={() => void createPlan()} disabled={!planName.trim()}><Plus data-icon="inline-start" />Buat Test Plan</Button>
+              </ManageSection>
             </TabsContent>
           </Tabs>
         </div>
@@ -289,11 +446,39 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
 
     <Sheet open={manageOpen} onOpenChange={setManageOpen}>
       <SheetContent side="right" className="qa-module-form w-full overflow-y-auto p-0 sm:max-w-xl">
-        <SheetHeader className="border-b border-border p-5"><SheetTitle>Kelola Relasi</SheetTitle><SheetDescription>Edit requirement dan kelola relasi yang sudah terhubung. Pembuatan relasi baru tersedia melalui tombol “Buat Relasi”.</SheetDescription></SheetHeader>
+        <SheetHeader className="border-b border-border p-5"><SheetTitle>Kelola Relasi & Objek</SheetTitle><SheetDescription>Edit requirement, Test Plan, dan kelola relasi yang sudah terhubung.</SheetDescription></SheetHeader>
         <div className="flex flex-col gap-6 p-5">
           <ManageSection title="Pilih requirement yang akan dikelola"><TraceSelect value={selectedRequirementId} placeholder="Pilih requirement" onChange={setSelectedRequirementId} items={requirements.map(item => ({ value: item.id, label: `${item.key}: ${item.title}` }))} /></ManageSection>
           {selectedRequirement && <>
-            <ManageSection title="Edit data requirement"><Input value={editRequirementKey} onChange={event => setEditRequirementKey(event.target.value)} placeholder="REQ-001" /><Input value={editRequirementTitle} onChange={event => setEditRequirementTitle(event.target.value)} placeholder="Judul requirement" /><Textarea value={editRequirementDescription} onChange={event => setEditRequirementDescription(event.target.value)} placeholder="Deskripsi" /><Button onClick={() => void saveRequirement()} disabled={!editRequirementKey.trim() || !editRequirementTitle.trim()}><PencilLine data-icon="inline-start" />Simpan perubahan</Button></ManageSection>
+            <ManageSection title="Edit data requirement">
+              <Input value={editRequirementKey} onChange={event => setEditRequirementKey(event.target.value)} placeholder="REQ-001" />
+              <Input value={editRequirementTitle} onChange={event => setEditRequirementTitle(event.target.value)} placeholder="Judul requirement" />
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={editRequirementPriority} onValueChange={setEditRequirementPriority}>
+                  <SelectTrigger aria-label="Edit prioritas requirement"><SelectValue placeholder="Prioritas" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Low">Prioritas: Low</SelectItem>
+                    <SelectItem value="Medium">Prioritas: Medium</SelectItem>
+                    <SelectItem value="High">Prioritas: High</SelectItem>
+                    <SelectItem value="Critical">Prioritas: Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={editRequirementStatus} onValueChange={setEditRequirementStatus}>
+                  <SelectTrigger aria-label="Edit status requirement"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">Status: DRAFT</SelectItem>
+                    <SelectItem value="ACTIVE">Status: ACTIVE</SelectItem>
+                    <SelectItem value="APPROVED">Status: APPROVED</SelectItem>
+                    <SelectItem value="DEPRECATED">Status: DEPRECATED</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Textarea value={editRequirementDescription} onChange={event => setEditRequirementDescription(event.target.value)} placeholder="Deskripsi" />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={() => void saveRequirement()} disabled={!editRequirementKey.trim() || !editRequirementTitle.trim()} className="flex-1"><PencilLine data-icon="inline-start" />Simpan perubahan</Button>
+                <Button type="button" variant="outline" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void deleteRequirement()}><Trash2 data-icon="inline-start" />Hapus Requirement</Button>
+              </div>
+            </ManageSection>
             <ManageSection title={`Testcase terhubung (${selectedRequirement.testCases.length})`}>
               {selectedRequirement.testCases.map(({ testCase }) => <RelationRow key={testCase.id} title={testCase.testCaseId} description={testCase.page} onRemove={() => void unlinkCase(testCase.id)} />)}
               {!selectedRequirement.testCases.length && <p className="text-xs text-muted-foreground">Belum ada testcase yang terhubung.</p>}
@@ -303,6 +488,28 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
               {!linkedPlans.length && <p className="text-xs text-muted-foreground">Belum ada Test Plan yang terhubung.</p>}
             </ManageSection>
           </>}
+          <ManageSection title="Kelola & Edit Test Plan Project">
+            <TraceSelect value={managedPlanId} placeholder="Pilih Test Plan untuk diedit" onChange={setManagedPlanId} items={testPlans.map(item => ({ value: item.id, label: `${item.name} (${item.status})` }))} />
+            {managedPlanId && (
+              <>
+                <Input value={editPlanName} onChange={event => setEditPlanName(event.target.value)} placeholder="Nama Test Plan" />
+                <Select value={editPlanStatus} onValueChange={setEditPlanStatus}>
+                  <SelectTrigger aria-label="Edit status Test Plan"><SelectValue placeholder="Status Test Plan" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">Status: DRAFT</SelectItem>
+                    <SelectItem value="ACTIVE">Status: ACTIVE</SelectItem>
+                    <SelectItem value="COMPLETED">Status: COMPLETED</SelectItem>
+                    <SelectItem value="ARCHIVED">Status: ARCHIVED</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Textarea value={editPlanDescription} onChange={event => setEditPlanDescription(event.target.value)} placeholder="Deskripsi Test Plan" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button onClick={() => void savePlan()} disabled={!editPlanName.trim()} className="flex-1"><PencilLine data-icon="inline-start" />Simpan Test Plan</Button>
+                  <Button type="button" variant="outline" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void deletePlan()}><Trash2 data-icon="inline-start" />Hapus Plan</Button>
+                </div>
+              </>
+            )}
+          </ManageSection>
         </div>
       </SheetContent>
     </Sheet>

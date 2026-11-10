@@ -133,6 +133,7 @@ interface TestCaseDetailDialogProps {
   getTestTypeColor: (type: string) => string;
   getPriorityColor: (priority: string) => string;
   onEdit: (testCase: TestCase) => void;
+  onClone?: (testCase: TestCase) => void;
   onRefine?: (testCase: TestCase) => void;
   onCopyId: (id: string) => void;
   testCaseList?: TestCase[];
@@ -204,6 +205,7 @@ export function TestCaseDetailDialog({
   getTestTypeColor,
   getPriorityColor,
   onEdit,
+  onClone,
   onRefine,
   onCopyId,
   testCaseList,
@@ -1194,6 +1196,7 @@ export function TestCaseDetailDialog({
           isBugFixDetail={isBugFixDetail}
           onOpenChange={onOpenChange}
           onEdit={onEdit}
+          onClone={onClone}
           onRefine={onRefine}
           openEvidenceReport={openEvidenceReport}
         />

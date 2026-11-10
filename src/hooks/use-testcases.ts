@@ -254,18 +254,22 @@ export function useTestCases(selectedProject: string) {
     }
   }, [selectedIds, toast]);
 
-  const handleBulkStatusUpdate = useCallback(async (bulkStatus: string, refreshAll: RefreshCallback) => {
+  const handleBulkStatusUpdate = useCallback(async (
+    bulkStatus: string,
+    refreshAll: RefreshCallback,
+    extra?: { priority?: string; moduleId?: string }
+  ) => {
     if (selectedIds.size === 0) return false;
 
     try {
-      const result = await bulkUpdateTestCaseStatus(Array.from(selectedIds), bulkStatus);
+      const result = await bulkUpdateTestCaseStatus(Array.from(selectedIds), bulkStatus, extra);
       toast({ variant: 'success', title: 'Berhasil', description: `${result.updated} test case berhasil diupdate` });
       setSelectedIds(new Set());
       refreshAll();
       return true;
     } catch (error: any) {
       toast({
-        title: 'Gagal update status',
+        title: 'Gagal update massal',
         description: error.message || 'Tidak ada test case yang berhasil diupdate',
         variant: 'destructive',
       });
@@ -275,8 +279,18 @@ export function useTestCases(selectedProject: string) {
 
   const handleDuplicate = useCallback(async (tc: TestCase) => {
     try {
+      let nextTestCaseId = `${tc.testCaseId}-COPY-${Date.now().toString().slice(-4)}`;
+      if (selectedProject && tc.moduleId) {
+        const nextIdRes = await fetch(`/api/testcases/next-id?projectId=${encodeURIComponent(selectedProject)}&moduleId=${encodeURIComponent(tc.moduleId)}`)
+          .then(r => (r.ok ? r.json() : null))
+          .catch(() => null);
+        if (nextIdRes?.suggestedTestCaseId) {
+          nextTestCaseId = nextIdRes.suggestedTestCaseId;
+        }
+      }
+
       await createTestCase({
-        testCaseId: `${tc.testCaseId}-COPY-${Date.now().toString().slice(-5)}`,
+        testCaseId: nextTestCaseId,
         page: tc.page,
         subMenu: tc.subMenu,
         weight: tc.weight,
@@ -284,13 +298,15 @@ export function useTestCases(selectedProject: string) {
         testAction: tc.testAction,
         steps: tc.steps,
         expectedResult: tc.expectedResult,
+        remarks: tc.remarks || null,
+        tags: tc.tags || null,
         status: TESTCASE_STATUS.NOT_DONE,
         priority: tc.priority,
         projectId: selectedProject,
         moduleId: tc.moduleId,
       });
 
-      toast({ variant: 'success', title: 'Berhasil', description: 'Test case berhasil diduplikasi' });
+      toast({ variant: 'success', title: 'Berhasil diduplikasi', description: `Test case baru dibuat dengan ID ${nextTestCaseId}` });
       loadTestCases(selectedProject);
     } catch (error: any) {
       toast({ title: 'Gagal duplikasi', description: error.message, variant: 'destructive' });

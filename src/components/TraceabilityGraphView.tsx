@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, Bug, CirclePlay, Focus, GitBranch, Layers, ListChecks, Minus, Plus, RefreshCw, RotateCcw, Route, Search } from 'lucide-react';
+import { gsap, useGSAP, isMotionAllowed } from '@/lib/client/gsap-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,8 +47,40 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
   const [copyFeedback, setCopyFeedback] = useState('');
   const [view, setView] = useState({ x: 24, y: 24, zoom: 0.8 });
   const viewport = useRef<HTMLDivElement>(null);
+  const graphStageRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ pointerId: number; x: number; y: number; startX: number; startY: number } | null>(null);
   const [size, setSize] = useState({ width: 800, height: 560 });
+
+  useGSAP(
+    () => {
+      if (!graphStageRef.current || !isMotionAllowed() || !data) return;
+      const edges = graphStageRef.current.querySelectorAll<SVGPathElement>('[data-graph-edge]');
+      if (edges.length) {
+        gsap.fromTo(
+          edges,
+          { drawSVG: '0%' },
+          { drawSVG: '100%', duration: 0.55, stagger: 0.025, ease: 'power2.out' }
+        );
+      }
+      const orbs = graphStageRef.current.querySelectorAll<SVGCircleElement>('[data-graph-orb]');
+      orbs.forEach((orb) => {
+        const targetSelector = orb.getAttribute('data-orb-target');
+        const pathEl = targetSelector ? graphStageRef.current?.querySelector<SVGPathElement>(targetSelector) : null;
+        if (!pathEl) return;
+        gsap.to(orb, {
+          motionPath: {
+            path: pathEl,
+            align: pathEl,
+            alignOrigin: [0.5, 0.5],
+          },
+          duration: 1.75,
+          repeat: -1,
+          ease: 'power1.inOut',
+        });
+      });
+    },
+    { dependencies: [data?.rootId, selectedId, entityFilter, statusFilter, moduleFilter, onlyConnected], scope: graphStageRef }
+  );
 
   useEffect(() => {
     if (!searchOpen || !projectId) return;
@@ -217,7 +250,7 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
                 </div>
               </div>
             </div>
-          ) : !positioned.length ? <div className="grid h-full place-content-center p-6 text-center text-sm text-muted-foreground">Tidak ada object yang cocok dengan filter. Gunakan “Semua yang dimuat” untuk memulihkan tampilan.</div> : <div className="absolute left-0 top-0" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`, transformOrigin: '0 0' }}>
+          ) : !positioned.length ? <div className="grid h-full place-content-center p-6 text-center text-sm text-muted-foreground">Tidak ada object yang cocok dengan filter. Gunakan “Semua yang dimuat” untuk memulihkan tampilan.</div> : <div ref={graphStageRef} className="absolute left-0 top-0" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`, transformOrigin: '0 0' }}>
             <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width="1" height="1" aria-hidden="true">
               <defs>
                 <style>{`
@@ -249,20 +282,31 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
                 const curve = Math.max(60, Math.abs(tx - sx) / 2) * (forward ? 1 : -1);
                 const active = e.source === selectedId || e.target === selectedId;
                 return (
-                  <path
-                    key={e.id}
-                    data-graph-edge={e.id}
-                    data-source={e.source}
-                    data-target={e.target}
-                    data-relation={e.label}
-                    d={`M${sx},${sy} C${sx + curve},${sy} ${tx - curve},${ty} ${tx},${ty}`}
-                    fill="none"
-                    stroke={active ? 'var(--primary)' : 'var(--muted-foreground)'}
-                    opacity={active ? 1 : selectedId ? 0.2 : 0.4}
-                    strokeWidth={active ? 2 : 1.2}
-                    className={cn(active && 'active-trace-edge')}
-                    markerEnd={active ? `url(#${marker}-active)` : `url(#${marker})`}
-                  />
+                  <g key={e.id}>
+                    <path
+                      id={`trace-edge-${uid.replace(/:/g, '')}-${e.id}`}
+                      data-graph-edge={e.id}
+                      data-source={e.source}
+                      data-target={e.target}
+                      data-relation={e.label}
+                      d={`M${sx},${sy} C${sx + curve},${sy} ${tx - curve},${ty} ${tx},${ty}`}
+                      fill="none"
+                      stroke={active ? 'var(--primary)' : 'var(--muted-foreground)'}
+                      opacity={active ? 1 : selectedId ? 0.2 : 0.4}
+                      strokeWidth={active ? 2 : 1.2}
+                      className={cn(active && 'active-trace-edge')}
+                      markerEnd={active ? `url(#${marker}-active)` : `url(#${marker})`}
+                    />
+                    {active && (
+                      <circle
+                        data-graph-orb={e.id}
+                        data-orb-target={`#trace-edge-${uid.replace(/:/g, '')}-${e.id}`}
+                        r="3.2"
+                        fill="var(--primary)"
+                        opacity="0.9"
+                      />
+                    )}
+                  </g>
                 );
               })}
             </svg>

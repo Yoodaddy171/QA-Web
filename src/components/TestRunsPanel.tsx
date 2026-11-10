@@ -426,7 +426,17 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
       if (!response.ok) throw new Error(data.error || 'Gagal menyimpan execution.');
       setSelectedRun(current => !current || current.id !== selectedRun.id ? current : { ...current, testCases: current.testCases.map(item => item.id === activeCase.id ? { ...item, executions: [data] } : item) });
       if (badgeRef.current && !reducedMotion) {
-        playVerdictStamp(badgeRef.current);
+        playVerdictStamp(badgeRef.current, { verdict: status });
+        if (status === 'PASSED') {
+          fireParticleCelebration(badgeRef.current.parentElement || badgeRef.current, {
+            particleCount: 16,
+            colors: ['#10B981', '#34D399', '#06B6D4'],
+            gravity: 360,
+          });
+        }
+      }
+      if (workbenchCardRef.current && !reducedMotion && (status === 'FAILED' || status === 'BLOCKED')) {
+        playVerdictStamp(workbenchCardRef.current, { verdict: status });
       }
       try {
         const overviewResponse = await fetch(`/api/test-runs/${selectedRun.id}?projectId=${encodeURIComponent(projectId)}&view=summary`);

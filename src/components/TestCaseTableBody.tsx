@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
+import { gsap, useGSAP, isMotionAllowed, scrambleDecodeText } from '@/lib/client/gsap-motion';
 import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import {
   ArrowUpDown, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
@@ -86,7 +87,16 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
   const { canEdit } = useWorkspaceAccess();
   return (
     <>
-                    <TableCell className="sticky left-[72px] z-10 w-[156px] min-w-[156px] max-w-[168px] overflow-hidden truncate whitespace-nowrap bg-card font-mono text-sm font-semibold tabular-nums text-foreground group-hover:bg-secondary" title={tc.testCaseId}>{tc.testCaseId}</TableCell>
+                    <TableCell
+                      className="sticky left-[72px] z-10 w-[156px] min-w-[156px] max-w-[168px] overflow-hidden truncate whitespace-nowrap bg-card font-mono text-sm font-semibold tabular-nums text-foreground group-hover:bg-secondary"
+                      title={tc.testCaseId}
+                      onMouseEnter={(e) => {
+                        const span = e.currentTarget.querySelector<HTMLElement>('[data-tc-id]');
+                        if (span) scrambleDecodeText(span, tc.testCaseId, { duration: 0.3 });
+                      }}
+                    >
+                      <span data-tc-id>{tc.testCaseId}</span>
+                    </TableCell>
                     <TableCell className="min-w-[120px] max-w-[144px] truncate whitespace-nowrap text-sm font-semibold text-foreground" title={tc.page}>{tc.page}</TableCell>
                     {mountedColumns.subMenu && <TableCell className={getColumnClass('subMenu', 'min-w-[128px] max-w-[144px] truncate whitespace-nowrap text-sm text-muted-foreground')} title={tc.subMenu || ''}>{tc.subMenu || '-'}</TableCell>}
                     {mountedColumns.weight && <TableCell className={getColumnClass('weight')}>
@@ -221,6 +231,28 @@ export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: Te
     ? `Menampilkan ${testCases.length} dari ${total} data`
     : `Menampilkan ${testCases.length} data`);
 
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useGSAP(
+    () => {
+      if (!tbodyRef.current || !isMotionAllowed() || isLoading || testCases.length === 0) return;
+      const rows = tbodyRef.current.querySelectorAll('tr');
+      if (!rows.length) return;
+      gsap.fromTo(
+        rows,
+        { y: 7, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.22,
+          stagger: 0.012,
+          ease: 'power2.out',
+          clearProps: 'y,opacity',
+        }
+      );
+    },
+    { dependencies: [page, selectedProject, testCases.length], scope: tbodyRef }
+  );
+
   return (
     <>
       <div className="relative flex min-w-0 flex-col rounded-xl border border-border bg-card" aria-busy={Boolean(isLoading)}>
@@ -264,7 +296,7 @@ export const TestCaseTableBody = React.memo(function TestCaseTableBody(props: Te
             <TableHead className="sticky right-0 z-20 w-[52px] bg-secondary/95 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody ref={tbodyRef}>
               {isLoading && testCases.length === 0 ? (
                 Array.from({ length: Math.min(limit, 8) }, (_, index) => (
                   <TableRow key={`skeleton-${index}`} className="h-14 border-border/25 hover:bg-transparent">

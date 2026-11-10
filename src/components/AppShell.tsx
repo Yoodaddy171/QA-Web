@@ -14,7 +14,8 @@ import {
   CopilotIcon,
 } from '@/components/icons/qa-icons';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { gsap, useGSAP, isMotionAllowed, useMagneticHover } from '@/lib/client/gsap-motion';
 import { BrandMark } from '@/components/BrandMark';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationCenter } from '@/components/NotificationCenter';
@@ -151,6 +152,21 @@ function WorkspaceCommandPalette({
     setQuery('');
   };
 
+  const cmdListRef = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      if (!open || !cmdListRef.current || !isMotionAllowed()) return;
+      const items = cmdListRef.current.querySelectorAll('[data-cmd-item]');
+      if (!items.length) return;
+      gsap.fromTo(
+        items,
+        { x: -10, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.22, stagger: 0.02, ease: 'power3.out', clearProps: 'x,opacity' }
+      );
+    },
+    { dependencies: [open], scope: cmdListRef }
+  );
+
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { onOpenChange(nextOpen); if (!nextOpen) setQuery(''); }}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-xl">
@@ -160,7 +176,7 @@ function WorkspaceCommandPalette({
           <Input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari menu, aksi, atau project..." className="h-14 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0" />
           <Kbd size="sm">ESC</Kbd>
         </div>
-        <div className="max-h-[420px] overflow-y-auto p-2">
+        <div ref={cmdListRef} className="max-h-[420px] overflow-y-auto p-2">
           {filteredItems.length > 0 && (
             <>
               <p className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Navigasi</p>
@@ -168,10 +184,10 @@ function WorkspaceCommandPalette({
                 {filteredItems.map(item => {
                   const Icon = item.icon;
                   return (
-                    <button key={item.value} type="button" onClick={() => navigate(item.value)} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
-                      <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:text-primary"><Icon className="size-4" /></span>
+                    <button data-cmd-item key={item.value} type="button" onClick={() => navigate(item.value)} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
+                      <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-transform duration-150 group-hover:scale-105 group-hover:text-primary"><Icon className="size-4" /></span>
                       <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="block truncate text-xs text-muted-foreground">{item.description}</span></span>
-                      <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                      <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100" />
                     </button>
                   );
                 })}
@@ -471,7 +487,7 @@ function WorkspaceSidebar({
                           transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                         />
                       )}
-                      <Icon className="relative z-10 size-4 shrink-0" />
+                      <Icon className="relative z-10 size-4 shrink-0 transition-transform duration-200 ease-out group-hover/btn:scale-110 group-hover/btn:translate-x-0.5" />
                       <span className="relative z-10 flex min-w-0 flex-1 truncate text-[13px] font-medium data-[active=true]:font-semibold leading-none transition-all duration-300 ease-[var(--motion-ease)] group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-2 group-data-[collapsible=icon]:opacity-0">
                         {item.label}
                       </span>

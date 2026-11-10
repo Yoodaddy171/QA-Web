@@ -1,8 +1,9 @@
 'use client';
 
-import { memo, useState, type ReactNode } from 'react';
+import { memo, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { SELECT_TRIGGER_CLASSES, Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { playVerdictStamp } from '@/lib/client/gsap-motion';
 import { cn } from '@/lib/utils';
 
 const STATUSES = ['DONE', 'NOT DONE', 'IN PROGRESS', 'BLOCKED', 'FAILED', 'READY TO RETEST', 'TBA'];
@@ -23,6 +24,7 @@ export const TestCaseStatusCell = memo(function TestCaseStatusCell({ id, display
   const [activated, setActivated] = useState(false);
   const [open, setOpen] = useState(false);
   const [justChanged, setJustChanged] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const label = `Status for ${displayId}`;
   const optionsId = `status-options-${id}`;
   const triggerClass = cn(
@@ -44,9 +46,12 @@ export const TestCaseStatusCell = memo(function TestCaseStatusCell({ id, display
       if (value === 'DONE' && status !== 'DONE') celebrate?.(id);
       setJustChanged(true);
       window.setTimeout(() => setJustChanged(false), 180);
+      if (triggerRef.current) {
+        playVerdictStamp(triggerRef.current, { verdict: value });
+      }
       onChange(id, value);
     }}>
-      <SelectTrigger aria-label={label} aria-controls={optionsId} className={triggerClass}>{icon(status)} <SelectValue /></SelectTrigger>
+      <SelectTrigger ref={triggerRef} aria-label={label} aria-controls={optionsId} className={triggerClass}>{icon(status)} <SelectValue /></SelectTrigger>
       <SelectContent id={optionsId} className="rounded-xl bg-card border-border/60 shadow-lg">
         <SelectGroup>{STATUSES.map(value => <SelectItem key={value} value={value} className="text-xs font-bold rounded-lg">{value}</SelectItem>)}</SelectGroup>
       </SelectContent>

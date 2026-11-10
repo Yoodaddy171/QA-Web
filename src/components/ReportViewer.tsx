@@ -12,6 +12,7 @@ import { generateHTMLReport } from '@/lib/services/report-export';
 import { copyText } from '@/lib/client/copy-text';
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import { AnimatedNumber } from '@/components/ui/animated-number';
+import { gsap, useGSAP, isMotionAllowed, scrambleDecodeText } from '@/lib/client/gsap-motion';
 
 interface ReportViewerProps {
   report: ReportData;
@@ -74,7 +75,27 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
 
   const [copiedSummary, setCopiedSummary] = useState(false);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const docRef = useRef<HTMLDivElement>(null);
+  const recSpanRef = useRef<HTMLSpanElement>(null);
   useEffect(() => () => { if (copyResetTimer.current) clearTimeout(copyResetTimer.current); }, []);
+
+  useGSAP(
+    () => {
+      if (!docRef.current || !isMotionAllowed()) return;
+      const blocks = docRef.current.querySelectorAll(':scope > div');
+      if (blocks.length) {
+        gsap.fromTo(
+          blocks,
+          { y: 12, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.34, stagger: 0.04, ease: 'power3.out', clearProps: 'y,opacity' }
+        );
+      }
+      if (recSpanRef.current) {
+        scrambleDecodeText(recSpanRef.current, recommendation, { duration: 0.42 });
+      }
+    },
+    { dependencies: [report.id, report.version, recommendation], scope: docRef }
+  );
 
   const copyExecutiveSummary = async () => {
     const planned = runSummary.totalPlanned || metrics.totalPlanned;
@@ -110,7 +131,7 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
   ) : null;
 
   return (
-    <div className="qa-report-document flex min-w-0 flex-col gap-5">
+    <div ref={docRef} className="qa-report-document flex min-w-0 flex-col gap-5">
       <p className="text-xs text-muted-foreground">Hasil cycle berasal dari execution; status inventory dan verifikasi Bug ditampilkan terpisah. Finalisasi memerlukan QA_LEAD atau lebih tinggi.</p>
       <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -171,7 +192,7 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Release decision summary</p>
-            <p className="mt-1 text-xl font-bold">Release recommendation: {recommendation}</p>
+            <p className="mt-1 text-xl font-bold">Release recommendation: <span ref={recSpanRef}>{recommendation}</span></p>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{decisionReason}</p>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span><strong className="text-foreground">{metrics.bugSummary.overdue}</strong> overdue bugs</span>

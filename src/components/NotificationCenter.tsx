@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LatestRequest } from '@/lib/client/latest-request';
 import { useCommittedActions } from '@/hooks/use-committed-actions';
 import { Bell, BellRing, CheckCheck, CircleAlert, CircleCheck, Clock3, Info, Loader2 } from 'lucide-react';
+import { playBellWiggle, useMagneticHover } from '@/lib/client/gsap-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -160,12 +161,33 @@ function ProjectNotificationCenter({ projectId, onNavigate }: NotificationCenter
     setOpen(false);
   }, [projectId, onNavigate]);
   const notificationActions = useCommittedActions({ openItem });
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
+  const bellIconWrapRef = useRef<HTMLSpanElement>(null);
+  const prevUnreadRef = useRef(0);
+  useMagneticHover(bellButtonRef, { maxShift: 4 });
+
+  useEffect(() => {
+    if (unreadCount > prevUnreadRef.current) {
+      playBellWiggle(bellIconWrapRef.current);
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount]);
 
   return (
-    <Popover open={open} onOpenChange={nextOpen => { setOpen(nextOpen); if (nextOpen) void load(true); }}>
+    <Popover open={open} onOpenChange={nextOpen => { setOpen(nextOpen); if (nextOpen) { playBellWiggle(bellIconWrapRef.current); void load(true); } }}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="icon" className="relative size-9 rounded-lg border-border/70 bg-card shadow-none" aria-label={`Notifikasi${unreadCount ? `, ${unreadCount} belum dibaca` : ''}`}>
-          {unreadCount ? <BellRing /> : <Bell />}
+        <Button
+          ref={bellButtonRef}
+          type="button"
+          variant="outline"
+          size="icon"
+          onMouseEnter={() => playBellWiggle(bellIconWrapRef.current)}
+          className="relative size-9 rounded-lg border-border/70 bg-card shadow-none"
+          aria-label={`Notifikasi${unreadCount ? `, ${unreadCount} belum dibaca` : ''}`}
+        >
+          <span ref={bellIconWrapRef} className="inline-flex items-center justify-center">
+            {unreadCount ? <BellRing /> : <Bell />}
+          </span>
           {unreadCount > 0 && (
             <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 font-mono text-[9px] font-bold leading-4 text-white motion-safe:animate-in motion-safe:zoom-in-75">
               {unreadCount > 99 ? '99+' : unreadCount}

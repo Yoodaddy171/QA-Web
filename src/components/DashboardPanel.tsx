@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { gsap, useGSAP, isMotionAllowed, scrambleDecodeText } from '@/lib/client/gsap-motion';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -252,6 +253,35 @@ export function DashboardPanel({
         ? '#f43f5e'
         : '#f59e0b';
 
+  const gaugeArcRef = useRef<SVGPathElement>(null);
+  const verdictBadgeRef = useRef<HTMLSpanElement>(null);
+  const verdictHeadlineRef = useRef<HTMLHeadingElement>(null);
+
+  useGSAP(
+    () => {
+      if (!isMotionAllowed()) return;
+      const pct = Math.min(Math.max(stats.overallProgress, 0), 100);
+      if (gaugeArcRef.current) {
+        gsap.fromTo(
+          gaugeArcRef.current,
+          { drawSVG: '0%' },
+          { drawSVG: `${pct}%`, duration: 0.95, ease: 'power3.out' }
+        );
+      }
+      if (verdictBadgeRef.current && release?.recommendation) {
+        scrambleDecodeText(verdictBadgeRef.current, release.recommendation, { duration: 0.45 });
+      }
+      if (verdictHeadlineRef.current) {
+        gsap.fromTo(
+          verdictHeadlineRef.current,
+          { y: 10, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.4, ease: 'back.out(1.6)', clearProps: 'y,opacity' }
+        );
+      }
+    },
+    { dependencies: [stats.overallProgress, release?.recommendation, verdictHeadline] }
+  );
+
   return (
     <div className="flex flex-col gap-6">
       {/* =========================================================================
@@ -451,6 +481,7 @@ export function DashboardPanel({
                 />
                 {/* Active Colored Arc */}
                 <path
+                  ref={gaugeArcRef}
                   d="M 35,120 A 85,85 0 0,1 205,120"
                   fill="none"
                   stroke={gaugeColor}
@@ -458,7 +489,7 @@ export function DashboardPanel({
                   strokeLinecap="round"
                   strokeDasharray={267.04}
                   strokeDashoffset={267.04 * (1 - Math.min(stats.overallProgress, 100) / 100)}
-                  className="transition-all duration-700 ease-out"
+                  className="transition-colors duration-500"
                 />
               </svg>
 
@@ -480,7 +511,7 @@ export function DashboardPanel({
                     }
                     className="mt-1 font-semibold"
                   >
-                    {release.recommendation}
+                    <span ref={verdictBadgeRef}>{release.recommendation}</span>
                   </Badge>
                 )}
                 <span className="text-[11px] font-medium text-muted-foreground mt-0.5">
@@ -490,7 +521,7 @@ export function DashboardPanel({
             </div>
 
             {/* Verdict Headline & Reason */}
-            <h4 className="mt-3 text-center text-balance text-lg font-bold tracking-tight text-foreground">
+            <h4 ref={verdictHeadlineRef} className="mt-3 text-center text-balance text-lg font-bold tracking-tight text-foreground">
               {verdictHeadline}
             </h4>
             <p className="mt-1 max-w-sm text-center text-xs text-muted-foreground leading-relaxed">

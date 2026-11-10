@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useBasketballDropzoneSetting } from '@/hooks/use-basketball-dropzone-setting';
 import { playBasketballSound } from '@/lib/client/basketball-sound';
+import { fireParticleCelebration } from '@/lib/client/gsap-motion';
 import { ShotMeterGauge, getShotTimingQuality, type ShotTimingQuality } from '@/components/basketball/ShotMeterGauge';
 
 export interface BasketballUploadDropzoneProps {
@@ -422,6 +423,16 @@ function BasketballCourtDropzone({
     setNetSwish(true);
     setShotSplash({ points, quality, key });
     setTotalPoints((prev) => prev + points);
+    if (hoopTargetRef.current) {
+      fireParticleCelebration(hoopTargetRef.current, {
+        particleCount: points === 3 ? 28 : 18,
+        colors:
+          quality === 'excellent'
+            ? ['#10B981', '#34D399', '#F59E0B', '#38BDF8']
+            : ['#F59E0B', '#FB923C', '#38BDF8'],
+        gravity: 400,
+      });
+    }
     if (quality === 'excellent') {
       playBasketballSound('greenRelease', soundEnabled);
     }

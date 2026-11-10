@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { Eye, ArrowRight, ArrowLeft, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { AnimatedNumber } from '@/components/ui/animated-number';
 import { BUGFIX_STATUS, type BugFixStatus } from '@/lib/domain/bugfix';
 import type { BugFixItem } from '@/components/BugFixPanel';
 import { springTransition } from '@/lib/client/ui-motion';
+import { fireParticleCelebration, scrambleDecodeText } from '@/lib/client/gsap-motion';
 import { cn } from '@/lib/utils';
 import { useWorkspaceAccess } from '@/components/WorkspaceAccess';
 
@@ -79,6 +80,7 @@ export function BugFixKanbanBoard({
 
   const [draggedBugId, setDraggedBugId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<BugFixStatus | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
 
   const handleDropToColumn = (targetStatus: BugFixStatus) => {
     if (!canEdit || !draggedBugId) {
@@ -89,6 +91,15 @@ export function BugFixKanbanBoard({
     const draggedItem = items.find((item) => item.id === draggedBugId);
     if (draggedItem && draggedItem.status !== targetStatus) {
       onStatusChange(draggedItem.id, targetStatus);
+      if (
+        boardRef.current &&
+        (targetStatus === BUGFIX_STATUS.READY_TO_RETEST || targetStatus === BUGFIX_STATUS.VERIFIED_FIXED)
+      ) {
+        fireParticleCelebration(boardRef.current, {
+          particleCount: 22,
+          colors: ['#10B981', '#06B6D4', '#38BDF8'],
+        });
+      }
     }
     setDraggedBugId(null);
     setDragOverColumn(null);
@@ -96,7 +107,7 @@ export function BugFixKanbanBoard({
 
   return (
     <LayoutGroup id="bugfix-kanban-board">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 min-[1400px]:grid-cols-4">
+      <div ref={boardRef} className="relative grid grid-cols-1 gap-4 md:grid-cols-2 min-[1400px]:grid-cols-4">
         {KANBAN_COLUMNS.map((col) => {
           const colItems = items.filter((item) => item.status === col.status);
           const isDropTarget = Boolean(canEdit && draggedBugId && dragOverColumn === col.status);
@@ -208,7 +219,11 @@ export function BugFixKanbanBoard({
                                 {canEdit && (
                                   <GripVertical className="size-3.5 shrink-0 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
                                 )}
-                                <span className="font-mono text-xs font-bold text-primary truncate">
+                                <span
+                                  data-bug-card-id
+                                  onMouseEnter={(e) => scrambleDecodeText(e.currentTarget, item.testCaseId, { duration: 0.3 })}
+                                  className="font-mono text-xs font-bold text-primary truncate"
+                                >
                                   {item.testCaseId}
                                 </span>
                               </div>

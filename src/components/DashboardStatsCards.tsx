@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -13,11 +13,28 @@ import {
   XCircle,
 } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/animated-number';
+import { gsap, useGSAP, isMotionAllowed, useCardTilt3D } from '@/lib/client/gsap-motion';
 import { cn } from '@/lib/utils';
 import type { DashboardStats } from '@/components/DashboardPanel';
 
 interface DashboardStatsCardsProps {
   stats: DashboardStats;
+}
+
+function TiltStatCard({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  useCardTilt3D(cardRef, { maxDeg: 4 });
+  return (
+    <div ref={cardRef} data-stat-card className={className}>
+      {children}
+    </div>
+  );
 }
 
 export function DashboardStatsCards({ stats }: DashboardStatsCardsProps) {
@@ -84,16 +101,39 @@ export function DashboardStatsCards({ stats }: DashboardStatsCardsProps) {
     },
   ] as const;
 
+  const gridRef = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      if (!gridRef.current || !isMotionAllowed()) return;
+      const cards = gridRef.current.querySelectorAll('[data-stat-card]');
+      if (!cards.length) return;
+      gsap.fromTo(
+        cards,
+        { y: 18, opacity: 0, scale: 0.96 },
+        {
+          y: 0,
+          opacity: 1,
+          scale: 1,
+          duration: 0.44,
+          stagger: 0.055,
+          ease: 'back.out(1.5)',
+          clearProps: 'y,opacity,scale',
+        }
+      );
+    },
+    { scope: gridRef }
+  );
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    <div ref={gridRef} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {statItems.map((item) => {
         const Icon = item.icon;
         const TrendIcon = item.trendIcon;
 
         return (
-          <div
+          <TiltStatCard
             key={item.key}
-            className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-sm"
+            className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-colors duration-200 hover:border-primary/40 hover:shadow-sm"
           >
             {/* Top row: Icon tile & Trend badge */}
             <div className="flex items-start justify-between gap-2">
@@ -128,7 +168,7 @@ export function DashboardStatsCards({ stats }: DashboardStatsCardsProps) {
                 <span className="truncate text-[11px] text-muted-foreground">{item.subtext}</span>
               </div>
             </div>
-          </div>
+          </TiltStatCard>
         );
       })}
     </div>

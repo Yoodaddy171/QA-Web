@@ -235,6 +235,20 @@ function ProjectNotificationCenter({ projectId, onNavigate }: NotificationCenter
             </section>
           ))}
         </ScrollArea>
+        <div className="border-t border-border/70 bg-card/90 p-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setOpen(false);
+              onNavigate('activity');
+            }}
+            className="w-full justify-center text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary"
+          >
+            Lihat Semua Notifikasi &amp; Audit Log
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );

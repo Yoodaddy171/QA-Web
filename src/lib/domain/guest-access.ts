@@ -44,7 +44,7 @@ export function guestRoutePermission(pathname: string, method: string): GuestPer
   if (/^\/api\/notifications(?:\/[^/]+)?$/.test(pathname) && (read || method === 'PATCH')) return 'common';
   if (read && pathname === '/api/stats') return 'dashboard.view';
   if (read && (pathname === '/api/testcases' || pathname === '/api/modules')) return 'cases.view';
-  if (read && /^\/api\/testcases\/[^/]+\/evidence$/.test(pathname)) return 'evidence.view';
+  if (read && (pathname === '/api/evidence/gallery' || /^\/api\/testcases\/[^/]+\/evidence$/.test(pathname))) return 'evidence.view';
   if (read && pathname === '/api/bugfix') return 'bugs.view';
   if (read && (pathname === '/api/traceability' || /^\/api\/(requirements|test-plans)(\/[^/]+)?$/.test(pathname))) return 'traceability.view';
   if (read && pathname === '/api/activity') return 'history.view';
@@ -61,5 +61,5 @@ export function guestRoutePermission(pathname: string, method: string): GuestPer
 }
 
 export function guestTabPermission(tab: string): GuestPermission | null {
-  return ({ dashboard: 'dashboard.view', testcases: 'cases.view', bugfix: 'bugs.view', testRuns: 'runs.view', traceability: 'traceability.view', reports: 'reports.view' } as Record<string, GuestPermission>)[tab] || null;
+  return ({ dashboard: 'dashboard.view', testcases: 'cases.view', bugfix: 'bugs.view', testRuns: 'runs.view', traceability: 'traceability.view', reports: 'reports.view', activity: 'history.view', evidence: 'evidence.view' } as Record<string, GuestPermission>)[tab] || null;
 }

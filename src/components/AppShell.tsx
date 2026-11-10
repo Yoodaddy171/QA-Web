@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, Check, ChevronsUpDown, Command, FolderOpen, HelpCircle, Plus, Search, UserRound, X } from 'lucide-react';
+import { ArrowRight, Camera, Check, ChevronsUpDown, Command, FolderOpen, HelpCircle, History, Plus, Search, UserRound, X } from 'lucide-react';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import {
   DashboardIcon,
@@ -90,6 +90,8 @@ interface AppShellProps {
     testRuns: ReactNode;
     traceability: ReactNode;
     reports: ReactNode;
+    evidence?: ReactNode;
+    activity?: ReactNode;
     settings: ReactNode;
     profile?: ReactNode;
   };
@@ -103,6 +105,8 @@ const NAV_ITEMS = [
   { value: 'testRuns', label: 'Test Cycles', description: 'QA execution cycles', icon: TestCyclesIcon },
   { value: 'traceability', label: 'Traceability', description: 'Requirements & plans', icon: TraceabilityIcon },
   { value: 'reports', label: 'Reports', description: 'Test reports', icon: ReportsIcon },
+  { value: 'evidence', label: 'Evidence Vault', description: 'Screenshots & video proof', icon: Camera },
+  { value: 'activity', label: 'Activity & Audit', description: 'Notifications & audit trail', icon: History },
   { value: 'settings', label: 'Settings', description: 'Configuration & readiness', icon: WorkspaceSettingsIcon },
 ] as const;
 

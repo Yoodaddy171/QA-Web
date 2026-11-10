@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { guestSafeResponse } from '@/lib/services/guest-response';
-import { listEntityActivity, recordActivity } from '@/lib/services/activity-history-service';
+import { listEntityActivity, listProjectActivity, recordActivity } from '@/lib/services/activity-history-service';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -8,10 +8,32 @@ export async function GET(req: NextRequest) {
   const entityType = req.nextUrl.searchParams.get('entityType')?.trim();
   const entityId = req.nextUrl.searchParams.get('entityId')?.trim();
   const action = req.nextUrl.searchParams.get('action')?.trim();
-  if (!projectId || !entityType || !entityId) return NextResponse.json({ error: 'projectId, entityType, dan entityId wajib diisi.' }, { status: 400 });
+  const actor = req.nextUrl.searchParams.get('actor')?.trim();
+  const search = req.nextUrl.searchParams.get('search')?.trim();
+  const limit = Number(req.nextUrl.searchParams.get('limit')) || 80;
+
+  if (!projectId) {
+    return NextResponse.json({ error: 'projectId wajib diisi.' }, { status: 400 });
+  }
 
   try {
-    return NextResponse.json(await guestSafeResponse({ activities: await listEntityActivity(projectId, entityType, entityId, action) }));
+    if (entityType && entityId) {
+      return NextResponse.json(
+        await guestSafeResponse({ activities: await listEntityActivity(projectId, entityType, entityId, action) })
+      );
+    }
+
+    const result = await listProjectActivity({
+      projectId,
+      entityType,
+      action,
+      actor,
+      search,
+      limit,
+    });
+    return NextResponse.json(await guestSafeResponse(result), {
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
   } catch (error) {
     console.error('GET /api/activity error:', error);
     return NextResponse.json({ error: 'Gagal memuat activity history.' }, { status: 500 });

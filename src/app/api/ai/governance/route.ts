@@ -9,7 +9,27 @@ export async function GET(req: NextRequest) {
   const [project, usage, audits] = await Promise.all([
     db.project.findUnique({ where: { id: projectId }, select: { allowExternalAi: true, aiMonthlyTokenBudget: true } }),
     db.aiUsageMonth.findUnique({ where: { projectId_month: { projectId, month } } }),
-    db.aiRequestAudit.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, operation: true, promptVersion: true, provider: true, model: true, dataCategories: true, inputTokens: true, outputTokens: true, status: true, createdAt: true } }),
+    db.aiRequestAudit.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        operation: true,
+        promptVersion: true,
+        provider: true,
+        model: true,
+        dataCategories: true,
+        inputChars: true,
+        outputChars: true,
+        inputTokens: true,
+        outputTokens: true,
+        status: true,
+        errorCode: true,
+        createdAt: true,
+        actorUser: { select: { name: true, email: true } },
+      },
+    }),
   ]);
   if (!project) return NextResponse.json({ error: 'Project tidak ditemukan.' }, { status: 404 });
   return NextResponse.json({ ...project, month, usedTokens: usage?.usedTokens || 0, requestCount: usage?.requestCount || 0, audits });

@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { BugFixStatsCards } from '@/components/BugFixStatsCards';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SimpleTooltip } from '@/components/ui/tooltip';
+import type { Module } from '@/lib/client/api/types';
 
 type BugFixColumnKey = 'subMenu' | 'action' | 'priority' | 'status' | 'reportedAt' | 'timing';
 
@@ -78,13 +79,6 @@ export interface BugFixItem {
   createdAt: string;
   updatedAt: string;
   module?: { id: string; name: string } | null;
-}
-
-interface Module {
-  id: string;
-  name: string;
-  projectId: string;
-  _count?: { testCases: number };
 }
 
 interface BugFixStats {

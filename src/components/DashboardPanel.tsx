@@ -27,49 +27,7 @@ import { DashboardStatsCards } from '@/components/DashboardStatsCards';
 import { DashboardQueuesAndRisks } from '@/components/DashboardQueuesAndRisks';
 import { DashboardModuleProgress } from '@/components/DashboardModuleProgress';
 import { DashboardActivityTimeline } from '@/components/DashboardActivityTimeline';
-
-interface Module {
-  id: string;
-  name: string;
-  projectId: string;
-  _count?: { testCases: number };
-}
-
-interface MenuProgressItem {
-  page: string;
-  subMenu: string;
-  totalCases: number;
-  weightPerCase: number;
-  progressPercent: number;
-  doneCount: number;
-  inProgressCount: number;
-  notDoneCount: number;
-  blockedCount: number;
-  failedCount: number;
-  readyToRetestCount: number;
-  tbaCount: number;
-  activeCount: number;
-}
-
-interface ModuleProgressItem {
-  id: string;
-  name: string;
-  totalMenus: number;
-  totalCases: number;
-  totalDone: number;
-  avgProgress: number;
-  menus: MenuProgressItem[];
-}
-
-interface UngroupedProgressItem {
-  id: null;
-  name: string;
-  totalMenus: number;
-  totalCases: number;
-  totalDone: number;
-  avgProgress: number;
-  menus: MenuProgressItem[];
-}
+import type { Module, MenuProgressItem, ModuleProgressItem, UngroupedProgressItem } from '@/lib/client/api/types';
 
 interface RetestQueueItem {
   id: string;

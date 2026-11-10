@@ -16,6 +16,7 @@ import type { ReportData, ReportSections, ReportType } from '@/lib/services/repo
 interface ReportFormProps {
   projectId: string;
   report?: ReportData;
+  initialType?: ReportType;
   onReportSaved: (report: ReportData) => void;
   onCancel: () => void;
 }
@@ -23,11 +24,11 @@ interface ReportFormProps {
 const today = format(new Date(), 'yyyy-MM-dd');
 const dateInput = (value?: Date) => value ? new Date(value).toISOString().slice(0, 10) : '';
 
-export function ReportForm({ projectId, report, onReportSaved, onCancel }: ReportFormProps) {
+export function ReportForm({ projectId, report, initialType, onReportSaved, onCancel }: ReportFormProps) {
   const { toast } = useToast();
   const prefix = useId();
   const fieldId = (field: string) => `${prefix}-${field}`;
-  const [reportType, setReportType] = useState<ReportType>(report?.reportType || 'TEST_STATUS_REPORT');
+  const [reportType, setReportType] = useState<ReportType>(report?.reportType || initialType || 'TEST_STATUS_REPORT');
   const [documentId, setDocumentId] = useState(report?.documentId || '');
   const [testRunId, setTestRunId] = useState(report?.testRunId || '');
   const [testRuns, setTestRuns] = useState<Array<{ id: string; name: string; status: string }>>([]);

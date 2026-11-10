@@ -11,7 +11,7 @@ type Props = {
   displayId: string;
   status: string;
   onChange: (id: string, status: string) => void;
-  celebrate: (id: string) => void;
+  celebrate?: (id: string) => void;
   color: (status: string) => string;
   icon: (status: string) => ReactNode;
 };
@@ -36,7 +36,7 @@ export const TestCaseStatusCell = memo(function TestCaseStatusCell({ id, display
   );
   return (
     <Select open={open} onOpenChange={setOpen} value={status} onValueChange={value => {
-      if (value === 'DONE' && status !== 'DONE') celebrate(id);
+      if (value === 'DONE' && status !== 'DONE') celebrate?.(id);
       onChange(id, value);
     }}>
       <SelectTrigger aria-label={label} aria-controls={optionsId} className={triggerClass}>{icon(status)} <SelectValue /></SelectTrigger>

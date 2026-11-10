@@ -30,13 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { DashboardStats } from './DashboardPanel';
-
-interface Module {
-  id: string;
-  name: string;
-  projectId: string;
-  _count?: { testCases: number };
-}
+import type { Module } from '@/lib/client/api/types';
 
 interface DashboardModuleProgressProps {
   stats: DashboardStats;

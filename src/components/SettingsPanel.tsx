@@ -27,23 +27,7 @@ import { SystemReadinessCard } from '@/components/SystemReadinessCard';
 import { DropzoneSettingsCard } from '@/components/DropzoneSettingsCard';
 import { WorkspaceMembersCard } from '@/components/WorkspaceMembersCard';
 import { GuestAccessCard } from '@/components/GuestAccessCard';
-
-interface Project {
-  id: string;
-  workspaceId?: string;
-  name: string;
-  description?: string;
-  automationContext?: string;
-  createdAt: string;
-  _count?: { testCases: number; modules: number };
-}
-
-interface Module {
-  id: string;
-  name: string;
-  projectId: string;
-  _count?: { testCases: number };
-}
+import type { Module, Project } from '@/lib/client/api/types';
 
 interface SettingsPanelProps {
   projects: Project[];

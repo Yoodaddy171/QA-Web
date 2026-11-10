@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { AutomationStatsCards } from '@/components/AutomationStatsCards';
 import { SimpleTooltip } from '@/components/ui/tooltip';
+import type { Module, Project } from '@/lib/client/api/types';
 
 type AutomatedColumnKey = 'module' | 'action' | 'type' | 'priority' | 'status' | 'lastRun' | 'source' | 'history';
 
@@ -48,22 +49,6 @@ const getInitialAutomatedColumns = () => {
     return DEFAULT_AUTOMATED_COLUMNS;
   }
 };
-
-interface Module {
-  id: string;
-  name: string;
-  projectId: string;
-  _count?: { testCases: number };
-}
-
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  automationContext?: string;
-  createdAt: string;
-  _count?: { testCases: number; modules: number };
-}
 
 export interface AutomatedTestCase {
   id: string;
@@ -196,7 +181,7 @@ export function AutomatedPanel({
     return (
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-border/50 bg-card shadow-sm">
         <div className="text-center">
-          <Bot className="mx-auto mb-2 h-9 w-9 text-muted-foreground opacity-30 animate-pulse" />
+          <Bot className="mx-auto mb-2 h-9 w-9 text-muted-foreground/50" />
           <p className="text-sm font-semibold text-muted-foreground">Pilih project untuk melihat test record</p>
         </div>
       </div>
@@ -295,25 +280,11 @@ export function AutomatedPanel({
           <p className="qa-module-heading">
             {!hasRecords ? 'Belum ada test record' : 'Tidak ada hasil yang cocok'}
           </p>
-          <p className="max-w-md text-center text-xs font-medium text-muted-foreground/80">
+          <p className="max-w-md text-center text-xs font-medium text-muted-foreground">
             {!hasRecords
               ? 'Jalankan eksekusi test runner atau manual capture dari DevLog, lalu sinkronkan untuk memuat rekaman ke sini.'
               : 'Sesuaikan kata kunci pencarian atau filter modul untuk menemukan rekaman lainnya.'}
           </p>
-
-          {!hasRecords && (
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-400">
-                <span className="size-1.5 rounded-full bg-emerald-500" /> Relay Service Siap
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold text-blue-400">
-                <span className="size-1.5 rounded-full bg-blue-500" /> Evidence Storage Terhubung
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/50 px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-                Engine: Playwright & Katalon
-              </span>
-            </div>
-          )}
 
           {!hasRecords && (
             <Button
@@ -412,9 +383,9 @@ export function AutomatedPanel({
                       <TableCell className={getColumnClass('lastRun', 'min-w-[172px] whitespace-nowrap text-xs tabular-nums text-muted-foreground')}>{formatDate(item.automation.lastRunAt)}</TableCell>
                       <TableCell className={getColumnClass('source')}>
                         <div className="flex flex-wrap gap-1">
-                          {item.automation.hasAutomationRun && <Badge className="rounded-xl bg-indigo-500/10 text-status-in-progress border border-indigo-500/20 text-xs font-bold uppercase tracking-wider px-2 py-0.5">Auto</Badge>}
+                          {item.automation.hasAutomationRun && <Badge className="qa-status qa-status-in-progress rounded-md text-xs font-bold uppercase tracking-wider px-2 py-0.5">Auto</Badge>}
                           {item.automation.hasPlaywrightStudio && <span className="text-xs font-medium text-foreground">Playwright Studio</span>}
-                          {item.automation.hasManualCapture && <Badge className="rounded-xl bg-teal-500/10 text-bug-fixed border border-teal-500/20 text-xs font-bold uppercase tracking-wider px-2 py-0.5">Manual</Badge>}
+                          {item.automation.hasManualCapture && <Badge className="qa-status qa-bug-fixed rounded-md text-xs font-bold uppercase tracking-wider px-2 py-0.5">Manual</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className={getColumnClass('history')}>

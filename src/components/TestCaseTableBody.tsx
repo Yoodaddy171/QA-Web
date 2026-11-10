@@ -15,7 +15,6 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ConfettiBurst } from '@/components/ui/confetti-burst';
 import { TestCaseStatusCell } from '@/components/TestCaseStatusCell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -125,8 +124,7 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                     {mountedColumns.status && <TableCell className={getColumnClass('status', 'min-w-[196px]')}>
                       {canEdit && onQuickStatusChange ? (
                         <div className="relative">
-                          {celebrating && <ConfettiBurst radius={44} count={14} />}
-                        <TestCaseStatusCell id={tc.id} displayId={tc.testCaseId} status={tc.status} onChange={onQuickStatusChange} celebrate={setCelebrateId} color={getStatusColor} icon={getStatusIcon} />
+                          <TestCaseStatusCell id={tc.id} displayId={tc.testCaseId} status={tc.status} onChange={onQuickStatusChange} color={getStatusColor} icon={getStatusIcon} />
                         </div>
                       ) : (
                         <Badge variant={getStatusBadgeVariant(tc.status)} className="gap-1 text-xs font-semibold">
@@ -148,12 +146,12 @@ const TestCaseDataCells = React.memo(function TestCaseDataCells(props: TestCaseT
                         <div className="space-y-1">
                           <div className="flex flex-wrap gap-1">
                             {record.hasAutomationRun && (
-                              <Badge className="rounded-md bg-indigo-500/10 text-xs font-semibold text-status-in-progress border-indigo-500/20 shadow-none uppercase">
+                              <Badge className="qa-status qa-status-in-progress rounded-md text-xs font-semibold shadow-none uppercase">
                                 Auto
                               </Badge>
                             )}
                             {record.hasManualCapture && (
-                              <Badge className="rounded-md bg-teal-500/10 text-xs font-semibold text-bug-fixed border-teal-500/20 shadow-none uppercase">
+                              <Badge className="qa-status qa-bug-fixed rounded-md text-xs font-semibold shadow-none uppercase">
                                 Manual
                               </Badge>
                             )}

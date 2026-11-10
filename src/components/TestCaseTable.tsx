@@ -23,7 +23,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ConfettiBurst } from '@/components/ui/confetti-burst';
 import { DateRangePicker } from '@/components/ui/date-picker';
 import { Kbd } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
@@ -159,15 +158,9 @@ export function TestCaseTable({
   const [visibleColumns, setVisibleColumns] = useState<Record<TestCaseColumnKey, boolean>>(getInitialTestCaseColumns);
   const viewportBucket = useTableViewport();
   const mountedColumns = useMemo(() => mountedTestCaseColumns(visibleColumns, viewportBucket), [visibleColumns, viewportBucket]);
-  // "Quest complete": row id that just got flipped to DONE, celebrated briefly.
-  const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [savedViewsVersion, setSavedViewsVersion] = useState(0);
+  const [newSavedViewName, setNewSavedViewName] = useState('');
   const { density, setDensity, rowClassName } = useTableDensity();
-  useEffect(() => {
-    if (!celebrateId) return;
-    const timer = window.setTimeout(() => setCelebrateId(null), 1100);
-    return () => window.clearTimeout(timer);
-  }, [celebrateId]);
   const resetPage = () => setPage(1);
   const hasExtendedFilters = Boolean(filterTag || filterCreatedFrom || filterCreatedTo);
   const hasActiveFilters = Boolean(search)
@@ -181,11 +174,12 @@ export function TestCaseTable({
     || hasExtendedFilters;
   const savedViews = useMemo(() => readSavedViews(selectedProject), [selectedProject, savedViewsVersion]);
   const currentView: Omit<SavedView, 'name'> = { search, status: filterStatus, testType: filterTestType, priority: filterPriority, module: filterModule, subMenu: filterSubMenu, testRun: filterTestRun, bug: filterBug, tag: filterTag, createdFrom: filterCreatedFrom, createdTo: filterCreatedTo };
-  const saveCurrentView = () => {
-    const name = window.prompt('Nama saved view:')?.trim();
+  const saveCurrentView = (customName?: string) => {
+    const name = (customName ?? newSavedViewName).trim();
     if (!name) return;
     const next = [...savedViews.filter(view => view.name !== name), { name, ...currentView }];
     window.localStorage.setItem(savedViewsKey(selectedProject), JSON.stringify(next));
+    setNewSavedViewName('');
     setSavedViewsVersion(version => version + 1);
   };
   const applySavedView = (view: SavedView) => {
@@ -269,7 +263,7 @@ export function TestCaseTable({
     selectedProject, testCases, selectedIds, testRecordById, page, limit, total, totalPages, tableColSpan,
     isLoading, hasActiveFilters, getColumnClass, mountedColumns, showingLabel,
     ...rowActions, onQuickStatusChange: canEdit && onQuickStatusChange ? rowActions.onQuickStatusChange : undefined,
-    celebrateId, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant,
+    getStatusColor, getStatusIcon, getStatusBadgeVariant,
     getPriorityColor, getTestTypeColor, rowClassName,
   };
 
@@ -392,9 +386,32 @@ export function TestCaseTable({
                 <Bookmark className="size-3.5" /> Views{savedViews.length ? ` (${savedViews.length})` : ''}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64 rounded-xl bg-card">
-              <DropdownMenuItem onClick={saveCurrentView} className="font-semibold"><Bookmark className="mr-2 h-4 w-4" />Save current filters</DropdownMenuItem>
-              {savedViews.length > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuContent align="start" className="w-72 rounded-xl bg-card p-2">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  saveCurrentView();
+                }}
+                onKeyDown={(event) => event.stopPropagation()}
+                className="flex items-center gap-1.5 pb-2"
+              >
+                <Input
+                  value={newSavedViewName}
+                  onChange={(event) => setNewSavedViewName(event.target.value)}
+                  placeholder="Nama filter view..."
+                  aria-label="Nama saved view baru"
+                  className="h-8 text-xs"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!newSavedViewName.trim()}
+                  className="h-8 shrink-0 px-2.5 text-xs"
+                >
+                  Simpan
+                </Button>
+              </form>
+              <DropdownMenuSeparator />
               {savedViews.map(view => <div key={view.name} className="flex items-center gap-1 px-1"><DropdownMenuItem onClick={() => applySavedView(view)} className="min-w-0 flex-1 truncate text-xs">{view.name}</DropdownMenuItem><button type="button" aria-label={`Delete saved view ${view.name}`} onClick={() => deleteSavedView(view.name)} className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="h-3.5 w-3.5" /></button></div>)}
               {!savedViews.length && <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Belum ada saved view.</DropdownMenuLabel>}
             </DropdownMenuContent>

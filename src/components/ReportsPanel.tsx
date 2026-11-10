@@ -10,7 +10,7 @@ import { fetchReportPage, fetchReportDetail } from '@/lib/client/api/reports-cli
 import { ReportForm } from './ReportForm';
 import { ReportHistory } from './ReportHistory';
 import { ReportViewer } from './ReportViewer';
-import type { ReportData, ReportSummary } from '@/lib/services/report-types';
+import type { ReportData, ReportSummary, ReportType } from '@/lib/services/report-types';
 import { DEFAULT_REPORT_FILTERS, normalizeReportFilters, type ReportFilters } from '@/lib/domain/report-filters';
 
 interface ReportsPanelProps {
@@ -35,6 +35,7 @@ function ProjectReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
   const [selectedReport, setSelectedReport] = useState<ReportData | null>(null);
   const [editingReport, setEditingReport] = useState<ReportData | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [createTemplate, setCreateTemplate] = useState<ReportType>('TEST_STATUS_REPORT');
   const [filters, setFilters] = useState<ReportFilters>({ ...DEFAULT_REPORT_FILTERS });
   const [revision, setRevision] = useState(0);
   const [total, setTotal] = useState(0);
@@ -116,7 +117,13 @@ function ProjectReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
         <Button variant="ghost" onClick={closeForm} className="mb-4 gap-2">
           <ArrowLeft className="h-4 w-4" /> Kembali ke Reports
         </Button>
-        <ReportForm projectId={projectId} report={editingReport || undefined} onReportSaved={upsertReport} onCancel={closeForm} />
+        <ReportForm
+          projectId={projectId}
+          report={editingReport || undefined}
+          initialType={createTemplate}
+          onReportSaved={upsertReport}
+          onCancel={closeForm}
+        />
       </div>
     );
   }
@@ -140,81 +147,49 @@ function ProjectReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
     );
   }
 
+  const startCreateWithTemplate = (template: ReportType) => {
+    setCreateTemplate(template);
+    setIsCreating(true);
+  };
+
   return (
     <div className="qa-module-page flex flex-col gap-5">
-      <div className="qa-module-toolbar flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Laporan Pengujian (QA Reports)</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Buat dan tinjau dokumen formal Test Status Report maupun perencanaan Test Planning.</p>
-        </div>
-        <MutationAction><Button size="sm" disabled={loadingMore || Boolean(openingId)} onClick={() => setIsCreating(true)}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          Buat Report
-        </Button></MutationAction>
-      </div>
-
-      {/* 3 Report Template Selector Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="group flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 shadow-xs transition-all hover:border-primary/40 hover:bg-secondary/20">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <FileText className="size-4" />
-              </div>
-              <Badge variant="outline" className="border-primary/30 text-[11px] text-primary">Status & Readiness</Badge>
-            </div>
-            <h3 className="text-sm font-semibold text-foreground">Test Status Report (TSR)</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Ringkasan komprehensif metrik pengujian, rasio lulus/gagal, defect blocker, dan rekomendasi rilis produksi.
-            </p>
+      <div className="qa-module-toolbar flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Laporan Pengujian (QA Reports)</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Buat dan tinjau dokumen formal Test Status Report (TSR) maupun Test Planning Document (TPD).</p>
           </div>
-          <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
-            <span className="text-[11px] font-mono text-muted-foreground">DOCX / Web</span>
-            <Button size="sm" variant="outline" className="h-7 text-xs font-medium" onClick={() => setIsCreating(true)}>
-              Pilih Template
-            </Button>
-          </div>
-        </div>
-
-        <div className="group flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 shadow-xs transition-all hover:border-primary/40 hover:bg-secondary/20">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
-                <FileCode2 className="size-4" />
-              </div>
-              <Badge variant="outline" className="border-amber-500/30 text-[11px] text-amber-500">Sprint & Planning</Badge>
-            </div>
-            <h3 className="text-sm font-semibold text-foreground">Test Planning Document (TPD)</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Dokumen perencanaan cakupan uji, alokasi modul fitur, jadwal eksekusi QA, dan mitigasi risiko teknis.
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
-            <span className="text-[11px] font-mono text-muted-foreground">DOCX / Web</span>
-            <Button size="sm" variant="outline" className="h-7 text-xs font-medium" onClick={() => setIsCreating(true)}>
-              Pilih Template
-            </Button>
-          </div>
-        </div>
-
-        <div className="group flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 shadow-xs transition-all hover:border-primary/40 hover:bg-secondary/20">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
-                <FileCheck className="size-4" />
-              </div>
-              <Badge variant="outline" className="border-emerald-500/30 text-[11px] text-emerald-500">Audit & Gaps</Badge>
-            </div>
-            <h3 className="text-sm font-semibold text-foreground">Traceability Matrix Audit</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Pemetaan ketertelusuran kebutuhan bisnis ke skenario uji dan identifikasi celah coverage yang belum teruji.
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
-            <span className="text-[11px] font-mono text-muted-foreground">Traceability Link</span>
-            <Button size="sm" variant="outline" className="h-7 text-xs font-medium" onClick={() => onNavigate?.('traceability')}>
-              Buka Matriks
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onNavigate && (
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => onNavigate('traceability')}>
+                <FileCheck className="h-3.5 w-3.5 text-status-passed" />
+                Audit Matriks Traceability
+              </Button>
+            )}
+            <MutationAction>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 text-xs"
+                disabled={loadingMore || Boolean(openingId)}
+                onClick={() => startCreateWithTemplate('TEST_PLANNING_DOCUMENT')}
+              >
+                <FileCode2 className="h-3.5 w-3.5 text-amber-800 dark:text-amber-300" />
+                Buat Test Planning (TPD)
+              </Button>
+            </MutationAction>
+            <MutationAction>
+              <Button
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                disabled={loadingMore || Boolean(openingId)}
+                onClick={() => startCreateWithTemplate('TEST_STATUS_REPORT')}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Buat Status Report (TSR)
+              </Button>
+            </MutationAction>
           </div>
         </div>
       </div>

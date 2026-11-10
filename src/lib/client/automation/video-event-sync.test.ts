@@ -12,6 +12,7 @@ import {
   groupVideoEventMarkers,
   getVideoEventDedupKey,
   getVideoEventFilterKey,
+  getVideoEventOffsetMs,
   parseAutomationTimestamp,
 } from './video-event-sync';
 
@@ -28,6 +29,26 @@ const recording = {
 };
 
 describe('video event sync', () => {
+  it('retains late events after an initial network burst beyond 80 entries', () => {
+    const events = buildSyncedVideoEvents(Array.from({ length: 150 }, (_, i) => ({ id: `request-${i}`, relativeMs: i < 100 ? 100 + i : (i - 99) * 1000, network: { url: '/api', status: 200 } })), { video: { durationMs: 60000 } });
+    expect(events).toHaveLength(150);
+    const groups = groupVideoEventMarkers(buildVideoEventMarkers(events, 60000));
+    expect(groups.reduce((count, group) => count + group.count, 0)).toBe(150);
+    expect(groups.at(-1)?.events.at(-1)?.id).toBe('request-149');
+    expect(groups.length).toBeGreaterThan(20);
+  });
+  it('uses session-relative time consistently, including video startup delay', () => {
+    const recording = { startedAt: '2026-06-05T00:00:00Z', video: { startedAtRelativeMs: 2000, durationMs: 10000 } };
+    expect(getVideoEventOffsetMs({ relativeMs: 5000, timestamp: '2026-06-05T01:00:05Z' }, recording)).toBe(3000);
+    expect(getVideoEventOffsetMs({ timestamp: '2026-06-05T00:00:05Z' }, recording)).toBe(3000);
+  });
+  it('bounds groups by first position and one second, without centroid chain merging', () => {
+    const events = buildSyncedVideoEvents(Array.from({ length: 1000 }, (_, i) => ({ eventId: `e-${i}`, relativeMs: i * 100 })), { video: { durationMs: 100000 } });
+    const groups = groupVideoEventMarkers(buildVideoEventMarkers(events, 100000));
+    expect(groups.reduce((n, group) => n + group.count, 0)).toBe(1000);
+    for (const group of groups) expect(group.events.at(-1)!.clampedOffsetMs! - group.events[0].clampedOffsetMs!).toBeLessThanOrEqual(1000);
+    expect(formatVideoOffset(3123, true)).toBe('0:03.123');
+  });
   it('parses timezone-safe timestamps', () => {
     expect(parseAutomationTimestamp('2026-06-05T07:00:03+07:00')).toBe(Date.parse('2026-06-05T00:00:03.000Z'));
     expect(parseAutomationTimestamp('not-a-date')).toBeUndefined();

@@ -26,7 +26,7 @@ export function Collapse({ open, className, innerClassName, children, ...props }
       inert={!open}
       aria-hidden={!open}
       className={cn(
-        'grid',
+        'grid transition-[grid-template-rows,opacity] duration-200 ease-[var(--motion-ease)] motion-reduce:transition-none',
         open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
         className,
       )}

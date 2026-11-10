@@ -46,7 +46,7 @@ const run = (client: ReturnType<typeof makeClient>, finalStatus: string) =>
     finalActualResult: finalStatus === TESTCASE_STATUS.FAILED ? TESTCASE_ACTUAL_RESULT.NOT_AS_EXPECTED : null,
   });
 
-describe('syncBugFixForTestCaseStatus — FAILED', () => {
+describe('syncBugFixForTestCaseStatus - FAILED', () => {
   it('creates a new bug on first-time failure', async () => {
     const client = makeClient({});
     await run(client, TESTCASE_STATUS.FAILED);
@@ -73,7 +73,7 @@ describe('syncBugFixForTestCaseStatus — FAILED', () => {
   });
 });
 
-describe('syncBugFixForTestCaseStatus — resolved', () => {
+describe('syncBugFixForTestCaseStatus - resolved', () => {
   it('marks active bugs verified & fixed when the case passes', async () => {
     const client = makeClient({});
     await run(client, TESTCASE_STATUS.DONE);

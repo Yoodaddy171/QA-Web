@@ -147,6 +147,7 @@ export function adaptAutomationEventToLogEntry(message: AutomationEventEnvelope 
   const networkEvent = event.eventType === 'network.request' ? 'Request' : 'Response';
   const legacyLevel = getLegacyMetadataValue(event, 'level');
   const relativeMs = getLegacyMetadataValue(event, 'relativeMs');
+  const networkDetails = isRecord(event.metadata?.networkDetails) ? event.metadata.networkDetails : undefined;
 
   return {
     id: event.eventId || createLogId(),
@@ -167,13 +168,15 @@ export function adaptAutomationEventToLogEntry(message: AutomationEventEnvelope 
       url: event.url || '',
       status: event.responseStatus,
       duration: event.durationMs,
-      headers: event.responseHeaders ?? event.requestHeaders,
+      headers: event.responseHeaders,
       data: {
+        ...networkDetails,
         requestHeaders: event.requestHeaders,
         requestBody: event.requestBody,
         responseBody: event.responseBody,
       },
-      success: typeof event.responseStatus === 'number' ? event.responseStatus < 400 : undefined,
+      success: typeof networkDetails?.success === 'boolean' ? networkDetails.success
+        : typeof event.responseStatus === 'number' ? event.responseStatus > 0 && event.responseStatus < 400 : undefined,
     } : undefined,
     sessionId: event.browserSessionId,
     eventId: event.eventId,

@@ -1,7 +1,9 @@
 'use client';
 
-import { Edit3, FolderOpen, Layers, Link, Loader2, Plus, RefreshCw, Save, Trash, Upload } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Edit3, FileText, FolderOpen, Layers, Link, Loader2, Plus, RefreshCw, Save, Trash, Upload, UploadCloud, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { BasketballUploadDropzone } from '@/components/BasketballUploadDropzone';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 const KNOWLEDGE_TYPE_OPTIONS = [
   { value: 'API_DOCS', label: 'API Docs' },
@@ -36,12 +39,14 @@ type ProjectKnowledgeCardProps = Record<string, any> & {
 };
 
 export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     selectedProject, setKnowledgeForm, knowledgeForm, knowledgeItems, knowledgeLoading,
     setKnowledgeFile, knowledgeFile, uploadKnowledgeFile, knowledgeUploading,
     figmaUrl, setFigmaUrl, figmaDepth, setFigmaDepth, syncFigmaKnowledge,
     figmaSyncing, figmaSyncMessage, saveKnowledge, knowledgeSaving, deleteKnowledge, knowledgeMessage,
-    mode = 'knowledge',
+    mode = 'knowledge', knowledgeError, retryKnowledge,
   } = props;
 
   if (mode === 'integrations') {
@@ -172,40 +177,26 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
               </div>
 
               <div>
-                <div className="rounded-2xl border border-border/40 bg-secondary/20 p-5 shadow-inner">
-                  <div className="flex flex-col gap-4">
-                    <div className="min-w-0">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Manual Upload</Label>
-                      <p className="mt-1 text-xs text-muted-foreground font-medium">
-                        Dukung format JSON, TXT, MD, CSV, DOCX, dan PDF.
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Input
-                        type="file"
-                        accept=".json,.txt,.md,.markdown,.csv,.docx,.pdf,.log,.yaml,.yml"
-                        className="h-9 rounded-xl border-border/60 bg-secondary/40 text-xs font-medium text-muted-foreground file:mr-3 file:bg-primary file:rounded-lg file:border-0 file:px-3 file:py-1 file:text-xs file:font-semibold file:uppercase file:text-white transition duration-200"
-                        onChange={(event) => setKnowledgeFile(event.target.files?.[0] || null)}
-                      />
-                      <Button
-                        type="button"
-                        onClick={uploadKnowledgeFile}
-                        disabled={!knowledgeFile || knowledgeUploading}
-                        variant="outline"
-                        className="min-h-10 gap-2"
-                      >
-                        {knowledgeUploading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        Upload
-                      </Button>
-                    </div>
-                    {knowledgeFile && (
-                      <p className="truncate text-xs font-semibold text-primary uppercase tracking-tight bg-primary/10 px-2 py-1 rounded-md w-fit">
-                        Selected: {knowledgeFile.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
+                <BasketballUploadDropzone
+                  title="Upload Dokumen Knowledge"
+                  subtitle="Drag and drop, or take the shot · Maks. 10MB"
+                  dropLabel="Drop files here"
+                  helperText="or take the shot to extract QA rules into knowledge base"
+                  helperBadges={['JSON', 'MD', 'TXT', 'CSV', 'DOCX', 'PDF', 'LOG']}
+                  accept=".json,.txt,.md,.markdown,.csv,.docx,.pdf,.log,.yaml,.yml"
+                  defaultBadge="DOC"
+                  busy={knowledgeUploading}
+                  uploadedCount={Array.isArray(knowledgeItems) ? knowledgeItems.length : 0}
+                  selectedFile={knowledgeFile ? { name: knowledgeFile.name, size: knowledgeFile.size } : null}
+                  inputRef={fileInputRef}
+                  onFileSelect={(file) => setKnowledgeFile(file)}
+                  onClearFile={() => {
+                    setKnowledgeFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  actionButtonLabel={knowledgeUploading ? 'Mengunggah...' : 'Upload Dokumen'}
+                  onActionButtonClick={uploadKnowledgeFile}
+                />
               </div>
 
               <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
@@ -234,6 +225,11 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
+                ) : knowledgeError ? (
+                  <div className="space-y-3 rounded-lg border border-destructive/30 p-4">
+                    <p role="alert" className="text-sm text-destructive">{knowledgeError}</p>
+                    <Button type="button" size="sm" variant="outline" onClick={retryKnowledge}>Coba lagi</Button>
+                  </div>
                 ) : knowledgeItems.length === 0 ? (
                   <div className="py-10 text-center rounded-2xl border border-dashed border-border/40 bg-secondary/10">
                     <p className="text-xs font-semibold text-muted-foreground">Belum ada project knowledge yang tersimpan.</p>
@@ -243,12 +239,10 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                     {knowledgeItems.map((item, index) => (
                       <motion.div
                         key={item.id}
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={false}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05, duration: 0.3 }}
                         className="group relative min-w-0 rounded-xl border border-border bg-card p-4 transition-colors duration-150 hover:bg-secondary/30"
                       >
-                        <div className="absolute top-0 right-0 h-24 w-24 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <div className="flex items-start justify-between gap-4 relative z-10">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2.5 mb-2.5">
@@ -257,9 +251,9 @@ export function ProjectKnowledgeCard(props: ProjectKnowledgeCardProps) {
                               </Badge>
                               <p className="font-bold text-foreground text-sm truncate">{item.title}</p>
                             </div>
-                            <p className="line-clamp-3 text-xs text-muted-foreground font-medium leading-relaxed group-hover:text-foreground/80 transition-colors">{item.content}</p>
-                            <p className="mt-3 text-xs font-bold text-muted-foreground/50 uppercase tracking-tighter">
-                              Terakhir diperbarui: {new Date(item.updatedAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                            <p className="line-clamp-3 text-xs text-muted-foreground font-medium leading-relaxed group-hover:text-foreground transition-colors">{item.content}</p>
+                            <p className="mt-3 text-xs font-medium text-muted-foreground uppercase tracking-tight">
+                              Terakhir diperbarui: <span className="font-mono tabular-nums">{new Date(item.updatedAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}</span>
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-1.5">

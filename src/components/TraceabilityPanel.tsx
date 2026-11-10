@@ -46,6 +46,14 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
   const [selectedRequirementId, setSelectedRequirementId] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [selectedCaseId, setSelectedCaseId] = useState('');
+  const [caseSearch, setCaseSearch] = useState('');
+  const [casePage, setCasePage] = useState(1);
+  const [casePages, setCasePages] = useState(1);
+  const [caseLoading, setCaseLoading] = useState(false);
+  const [caseError, setCaseError] = useState('');
+  const [loadedCaseQuery, setLoadedCaseQuery] = useState('');
+  const caseQueryKey = JSON.stringify([projectId, casePage, caseSearch]);
+  const caseOptionsReady = loadedCaseQuery === caseQueryKey;
   const [traceability, setTraceability] = useState<Traceability | null>(null);
   const [requirementKey, setRequirementKey] = useState('');
   const [requirementTitle, setRequirementTitle] = useState('');
@@ -65,17 +73,18 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
     if (!projectId) return;
     setLoading(true);
     try {
-      const [requirementsResponse, plansResponse, casesResponse] = await Promise.all([
+      const [requirementsResponse, plansResponse] = await Promise.all([
         fetch(`/api/requirements?projectId=${encodeURIComponent(projectId)}`),
         fetch(`/api/test-plans?projectId=${encodeURIComponent(projectId)}`),
-        fetch(`/api/testcases?projectId=${encodeURIComponent(projectId)}&limit=200&sortBy=testCaseId&sortOrder=asc`),
       ]);
-      const [requirementsData, plansData, casesData] = await Promise.all([requirementsResponse.json(), plansResponse.json(), casesResponse.json()]);
-      if (!requirementsResponse.ok || !plansResponse.ok || !casesResponse.ok) throw new Error('Gagal memuat traceability.');
+      if (!requirementsResponse.ok || !plansResponse.ok) throw new Error('Gagal memuat traceability.');
+      const [requirementsData, plansData] = await Promise.all([
+        requirementsResponse.json().catch(() => ({ requirements: [] })),
+        plansResponse.json().catch(() => ({ testPlans: [] })),
+      ]);
       const nextRequirements = requirementsData.requirements || [];
       setRequirements(nextRequirements);
       setTestPlans(plansData.testPlans || []);
-      setTestCases(casesData.testCases || []);
       setSelectedRequirementId(current => current || nextRequirements[0]?.id || '');
       setMessage('');
     } catch (error) {
@@ -85,11 +94,32 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
     }
   }, [projectId]);
 
+  useEffect(() => {
+    if (!createOpen) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setCaseLoading(true); setCaseError('');
+      try {
+        const query = new URLSearchParams({ projectId, view: 'options', limit: '25', page: String(casePage), search: caseSearch, sortBy: 'testCaseId' });
+        const response = await fetch(`/api/testcases?${query}`, { signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Pilihan testcase gagal dimuat.');
+        if (controller.signal.aborted) return;
+        setTestCases(data.testCases || []); setCasePages(Math.max(1, data.totalPages || 1)); setLoadedCaseQuery(JSON.stringify([projectId, casePage, caseSearch]));
+      } catch (error) { if (!controller.signal.aborted) setCaseError(error instanceof Error ? error.message : 'Pilihan testcase gagal dimuat.'); }
+      finally { if (!controller.signal.aborted) setCaseLoading(false); }
+    }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [projectId, createOpen, casePage, caseSearch]);
+
   const loadTraceability = useCallback(async (requirementId: string, signal?: AbortSignal) => {
     if (!requirementId) { setTraceability(null); return; }
     const response = await fetch(`/api/traceability?projectId=${encodeURIComponent(projectId)}&requirementId=${encodeURIComponent(requirementId)}`, { signal });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Gagal memuat detail traceability.');
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Gagal memuat detail traceability.' }));
+      throw new Error(err.error || 'Gagal memuat detail traceability.');
+    }
+    const data = await response.json().catch(() => null);
     setTraceability(data);
   }, [projectId]);
 
@@ -192,17 +222,17 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
   }, [selectedRequirement]);
 
   return <div className="qa-module-page flex flex-col gap-5">
-    <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"><div><h2 className="qa-module-heading">Traceability</h2><p className="qa-module-meta mt-1">Requirement → Test Cases → Test Plans → Test Cycles</p></div><div className="flex flex-wrap gap-2"><Button variant={uncoveredOnly ? 'secondary' : 'outline'} onClick={() => { setViewMode('lanes'); setUncoveredOnly(value => !value); }}><AlertCircle data-icon="inline-start" />View Uncovered Gaps {summary.uncovered + summary.partial}</Button><MutationAction><Button onClick={() => setCreateOpen(true)}><Plus data-icon="inline-start" />Buat Relation</Button></MutationAction><MutationAction><Button variant="outline" onClick={() => setManageOpen(true)} disabled={!selectedRequirementId} title={!selectedRequirementId ? 'Pilih atau buat requirement terlebih dahulu' : undefined}><Settings2 data-icon="inline-start" />Manage Relations</Button></MutationAction><Button variant="outline" size="icon" onClick={() => void load()} disabled={loading} aria-label="Muat ulang"><RefreshCw /></Button></div></div>
+    <div className="qa-module-toolbar flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"><div><h2 className="qa-module-heading">Traceability</h2><p className="qa-module-meta mt-1">Requirement → Test Cases → Test Plans → Test Cycles</p></div><div className="flex flex-wrap gap-2"><Button variant={uncoveredOnly ? 'secondary' : 'outline'} onClick={() => { setViewMode('lanes'); setUncoveredOnly(value => !value); }}><AlertCircle data-icon="inline-start" />Filter Gap ({summary.uncovered + summary.partial})</Button><MutationAction><Button onClick={() => setCreateOpen(true)}><Plus data-icon="inline-start" />Buat Relasi</Button></MutationAction><MutationAction><Button variant="outline" onClick={() => setManageOpen(true)} disabled={!selectedRequirementId} title={!selectedRequirementId ? 'Pilih atau buat requirement terlebih dahulu' : undefined}><Settings2 data-icon="inline-start" />Kelola Relasi</Button></MutationAction><Button variant="outline" size="icon" onClick={() => void load()} disabled={loading} aria-label="Muat ulang"><RefreshCw /></Button></div></div>
     {message && <div className="rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-sm" role="status">{message}</div>}
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Tampilan Traceability"><Button variant={viewMode === 'lanes' ? 'secondary' : 'outline'} aria-pressed={viewMode === 'lanes'} onClick={() => setViewMode('lanes')}><ListChecks data-icon="inline-start" />Existing Traceability View</Button><Button variant={viewMode === 'graph' ? 'secondary' : 'outline'} aria-pressed={viewMode === 'graph'} onClick={() => setViewMode('graph')}><GitBranch data-icon="inline-start" />Graph View</Button></div>
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Tampilan Traceability"><Button variant={viewMode === 'lanes' ? 'secondary' : 'outline'} aria-pressed={viewMode === 'lanes'} onClick={() => setViewMode('lanes')}><ListChecks data-icon="inline-start" />Tampilan Jalur Uji</Button><Button variant={viewMode === 'graph' ? 'secondary' : 'outline'} aria-pressed={viewMode === 'graph'} onClick={() => setViewMode('graph')}><GitBranch data-icon="inline-start" />Tampilan Graf</Button></div>
     {viewMode === 'graph' ? <TraceabilityGraphView key={projectId} projectId={projectId} onOpenNode={openGraphNode} initialFocus={graphFocus?.projectId === projectId ? graphFocus.focus : undefined} onFocusChange={focus => setGraphFocus({ projectId, focus })} /> : <>
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Metric label="Requirements" value={requirements.length} /><Metric label="Covered" value={summary.covered} tone="success" /><Metric label="Partial" value={summary.partial} tone="warning" /><Metric label="Uncovered" value={summary.uncovered} tone="failed" /></div>
 
     {loading && !requirements.length ? <div className="grid gap-3 lg:grid-cols-4"><Skeleton className="h-96" /><Skeleton className="h-96" /><Skeleton className="h-96" /><Skeleton className="h-96" /></div> : <div className="overflow-x-auto rounded-xl border border-border/70 bg-card p-3"><div className="grid min-w-[1120px] grid-cols-4 gap-3">
-      <TraceLane title="Requirements" count={visibleRequirements.length} icon={Route}>{visibleRequirements.map(requirement => { const state = coverageState(requirement); const config = stateStyle[state]; const Icon = config.icon; return <button key={requirement.id} type="button" onClick={() => setSelectedRequirementId(requirement.id)} className={cn('qa-interactive w-full rounded-lg border p-3 text-left', config.className, selectedRequirementId === requirement.id ? 'qa-selected-row bg-primary/5' : 'hover:bg-secondary/50')}><span className="flex items-start justify-between gap-2"><span className="font-mono text-xs font-bold text-primary">{requirement.key}</span><Badge variant={config.badge} className="gap-1 text-xs"><Icon className="size-3" />{config.label}</Badge></span><span className="mt-1 block truncate text-xs font-semibold">{requirement.title}</span><span className="mt-2 block text-xs text-muted-foreground">{requirement._count?.testCases || 0} cases · {requirement._count?.testPlans || 0} plans</span></button>; })}{!visibleRequirements.length && <EmptyLane text="Tidak ada gap coverage." />}</TraceLane>
-      <TraceLane title="Test Cases" count={selectedRequirement?.testCases.length || 0} icon={ListChecks}>{selectedRequirement?.testCases.map(({ testCase }) => <button key={testCase.id} type="button" onClick={() => navigate('testcases', { entityType: 'TestCase', entityId: testCase.id })} className="qa-interactive w-full rounded-lg border border-border/70 p-3 text-left hover:border-primary/30 hover:bg-secondary/50"><span className="flex items-center justify-between gap-2"><span className="font-mono text-xs font-semibold text-primary">{testCase.testCaseId}</span><Badge variant={testCase.status === 'FAILED' ? 'failed' : testCase.status === 'BLOCKED' ? 'blocked' : 'outline'} className="text-xs">{testCase.status}</Badge></span><span className="mt-1 block truncate text-xs text-muted-foreground">{testCase.page}</span></button>)}{selectedRequirement && !selectedRequirement.testCases.length && <EmptyLane text="Requirement belum memiliki testcase." />}</TraceLane>
-      <TraceLane title="Test Plans" count={linkedPlans.length} icon={GitBranch}>{linkedPlans.map(plan => <button key={plan.id} type="button" onClick={() => setSelectedPlanId(plan.id)} className="qa-interactive w-full rounded-lg border border-border/70 p-3 text-left hover:border-primary/30 hover:bg-secondary/50"><span className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{plan.name}</span><Badge variant="outline" className="text-xs">{plan.status}</Badge></span><span className="mt-2 block text-xs text-muted-foreground">{plan.testRuns.length} Test Runs</span></button>)}{selectedRequirement && !linkedPlans.length && <EmptyLane text="Requirement belum masuk Test Plan." />}</TraceLane>
-      <TraceLane title="Test Runs" count={linkedRuns.length} icon={CheckCircle2}>{linkedRuns.map(run => <button key={run.id} type="button" onClick={() => navigate('testRuns', { entityType: 'TestRun', entityId: run.id, testRunId: run.id })} className="qa-interactive w-full rounded-lg border border-border/70 p-3 text-left hover:border-primary/30 hover:bg-secondary/50"><span className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{run.name}</span><Badge variant={run.status === 'COMPLETED' ? 'success' : run.status === 'IN PROGRESS' ? 'inprogress' : 'outline'} className="text-xs">{run.status}</Badge></span><span className="mt-2 block truncate text-xs text-muted-foreground">{run.planName}</span></button>)}{selectedRequirement && !linkedRuns.length && <EmptyLane text="Belum ada execution cycle." />}</TraceLane>
+      <TraceLane title="Requirements" count={visibleRequirements.length} icon={Route}>{visibleRequirements.map(requirement => { const state = coverageState(requirement); const config = stateStyle[state]; const Icon = config.icon; return <button key={requirement.id} type="button" onClick={() => setSelectedRequirementId(requirement.id)} className={cn('qa-interactive w-full rounded-lg border p-3 text-left transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none', config.className, selectedRequirementId === requirement.id ? 'qa-selected-row bg-primary/5' : 'hover:bg-secondary/50')}><span className="flex items-start justify-between gap-2"><span className="font-mono text-xs font-bold text-primary">{requirement.key}</span><Badge variant={config.badge} className="gap-1 text-xs"><Icon className="size-3" />{config.label}</Badge></span><span className="mt-1 block truncate text-xs font-semibold">{requirement.title}</span><span className="mt-2 block font-mono text-xs text-muted-foreground">{requirement._count?.testCases || 0} cases · {requirement._count?.testPlans || 0} plans</span></button>; })}{!visibleRequirements.length && <EmptyLane text="Tidak ada gap coverage." />}</TraceLane>
+      <TraceLane title="Test Cases" count={selectedRequirement?.testCases.length || 0} icon={ListChecks}>{!selectedRequirement ? <EmptyLane text="Pilih Requirement di sebelah kiri untuk melihat relasi test case." /> : selectedRequirement.testCases.map(({ testCase }) => <button key={testCase.id} type="button" onClick={() => navigate('testcases', { entityType: 'TestCase', entityId: testCase.id })} className="qa-interactive w-full rounded-lg border border-border/70 p-3 text-left hover:border-primary/30 hover:bg-secondary/50 transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"><span className="flex items-center justify-between gap-2"><span className="font-mono text-xs font-semibold text-primary">{testCase.testCaseId}</span><Badge variant={testCase.status === 'FAILED' ? 'failed' : testCase.status === 'BLOCKED' ? 'blocked' : 'outline'} className="text-xs">{testCase.status}</Badge></span><span className="mt-1 block truncate text-xs text-muted-foreground">{testCase.page}</span></button>)}{selectedRequirement && !selectedRequirement.testCases.length && <EmptyLane text="Requirement belum memiliki testcase." />}</TraceLane>
+      <TraceLane title="Test Plans" count={linkedPlans.length} icon={GitBranch}>{!selectedRequirement ? <EmptyLane text="Pilih Requirement untuk melihat Test Plan terkait." /> : linkedPlans.map(plan => <button key={plan.id} type="button" onClick={() => setSelectedPlanId(plan.id)} className="qa-interactive w-full rounded-lg border border-border/70 p-3 text-left hover:border-primary/30 hover:bg-secondary/50 transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"><span className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{plan.name}</span><Badge variant="outline" className="text-xs">{plan.status}</Badge></span><span className="mt-2 block font-mono text-xs text-muted-foreground">{plan.testRuns.length} Test Runs</span></button>)}{selectedRequirement && !linkedPlans.length && <EmptyLane text="Requirement belum masuk Test Plan." />}</TraceLane>
+      <TraceLane title="Test Runs" count={linkedRuns.length} icon={CheckCircle2}>{!selectedRequirement ? <EmptyLane text="Pilih Requirement untuk melihat siklus eksekusi." /> : linkedRuns.map(run => <button key={run.id} type="button" onClick={() => navigate('testRuns', { entityType: 'TestRun', entityId: run.id, testRunId: run.id })} className="qa-interactive w-full rounded-lg border border-border/70 p-3 text-left hover:border-primary/30 hover:bg-secondary/50 transition-all duration-150 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"><span className="flex items-center justify-between gap-2"><span className="truncate text-xs font-semibold">{run.name}</span><Badge variant={run.status === 'COMPLETED' ? 'success' : run.status === 'IN PROGRESS' ? 'inprogress' : 'outline'} className="text-xs">{run.status}</Badge></span><span className="mt-2 block truncate text-xs text-muted-foreground">{run.planName}</span></button>)}{selectedRequirement && !linkedRuns.length && <EmptyLane text="Belum ada execution cycle." />}</TraceLane>
     </div></div>}
 
     </>}
@@ -212,7 +242,12 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
         <div className="flex flex-col gap-6 p-5">
           <ManageSection title="Requirement baru"><Input value={requirementKey} onChange={event => setRequirementKey(event.target.value)} placeholder="REQ-001" /><Input value={requirementTitle} onChange={event => setRequirementTitle(event.target.value)} placeholder="Judul requirement" /><Textarea value={requirementDescription} onChange={event => setRequirementDescription(event.target.value)} placeholder="Deskripsi" /><Button onClick={() => void createRequirement()} disabled={!requirementKey.trim() || !requirementTitle.trim()}><Plus data-icon="inline-start" />Buat Requirement</Button></ManageSection>
           <ManageSection title="Test Plan baru"><Input value={planName} onChange={event => setPlanName(event.target.value)} placeholder="Regression v1.2" /><Textarea value={planDescription} onChange={event => setPlanDescription(event.target.value)} placeholder="Deskripsi Test Plan" /><Button onClick={() => void createPlan()} disabled={!planName.trim()}><Plus data-icon="inline-start" />Buat Test Plan</Button></ManageSection>
-          <ManageSection title="Hubungkan requirement ke testcase"><TraceSelect value={selectedRequirementId} placeholder="Pilih requirement" onChange={setSelectedRequirementId} items={requirements.map(item => ({ value: item.id, label: `${item.key} — ${item.title}` }))} /><TraceSelect value={selectedCaseId} placeholder="Pilih testcase" onChange={setSelectedCaseId} items={testCases.map(item => ({ value: item.id, label: `${item.testCaseId} — ${item.page}` }))} /><Button onClick={() => void linkCase()} disabled={!selectedRequirementId || !selectedCaseId}><Link2 data-icon="inline-start" />Buat relasi testcase</Button></ManageSection>
+          <ManageSection title="Hubungkan requirement ke testcase"><TraceSelect value={selectedRequirementId} placeholder="Pilih requirement" onChange={setSelectedRequirementId} items={requirements.map(item => ({ value: item.id, label: `${item.key}: ${item.title}` }))} />
+            <Input aria-label="Cari testcase untuk relasi" placeholder="Cari ID, halaman, atau aksi testcase…" value={caseSearch} onChange={event => { setCaseSearch(event.target.value); setCasePage(1); setSelectedCaseId(''); }} />
+            {caseError && <p role="alert" className="text-sm text-destructive">{caseError}</p>}
+            <TraceSelect value={selectedCaseId} placeholder={caseLoading || !caseOptionsReady ? 'Memuat testcase…' : 'Pilih testcase'} onChange={setSelectedCaseId} items={caseOptionsReady ? testCases.map(item => ({ value: item.id, label: `${item.testCaseId} - ${item.page}` })) : []} />
+            <div className="flex flex-wrap items-center justify-between gap-2"><Button size="sm" variant="outline" disabled={caseLoading || !caseOptionsReady || casePage <= 1} onClick={() => { setCasePage(value => value - 1); setSelectedCaseId(''); }}>Sebelumnya</Button><span className="text-sm text-muted-foreground" role="status">{caseLoading || !caseOptionsReady ? 'Memuat…' : `Halaman ${casePage} dari ${casePages}`}</span><Button size="sm" variant="outline" disabled={caseLoading || !caseOptionsReady || casePage >= casePages} onClick={() => { setCasePage(value => value + 1); setSelectedCaseId(''); }}>Berikutnya</Button></div>
+            <Button onClick={() => void linkCase()} disabled={caseLoading || !caseOptionsReady || Boolean(caseError) || !selectedRequirementId || !selectedCaseId}><Link2 data-icon="inline-start" />Buat relasi testcase</Button></ManageSection>
           <ManageSection title="Hubungkan requirement ke Test Plan"><TraceSelect value={selectedPlanId} placeholder="Pilih Test Plan" onChange={setSelectedPlanId} items={testPlans.map(item => ({ value: item.id, label: item.name }))} /><Button onClick={() => void linkRequirement()} disabled={!selectedPlanId || !selectedRequirementId}><Link2 data-icon="inline-start" />Buat relasi Test Plan</Button></ManageSection>
         </div>
       </SheetContent>
@@ -222,7 +257,7 @@ export function TraceabilityPanel({ projectId }: { projectId: string }) {
       <SheetContent side="right" className="qa-module-form w-full overflow-y-auto p-0 sm:max-w-xl">
         <SheetHeader className="border-b border-border p-5"><SheetTitle>Manage Relations</SheetTitle><SheetDescription>Edit requirement dan kelola relasi yang sudah terhubung. Pembuatan relasi baru tersedia melalui tombol “Buat Relation”.</SheetDescription></SheetHeader>
         <div className="flex flex-col gap-6 p-5">
-          <ManageSection title="Pilih requirement yang akan dikelola"><TraceSelect value={selectedRequirementId} placeholder="Pilih requirement" onChange={setSelectedRequirementId} items={requirements.map(item => ({ value: item.id, label: `${item.key} — ${item.title}` }))} /></ManageSection>
+          <ManageSection title="Pilih requirement yang akan dikelola"><TraceSelect value={selectedRequirementId} placeholder="Pilih requirement" onChange={setSelectedRequirementId} items={requirements.map(item => ({ value: item.id, label: `${item.key}: ${item.title}` }))} /></ManageSection>
           {selectedRequirement && <>
             <ManageSection title="Edit data requirement"><Input value={editRequirementKey} onChange={event => setEditRequirementKey(event.target.value)} placeholder="REQ-001" /><Input value={editRequirementTitle} onChange={event => setEditRequirementTitle(event.target.value)} placeholder="Judul requirement" /><Textarea value={editRequirementDescription} onChange={event => setEditRequirementDescription(event.target.value)} placeholder="Deskripsi" /><Button onClick={() => void saveRequirement()} disabled={!editRequirementKey.trim() || !editRequirementTitle.trim()}><PencilLine data-icon="inline-start" />Simpan perubahan</Button></ManageSection>
             <ManageSection title={`Testcase terhubung (${selectedRequirement.testCases.length})`}>
@@ -245,7 +280,7 @@ function TraceLane({ title, count, icon: Icon, children }: { title: string; coun
 }
 
 function EmptyLane({ text }: { text: string }) { return <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-border px-4 text-center text-sm leading-6 text-muted-foreground">{text}</div>; }
-function Metric({ label, value, tone }: { label: string; value: number; tone?: 'success' | 'warning' | 'failed' }) { return <Card padding="none" className="border-border bg-card shadow-none"><CardContent className="p-4"><p className="qa-module-meta">{label}</p><p className={cn('mt-2 text-2xl font-semibold tabular-nums', tone === 'success' && 'text-status-passed', tone === 'warning' && 'text-status-blocked', tone === 'failed' && 'text-status-failed')}>{value}</p></CardContent></Card>; }
+function Metric({ label, value, tone }: { label: string; value: number; tone?: 'success' | 'warning' | 'failed' }) { return <Card padding="none" className="border-border bg-card shadow-none"><CardContent className="p-4"><p className="qa-module-meta">{label}</p><p className={cn('mt-2 text-2xl font-semibold font-mono tabular-nums', tone === 'success' && 'text-status-passed', tone === 'warning' && 'text-status-blocked', tone === 'failed' && 'text-status-failed')}>{value}</p></CardContent></Card>; }
 function ManageSection({ title, children }: { title: string; children: React.ReactNode }) { return <section className="flex flex-col gap-3 border-b border-border pb-6 last:border-b-0 last:pb-0"><h3 className="qa-module-heading">{title}</h3>{children}</section>; }
 function RelationRow({ title, description, onRemove }: { title: string; description?: string | null; onRemove: () => void }) { return <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-secondary/20 p-3"><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{title}</p>{description && <p className="mt-0.5 truncate text-xs text-muted-foreground">{description}</p>}</div><Button type="button" variant="ghost" size="sm" className="shrink-0 text-destructive hover:text-destructive" onClick={onRemove}><Unlink data-icon="inline-start" />Lepas</Button></div>; }
 function TraceSelect({ value, placeholder, onChange, items }: { value: string; placeholder: string; onChange: (value: string) => void; items: Array<{ value: string; label: string }> }) { return <Select value={value || 'none'} onValueChange={next => onChange(next === 'none' ? '' : next)}><SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger><SelectContent><SelectItem value="none">{placeholder}</SelectItem>{items.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>; }

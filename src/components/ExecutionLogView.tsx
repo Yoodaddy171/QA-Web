@@ -20,6 +20,7 @@ import {
   type LogEntry,
 } from '@/components/TestCaseDetailDialog.helpers';
 import { cn } from '@/lib/utils';
+import { VirtualLogList } from '@/components/VirtualLogList';
 
 type ExecutionLogViewProps = {
   stepLogs?: string | null;
@@ -29,6 +30,7 @@ type ExecutionLogViewProps = {
   formatLogTime?: (log: LogEntry) => string;
   onSelectLog?: (log: LogEntry) => void;
   compact?: boolean;
+  selectedLogId?: string | null;
   evidenceLogs?: LogEntry[];
 };
 
@@ -50,6 +52,7 @@ export function ExecutionLogView({
   formatLogTime,
   onSelectLog,
   compact = false,
+  selectedLogId,
   evidenceLogs = [],
 }: ExecutionLogViewProps) {
   const [raw, setRaw] = useState(false);
@@ -65,12 +68,13 @@ export function ExecutionLogView({
         <button type="button" aria-pressed={raw} onClick={() => setRaw(!raw)} className="min-h-9 rounded px-2 text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring">{raw ? 'Tampilkan ringkasan' : 'Tampilkan semua event'}</button>
       </div>}
       {logs.length > 0 ? (
-        timeline.rows.map(({ log, count, derivedTime, late, network }, index) => {
+        <VirtualLogList items={timeline.rows} estimate={88} itemKey={(row, index) => row.log.eventId || row.log.id || String(index)}>{({ log, count, derivedTime, late, network }, index) => {
           const interaction = getExecutionInteraction(log);
           const interactionType = String(interaction?.type || log.eventType || 'step').toLowerCase();
           const Icon = interactionIcons[interactionType] || Clock;
           const message = getExecutionLogText(log);
           const isLifecycle = log.eventType === 'run.started' || log.eventType === 'run.finished';
+          const selected = Boolean(selectedLogId && selectedLogId === (log.eventId || log.id));
 
           return (
             <div key={log.eventId || log.id || `${index}-${message}`} className="border-b border-border pb-2">
@@ -80,9 +84,11 @@ export function ExecutionLogView({
               className={cn(
                 'group grid w-full grid-cols-[32px_minmax(0,1fr)] items-start gap-3 rounded-lg bg-background px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-ring dark:hover:bg-secondary/50',
                 isLifecycle && 'border-teal-200 bg-teal-50/60 dark:border-teal-500/20 dark:bg-teal-950/20',
+                selected && 'ring-1 ring-inset ring-indigo-300 bg-indigo-50 dark:ring-indigo-500/40 dark:bg-indigo-950/30',
                 !onSelectLog && 'cursor-default'
               )}
               disabled={!onSelectLog || log.relativeMs === undefined}
+              aria-pressed={onSelectLog ? selected : undefined}
               title={log.relativeMs === undefined ? 'Tidak ada waktu untuk sinkronisasi video' : 'Pilih aktivitas dan arahkan rekaman ke waktu ini (jika tersedia)'}
               onClick={() => onSelectLog?.(log)}
             >
@@ -116,7 +122,7 @@ export function ExecutionLogView({
             </details>}
             </div>
           );
-        })
+        }}</VirtualLogList>
       ) : fallbackLines.length > 0 ? (
         fallbackLines.map((line, index) => {
           const normalized = line.toLowerCase();

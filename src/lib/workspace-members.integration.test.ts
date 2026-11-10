@@ -45,6 +45,20 @@ async function secondOwner() {
 }
 const patch = (actor: Alias, input: unknown) => dispatch(request(actor, 'PATCH', input), members.PATCH);
 const remove = (actor: Alias, id: string) => dispatch(request(actor, 'DELETE', undefined, `?membershipId=${encodeURIComponent(id)}`), members.DELETE);
+function streamedDelete(actor: Alias, id: string, payload?: string) {
+  const original = request(actor, 'DELETE', undefined, `?membershipId=${encodeURIComponent(id)}`);
+  // The Next HTTP adapter can supply a stream even when the request carried zero bytes.
+  return dispatch(new NextRequest(original.url, {
+    method: 'DELETE',
+    headers: original.headers,
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        if (payload) controller.enqueue(new TextEncoder().encode(payload));
+        controller.close();
+      },
+    }),
+  }), members.DELETE);
+}
 
 beforeAll(async () => {
   await fs.writeFile(path.join(fixture.root, 'synthetic.db'), '');
@@ -82,7 +96,7 @@ it('MEM-EDIT: omitted or empty password retains existing hash and sessions', asy
 it('MEM-DELETE: second owner is removed, its last-workspace account disabled and session revoked', async () => {
   const target = await secondOwner();
   await db.activityHistory.create({ data: { projectId: data.resources.a.project.id, entityType: 'TestCase', entityId: data.resources.a.tc.id, action: 'UPDATED', actorUserId: target.user.id, actor: 'Second Owner' } });
-  const result = await remove('owner', target.id);
+  const result = await streamedDelete('owner', target.id);
   expect(result.status).toBe(200); expect(await result.json()).toMatchObject({ deleted: 1, accountDisabled: true });
   expect(await db.workspaceMembership.findUnique({ where: { id: target.id } })).toBeNull();
   expect((await db.user.findUniqueOrThrow({ where: { id: target.user.id } })).disabledAt).not.toBeNull();
@@ -91,6 +105,13 @@ it('MEM-DELETE: second owner is removed, its last-workspace account disabled and
   expect(login.status).toBe(401);
   expect(await db.activityHistory.count({ where: { actorUserId: target.user.id, entityType: 'TestCase' } })).toBe(1);
   expect(await db.testCase.count()).toBe(3);
+});
+it('MEM-DELETE: rejects a headerless nonempty stream and keeps the member', async () => {
+  const target = await membership('qa');
+  const result = await streamedDelete('owner', target.id, 'unexpected payload');
+  expect(result.status).toBe(415);
+  expect(await db.workspaceMembership.findUnique({ where: { id: target.id } })).not.toBeNull();
+  expect(await getSessionByToken(data.actors.qa.token)).not.toBeNull();
 });
 it('MEM-OWNER: final active owner cannot be deleted or demoted, but can edit its name', async () => {
   const target = await membership('owner');

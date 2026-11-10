@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MutationAction } from '@/components/WorkspaceAccess';
 import { useCommittedActions } from '@/hooks/use-committed-actions';
-import { createPortal } from 'react-dom';
 import {
   AlertTriangle, Bot, Bug, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock, Code2, Copy, Edit3, Film, HelpCircle, History,
   FileDown, Filter, Globe2, Layers, Link2, ListChecks, Loader2, Maximize2, MessageSquare, Minus, MonitorDot, Paperclip, Play, PlayCircle, Plus, RefreshCw, Search, Sparkles, Square, Trash2, UserRound, Wrench, X
@@ -29,6 +28,7 @@ import {
   filterVideoEventsByCategory,
   formatVideoEventDetail,
   getNearestVideoEvent,
+  getVideoEventOffsetMs,
   groupVideoEventMarkers,
   type SyncedVideoEvent,
   type VideoEventFilterKey,
@@ -51,15 +51,23 @@ import { ExecutionLogView } from '@/components/ExecutionLogView';
 import { ConsoleLogView } from '@/components/ConsoleLogView';
 import { NetworkLogView } from '@/components/NetworkLogView';
 import { SystemDevLogFullscreen } from '@/components/SystemDevLogFullscreen';
+import { DevlogFullscreenDialog } from '@/components/DevlogFullscreenDialog';
 import { SyncedVideoEventsPanel } from '@/components/SyncedVideoEventsPanel';
 import { RecordingVideoPanel } from '@/components/RecordingVideoPanel';
 import { RecordingEvidencePanel } from '@/components/RecordingEvidencePanel';
 import { DevLogGuide } from '@/components/DevLogGuide';
 import { PlaywrightScriptPanel, scriptArtifactUrl, type ScriptRun } from '@/components/PlaywrightScriptPanel';
 import type { AutomationLogEntry } from '@/hooks/useAutomationLogs';
+import { clampRecordingSeek, recordingSeekDelta } from '@/lib/client/automation/recording-shortcuts';
+import { recordingResumeMs } from '@/lib/client/automation/recording-review';
+import { createDevtoolsNetworkPredicate, DEFAULT_DEVTOOLS_NETWORK_FILTERS, type DevtoolsNetworkFilterState } from '@/lib/client/automation/devtools-network';
+import { DEFAULT_DEVTOOLS_CONSOLE_LEVELS, type DevtoolsConsoleLevel } from '@/lib/client/automation/devtools-console';
+import { useRecordingLayout } from '@/hooks/use-recording-layout';
+import { detailTab, detailTestCaseId, isBugDetail } from '@/lib/client/testcase-detail-identity';
 
 import {
-  DEFAULT_NETWORK_FILTERS,
+  BulletTextView,
+  dedupeNetworkLogs,
   escapeHtml,
   formatDateTime,
   formatPrettyValue,
@@ -72,19 +80,16 @@ import {
   getManualVideoUrl,
   getNetworkCategoryClass,
   getNetworkMeta,
+  getNetworkRequestKey,
+  getRequestHeaders,
   getRequestPayload,
   getResponsePayload,
-  getStatusBucket,
   groupConsoleLogs,
-  groupNetworkLogs,
   networkCodePanelClass,
   networkFullscreenCodePanelClass,
   normalizedLogRelativeMs,
   type DevLogTab,
-  type FullscreenLogFilter,
   type LogEntry,
-  type NetworkCategory,
-  type NetworkFilterState,
   type NetworkMeta,
   type SelectedFullscreenLog,
 } from '@/components/TestCaseDetailDialog.helpers';
@@ -203,25 +208,35 @@ export function TestCaseDetailDialog({
   testCaseList,
   onNavigate,
 }: TestCaseDetailDialogProps) {
-  const [activeMainTab, setActiveMainTab] = useState('details');
+  const [requestedMainTab, setActiveMainTab] = useState('details');
+  const isBugFixDetail = isBugDetail(viewTestCase);
+  const sourceTestCaseId = detailTestCaseId(viewTestCase);
+  const activeMainTab = detailTab(requestedMainTab, isBugFixDetail);
+  const automationScrollRef = useRef<HTMLDivElement>(null);
+  const [automationModeState, setAutomationModeState] = useState<{ testCaseId: string; mode: 'results' | 'script' | 'capture' } | null>(null);
+  const automationMode = automationModeState && automationModeState.testCaseId === sourceTestCaseId ? automationModeState.mode : 'results';
+  const showAutomationMode = (mode: 'results' | 'script' | 'capture') => {
+    setAutomationModeState({ testCaseId: sourceTestCaseId, mode });
+    automationScrollRef.current?.scrollTo({ top: 0 });
+  };
   const { guest, canAdmin } = useWorkspaceAccess();
-  const [scriptSelection, setScriptSelection] = useState<{ testCaseId: string; runId: string; artifactId?: string; logs: AutomationLogEntry[]; recording: ManualRecordingMeta | null } | null>(null);
+  const [scriptSelection, setScriptSelection] = useState<{ testCaseId: string; runId: string; startedAt?: string; artifactId?: string; logs: AutomationLogEntry[]; recording: ManualRecordingMeta | null } | null>(null);
   const [scriptDraftState, setScriptDraftState] = useState<{ testCaseId: string; dirty: boolean } | null>(null);
-  const hasUnsavedScript = scriptDraftState?.testCaseId === viewTestCase?.id && scriptDraftState?.dirty;
-  const setHasUnsavedScript = useCallback((dirty: boolean) => setScriptDraftState({ testCaseId: viewTestCase?.id || '', dirty }), [viewTestCase?.id]);
-  const selectedScript = scriptSelection?.testCaseId === viewTestCase?.id ? scriptSelection : null;
+  const hasUnsavedScript = scriptDraftState?.testCaseId === sourceTestCaseId && scriptDraftState?.dirty;
+  const setHasUnsavedScript = useCallback((dirty: boolean) => setScriptDraftState({ testCaseId: sourceTestCaseId, dirty }), [sourceTestCaseId]);
+  const selectedScript = scriptSelection?.testCaseId === sourceTestCaseId ? scriptSelection : null;
   const liveLogs: LogEntry[] = selectedScript?.logs || captureLiveLogs;
   const manualRecording = selectedScript ? selectedScript.recording : captureRecording;
   const inspectScriptRun = (run: ScriptRun, logs: AutomationLogEntry[], artifactId?: string, activate = false) => {
     if (!viewTestCase) return;
     setScriptSelection(previous => {
-      if (!activate && (previous?.runId !== run.runId || previous.testCaseId !== viewTestCase.id)) return previous;
+      if (!activate && (previous?.runId !== run.runId || previous.testCaseId !== sourceTestCaseId)) return previous;
       const selectedId = artifactId || (previous?.runId === run.runId ? previous.artifactId : undefined);
       const video = run.artifacts.find(item => item.id === selectedId && item.kind === 'video') || run.artifacts.find(item => item.kind === 'video');
       const videoStart = video?.startedAtRelativeMs ?? logs.find(item => item.event === 'video.started')?.relativeMs;
-      return { testCaseId: viewTestCase.id, runId: run.runId, artifactId: video?.id, logs,
-        recording: video ? { mode: 'video', sessionId: run.runId, testCaseId: viewTestCase.id, targetUrl: 'Playwright script', startedAt: run.startedAt || run.createdAt,
-          stoppedAt: run.endedAt, frameIntervalMs: 0, status: 'stopped', frames: [], video: { file: video.name, url: scriptArtifactUrl(viewTestCase.projectId, viewTestCase.id, run.runId, video.id), mimeType: 'video/webm', status: 'ready', startedAtRelativeMs: videoStart || 0, durationMs: run.durationMs, sizeBytes: video.size } } : null };
+      return { testCaseId: sourceTestCaseId, runId: run.runId, startedAt: run.startedAt || run.createdAt, artifactId: video?.id, logs,
+        recording: video ? { mode: 'video', sessionId: run.runId, testCaseId: sourceTestCaseId, targetUrl: 'Playwright script', startedAt: run.startedAt || run.createdAt,
+          stoppedAt: run.endedAt, frameIntervalMs: 0, status: 'stopped', frames: [], video: { file: video.name, url: scriptArtifactUrl(viewTestCase.projectId, sourceTestCaseId, run.runId, video.id), mimeType: 'video/webm', status: 'ready', startedAtRelativeMs: videoStart || 0, durationMs: run.durationMs, sizeBytes: video.size } } : null };
     });
   };
   useEffect(() => {
@@ -242,6 +257,7 @@ export function TestCaseDetailDialog({
   if (previousOpen !== open) {
     setPreviousOpen(open);
     setContentReady(false);
+    if (open) setAutomationModeState(null);
   }
   useEffect(() => {
     if (!open) return;
@@ -257,6 +273,7 @@ export function TestCaseDetailDialog({
     return () => { canceled = true; cancelAnimationFrame(frame); };
   }, [open]);
   const [expandedGuide, setExpandedGuide] = useState<'automation' | 'manual' | null>(null);
+  const horizontalLayout = useRecordingLayout('horizontal', [58, 42]);
   const [manualCaptureBrowserMode, setManualCaptureBrowserMode] = useState<ManualCaptureBrowserMode>('clean');
   const [manualCaptureMode, setManualCaptureMode] = useState<ManualCaptureMode>('frame');
   const [recordingSeekMs, setRecordingSeekMs] = useState(0);
@@ -264,18 +281,25 @@ export function TestCaseDetailDialog({
   const [recordingSeekApprox, setRecordingSeekApprox] = useState(false);
   const [recordingZoom, setRecordingZoom] = useState(1);
   const [isRecordingFullscreen, setIsRecordingFullscreen] = useState(false);
-  const [isRecordingFullscreenExpanded, setIsRecordingFullscreenExpanded] = useState(false);
-  const [isRecordingFullscreenContentVisible, setIsRecordingFullscreenContentVisible] = useState(false);
-  const [isClosingRecordingFullscreen, setIsClosingRecordingFullscreen] = useState(false);
   const [isSystemDevLogFullscreen, setIsSystemDevLogFullscreen] = useState(false);
   const [selectedSystemDevLogId, setSelectedSystemDevLogId] = useState<string | null>(null);
   const [networkCodeWrap, setNetworkCodeWrap] = useState(true);
-  const [networkFilters, setNetworkFilters] = useState<NetworkFilterState>(DEFAULT_NETWORK_FILTERS);
-  const [fullscreenLogFilter, setFullscreenLogFilter] = useState<FullscreenLogFilter>('all');
+  const [networkFilters, setNetworkFilters] = useState<DevtoolsNetworkFilterState>(DEFAULT_DEVTOOLS_NETWORK_FILTERS);
+  const [consoleQuery, setConsoleQuery] = useState('');
+  const [consoleLevels, setConsoleLevels] = useState<DevtoolsConsoleLevel[]>(() => [...DEFAULT_DEVTOOLS_CONSOLE_LEVELS]);
   const [selectedFullscreenLog, setSelectedFullscreenLog] = useState<SelectedFullscreenLog>(null);
   const [selectedSyncedEventId, setSelectedSyncedEventId] = useState<string | null>(null);
   const [syncedEventFilters, setSyncedEventFilters] = useState(DEFAULT_VIDEO_EVENT_FILTERS);
   const [syncedNetworkLogIds, setSyncedNetworkLogIds] = useState<string[]>([]);
+  const [isFollowingRecording, setIsFollowingRecording] = useState(true);
+  const followRecordingRef = useRef(true);
+  const pauseRecordingFollow = () => { followRecordingRef.current = false; setIsFollowingRecording(false); };
+  const resumeRecordingFollow = () => {
+    followRecordingRef.current = true;
+    setIsFollowingRecording(true);
+    const row = fullscreenNetworkRowRefs.current.get(syncedNetworkLogIds[0]);
+    row?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+  };
   const [copiedEvidence, setCopiedEvidence] = useState(false);
   const [hasUnsavedComment, setHasUnsavedComment] = useState(false);
   const recordingViewportRef = useRef<HTMLDivElement>(null);
@@ -284,7 +308,8 @@ export function TestCaseDetailDialog({
   const fullscreenNetworkRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const fullscreenTimelineRef = useRef<HTMLDivElement>(null);
   const recordingPanRef = useRef({ active: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
-  const recordingFullscreenTimerRef = useRef<number | null>(null);
+  const recordingFullscreenWanted = useRef(false);
+  const ownsBrowserFullscreen = useRef(false);
   // Live capture continues in the hook. Transform its buffered data only when
   // the Automation UI is visible; overview/history do not need recording work.
   const visibleLogs = open && contentReady && activeMainTab === 'logs' ? liveLogs : EMPTY_LOGS;
@@ -295,77 +320,50 @@ export function TestCaseDetailDialog({
     if (!testCaseList?.length || !viewTestCase) return -1;
     return testCaseList.findIndex(tc => tc.id === viewTestCase.id);
   }, [testCaseList, viewTestCase]);
+
+  useEffect(() => {
+    if (!open || !testCaseList?.length || !onNavigate) return;
+    const handleKeyNav = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.closest('[role="dialog"]') !== inspectorSurface.current?.closest('[role="dialog"]'))
+      ) {
+        return;
+      }
+      if (event.key === '[' && navigationIndex > 0) {
+        event.preventDefault();
+        onNavigate(testCaseList[navigationIndex - 1]);
+      } else if (event.key === ']' && navigationIndex >= 0 && navigationIndex < testCaseList.length - 1) {
+        event.preventDefault();
+        onNavigate(testCaseList[navigationIndex + 1]);
+      }
+    };
+    window.addEventListener('keydown', handleKeyNav);
+    return () => window.removeEventListener('keydown', handleKeyNav);
+  }, [open, testCaseList, navigationIndex, onNavigate]);
   const rawNetworkLogs = useMemo(() => (
-    visibleLogs.filter((log) => log.isNetwork || Boolean(log.network))
+    dedupeNetworkLogs(visibleLogs.filter((log) => log.isNetwork || Boolean(log.network)))
   ), [visibleLogs]);
   const networkLogItems = useMemo(() => (
     rawNetworkLogs
       .filter((log): log is LogEntry & { network: NonNullable<LogEntry['network']> } => Boolean(log.network))
       .map((log) => ({ log, meta: getNetworkMeta(log.network) }))
   ), [rawNetworkLogs]);
-  const networkHosts = useMemo(() => (
-    Array.from(new Set(networkLogItems.map((item) => item.meta.host))).filter(Boolean).sort()
-  ), [networkLogItems]);
-  const networkMethods = useMemo(() => (
-    Array.from(new Set(networkLogItems.map((item) => item.meta.method))).filter(Boolean).sort()
-  ), [networkLogItems]);
-  const networkCategoryCounts = useMemo(() => (
-    networkLogItems.reduce<Record<NetworkCategory, number>>((counts, item) => {
-      counts[item.meta.category] += 1;
-      return counts;
-    }, { business: 0, preflight: 0, document: 0, script: 0, image: 0, static: 0, telemetry: 0, data: 0, other: 0 })
-  ), [networkLogItems]);
-  const networkLogs = useMemo(() => {
-    const query = networkFilters.search.trim().toLowerCase();
-
-    return networkLogItems.filter(({ log, meta }) => {
-      const statusBucket = getStatusBucket(log.network.status);
-      const categoryVisible = meta.isError ||
-        meta.category === 'business' ||
-        (meta.category === 'preflight' && networkFilters.showPreflight) ||
-        (meta.category === 'document' && networkFilters.showDocument) ||
-        (meta.category === 'script' && networkFilters.showScript) ||
-        (meta.category === 'image' && networkFilters.showImage) ||
-        (meta.category === 'static' && networkFilters.showStatic) ||
-        (meta.category === 'telemetry' && networkFilters.showTelemetry) ||
-        (meta.category === 'data' && networkFilters.showDataUrls) ||
-        (meta.category === 'other' && networkFilters.showOther);
-
-      if (!categoryVisible) return false;
-      if (networkFilters.host !== 'all' && meta.host !== networkFilters.host) return false;
-      if (networkFilters.method !== 'all' && meta.method !== networkFilters.method) return false;
-      if (networkFilters.status !== 'all' && statusBucket !== networkFilters.status) return false;
-      if (!query) return true;
-
-      return log.network.url.toLowerCase().includes(query) ||
-        meta.host.toLowerCase().includes(query) ||
-        meta.method.toLowerCase().includes(query) ||
-        String(log.network.status ?? '').includes(query);
-    });
-  }, [networkFilters, networkLogItems]);
-  const fullscreenNetworkLogs = useMemo(() => (
-    networkLogs.filter(({ log, meta }) => {
-      if (fullscreenLogFilter === 'errors') {
-        return meta.isError || log.network.success === false;
-      }
-      if (fullscreenLogFilter === 'api') {
-        return meta.category === 'business';
-      }
-      return true;
-    })
-  ), [fullscreenLogFilter, networkLogs]);
-  const groupedNetworkLogs = useMemo(() => groupNetworkLogs(networkLogs), [networkLogs]);
-  const fullscreenNetworkGroups = useMemo(() => groupNetworkLogs(fullscreenNetworkLogs), [fullscreenNetworkLogs]);
-  const fullscreenConsoleLogs = useMemo(() => (
-    consoleLogs.filter((log) => {
-      if (fullscreenLogFilter === 'errors') {
-        const text = String(log.log ?? '').toLowerCase();
-        return log.level === 'SEVERE' || /error|failed|failure|exception|timeout|warn|warning/.test(text);
-      }
-      return true;
-    })
-  ), [consoleLogs, fullscreenLogFilter]);
-  const fullscreenConsoleGroups = useMemo(() => groupConsoleLogs(fullscreenConsoleLogs), [fullscreenConsoleLogs]);
+  const fullscreenNetworkGroups = useMemo(() => networkLogItems.map((item, index) => ({
+    ...item,
+    id: getNetworkRequestKey(item.log) ?? item.log.id ?? `network-request-${index}`,
+    entries: [item],
+    count: 1,
+  })), [networkLogItems]);
+  const groupedNetworkLogs = useMemo(() => {
+    const matches = createDevtoolsNetworkPredicate(networkFilters);
+    return fullscreenNetworkGroups.filter(({ log }) => matches(log.network));
+  }, [fullscreenNetworkGroups, networkFilters]);
+  const fullscreenConsoleGroups = groupedConsoleLogs;
   const selectedSystemNetworkGroup = useMemo(() => (
     selectedSystemDevLogId
       ? fullscreenNetworkGroups.find((group) => `system-network-${group.id}` === selectedSystemDevLogId) ?? null
@@ -382,21 +380,11 @@ export function TestCaseDetailDialog({
       : null
   ), [executionLogs, selectedSystemDevLogId]);
   const networkCodeWhitespaceClass = networkCodeWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre';
-  const hiddenNetworkCount = Math.max(0, networkLogItems.length - networkLogs.length);
-  const isBugFixDetail = viewTestCase?.detailSource === 'bugfix' || Boolean(viewTestCase?.sourceTestCaseId && viewTestCase?.reportedAt);
   const lifecycleItems = useMemo(
     () => viewTestCase ? getBugLifecycleItems(viewTestCase) : [],
     [viewTestCase]
   );
   const lifecycleIndex = viewTestCase ? getLifecycleIndex(viewTestCase.status) : 0;
-  const okLogCount = useMemo(
-    () => liveLogs.filter((log) => !log.network && log.level !== 'SEVERE').length,
-    [liveLogs]
-  );
-  const errorLogCount = useMemo(
-    () => liveLogs.filter((log) => log.level === 'SEVERE').length,
-    [liveLogs]
-  );
   const captureScriptUrl = typeof window !== 'undefined' ? `${window.location.origin}/qa-capture.js` : '/qa-capture.js';
   const captureScriptTag = `<script defer src="${captureScriptUrl}"></script>`;
   const selectedRecordingFrame = useMemo(() => {
@@ -416,16 +404,7 @@ export function TestCaseDetailDialog({
     ? Math.max(0, Math.min(100, manualRecording.video.processingPercent))
     : null;
   const recordingVideoKey = `${manualRecording?.sessionId ?? 'none'}:${manualRecording?.video?.url ?? 'none'}:${manualRecordingVideoStatus ?? 'none'}`;
-  const recordingTimelineBounds = useMemo(() => {
-    const values = visibleLogs
-      .map((log) => normalizedLogRelativeMs(log.relativeMs))
-      .filter((value): value is number => typeof value === 'number');
-    if (!values.length) return { min: 0, max: 0 };
-    return {
-      min: Math.max(0, Math.min(...values) - 10000),
-      max: Math.max(...values),
-    };
-  }, [visibleLogs]);
+  const playbackPosition = useRef({ key: '', ms: 0 });
   const getRecordingVideoDurationMs = () => {
     if (recordingVideoDurationMs?.key === recordingVideoKey && recordingVideoDurationMs.durationMs > 0) {
       return recordingVideoDurationMs.durationMs;
@@ -445,23 +424,26 @@ export function TestCaseDetailDialog({
       measuredDurationMs: recordingVideoDurationMs?.key === recordingVideoKey ? recordingVideoDurationMs.durationMs : undefined,
     })
       .filter((event) => typeof event.clampedOffsetMs === 'number')
-      .slice(0, 80)
   ), [visibleLogs, manualRecording, recordingVideoDurationMs, recordingVideoKey]);
   const filteredSyncedVideoEvents = useMemo(() => (
     filterVideoEventsByCategory(syncedVideoEvents, syncedEventFilters)
   ), [syncedEventFilters, syncedVideoEvents]);
+  const systemReviewEvents = useMemo(() => {
+    const sources = new Set<LogEntry>([...executionLogs, ...fullscreenNetworkGroups.flatMap(group => group.entries.map(entry => entry.log)), ...fullscreenConsoleGroups.flatMap(group => group.entries)]);
+    return filteredSyncedVideoEvents.filter(event => sources.has(event.originalEvent as LogEntry));
+  }, [executionLogs, fullscreenNetworkGroups, fullscreenConsoleGroups, filteredSyncedVideoEvents]);
   const recordingVideoDurationForMarkersMs = getRecordingVideoDurationMs();
+  const eventTimelineWidth = Math.max(600, Math.min(60000, recordingVideoDurationForMarkersMs / 1000 * 24));
   const groupedSyncedVideoMarkers = useMemo(() => (
-    groupVideoEventMarkers(buildVideoEventMarkers(filteredSyncedVideoEvents, recordingVideoDurationForMarkersMs))
-  ), [filteredSyncedVideoEvents, recordingVideoDurationForMarkersMs]);
-  const getLogVideoMs = (log: Pick<LogEntry, 'relativeMs'>) => {
+    groupVideoEventMarkers(buildVideoEventMarkers(filteredSyncedVideoEvents, recordingVideoDurationForMarkersMs), 2400 / eventTimelineWidth)
+  ), [filteredSyncedVideoEvents, recordingVideoDurationForMarkersMs, eventTimelineWidth]);
+  const getLogVideoMs = (log: Pick<LogEntry, 'relativeMs' | 'timestamp'>) => {
     const relativeMs = normalizedLogRelativeMs(log.relativeMs);
     const durationMs = getRecordingVideoDurationMs();
-    if (typeof relativeMs !== 'number') return undefined;
     if (!manualRecording?.video || !hasManualRecordingVideo) return relativeMs;
-    const span = Math.max(1, recordingTimelineBounds.max - recordingTimelineBounds.min);
-    const mapped = Math.max(0, relativeMs - recordingTimelineBounds.min) * durationMs / span;
-    return durationMs > 0 ? Math.min(durationMs, mapped) : mapped;
+    const offset = getVideoEventOffsetMs(log, manualRecording);
+    if (offset === undefined) return undefined;
+    return Math.max(0, Math.min(durationMs || Number.POSITIVE_INFINITY, offset));
   };
   const getVideoRelativeMs = (relativeMs: number) => {
     if (!manualRecording?.video || !hasManualRecordingVideo) return relativeMs;
@@ -482,7 +464,7 @@ export function TestCaseDetailDialog({
   ), [selectedSyncedVideoEvent]);
   const syncedNetworkLogIdSet = useMemo(() => new Set(syncedNetworkLogIds), [syncedNetworkLogIds]);
 
-  const formatLogRecordingTime = (log: Pick<LogEntry, 'relativeMs'>) => (
+  const formatLogRecordingTime = (log: Pick<LogEntry, 'relativeMs' | 'timestamp'>) => (
     formatRelativeTime(hasManualRecordingVideo ? getLogVideoMs(log) : normalizedLogRelativeMs(log.relativeMs))
   );
   const handleRecordingVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
@@ -497,14 +479,20 @@ export function TestCaseDetailDialog({
       const durationMs = Math.round(durationSeconds * 1000);
       setRecordingVideoDurationMs(current => current?.key === recordingVideoKey && current.durationMs === durationMs
         ? current : { key: recordingVideoKey, durationMs });
+      if (video === fullscreenRecordingVideoRef.current || !isRecordingFullscreen) {
+        const resumeMs = recordingResumeMs(playbackPosition.current, recordingVideoKey, durationMs);
+        video.currentTime = resumeMs / 1000;
+        playbackPosition.current = { key: recordingVideoKey, ms: resumeMs };
+        setRecordingSeekMs(resumeMs);
+      }
     }
   };
 
   const seekRecordingFromLog = (log: LogEntry) => {
-    if (typeof log.relativeMs !== 'number') return;
     const targetMs = hasManualRecordingVideo ? getLogVideoMs(log) : log.relativeMs;
     if (typeof targetMs !== 'number') return;
     setRecordingSeekMs(targetMs);
+    playbackPosition.current = { key: recordingVideoKey, ms: targetMs };
     setRecordingSeekApprox(false);
     if (!manualRecording?.video || !hasManualRecordingVideo) return;
     const durationSeconds = getRecordingVideoDurationMs() / 1000;
@@ -519,7 +507,9 @@ export function TestCaseDetailDialog({
 
   const handleFullscreenVideoTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
     if (!manualRecording?.video || !hasManualRecordingVideo) return;
+    if (isRecordingFullscreen && event.currentTarget !== fullscreenRecordingVideoRef.current) return;
     const currentVideoMs = event.currentTarget.currentTime * 1000;
+    playbackPosition.current = { key: recordingVideoKey, ms: currentVideoMs };
     const matchingIds = fullscreenNetworkGroups
       .filter((group) => group.entries.some((entry) => (
         Math.abs((getLogVideoMs(entry.log) ?? Number.POSITIVE_INFINITY) - currentVideoMs) <= 650
@@ -531,8 +521,9 @@ export function TestCaseDetailDialog({
     setRecordingSeekApprox(false);
     if (previousKey === nextKey) return;
     setSyncedNetworkLogIds(matchingIds);
-    if (activeDevLogTab === 'network' && matchingIds[0]) {
+    if (followRecordingRef.current && activeDevLogTab === 'network' && matchingIds[0]) {
       window.setTimeout(() => {
+        if (!followRecordingRef.current) return;
         fullscreenNetworkRowRefs.current.get(matchingIds[0])?.scrollIntoView({
           block: 'nearest',
           behavior: 'smooth',
@@ -560,6 +551,7 @@ export function TestCaseDetailDialog({
         url: net.network.url,
         duration: getNetworkDuration(net.network),
         headers: net.network.headers,
+        requestHeaders: getRequestHeaders(net.network.data),
         request: getRequestPayload(net.network.data),
         response: getResponsePayload(net.network.data),
       },
@@ -597,14 +589,6 @@ export function TestCaseDetailDialog({
   };
 
 
-  const updateNetworkFilters = (nextFilters: Partial<NetworkFilterState>) => {
-    setNetworkFilters((current) => ({ ...current, ...nextFilters }));
-  };
-
-  const toggleNetworkFilter = (key: keyof Pick<NetworkFilterState, 'showPreflight' | 'showDocument' | 'showScript' | 'showImage' | 'showStatic' | 'showTelemetry' | 'showDataUrls' | 'showOther'>) => {
-    setNetworkFilters((current) => ({ ...current, [key]: !current[key] }));
-  };
-
   const toggleSyncedEventFilter = (key: VideoEventFilterKey) => {
     setSyncedEventFilters((current) => ({ ...current, [key]: !current[key] }));
   };
@@ -622,6 +606,7 @@ export function TestCaseDetailDialog({
 
   const startRecordingPan = (event: React.PointerEvent<HTMLDivElement>) => {
     if (recordingZoom <= 1 || !recordingViewportRef.current) return;
+    if ((event.target as HTMLElement).closest('video, button, input')) return;
     recordingPanRef.current = {
       active: true,
       startX: event.clientX,
@@ -652,56 +637,48 @@ export function TestCaseDetailDialog({
     });
   };
 
-  const clearRecordingFullscreenTimer = () => {
-    if (recordingFullscreenTimerRef.current === null) return;
-    window.clearTimeout(recordingFullscreenTimerRef.current);
-    recordingFullscreenTimerRef.current = null;
-  };
-
-  const enterBrowserFullscreen = () => {
-    if (typeof document === 'undefined' || document.fullscreenElement || typeof document.documentElement.requestFullscreen !== 'function') return;
-    void document.documentElement.requestFullscreen().catch(() => undefined);
-  };
-
   const exitBrowserFullscreen = () => {
-    if (typeof document === 'undefined' || !document.fullscreenElement || typeof document.exitFullscreen !== 'function') return;
+    if (!ownsBrowserFullscreen.current || !document.fullscreenElement || typeof document.exitFullscreen !== 'function') return;
+    ownsBrowserFullscreen.current = false;
     void document.exitFullscreen().catch(() => undefined);
   };
 
+  const enterBrowserFullscreen = () => {
+    if (document.fullscreenElement || typeof document.documentElement.requestFullscreen !== 'function') return;
+    ownsBrowserFullscreen.current = true;
+    void document.documentElement.requestFullscreen().then(() => {
+      if (!recordingFullscreenWanted.current) exitBrowserFullscreen();
+    }, () => { ownsBrowserFullscreen.current = false; });
+  };
+
   const openRecordingFullscreen = () => {
-    if (isVideoLoading) return;
-    enterBrowserFullscreen();
-    clearRecordingFullscreenTimer();
+    if (isVideoLoading || recordingFullscreenWanted.current) return;
+    horizontalLayout.restoreLayout();
+    followRecordingRef.current = true;
+    setIsFollowingRecording(true);
+    const inlinePlayer = recordingVideoRef.current;
+    const positionMs = inlinePlayer && Number.isFinite(inlinePlayer.currentTime) ? inlinePlayer.currentTime * 1000 : recordingResumeMs(playbackPosition.current, recordingVideoKey, getRecordingVideoDurationMs());
+    playbackPosition.current = { key: recordingVideoKey, ms: positionMs };
+    setRecordingSeekMs(positionMs);
+    inlinePlayer?.pause();
     setRecordingZoom(1);
-    setFullscreenLogFilter('all');
     setSelectedFullscreenLog(null);
     setSelectedSyncedEventId(null);
     setSyncedEventFilters(DEFAULT_VIDEO_EVENT_FILTERS);
     setSyncedNetworkLogIds([]);
     setCopiedEvidence(false);
-    setIsClosingRecordingFullscreen(false);
-    setIsRecordingFullscreenExpanded(false);
-    setIsRecordingFullscreenContentVisible(false);
+    recordingFullscreenWanted.current = true;
     setIsRecordingFullscreen(true);
-
-    window.requestAnimationFrame(() => {
-      setIsRecordingFullscreenExpanded(true);
-      recordingFullscreenTimerRef.current = window.setTimeout(() => {
-        setIsRecordingFullscreenContentVisible(true);
-        recordingFullscreenTimerRef.current = null;
-      }, 220);
-    });
+    enterBrowserFullscreen();
   };
 
   const openSystemDevLogFullscreen = () => {
-    setFullscreenLogFilter('all');
     setSelectedSystemDevLogId(null);
     setIsSystemDevLogFullscreen(true);
   };
 
   const closeSystemDevLogFullscreen = () => {
     setIsSystemDevLogFullscreen(false);
-    setSelectedSystemDevLogId(null);
   };
 
   const copyFullscreenEvidence = async () => {
@@ -753,36 +730,30 @@ export function TestCaseDetailDialog({
     window.setTimeout(() => setCopiedEvidence(false), 1600);
   };
 
-  const closeRecordingFullscreen = () => {
-    exitBrowserFullscreen();
-    clearRecordingFullscreenTimer();
-    setIsRecordingFullscreenContentVisible(false);
-
-    window.requestAnimationFrame(() => {
-      recordingFullscreenTimerRef.current = window.setTimeout(() => {
-        setIsRecordingFullscreenExpanded(false);
-        setIsClosingRecordingFullscreen(true);
-
-        recordingFullscreenTimerRef.current = window.setTimeout(() => {
-          setIsRecordingFullscreen(false);
-          setIsRecordingFullscreenExpanded(false);
-          setIsRecordingFullscreenContentVisible(false);
-          setIsClosingRecordingFullscreen(false);
-          setSyncedNetworkLogIds([]);
-          recordingFullscreenTimerRef.current = null;
-        }, 220);
-      }, 40);
-    });
-  };
+  const closeRecordingFullscreen = useCallback(() => {
+    if (!recordingFullscreenWanted.current) return;
+    recordingFullscreenWanted.current = false;
+    const player = fullscreenRecordingVideoRef.current;
+    if (player && Number.isFinite(player.currentTime)) {
+      playbackPosition.current = { key: recordingVideoKey, ms: player.currentTime * 1000 };
+      setRecordingSeekMs(player.currentTime * 1000);
+      if (recordingVideoRef.current) recordingVideoRef.current.currentTime = player.currentTime;
+      player.pause();
+    }
+    setIsRecordingFullscreen(false);
+  }, [recordingVideoKey]);
 
   const openEvidenceReport = () => {
     if (!viewTestCase) return;
-    window.location.href = `/api/evidence?testCaseId=${encodeURIComponent(viewTestCase.id)}&projectId=${encodeURIComponent(viewTestCase.projectId)}&download=1`;
+    const params = new URLSearchParams({ testCaseId: sourceTestCaseId, projectId: viewTestCase.projectId, download: '1' });
+    if (selectedScript) { params.set('source', 'studio'); params.set('runId', selectedScript.runId); if (selectedScript.artifactId) params.set('artifactId', selectedScript.artifactId); }
+    window.location.href = `/api/evidence?${params}`;
   };
   const seekRecordingFromSyncedEvent = (event: SyncedVideoEvent) => {
     if (typeof event.clampedOffsetMs !== 'number') return;
     setSelectedSyncedEventId(event.id);
     setRecordingSeekMs(event.clampedOffsetMs);
+    playbackPosition.current = { key: recordingVideoKey, ms: event.clampedOffsetMs };
     setRecordingSeekApprox(event.isBeforeVideo || event.isAfterVideo);
     if (manualRecording?.video && hasManualRecordingVideo) {
       const durationSeconds = getRecordingVideoDurationMs() / 1000;
@@ -808,6 +779,7 @@ export function TestCaseDetailDialog({
         group.entries.some((entry) => matchesSourceLog(entry.log))
       ));
       const logId = matchingGroup ? `fullscreen-${matchingGroup.id}` : `fullscreen-event-${event.id}`;
+      setSelectedSystemDevLogId(matchingGroup ? `system-network-${matchingGroup.id}` : null);
       setActiveDevLogTab('network');
       selectFullscreenNetworkLog(
         sourceLog as LogEntry & { network: NonNullable<LogEntry['network']> },
@@ -825,12 +797,15 @@ export function TestCaseDetailDialog({
         group.entries.some(matchesSourceLog)
       ));
       const logId = matchingGroup ? `fullscreen-${matchingGroup.id}` : `fullscreen-event-${event.id}`;
+      setSelectedSystemDevLogId(matchingGroup ? `system-console-${matchingGroup.id}` : null);
       setActiveDevLogTab('console');
       selectFullscreenConsoleLog(sourceLog, logId);
       return;
     }
 
     setActiveDevLogTab('execution');
+    const executionIndex = executionLogs.findIndex(matchesSourceLog);
+    setSelectedSystemDevLogId(executionIndex >= 0 ? `system-execution-${sourceLog.eventId || sourceLog.id || executionIndex}` : null);
     setSelectedFullscreenLog({
       id: `fullscreen-execution-${event.id}`,
       kind: 'execution',
@@ -853,6 +828,7 @@ export function TestCaseDetailDialog({
     if (!isRecordingFullscreen || !viewport) return undefined;
 
     const handleWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
       setRecordingZoom((current) => (
         Math.min(3, Math.max(0.5, Number((current + (event.deltaY > 0 ? -0.1 : 0.1)).toFixed(2))))
@@ -863,22 +839,16 @@ export function TestCaseDetailDialog({
     return () => viewport.removeEventListener('wheel', handleWheel);
   }, [isRecordingFullscreen]);
 
-  useEffect(() => () => clearRecordingFullscreenTimer(), []);
-
   useEffect(() => {
     const handleFullscreenChange = () => {
-      if (!isRecordingFullscreen || document.fullscreenElement) return;
-      clearRecordingFullscreenTimer();
-      setIsRecordingFullscreen(false);
-      setIsRecordingFullscreenExpanded(false);
-      setIsRecordingFullscreenContentVisible(false);
-      setIsClosingRecordingFullscreen(false);
-      setSyncedNetworkLogIds([]);
+      if (document.fullscreenElement) return;
+      ownsBrowserFullscreen.current = false;
+      closeRecordingFullscreen();
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, [isRecordingFullscreen]);
+  }, [closeRecordingFullscreen]);
 
   const manualCaptureCommandProps = {
     socketReady, manualCaptureSessionId, isManualCaptureActive, manualCaptureMode, setManualCaptureMode,
@@ -898,23 +868,59 @@ export function TestCaseDetailDialog({
 
   const systemDevLogHeaderProps = {
     socketReady: !selectedScript && socketReady, scriptMode: Boolean(selectedScript), openSystemDevLogFullscreen, isSummarizing, generateAISummary,
-    activeDevLogTab, setActiveDevLogTab, groupedConsoleLogs, groupedNetworkLogs,
+    activeDevLogTab, setActiveDevLogTab, groupedConsoleLogs, groupedNetworkLogs: fullscreenNetworkGroups,
     loadedRunLabel, loadCurrentLogRun, isLoadingHistory, loadLogHistory, clearLogs,
   };
 
-  const logActions = useCommittedActions({ seekRecordingFromLog, updateNetworkFilters, toggleNetworkFilter });
+  const logActions = useCommittedActions({ seekRecordingFromLog });
+  const devtoolsFilters = { networkFilters, setNetworkFilters, consoleQuery, setConsoleQuery, consoleLevels, setConsoleLevels };
 
   const systemDevLogFullscreenProps = {
+    runLabel: selectedScript ? `Playwright · ${selectedScript.runId.slice(0, 8)}` : loadedRunLabel,
+    runStartedAt: selectedScript?.startedAt || manualRecording?.startedAt,
+    navigationEvents: hasManualRecordingVideo ? systemReviewEvents : [], selectedSyncedEventId, recordingDisplayMs, seekRecordingFromSyncedEvent,
+    recordingVideoKey,
     isSystemDevLogFullscreen, activeDevLogTab, fullscreenNetworkGroups, fullscreenConsoleGroups, executionLogs, viewTestCase, evidenceLogs: liveLogs,
     setActiveDevLogTab, setSelectedSystemDevLogId, selectedSystemDevLogId, setIsSystemDevLogFullscreen,
-    fullscreenLogFilter, setFullscreenLogFilter, networkCodeWrap, setNetworkCodeWrap, closeSystemDevLogFullscreen,
+    devtoolsFilters, networkCodeWrap, setNetworkCodeWrap, closeSystemDevLogFullscreen,
     selectedSystemNetworkGroup, selectedSystemConsoleGroup, selectedSystemExecutionLog, formatRelativeTime, getNetworkMethod,
     getNetworkCategoryClass, getNetworkStatusClass, getNetworkStatus, getNetworkDuration,
     networkCodePanelClass, networkFullscreenCodePanelClass, networkCodeWhitespaceClass, formatPrettyValue,
-    getRequestPayload, getResponsePayload, seekRecordingFromLog, getConsoleLogText,
+    getRequestHeaders, getRequestPayload, getResponsePayload, seekRecordingFromLog, getConsoleLogText,
   };
 
+  const recordingActions = useCommittedActions({ seekBy: (deltaMs: number) => {
+    const durationMs = getRecordingVideoDurationMs();
+    if (!hasManualRecordingVideo || durationMs <= 0) return;
+    const player = fullscreenRecordingVideoRef.current || recordingVideoRef.current;
+    const currentMs = player && Number.isFinite(player.currentTime) ? player.currentTime * 1000 : recordingSeekMs;
+    const targetMs = clampRecordingSeek(currentMs, deltaMs, durationMs);
+    setRecordingSeekMs(targetMs);
+    playbackPosition.current = { key: recordingVideoKey, ms: targetMs };
+    setRecordingSeekApprox(false);
+    setSelectedSyncedEventId(null);
+    for (const video of [recordingVideoRef.current, fullscreenRecordingVideoRef.current]) {
+      if (video) { try { video.currentTime = targetMs / 1000; } catch {} }
+    }
+  } });
+  useEffect(() => {
+    if (!isRecordingFullscreen || !hasManualRecordingVideo) return;
+    const handleKey = (event: KeyboardEvent) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest('[contenteditable]:not([contenteditable="false"]), [data-radix-popper-content-wrapper], [role="alertdialog"], [data-slot="toggle-group"], [data-network-detail]')) return;
+      const delta = recordingSeekDelta(event, { tagName: target?.tagName, isContentEditable: target?.isContentEditable, role: target?.getAttribute('role') || '' });
+      if (!delta) return;
+      event.preventDefault(); event.stopPropagation();
+      recordingActions.seekBy(delta);
+    };
+    window.addEventListener('keydown', handleKey, true);
+    return () => window.removeEventListener('keydown', handleKey, true);
+  }, [isRecordingFullscreen, hasManualRecordingVideo, recordingActions]);
+
   const recordingVideoPanelProps = {
+    recordingPaneSize: horizontalLayout.sizes[0], layoutStorageError: horizontalLayout.storageError,
+    navigationEvents: hasManualRecordingVideo ? filteredSyncedVideoEvents : [], runStartedAt: selectedScript?.startedAt || manualRecording?.startedAt,
+    viewTestCase, runLabel: selectedScript?.runId ? `Playwright · ${selectedScript.runId.slice(0, 8)}` : loadedRunLabel,
     recordingDisplayMs, recordingSeekApprox, manualRecordingTargetUrl, isVideoLoading,
     hasManualRecordingVideo, manualRecordingVideoUrl, recordingVideoKey, recordingVideoRef,
     isVideoPlaybackReady, handleRecordingVideoLoadedMetadata, handleFullscreenVideoTimeUpdate,
@@ -925,22 +931,26 @@ export function TestCaseDetailDialog({
     manualRecordingMode, scrollFullscreenTimeline, groupedSyncedVideoMarkers, selectedSyncedEventId,
     getSyncedMarkerClass, seekRecordingFromSyncedEvent, fullscreenTimelineRef, handleTimelineWheel,
     setRecordingSeekMs,
+    seekRecordingBy: recordingActions.seekBy, eventTimelineWidth,
   };
 
   const recordingEvidencePanelProps = {
-    isClosingRecordingFullscreen, activeDevLogTab, setActiveDevLogTab, fullscreenLogFilter, evidenceLogs: liveLogs,
-    setFullscreenLogFilter, selectedFullscreenLog, setSelectedFullscreenLog, networkCodeWrap,
+    evidencePaneSize: horizontalLayout.sizes[1],
+    isFollowingRecording, pauseRecordingFollow, resumeRecordingFollow,
+    recordingVideoKey,
+    activeDevLogTab, setActiveDevLogTab, devtoolsFilters, evidenceLogs: liveLogs,
+    selectedFullscreenLog, setSelectedFullscreenLog, networkCodeWrap,
     setNetworkCodeWrap, copyFullscreenEvidence, copiedEvidence, fullscreenNetworkGroups,
     fullscreenConsoleGroups, executionLogs, getNetworkMethod, getNetworkCategoryClass, getNetworkStatusClass,
     getNetworkStatus, getNetworkDuration, formatLogRecordingTime, formatRelativeTime,
     selectFullscreenNetworkLog, selectFullscreenConsoleLog, networkCodeWhitespaceClass,
-    networkFullscreenCodePanelClass, networkCodePanelClass, formatPrettyValue, getRequestPayload,
+    networkFullscreenCodePanelClass, networkCodePanelClass, formatPrettyValue, getRequestHeaders, getRequestPayload,
     getResponsePayload, selectedSyncedVideoEventDetail, selectedSyncedVideoEvent,
     getSyncedEventSeverityClass, filteredSyncedVideoEvents, syncedVideoEvents, syncedEventFilters,
     toggleSyncedEventFilter, selectedSyncedEventId, seekRecordingFromSyncedEvent,
     seekRecordingFromLog, getConsoleLogText, groupedSyncedVideoMarkers, setSelectedSyncedEventId,
     currentSyncedVideoEvent, getSyncedMarkerClass, scrollFullscreenTimeline, fullscreenTimelineRef,
-    handleTimelineWheel, isRecordingFullscreenExpanded, selectedRecordingFrame, manualRecording,
+    handleTimelineWheel, selectedRecordingFrame, manualRecording,
     hasManualRecordingVideo, syncedNetworkLogIdSet, fullscreenNetworkRowRefs, setExpandedLogId,
     expandedLogId,
   };
@@ -953,6 +963,10 @@ export function TestCaseDetailDialog({
       <DialogContent
         ref={inspectorSurface}
         onEscapeKeyDown={(event) => {
+          if (event.target instanceof HTMLElement && event.target.hasAttribute('data-devlog-filter')) {
+            event.preventDefault();
+            return;
+          }
           if (isSystemDevLogFullscreen) { event.preventDefault(); closeSystemDevLogFullscreen(); }
           else if (isRecordingFullscreen) { event.preventDefault(); closeRecordingFullscreen(); }
         }}
@@ -970,12 +984,12 @@ export function TestCaseDetailDialog({
           if (!document.querySelector('[role="dialog"][data-state="open"]') && returnFocus.current?.isConnected) returnFocus.current.focus();
         }}
         className={cn(
-          "signal-surface test-case-detail-dialog inset-y-0 !top-0 !left-auto !right-0 h-dvh max-h-dvh w-full max-w-none sm:max-w-none !translate-none flex flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 border-l border-border/60 bg-card p-0 text-foreground shadow-2xl data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 lg:w-[72vw] lg:min-w-[760px] lg:max-w-[1100px]",
+          "signal-surface test-case-detail-dialog inset-y-0 !top-0 !left-auto !right-0 h-dvh max-h-dvh w-full max-w-none sm:max-w-none !translate-none flex flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 border-l border-border/60 bg-card p-0 text-foreground shadow-2xl data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 lg:w-[68vw] lg:min-w-[720px] lg:max-w-[1040px]",
           isSystemDevLogFullscreen
             ? "w-full max-w-none rounded-none border-0 lg:w-full lg:min-w-0 lg:max-w-none"
             : isRecordingFullscreen
               ? "w-[96vw] sm:max-w-[96vw]"
-              : "rounded-2xl"
+              : "rounded-none border-l border-border"
         )}
       >
         <TestCaseDetailDialogHeader
@@ -992,34 +1006,34 @@ export function TestCaseDetailDialog({
           <div className="min-h-0 flex-1 overflow-hidden outline-none">
             <div className="flex h-full min-h-0 flex-col p-4 pt-3 sm:p-6 sm:pt-4">
               <Tabs value={canInspect(activeMainTab) ? activeMainTab : 'details'} onValueChange={setActiveMainTab} className="min-h-0 w-full flex-1 gap-0">
-                <div className="sticky top-0 z-10 mb-4 w-full shrink-0 overflow-x-auto rounded-xl bg-card pb-1 scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
-                  <TabsList aria-label="Bagian detail testcase" className="qa-inspector-tabs flex h-auto w-max min-w-full justify-start gap-1 border border-border bg-muted p-1">
-                  <TabsTrigger value="details" className="min-w-max flex-none gap-2">
+                <div className="sticky top-0 z-10 mb-5 w-full shrink-0 overflow-x-auto border-b border-border bg-card scrollbar-none">
+                  <TabsList aria-label="Bagian detail testcase" className="qa-inspector-tabs flex h-10 w-max min-w-full items-center justify-start gap-1 rounded-none border-0 bg-transparent p-0">
+                  <TabsTrigger value="details" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none">
                     <ClipboardList className="w-4 h-4" /> Overview
                   </TabsTrigger>
-                  <TabsTrigger value="steps" className="min-w-max flex-none gap-2">
+                  <TabsTrigger value="steps" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none">
                     <ListChecks className="w-4 h-4" /> Steps
                   </TabsTrigger>
                   {isBugFixDetail && (
-                    <TabsTrigger value="lifecycle" className="min-w-max flex-none gap-2">
+                    <TabsTrigger value="lifecycle" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none">
                       <History className="w-4 h-4" /> Lifecycle
                     </TabsTrigger>
                   )}
-                  <TabsTrigger disabled={!canInspect('traceability')} value="traceability" className="min-w-max flex-none gap-2">
+                  <TabsTrigger disabled={!canInspect('traceability')} value="traceability" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none">
                     <Link2 className="w-4 h-4" /> Traceability
                   </TabsTrigger>
-                  <TabsTrigger disabled={!canInspect('execution')} value="execution" className="min-w-max flex-none gap-2">
+                  <TabsTrigger disabled={!canInspect('execution')} value="execution" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none">
                     <PlayCircle className="w-4 h-4" /> Execution
                   </TabsTrigger>
-                  <TabsTrigger disabled={!canInspect('evidence')} value="evidence" className="min-w-max flex-none gap-2">
+                  <TabsTrigger disabled={!canInspect('evidence')} value="evidence" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none">
                     <Paperclip className="w-4 h-4" /> Evidence
                   </TabsTrigger>
-                  <TabsTrigger disabled={!canInspect('bugs')} value="bugs" className="min-w-max flex-none gap-2"><Bug className="w-4 h-4" /> Bugs</TabsTrigger>
-                  <TabsTrigger disabled={!canInspect('history')} value="history" className="min-w-max flex-none gap-2"><History className="w-4 h-4" /> History</TabsTrigger>
-                  <TabsTrigger disabled={!canInspect('comments')} value="comments" className="min-w-max flex-none gap-2">
+                  <TabsTrigger disabled={!canInspect('bugs')} value="bugs" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none"><Bug className="w-4 h-4" /> Bugs</TabsTrigger>
+                  <TabsTrigger disabled={!canInspect('history')} value="history" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none"><History className="w-4 h-4" /> History</TabsTrigger>
+                  <TabsTrigger disabled={!canInspect('comments')} value="comments" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none">
                     <MessageSquare className="w-4 h-4" /> Comments
                   </TabsTrigger>
-                  {!guest && <TabsTrigger value="logs" className="min-w-max flex-none gap-2">
+                  {!guest && <TabsTrigger value="logs" className="relative h-10 min-w-max flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none">
                     <div className="relative">
                       <Wrench className="w-4 h-4" />
                       {socketReady && (
@@ -1033,9 +1047,8 @@ export function TestCaseDetailDialog({
                   </TabsTrigger>}
                 </TabsList>
                 </div>
-                <p className="py-2 text-xs leading-5 text-muted-foreground">Geser tab untuk melihat bagian lainnya, atau gunakan tombol panah saat tab terfokus.</p>
 
-                <div className="min-h-0 flex-1 overflow-y-auto pr-1 outline-none scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
+                <div ref={automationScrollRef} className="min-h-0 flex-1 overflow-y-auto pr-1 outline-none scrollbar-thin scrollbar-thumb-border/40 scrollbar-track-transparent">
                   {!contentReady && <div className="space-y-4 py-1" role="status" aria-label="Memuat detail testcase"><div className="h-24 rounded-xl bg-secondary/40" /><div className="h-40 rounded-xl bg-secondary/40" /></div>}
                   {contentReady && <>
                   {/* Radix owns tab unmounting. An outer exit wait can deadlock
@@ -1050,10 +1063,22 @@ export function TestCaseDetailDialog({
                   )}
                   {activeMainTab === 'steps' && (
                     <TabsContent value="steps" className="mt-0 outline-none">
-                    <motion.div key="steps" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} className="grid gap-4 md:grid-cols-2">
-                      <section className="rounded-xl border border-border/70 bg-secondary/20 p-5"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Test steps</p><pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-7 text-foreground">{viewTestCase.steps || '—'}</pre></section>
-                      <section className="rounded-xl border border-border/70 bg-secondary/20 p-5"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected result</p><p className="mt-4 text-sm leading-7 text-foreground">{viewTestCase.expectedResult || '—'}</p></section>
-                    </motion.div>
+                      <motion.div key="steps" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
+                        <div className="rounded-lg border border-border bg-card divide-y divide-border md:grid md:grid-cols-2 md:divide-x md:divide-y-0">
+                          <section className="p-4 sm:p-5">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Test steps</h4>
+                            <div className="mt-3">
+                              <BulletTextView value={viewTestCase.steps || '-'} className="break-words whitespace-pre-wrap text-sm leading-6 text-foreground" />
+                            </div>
+                          </section>
+                          <section className="p-4 sm:p-5">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected result</h4>
+                            <div className="mt-3">
+                              <BulletTextView value={viewTestCase.expectedResult || '-'} className="break-words whitespace-pre-wrap text-sm leading-6 text-foreground" />
+                            </div>
+                          </section>
+                        </div>
+                      </motion.div>
                     </TabsContent>
                   )}
                   {isBugFixDetail && activeMainTab === 'lifecycle' && (
@@ -1067,22 +1092,22 @@ export function TestCaseDetailDialog({
                     />
                   )}
                   {canInspect('traceability') && activeMainTab === 'traceability' && (
-                    <TestCaseTraceabilityTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                    <TestCaseTraceabilityTab key={sourceTestCaseId} projectId={viewTestCase.projectId} testCaseId={sourceTestCaseId} />
                   )}
                   {canInspect('execution') && activeMainTab === 'execution' && (
-                    <TestCaseExecutionTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                    <TestCaseExecutionTab key={sourceTestCaseId} projectId={viewTestCase.projectId} testCaseId={sourceTestCaseId} />
                   )}
                   {canInspect('evidence') && activeMainTab === 'evidence' && (
-                    <TestCaseEvidenceTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                    <TestCaseEvidenceTab key={sourceTestCaseId} projectId={viewTestCase.projectId} testCaseId={sourceTestCaseId} />
                   )}
                   {canInspect('bugs') && activeMainTab === 'bugs' && (
-                    <TestCaseBugsTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                    <TestCaseBugsTab key={sourceTestCaseId} projectId={viewTestCase.projectId} testCaseId={sourceTestCaseId} />
                   )}
                   {canInspect('history') && activeMainTab === 'history' && (
-                    <TestCaseHistoryTab projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} />
+                    <TestCaseHistoryTab key={sourceTestCaseId} projectId={viewTestCase.projectId} testCaseId={sourceTestCaseId} />
                   )}
                   {canInspect('comments') && activeMainTab === 'comments' && (
-                    <TestCaseCommentsTab key={viewTestCase.id} projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} onDirtyChange={setHasUnsavedComment} />
+                    <TestCaseCommentsTab key={sourceTestCaseId} projectId={viewTestCase.projectId} testCaseId={sourceTestCaseId} onDirtyChange={setHasUnsavedComment} />
                   )}
                   {!guest && activeMainTab === 'logs' && (
                     <TabsContent value="logs" className="space-y-4 mt-0 outline-none h-full flex flex-col">
@@ -1095,22 +1120,14 @@ export function TestCaseDetailDialog({
                         className="h-full flex flex-col"
                       >
                         <div className="flex flex-col flex-1 min-h-0">
-                          {canAdmin && <PlaywrightScriptPanel key={viewTestCase.id} projectId={viewTestCase.projectId} testCaseId={viewTestCase.id} onInspect={inspectScriptRun} onDirtyChange={setHasUnsavedScript} />}
-                          {selectedScript && <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg bg-muted px-4 py-3 text-sm"><p>Viewer: hasil script Playwright · {selectedScript.logs.length} event</p><Button type="button" variant="outline" size="sm" onClick={() => setScriptSelection(null)}>Kembali ke capture manual</Button></div>}
-                          {!selectedScript && <><DevLogGuide expandedGuide={expandedGuide} setExpandedGuide={setExpandedGuide} />
-
-
-                          <div className="hidden shrink-0 mt-4 items-start gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm" aria-hidden="true">
-                            <div className="mt-0.5 rounded-xl border border-primary/20 bg-background/80 p-2 text-primary shadow-sm">
-                              <Sparkles className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs text-foreground font-semibold leading-relaxed">
-                                <span className="text-primary font-semibold uppercase tracking-tight mr-1.5">DevTools:</span>
-                                Tab **Console** memantau eksekusi runtime browser, sementara **Network** melacak pertukaran data API. Gunakan detail payload untuk validasi integrasi yang mendalam.
-                              </p>
-                            </div>
+                          <div role="group" aria-label="Mode Automation" className="inline-flex h-8 items-center rounded-lg border border-border bg-secondary/50 p-0.5 mb-4">
+                            <Button type="button" size="sm" variant={automationMode === 'results' ? 'secondary' : 'ghost'} aria-pressed={automationMode === 'results'} onClick={() => showAutomationMode('results')} className="h-7 rounded-md px-3 text-xs font-medium"><Film className="size-3.5" />Hasil</Button>
+                            {canAdmin && <Button type="button" size="sm" variant={automationMode === 'script' ? 'secondary' : 'ghost'} aria-pressed={automationMode === 'script'} onClick={() => showAutomationMode('script')} className="h-7 rounded-md px-3 text-xs font-medium"><Code2 className="size-3.5" />Script</Button>}
+                            <Button type="button" size="sm" variant={automationMode === 'capture' ? 'secondary' : 'ghost'} aria-pressed={automationMode === 'capture'} onClick={() => { setScriptSelection(null); showAutomationMode('capture'); }} className="h-7 rounded-md px-3 text-xs font-medium"><MonitorDot className="size-3.5" />Capture Manual{isManualCaptureActive && <span className="text-xs">· Aktif</span>}</Button>
                           </div>
+                          {canAdmin && <PlaywrightScriptPanel key={sourceTestCaseId} projectId={viewTestCase.projectId} testCaseId={sourceTestCaseId} view={automationMode === 'capture' ? 'hidden' : automationMode} selectedRunId={selectedScript?.runId || null} captureStartedAt={captureRecording?.startedAt || captureLiveLogs[0]?.timestamp} onShowResults={() => showAutomationMode('results')} onCaptureResults={() => setScriptSelection(null)} onInspect={inspectScriptRun} onDirtyChange={setHasUnsavedScript} onRunsDeleted={ids => setScriptSelection(previous => previous && ids.includes(previous.runId) ? null : previous)} />}
+                          {automationMode === 'capture' && <div className="shrink-0 space-y-4">
+                            <p className="text-sm text-muted-foreground">Rekam interaksi di browser, lalu buka Hasil untuk meninjau video dan devlog.</p>
                             <div className="rounded-xl border border-border bg-card dark:border-border dark:bg-card overflow-hidden">
                               <button
                                 type="button"
@@ -1132,10 +1149,10 @@ export function TestCaseDetailDialog({
                                     <div className="border-t border-border px-4 pb-4 pt-3 text-xs leading-relaxed text-muted-foreground font-medium dark:border-border/50 dark:text-muted-foreground">
                                       <ol className="ml-4 list-decimal space-y-2">
                                         <li>Masukkan URL website yang ingin dites pada input Manual Capture.</li>
-                                        <li>Pilih Browser Kosong untuk sesi bersih, atau Profiled Browser untuk memakai ulang login/cookies profile QA Desk.</li>
-                                        <li>Klik Start. QA Desk akan membuka browser capture dan mulai merekam telemetry.</li>
+                                        <li>Pilih Browser Kosong untuk sesi bersih, atau Profiled Browser untuk memakai ulang login/cookies profil Traceva.</li>
+                                        <li>Klik Start. Traceva akan membuka browser capture dan mulai merekam interaksi.</li>
                                         <li>Lakukan testing manual di browser yang terbuka.</li>
-                                        <li>Klik Stop dari QA Desk setelah selesai untuk menyimpan hasil run.</li>
+                                        <li>Klik Stop dari Traceva setelah selesai, lalu buka Hasil untuk meninjau rekaman.</li>
                                       </ol>
                                     </div>
                                   </motion.div>
@@ -1144,15 +1161,15 @@ export function TestCaseDetailDialog({
                             </div>
 
                           <MutationAction><ManualCaptureCommand {...manualCaptureCommandProps} /></MutationAction>
-                          </>}
+                          <DevLogGuide expandedGuide={expandedGuide} setExpandedGuide={setExpandedGuide} />
+                          </div>}
 
-                          <ManualRecordingPreview {...manualRecordingPreviewProps} />{/*
-                                      Memproses video{videoProcessingPercent !== null && isVideoFinalizing ? ` — ${videoProcessingPercent}%` : ''}
-
-                          */}
+                          {automationMode === 'results' && <div className="flex min-w-0 shrink-0 flex-col gap-3">
+                          {!selectedScript && <p className="text-xs text-muted-foreground">Sumber: Capture manual / integrasi{isManualCaptureActive ? ' · Perekaman aktif. Buka Capture Manual untuk menghentikan.' : ''}</p>}
+                          <ManualRecordingPreview {...manualRecordingPreviewProps} />
                           <SystemDevLogHeader {...systemDevLogHeaderProps} />
 
-                          <div className="flex h-[min(680px,calc(100dvh-8rem))] min-h-[360px] max-h-[680px] min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white font-mono text-[11.5px] shadow-xl dark:border-border dark:bg-background dark:shadow-2xl">
+                          <div className="flex h-[min(680px,calc(100dvh-8rem))] min-h-[360px] max-h-[680px] min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-background text-xs">
                             {aiSummary && !selectedScript && (
                               <div className="border-b border-indigo-100 bg-indigo-50 p-4 animate-in fade-in slide-in-from-top-2 duration-500 dark:border-indigo-900/50 dark:bg-indigo-950/30">
                                 <div className="flex items-center justify-between mb-2">
@@ -1170,6 +1187,7 @@ export function TestCaseDetailDialog({
                               </div>
                             )}
                             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent dark:scrollbar-thumb-slate-700">
+                              <div key={activeDevLogTab} className="devlog-view-enter h-full min-h-0">
                               {activeDevLogTab === 'execution' ? (
                                 <ExecutionLogView
                                   stepLogs={viewTestCase.stepLogs}
@@ -1182,6 +1200,10 @@ export function TestCaseDetailDialog({
                               ) : activeDevLogTab === 'console' ? (
                                 <ConsoleLogView
                                   groupedConsoleLogs={groupedConsoleLogs}
+                                  query={consoleQuery}
+                                  levels={consoleLevels}
+                                  onQueryChange={setConsoleQuery}
+                                  onLevelsChange={setConsoleLevels}
                                   logEndRef={logEndRef}
                                   expandedLogId={expandedLogId}
                                   setExpandedLogId={setExpandedLogId}
@@ -1192,60 +1214,22 @@ export function TestCaseDetailDialog({
                                 />
                               ) : (
                                 <NetworkLogView
-                                  networkFilters={networkFilters}
-                                  updateNetworkFilters={logActions.updateNetworkFilters}
-                                  networkLogItems={networkLogItems}
-                                  networkHosts={networkHosts}
-                                  networkMethods={networkMethods}
-                                  setNetworkFilters={setNetworkFilters}
-                                  DEFAULT_NETWORK_FILTERS={DEFAULT_NETWORK_FILTERS}
-                                  networkCategoryCounts={networkCategoryCounts}
-                                  hiddenNetworkCount={hiddenNetworkCount}
-                                  toggleNetworkFilter={logActions.toggleNetworkFilter}
+                                  filters={networkFilters}
+                                  onFiltersChange={setNetworkFilters}
+                                  totalCount={fullscreenNetworkGroups.length}
                                   groupedNetworkLogs={groupedNetworkLogs}
                                   logEndRef={logEndRef}
                                   seekRecordingFromLog={logActions.seekRecordingFromLog}
                                   expandedLogId={expandedLogId}
                                   setExpandedLogId={setExpandedLogId}
-                                  getNetworkMethod={getNetworkMethod}
-                                  getNetworkCategoryClass={getNetworkCategoryClass}
-                                  getNetworkStatusClass={getNetworkStatusClass}
-                                  getNetworkStatus={getNetworkStatus}
-                                  getNetworkDuration={getNetworkDuration}
-                                  formatRelativeTime={formatRelativeTime}
-                                  networkCodeWhitespaceClass={networkCodeWhitespaceClass}
-                                  networkCodePanelClass={networkCodePanelClass}
-                                  formatPrettyValue={formatPrettyValue}
-                                  getRequestPayload={getRequestPayload}
-                                  getResponsePayload={getResponsePayload}
+                                  networkCodeWrap={networkCodeWrap}
+                                  setNetworkCodeWrap={setNetworkCodeWrap}
                                 />
                               )}
-                            </div>
-                            <div className="bg-muted/80 p-2 border-t border-border flex items-center justify-between shrink-0">
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground font-bold uppercase tracking-wider">
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                  {okLogCount} OK
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                                  {errorLogCount} ERRORS
-                                </div>
                               </div>
-                              <p className="text-xs text-muted-foreground italic">Auto-scrolling enabled</p>
                             </div>
                           </div>
-
-                          <div className="shrink-0 mt-4 flex items-start gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-4 shadow-inner">
-                            <div className="mt-0.5 rounded-full border border-indigo-200 bg-indigo-50 p-1 text-indigo-700 shadow-sm dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-status-in-progress">
-                              <HelpCircle className="w-3.5 h-3.5" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                                <span className="font-bold text-indigo-700 dark:text-status-in-progress">DevTools Mode:</span> Tab **Console** menampilkan log browser (JS errors/logs). Tab **Network** menampilkan *XHR/Fetch* traffic. Klik pada baris log untuk melihat detail payload dan headers.
-                              </p>
-                            </div>
-                          </div>
+                          </div>}
                         </div>
                       </motion.div>
                     </TabsContent>
@@ -1257,50 +1241,30 @@ export function TestCaseDetailDialog({
           </div>
         )}
 
-        <SystemDevLogFullscreen {...systemDevLogFullscreenProps} />
+        <SystemDevLogFullscreen key={recordingVideoKey} {...systemDevLogFullscreenProps} />
           {/*
                       {viewTestCase?.testCaseId || '-'} · {viewTestCase?.testAction || 'Execution telemetry'}
         */}
-        {isRecordingFullscreen && (manualRecording?.frames?.length || hasManualRecordingVideo) && typeof document !== 'undefined' && createPortal(
-          <div
-            className={cn(
-              "pointer-events-auto fixed inset-0 z-[80] flex h-[100dvh] w-[100vw] items-stretch justify-stretch overflow-hidden bg-black text-foreground transition-opacity duration-200",
-              isClosingRecordingFullscreen ? 'opacity-0' : 'opacity-100'
-            )}
+        {Boolean(manualRecording?.frames?.length || hasManualRecordingVideo) && (
+          <DevlogFullscreenDialog
+            open={isRecordingFullscreen}
+            onClose={closeRecordingFullscreen}
+            onAfterClose={() => { if (!recordingFullscreenWanted.current || !open) exitBrowserFullscreen(); }}
+            title="Review rekaman pengujian"
+            description="Video dan aktivitas tersinkron. Gunakan panah kiri atau kanan untuk mundur atau maju lima detik."
           >
-            <div
-              className={cn(
-                "relative flex h-full w-full overflow-hidden border-0 bg-background shadow-2xl transition duration-200 ease-out",
-                isRecordingFullscreenExpanded && !isClosingRecordingFullscreen ? 'scale-100 opacity-100' : 'scale-95 opacity-95'
-              )}
-            >
-              {isRecordingFullscreenContentVisible && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-4 top-4 z-[90] h-10 w-10 rounded-full border border-border/70 bg-background/90 p-0 text-foreground shadow-xl backdrop-blur transition hover:bg-secondary"
-                  onClick={closeRecordingFullscreen}
-                  aria-label="Close recording fullscreen"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-
-              {!isRecordingFullscreenContentVisible ? (
-                <div className="flex h-full w-full bg-background" />
-              ) : (
-                <ResizablePanelGroup direction="horizontal" className="h-full min-h-0 w-full overflow-hidden">
-                  <RecordingVideoPanel {...recordingVideoPanelProps} />
-                  <ResizableHandle withHandle />
-            <RecordingEvidencePanel {...recordingEvidencePanelProps} />{/*
-                              {selectedFullscreenLog.kind} · {formatRelativeTime(selectedFullscreenLog.relativeMs)}
-                */}
-                </ResizablePanelGroup>
-              )}
+            <div className="relative flex h-full min-h-0 w-full overflow-hidden bg-background">
+              <Button type="button" variant="outline" size="icon" className="absolute right-4 top-4 z-[90] size-9 bg-background"
+                onClick={closeRecordingFullscreen} aria-label="Close recording fullscreen" title="Close recording fullscreen">
+                <X aria-hidden="true" />
+              </Button>
+              <ResizablePanelGroup direction="horizontal" onLayout={horizontalLayout.saveLayout} className="h-full min-h-0 w-full overflow-hidden">
+                <RecordingVideoPanel {...recordingVideoPanelProps} />
+                <ResizableHandle withHandle />
+                <RecordingEvidencePanel key={recordingVideoKey} {...recordingEvidencePanelProps} />
+              </ResizablePanelGroup>
             </div>
-          </div>,
-          document.body
+          </DevlogFullscreenDialog>
         )}
 
         <TestCaseDetailDialogFooter

@@ -95,7 +95,8 @@ describe('Playwright runner real artifacts', () => {
     const root = await fixture();
     const server = http.createServer((req, res) => {
       if (req.url === '/api') { res.setHeader('Content-Type', 'application/json'); res.end('{"ok":true}'); }
-      else { res.setHeader('Content-Type', 'text/html'); res.end('<h1>Ready</h1><button onclick="console.log(\'clicked\');fetch(\'/api\')">Run</button>'); }
+      else if (req.url.startsWith('/fixture.js')) { res.setHeader('Content-Type', 'application/javascript'); res.end('console.debug("debug from fixture");'); }
+      else { res.setHeader('Content-Type', 'text/html'); res.end('<h1>Ready</h1><script src="/fixture.js?token=synthetic-secret"></script><button onclick="console.log(\'clicked\');fetch(\'/api\')">Run</button>'); }
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     cleanups.push(() => new Promise(resolve => server.close(resolve)));
@@ -110,6 +111,11 @@ describe('Playwright runner real artifacts', () => {
     const events = (await fs.readFile(path.join(directory, 'events.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
     expect(new Set(events.map(event => event.category))).toEqual(new Set(['execution', 'console', 'network']));
     expect(events.some(event => event.log === 'clicked')).toBe(true);
+    const debug = events.find(event => event.log === 'debug from fixture');
+    expect(debug).toMatchObject({ level: 'VERBOSE', metadata: { consoleDetails: { type: 'debug', lineNumber: 0 } } });
+    const sourceUrl = new URL(debug.metadata.consoleDetails.url);
+    expect(sourceUrl.pathname).toBe('/fixture.js');
+    expect(sourceUrl.searchParams.get('token')).toBe('[REDACTED]');
     expect(events.some(event => event.network?.url.endsWith('/api') && event.network.data.responseBody.includes('true'))).toBe(true);
   }, 45000);
   it('retains failing assertions, screenshots and video rather than reporting a false pass', async () => {

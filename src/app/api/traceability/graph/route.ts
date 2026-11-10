@@ -22,16 +22,16 @@ export async function GET(req: NextRequest) {
       let options: Array<{ id: string; label: string; status: string }>;
       if (seedType === 'Requirement') {
         const rows = await db.requirement.findMany({ where: { projectId, OR: [{ id: text }, { key: text }, { title: text }] }, select: { id: true, key: true, title: true, status: true }, orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }], take: 21 });
-        options = rows.map(r => ({ id: r.id, label: short(`${r.key} — ${r.title}`), status: r.status }));
+        options = rows.map(r => ({ id: r.id, label: short(`${r.key}: ${r.title}`), status: r.status }));
       } else if (seedType === 'TestRun') {
         const rows = await db.testRun.findMany({ where: { projectId, OR: [{ id: text }, { name: text }] }, select: { id: true, name: true, status: true }, orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }], take: 21 });
         options = rows.map(r => ({ id: r.id, label: short(r.name), status: r.status }));
       } else if (seedType === 'BugFix') {
         const rows = await db.bugFix.findMany({ where: { projectId, sourceTestCase: { projectId }, OR: [{ id: text }, { testCaseId: text }, { testAction: text }] }, select: { id: true, testCaseId: true, testAction: true, status: true }, orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }], take: 21 });
-        options = rows.map(r => ({ id: r.id, label: short(`${r.testCaseId} — ${r.testAction}`), status: r.status }));
+        options = rows.map(r => ({ id: r.id, label: short(`${r.testCaseId}: ${r.testAction}`), status: r.status }));
       } else {
         const rows = await db.testCase.findMany({ where: { projectId, OR: [{ id: text }, { testCaseId: text }, { testAction: text }, { page: text }] }, select: { id: true, testCaseId: true, testAction: true, status: true }, orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }], take: 21 });
-        options = rows.map(r => ({ id: r.id, label: short(`${r.testCaseId} — ${r.testAction}`), status: r.status }));
+        options = rows.map(r => ({ id: r.id, label: short(`${r.testCaseId}: ${r.testAction}`), status: r.status }));
       }
       return reply({ options: options.slice(0, 20), hasMore: options.length > 20 });
     }
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
     }
     for (const e of executions) {
       node('TestRun', e.testRun.id, e.testRun.name, 'Test Cycle', e.testRun.status);
-      node('Execution', e.id, `Execution ${e.id.slice(-6)}`, 'Historical execution', e.status, { details: { Tester: e.tester || '—', Waktu: e.createdAt.toISOString(), 'Cycle ID': e.testRunId } });
+      node('Execution', e.id, `Execution ${e.id.slice(-6)}`, 'Historical execution', e.status, { details: { Tester: e.tester || '-', Waktu: e.createdAt.toISOString(), 'Cycle ID': e.testRunId } });
       edge(graphKey('TestRun', e.testRunId), graphKey('Execution', e.id), 'Memuat execution');
       edge(graphKey('TestCase', e.testCaseId), graphKey('Execution', e.id), 'Dieksekusi sebagai');
     }

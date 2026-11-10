@@ -15,10 +15,17 @@ export function buildCatalog(root) {
         const source = fs.readFileSync(file, 'utf8');
         const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
         const endpoint = '/api' + path.relative(path.join(root, 'src/app/api'), dir).split(path.sep).filter(Boolean).map(s => '/' + s).join('');
+        const methods = new Set();
         for (const node of tree.statements) {
-          const method = node.name?.text;
-          if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'].includes(method)) continue;
           if (!node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
+          // Next.js accepts both exported functions and variable handlers/aliases.
+          const declarations = ts.isVariableStatement(node) ? node.declarationList.declarations : ts.isFunctionDeclaration(node) ? [node] : [];
+          for (const declaration of declarations) {
+            const method = declaration.name && ts.isIdentifier(declaration.name) ? declaration.name.text : undefined;
+            if (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'].includes(method)) methods.add(method);
+          }
+        }
+        for (const method of methods) {
           // Authentication is supplied by the local adapter; never expose login/reset/bootstrap as tools.
           if (endpoint.startsWith('/api/auth/') && endpoint !== '/api/auth/status') continue;
           routes.push({

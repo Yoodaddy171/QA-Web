@@ -1,13 +1,16 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, FilePlus2, Pencil, RefreshCcw, ShieldCheck } from 'lucide-react';
+import { Check, Copy, Download, FileText, FilePlus2, Pencil, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { runReportAction, type ReportAction } from '@/lib/client/api/reports-client';
 import type { ReportData } from '@/lib/services/report-types';
 import { generateHTMLReport } from '@/lib/services/report-export';
+import { copyText } from '@/lib/client/copy-text';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 
 interface ReportViewerProps {
   report: ReportData;
@@ -68,6 +71,36 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
     URL.revokeObjectURL(url);
   };
 
+  const [copiedSummary, setCopiedSummary] = useState(false);
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (copyResetTimer.current) clearTimeout(copyResetTimer.current); }, []);
+
+  const copyExecutiveSummary = async () => {
+    const planned = runSummary.totalPlanned || metrics.totalPlanned;
+    const executed = runSummary.totalPlanned ? runSummary.totalCompleted : metrics.totalExecuted;
+    const passedCount = runSummary.totalPlanned ? runSummary.totalPassed : metrics.totalPassed;
+    const execRate = runSummary.totalPlanned ? Math.round((runSummary.totalCompleted / runSummary.totalPlanned) * 100) : metrics.executionRate;
+
+    const summaryText = [
+      `[QA Report] Rekomendasi Rilis: ${recommendation}`,
+      `Project: ${report.projectName} (v${report.version})`,
+      `Status Dokumen: ${report.status}`,
+      `Eksekusi: ${executed}/${planned} (${execRate}%) | Pass: ${passedCount} | Fail: ${failed} | Block: ${blocked}`,
+      riskiestModule ? `Modul Risiko Tertinggi: ${riskiestModule.moduleName} (${riskiestModule.totalFailed} failed)` : null,
+      `Keputusan: ${decisionReason}`,
+    ].filter(Boolean).join('\n');
+
+    try {
+      await copyText(summaryText);
+      setCopiedSummary(true);
+      if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+      copyResetTimer.current = setTimeout(() => setCopiedSummary(false), 2000);
+      toast({ variant: 'success', title: 'Tersalin', description: 'Ringkasan eksekutif laporan berhasil disalin ke clipboard.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Gagal menyalin', description: 'Silakan salin ringkasan secara manual.' });
+    }
+  };
+
   const section = (title: string, body?: string) => body ? (
     <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
       <h2 className="mb-3 text-base font-semibold text-foreground">{title}</h2>
@@ -84,10 +117,10 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
             <FileText className="h-8 w-8 text-primary" />
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{isPlanning ? 'Test Planning FDS' : 'Test Status Report FDS'}</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{isPlanning ? 'Test Planning Document' : 'Test Status Report'}</h1>
                 <Badge variant={report.status === 'FINAL' ? 'success' : 'secondary'}>{report.status}</Badge>
               </div>
-              <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">Version {report.version} - {report.documentId || report.id}</p>
+              <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">Version {report.version}{report.documentId ? ` · ${report.documentId}` : ''}</p>
             </div>
           </div>
           <div className="qa-module-toolbar flex flex-wrap gap-2">
@@ -125,7 +158,7 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
           ['Not run', pending, 'text-muted-foreground'],
         ].map(([label, value, color]) => (
           <div key={label} className="rounded-lg border border-border/60 bg-card p-4 shadow-sm">
-            <div className={`text-2xl font-bold ${color}`}>{value}</div>
+            <div className={`text-2xl font-bold font-mono tabular-nums ${color}`}>{value}</div>
             <div className="text-sm text-muted-foreground">{label}</div>
           </div>
         ))}
@@ -143,7 +176,16 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
               {riskiestModule && <span>Highest risk: <strong className="text-foreground">{riskiestModule.moduleName}</strong> · {riskiestModule.totalFailed} failed</span>}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={copyExecutiveSummary}
+              className="gap-1.5 text-xs font-semibold"
+            >
+              {copiedSummary ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              {copiedSummary ? 'Tersalin' : 'Salin Ringkasan'}
+            </Button>
             {onNavigate && <Button size="sm" variant="outline" onClick={() => onNavigate('testRuns')}>Open Test Runs</Button>}
             {onNavigate && failed > 0 && <Button size="sm" variant="ghost" onClick={() => onNavigate('testcases')}>Open Failed Cases</Button>}
             {onNavigate && <Button size="sm" variant="ghost" onClick={() => onNavigate('traceability')}>Open Traceability</Button>}
@@ -190,12 +232,12 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
             <tbody>
               {metrics.byModule.map((m) => (
                 <tr key={m.moduleName} className="border-b border-border/40 text-muted-foreground">
-                  <td className="px-4 py-2 font-medium text-foreground">{m.moduleName}</td>
-                  <td className="px-4 py-2 text-right">{m.totalPlanned}</td>
-                  <td className="px-4 py-2 text-right">{m.totalExecuted}</td>
-                  <td className="px-4 py-2 text-right text-emerald-500">{m.totalPassed}</td>
-                  <td className="px-4 py-2 text-right text-red-500">{m.totalFailed}</td>
-                  <td className="px-4 py-2 text-right">{m.passRate}%</td>
+                  <SimpleTooltip content={m.moduleName} contentClassName="z-[120] max-w-[min(28rem,calc(100vw-2rem))] whitespace-pre-wrap break-words text-left"><td className="px-4 py-2 font-medium text-foreground">{m.moduleName}</td></SimpleTooltip>
+                  <td className="px-4 py-2 text-right font-mono tabular-nums">{m.totalPlanned}</td>
+                  <td className="px-4 py-2 text-right font-mono tabular-nums">{m.totalExecuted}</td>
+                  <td className="px-4 py-2 text-right font-mono tabular-nums text-emerald-500">{m.totalPassed}</td>
+                  <td className="px-4 py-2 text-right font-mono tabular-nums text-red-500">{m.totalFailed}</td>
+                  <td className="px-4 py-2 text-right font-mono tabular-nums">{m.passRate}%</td>
                 </tr>
               ))}
             </tbody>
@@ -204,16 +246,67 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
       </div>
 
       <div className="rounded-lg border border-border/60 bg-card p-6 shadow-sm">
-        <h2 className="mb-4 text-xl font-bold text-foreground">Defect Summary</h2>
-        <div className="grid gap-3 md:grid-cols-5">
-          <Badge variant="outline">Total {metrics.bugSummary.total}</Badge>
-          <Badge variant="failed">Critical {metrics.bugSummary.critical}</Badge>
-          <Badge variant="warning">Open {metrics.bugSummary.open}</Badge>
-          <Badge variant="failed">Overdue {metrics.bugSummary.overdue}</Badge>
-          <Badge variant="warning">Reported {metrics.bugSummary.reported}</Badge>
-          <Badge variant="info">Fixing {metrics.bugSummary.fixing}</Badge>
-          <Badge variant="readyretest">Ready {metrics.bugSummary.readyToRetest}</Badge>
-          <Badge variant="success">Fixed {metrics.bugSummary.fixed}</Badge>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-xl font-bold text-foreground">Defect Summary</h2>
+          <span className="text-xs text-muted-foreground">{metrics.bugSummary.total} defect tercatat</span>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border border-border/50 bg-background/50 p-3">
+            <div className="font-mono text-2xl font-bold text-foreground">{metrics.bugSummary.total}</div>
+            <div className="text-xs text-muted-foreground">Total Defects</div>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/50 p-3">
+            <div className={`font-mono text-2xl font-bold ${metrics.bugSummary.critical > 0 ? 'text-destructive font-black' : 'text-emerald-500'}`}>
+              {metrics.bugSummary.critical}
+            </div>
+            <div className="text-xs text-muted-foreground">Critical / Blocker</div>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/50 p-3">
+            <div className="font-mono text-2xl font-bold text-amber-500">{metrics.bugSummary.open}</div>
+            <div className="text-xs text-muted-foreground">Open / Reported</div>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-background/50 p-3">
+            <div className="font-mono text-2xl font-bold text-emerald-500">{metrics.bugSummary.fixed}</div>
+            <div className="text-xs text-muted-foreground">Fixed / Resolved</div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-border/40 pt-3">
+          <Badge variant="warning">Reported: {metrics.bugSummary.reported}</Badge>
+          <Badge variant="info">In Fix: {metrics.bugSummary.fixing}</Badge>
+          <Badge variant="readyretest">Ready to Retest: {metrics.bugSummary.readyToRetest}</Badge>
+          <Badge variant="failed">Overdue: {metrics.bugSummary.overdue}</Badge>
+        </div>
+
+        {metrics.bugSummary.byModule && metrics.bugSummary.byModule.length > 0 && (
+          <div className="mt-5 border-t border-border/40 pt-4">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">Distribusi Defect per Modul</h3>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {metrics.bugSummary.byModule.map((mod) => (
+                <div key={mod.moduleName} className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-xs">
+                  <span className="truncate font-medium text-foreground">{mod.moduleName}</span>
+                  <span className="font-mono font-bold text-amber-500">{mod.total} bug</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-border/60 bg-card p-6 shadow-sm">
+        <h2 className="mb-4 text-xl font-bold text-foreground">Persetujuan & Tanda Tangan (Sign-off)</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-lg border border-border/40 bg-background/40 p-4">
+            <p className="text-xs font-medium text-muted-foreground">Disiapkan oleh (QA Engineer):</p>
+            <p className="mt-2 text-sm font-bold text-foreground">{report.author || 'Tim QA'}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Status: Selesai diuji</p>
+          </div>
+          <div className="rounded-lg border border-border/40 bg-background/40 p-4">
+            <p className="text-xs font-medium text-muted-foreground">Disetujui oleh (Lead / PM):</p>
+            <p className="mt-2 text-sm font-bold text-foreground">{report.approvedBy || 'Project Manager'}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Status: {report.documentStatus || 'Menunggu peninjauan'}</p>
+          </div>
         </div>
       </div>
     </div>

@@ -21,6 +21,7 @@ export type StatsTestCase = {
 };
 
 export type StatsModule = ModuleRef;
+export type StatsInventoryCase = Pick<StatsTestCase, 'id' | 'page' | 'subMenu' | 'status' | 'moduleId' | 'module'>;
 
 export type StatsBugFix = {
   id: string;
@@ -65,7 +66,7 @@ export type MenuProgress = StatusCounts & {
 
 const roundTwo = (value: number) => Math.round(value * 100) / 100;
 
-export function aggregateTestCaseStatusCounts(testCases: StatsTestCase[]): StatusCounts {
+export function aggregateTestCaseStatusCounts(testCases: Array<{ status: string }>): StatusCounts {
   const counts: StatusCounts = {
     doneCount: 0,
     notDoneCount: 0,
@@ -89,9 +90,9 @@ export function aggregateTestCaseStatusCounts(testCases: StatsTestCase[]): Statu
   return counts;
 }
 
-export function buildMenuWeightProgress(testCases: StatsTestCase[]) {
+export function buildMenuWeightProgress(testCases: StatsInventoryCase[]) {
   const activeTestCases = testCases.filter(tc => tc.status !== TESTCASE_STATUS.TBA);
-  const menuGroups: Record<string, StatsTestCase[]> = {};
+  const menuGroups: Record<string, StatsInventoryCase[]> = {};
 
   for (const tc of activeTestCases) {
     const menuKey = `${tc.page}|||${tc.subMenu || ''}`;
@@ -210,21 +211,26 @@ export function buildModuleProgress(projectModules: StatsModule[], menuProgress:
   return { moduleProgress, ungroupedProgress };
 }
 
-export function buildModuleData(projectModules: StatsModule[], testCases: StatsTestCase[]) {
+export function buildModuleData(projectModules: StatsModule[], testCases: StatsInventoryCase[]) {
+  const groups = new Map<string | null, { total: number; done: number; notDone: number; inProgress: number; blocked: number }>();
+  for (const tc of testCases) {
+    const group = groups.get(tc.moduleId) || { total: 0, done: 0, notDone: 0, inProgress: 0, blocked: 0 };
+    group.total++;
+    if (tc.status === TESTCASE_STATUS.DONE) group.done++;
+    else if (tc.status === TESTCASE_STATUS.NOT_DONE) group.notDone++;
+    else if (tc.status === TESTCASE_STATUS.IN_PROGRESS) group.inProgress++;
+    else if (tc.status === TESTCASE_STATUS.BLOCKED) group.blocked++;
+    groups.set(tc.moduleId, group);
+  }
   return projectModules.map((m) => {
-    const cases = testCases.filter(tc => tc.moduleId === m.id);
     return {
       name: m.name,
-      total: cases.length,
-      done: cases.filter(t => t.status === TESTCASE_STATUS.DONE).length,
-      notDone: cases.filter(t => t.status === TESTCASE_STATUS.NOT_DONE).length,
-      inProgress: cases.filter(t => t.status === TESTCASE_STATUS.IN_PROGRESS).length,
-      blocked: cases.filter(t => t.status === TESTCASE_STATUS.BLOCKED).length,
+      ...(groups.get(m.id) || { total: 0, done: 0, notDone: 0, inProgress: 0, blocked: 0 }),
     };
   });
 }
 
-export function buildPageGroups(testCases: StatsTestCase[]) {
+export function buildPageGroups(testCases: StatsInventoryCase[]) {
   const pageGroupMap: Record<string, number> = {};
   for (const tc of testCases) {
     pageGroupMap[tc.page] = (pageGroupMap[tc.page] || 0) + 1;
@@ -232,7 +238,7 @@ export function buildPageGroups(testCases: StatsTestCase[]) {
   return Object.entries(pageGroupMap).map(([page, count]) => ({ page, _count: { id: count } }));
 }
 
-export function aggregateBugFixCounts(bugFixItems: StatsBugFix[]) {
+export function aggregateBugFixCounts(bugFixItems: Array<{ status: string }>) {
   return {
     bugFixReported: bugFixItems.filter(bf => bf.status === BUGFIX_STATUS.REPORTED).length,
     bugFixFixing: bugFixItems.filter(bf => bf.status === BUGFIX_STATUS.FIXING).length,
@@ -282,7 +288,7 @@ export function buildBugAging(bugFixItems: StatsBugFix[], now: number) {
     .slice(0, 8);
 }
 
-export function buildModuleRisks(activeTestCases: StatsTestCase[]) {
+export function buildModuleRisks(activeTestCases: StatsInventoryCase[]) {
   const moduleRiskMap = new Map<string, {
     moduleId: string | null;
     moduleName: string;
@@ -338,33 +344,54 @@ export function calculateDashboardStats(
   projectModules: StatsModule[],
   now = Date.now()
 ) {
-  const totalTestCases = allTestCases.length;
-  const activeCounts = aggregateTestCaseStatusCounts(allTestCases.filter(tc => tc.status !== TESTCASE_STATUS.TBA));
-  const tbaCount = allTestCases.filter(tc => tc.status === TESTCASE_STATUS.TBA).length;
+  const groups = new Map<string, { status: string; testType: string; priority: string; _count: { _all: number } }>();
+  for (const item of allTestCases) {
+    const key = JSON.stringify([item.status, item.testType, item.priority]);
+    const row = groups.get(key) || { status: item.status, testType: item.testType, priority: item.priority, _count: { _all: 0 } };
+    row._count._all++; groups.set(key, row);
+  }
+  return {
+    ...calculateDashboardInventory(allTestCases, projectModules, [...groups.values()], {
+      bugFixTotal: bugFixItems.length, ...aggregateBugFixCounts(bugFixItems),
+    }),
+    retestQueue: buildRetestQueue(allTestCases, now),
+    bugAging: buildBugAging(bugFixItems, now),
+  };
+}
+
+export function calculateDashboardInventory(
+  allTestCases: StatsInventoryCase[], projectModules: StatsModule[],
+  groups: Array<{ status: string; testType: string; priority: string; _count: { _all: number } }>,
+  bugs: { bugFixTotal: number; bugFixReported: number; bugFixFixing: number; bugFixReadyRetest: number; bugFixFixed: number },
+) {
+  const activeCounts = aggregateTestCaseStatusCounts([]);
+  const totals = { totalTestCases: 0, tbaCount: 0, positiveCount: 0, negativeCount: 0, criticalCount: 0, highCount: 0, mediumCount: 0, lowCount: 0 };
+  for (const row of groups) {
+    const count = row._count._all;
+    totals.totalTestCases += count;
+    if (row.status === TESTCASE_STATUS.TBA) totals.tbaCount += count;
+    else {
+      const single = aggregateTestCaseStatusCounts([{ status: row.status }]);
+      for (const key of Object.keys(activeCounts) as Array<keyof StatusCounts>) activeCounts[key] += single[key] * count;
+    }
+    if (row.testType === TEST_TYPES[0]) totals.positiveCount += count;
+    if (row.testType === TEST_TYPES[1]) totals.negativeCount += count;
+    if (row.priority === TESTCASE_PRIORITIES[3]) totals.criticalCount += count;
+    if (row.priority === TESTCASE_PRIORITIES[2]) totals.highCount += count;
+    if (row.priority === TESTCASE_PRIORITIES[1]) totals.mediumCount += count;
+    if (row.priority === TESTCASE_PRIORITIES[0]) totals.lowCount += count;
+  }
   const { activeTestCases, weightMap, menuProgress } = buildMenuWeightProgress(allTestCases);
   const activeCount = activeTestCases.length;
-  const positiveCount = allTestCases.filter(tc => tc.testType === TEST_TYPES[0]).length;
-  const negativeCount = allTestCases.filter(tc => tc.testType === TEST_TYPES[1]).length;
-  const criticalCount = allTestCases.filter(tc => tc.priority === TESTCASE_PRIORITIES[3]).length;
-  const highCount = allTestCases.filter(tc => tc.priority === TESTCASE_PRIORITIES[2]).length;
-  const mediumCount = allTestCases.filter(tc => tc.priority === TESTCASE_PRIORITIES[1]).length;
-  const lowCount = allTestCases.filter(tc => tc.priority === TESTCASE_PRIORITIES[0]).length;
   const { moduleProgress, ungroupedProgress } = buildModuleProgress(projectModules, menuProgress);
   const overallProgress = activeCount > 0 ? Math.round((activeCounts.doneCount / activeCount) * 100) : 0;
 
   return {
-    totalTestCases,
+    ...totals,
     activeCount,
     ...activeCounts,
-    tbaCount,
-    bugFixTotal: bugFixItems.length,
-    ...aggregateBugFixCounts(bugFixItems),
-    positiveCount,
-    negativeCount,
-    criticalCount,
-    highCount,
-    mediumCount,
-    lowCount,
+    tbaCount: totals.tbaCount,
+    ...bugs,
     overallProgress,
     moduleData: buildModuleData(projectModules, allTestCases),
     pageGroups: buildPageGroups(allTestCases),
@@ -372,8 +399,6 @@ export function calculateDashboardStats(
     menuProgress,
     moduleProgress,
     ungroupedProgress,
-    retestQueue: buildRetestQueue(allTestCases, now),
-    bugAging: buildBugAging(bugFixItems, now),
     moduleRisks: buildModuleRisks(activeTestCases),
   };
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Bot, Loader2, RefreshCw, Save, Sparkles, Wand2 } from 'lucide-react';
+import { Loader2, RefreshCw, Save } from 'lucide-react';
+import { RefineIcon, CopilotIcon } from '@/components/icons/qa-icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,17 +68,15 @@ export function AIRefineDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col border-border/60 bg-card text-foreground elevation-3 rounded-2xl p-0">
-        <div className="absolute left-0 top-0 h-px w-full bg-primary/70" />
-
-        <DialogHeader className="border-b border-border/60 px-6 py-5">
+      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col border-border bg-card text-foreground shadow-xl rounded-2xl p-0">
+        <DialogHeader className="border-b border-border/40 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/15 text-primary shadow-sm">
-              <Wand2 className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <RefineIcon className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-semibold tracking-tight">AI Testcase Refiner</DialogTitle>
-              <DialogDescription className="text-muted-foreground text-[11px] font-medium leading-relaxed">Sempurnakan test case Anda dengan bantuan AI untuk detail yang lebih baik.</DialogDescription>
+              <DialogTitle className="text-base font-semibold text-foreground tracking-tight">AI Testcase Refiner</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-relaxed">Sempurnakan test case Anda dengan bantuan AI untuk detail dan kejelasan pengujian.</DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -102,7 +101,7 @@ export function AIRefineDialog({
                   <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition duration-300">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
+                  <SelectContent className="rounded-xl bg-card border-border/60 shadow-lg">
                     <SelectItem value="format" className="rounded-lg font-medium">Rapikan format</SelectItem>
                     <SelectItem value="complete" className="rounded-lg font-medium">Lengkapi field kosong/kurang jelas</SelectItem>
                     <SelectItem value="standardize" className="rounded-lg font-medium">Standarisasi bahasa QA</SelectItem>
@@ -112,7 +111,7 @@ export function AIRefineDialog({
               </div>
               <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex gap-4 items-start shadow-inner">
                 <div className="mt-1 p-1.5 rounded-lg bg-primary/10 text-primary">
-                  <Sparkles className="h-4 w-4" />
+                  <CopilotIcon className="h-4 w-4" />
                 </div>
                 <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
                   <strong className="text-primary font-semibold uppercase tracking-tight mr-1.5">Note:</strong> AI akan mempelajari pola kalimat Anda dan menyempurnakannya tanpa merubah inti dari skenario pengujian.
@@ -126,10 +125,7 @@ export function AIRefineDialog({
               <div className="relative">
                 <div className="w-24 h-24 rounded-full border-4 border-primary/10 border-t-primary animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Bot className="h-10 w-10 text-primary animate-pulse" />
-                </div>
-                <div className="absolute -top-1 -right-1">
-                  <Sparkles className="h-6 w-6 text-status-retest animate-bounce" />
+                  <CopilotIcon className="h-10 w-10 text-primary animate-pulse" />
                 </div>
               </div>
               <div className="text-center space-y-2">
@@ -161,7 +157,7 @@ export function AIRefineDialog({
                         <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground opacity-60">Before: {field.label}</Label>
                       </div>
                       <div className="min-h-[100px] rounded-2xl border border-border/40 bg-secondary/10 p-4 text-[11px] text-muted-foreground font-medium leading-relaxed whitespace-pre-line shadow-inner opacity-60 italic">
-                        {String(testCase[field.key as keyof TestCase] || '—')}
+                        {String(testCase[field.key as keyof TestCase] || '-')}
                       </div>
                     </div>
                     <div className="space-y-2.5">
@@ -174,7 +170,7 @@ export function AIRefineDialog({
                         field.key === 'testAction' ? "text-[13px] font-semibold text-foreground" : "text-foreground/90",
                         "border-primary/30 bg-card shadow-primary/5"
                       )}>
-                        {String(refinedCase[field.key] || '—')}
+                        {String(refinedCase[field.key] || '-')}
                       </div>
                     </div>
                   </div>
@@ -195,7 +191,7 @@ export function AIRefineDialog({
               <Button
                 variant="outline"
                 onClick={closeDialog}
-                className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition hover:bg-secondary"
+                className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-medium text-xs px-5 transition hover:bg-secondary"
               >
                 Batal
               </Button>
@@ -205,26 +201,26 @@ export function AIRefineDialog({
                   <Button
                     variant="outline"
                     onClick={onReset}
-                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-primary font-bold text-xs px-5 hover:bg-primary/5 transition"
+                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-foreground font-medium text-xs px-4 hover:bg-secondary transition"
                   >
-                    <RefreshCw className="w-4 h-4" /> Rese
+                    <RefreshCw className="w-4 h-4" /> Reset
                   </Button>
                   <Button
                     onClick={onApply}
                     disabled={saving}
-                    className="h-10 gap-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-8 shadow-lg hover:shadow-emerald-500/20 transition duration-300 uppercase tracking-wider"
+                    className="h-10 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-xs px-5 shadow-sm transition"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Apply Refinemen
+                    Terapkan Perubahan
                   </Button>
                 </>
               ) : (
                 <Button
                   onClick={() => onRefine(mode)}
                   disabled={refining}
-                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-semibold text-xs px-8 shadow-lg hover:shadow-primary/30 transition duration-300 uppercase tracking-wider"
+                  className="h-10 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-xs px-6 shadow-sm transition"
                 >
-                  {refining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {refining ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefineIcon className="h-4 w-4" />}
                   Refine Testcase
                 </Button>
               )}

@@ -1,12 +1,20 @@
 'use client';
 
+import React, { useState } from 'react';
+import { FolderPlus, Layers, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 interface ProjectModuleDialogsProps {
   showCreateProject: boolean;
@@ -19,9 +27,25 @@ interface ProjectModuleDialogsProps {
   setNewProjectName: (value: string) => void;
   setNewProjectDesc: (value: string) => void;
   setNewModuleName: (value: string) => void;
-  onCreateProject: () => void;
-  onCreateModule: () => void;
+  onCreateProject: () => void | Promise<void | boolean>;
+  onCreateModule: () => void | Promise<void | boolean>;
 }
+
+const PROJECT_TYPE_PRESETS = [
+  { label: 'Web App', hint: 'Pengujian aplikasi web antarmuka pengguna' },
+  { label: 'Mobile App', hint: 'Pengujian aplikasi mobile iOS / Android' },
+  { label: 'API / Backend', hint: 'Pengujian integrasi endpoint dan arsitektur microservices' },
+  { label: 'Internal Tool', hint: 'Pengujian portal operasional dan dashboard admin' },
+];
+
+const MODULE_NAME_SUGGESTIONS = [
+  'Autentikasi & Akun',
+  'Dashboard & Analitik',
+  'Transaksi & Pembayaran',
+  'Manajemen Pengguna',
+  'Laporan & Ekspor Data',
+  'Pengaturan Sistem',
+];
 
 export function ProjectModuleDialogs({
   showCreateProject,
@@ -37,80 +61,246 @@ export function ProjectModuleDialogs({
   onCreateProject,
   onCreateModule,
 }: ProjectModuleDialogsProps) {
-  const inputClass = 'border-border/60 bg-secondary/50 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/30 rounded-xl';
-  const labelClass = 'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground';
+  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
+  const [isSubmittingModule, setIsSubmittingModule] = useState(false);
+
+  const handleProjectSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!newProjectName.trim() || isSubmittingProject) return;
+    setIsSubmittingProject(true);
+    try {
+      await onCreateProject();
+    } finally {
+      setIsSubmittingProject(false);
+    }
+  };
+
+  const handleModuleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!newModuleName.trim() || isSubmittingModule) return;
+    setIsSubmittingModule(true);
+    try {
+      await onCreateModule();
+    } finally {
+      setIsSubmittingModule(false);
+    }
+  };
+
+  const handlePresetSelect = (preset: typeof PROJECT_TYPE_PRESETS[number]) => {
+    if (!newProjectDesc.trim()) {
+      setNewProjectDesc(preset.hint);
+    }
+  };
 
   return (
     <>
+      {/* Create New Project Dialog */}
       <Dialog open={showCreateProject} onOpenChange={setShowCreateProject}>
-        <DialogContent className="border-border/60 bg-card text-foreground elevation-3 rounded-2xl sm:max-w-md overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Buat Project Baru</DialogTitle>
-            <DialogDescription className="text-muted-foreground text-[11px] font-medium leading-relaxed">Project digunakan untuk mengelompokkan test case berdasarkan aplikasi yang diuji.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-5 py-2">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Nama Project *</Label>
-              <Input
-                className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition"
-                value={newProjectName}
-                onChange={(event) => setNewProjectName(event.target.value)}
-                placeholder="contoh: Servios CMS"
-              />
+        <DialogContent className="border border-border/80 bg-card text-foreground shadow-2xl rounded-2xl sm:max-w-md p-6 overflow-hidden">
+          <form onSubmit={handleProjectSubmit} className="space-y-5">
+            <DialogHeader className="gap-1.5 text-left">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  <FolderPlus className="size-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold tracking-tight text-foreground sm:text-lg">
+                    Buat Project Baru
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground leading-normal">
+                    Ruang kerja terstruktur untuk mengorganisasi modul, test case, dan traceability pengujian.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {/* Quick Project Type Presets */}
+            <div className="space-y-1.5">
+              <span className="flex items-center gap-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Sparkles className="size-3 text-indigo-500" />
+                Preset Tipe Aplikasi (Opsional)
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {PROJECT_TYPE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => handlePresetSelect(preset)}
+                    className="rounded-lg border border-border/70 bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-indigo-500/40 hover:bg-secondary hover:text-foreground active:scale-95"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Deskripsi</Label>
-              <Textarea
-                className="min-h-[100px] rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition p-3"
-                value={newProjectDesc}
-                onChange={(event) => setNewProjectDesc(event.target.value)}
-                placeholder="Deskripsi project (opsional)"
-                rows={3}
-              />
+
+            {/* Form Inputs */}
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="create-project-name" className="text-xs font-semibold text-foreground">
+                    Nama Project <span className="text-rose-500">*</span>
+                  </Label>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {newProjectName.length}/60
+                  </span>
+                </div>
+                <Input
+                  id="create-project-name"
+                  autoFocus
+                  maxLength={60}
+                  disabled={isSubmittingProject}
+                  className="h-10 rounded-xl border-border/80 bg-background text-sm font-medium transition focus-visible:border-indigo-500 focus-visible:ring-indigo-500/20"
+                  value={newProjectName}
+                  onChange={(event) => setNewProjectName(event.target.value)}
+                  placeholder="contoh: Sarinah E-Commerce atau Welma API"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="create-project-desc" className="text-xs font-semibold text-foreground">
+                    Deskripsi Project
+                  </Label>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {newProjectDesc.length}/300
+                  </span>
+                </div>
+                <Textarea
+                  id="create-project-desc"
+                  maxLength={300}
+                  disabled={isSubmittingProject}
+                  className="min-h-[88px] resize-none rounded-xl border-border/80 bg-background p-3 text-sm font-medium transition focus-visible:border-indigo-500 focus-visible:ring-indigo-500/20"
+                  value={newProjectDesc}
+                  onChange={(event) => setNewProjectDesc(event.target.value)}
+                  placeholder="Jelaskan tujuan pengujian, ruang lingkup sistem, atau target rilis (opsional)..."
+                  rows={3}
+                />
+              </div>
             </div>
-          </div>
-          <DialogFooter className="border-t border-border/40 pt-4 mt-2">
-            <Button variant="outline" onClick={() => setShowCreateProject(false)} className="h-10 rounded-xl border-border/60 bg-secondary/30 text-muted-foreground hover:text-foreground font-bold text-xs px-6 transition">Batal</Button>
-            <Button
-              onClick={onCreateProject}
-              disabled={!newProjectName.trim()}
-              className="h-10 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-bold text-xs px-6 shadow-lg hover:shadow-primary/20 transition"
-            >
-              Buat Projec
-            </Button>
-          </DialogFooter>
+
+            <DialogFooter className="mt-6 flex flex-row items-center justify-end gap-2 border-t border-border/60 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSubmittingProject}
+                onClick={() => setShowCreateProject(false)}
+                className="h-9 rounded-xl border-border/80 px-4 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={!newProjectName.trim() || isSubmittingProject}
+                className="h-9 gap-1.5 rounded-xl bg-indigo-600 px-4 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {isSubmittingProject ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <span>Buat Project</span>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
+      {/* Create New Module Dialog */}
       <Dialog open={showCreateModule} onOpenChange={setShowCreateModule}>
-        <DialogContent className="border-border/60 bg-card text-foreground elevation-3 rounded-2xl sm:max-w-md overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-cyan-500" />
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary via-indigo-400 to-cyan-400 bg-clip-text text-transparent">Buat Module Baru</DialogTitle>
-            <DialogDescription className="text-muted-foreground text-[11px] font-medium leading-relaxed">Module digunakan untuk mengorganisir test case berdasarkan fitur atau bagian dari aplikasi.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-5 py-2">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ml-1">Nama Module *</Label>
+        <DialogContent className="border border-border/80 bg-card text-foreground shadow-2xl rounded-2xl sm:max-w-md p-6 overflow-hidden">
+          <form onSubmit={handleModuleSubmit} className="space-y-5">
+            <DialogHeader className="gap-1.5 text-left">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  <Layers className="size-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold tracking-tight text-foreground sm:text-lg">
+                    Buat Module Baru
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground leading-normal">
+                    Kelompokkan test case berdasarkan fitur atau sub-sistem aplikasi.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {/* Quick Module Suggestions */}
+            <div className="space-y-1.5">
+              <span className="flex items-center gap-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Sparkles className="size-3 text-indigo-500" />
+                Saran Modul Cepat
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {MODULE_NAME_SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setNewModuleName(suggestion)}
+                    className={cn(
+                      'rounded-lg border px-2.5 py-1 text-[11px] font-medium transition active:scale-95',
+                      newModuleName === suggestion
+                        ? 'border-indigo-500 bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-semibold'
+                        : 'border-border/70 bg-secondary/40 text-muted-foreground hover:border-indigo-500/40 hover:bg-secondary hover:text-foreground'
+                    )}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Module Name Input */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="create-module-name" className="text-xs font-semibold text-foreground">
+                  Nama Module <span className="text-rose-500">*</span>
+                </Label>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {newModuleName.length}/50
+                </span>
+              </div>
               <Input
-                className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus-visible:ring-primary/20 transition"
+                id="create-module-name"
+                autoFocus
+                maxLength={50}
+                disabled={isSubmittingModule}
+                className="h-10 rounded-xl border-border/80 bg-background text-sm font-medium transition focus-visible:border-indigo-500 focus-visible:ring-indigo-500/20"
                 value={newModuleName}
                 onChange={(event) => setNewModuleName(event.target.value)}
-                placeholder="contoh: CMS Login, Order Management"
+                placeholder="contoh: Autentikasi Pengguna atau Keranjang Belanja"
               />
             </div>
-          </div>
-          <DialogFooter className="border-t border-border/40 pt-4 mt-2">
-            <Button variant="outline" onClick={() => setShowCreateModule(false)} className="h-10 rounded-xl border-border/60 bg-secondary/30 text-muted-foreground hover:text-foreground font-bold text-xs px-6 transition">Batal</Button>
-            <Button
-              onClick={onCreateModule}
-              disabled={!newModuleName.trim()}
-              className="h-10 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-bold text-xs px-6 shadow-lg hover:shadow-primary/20 transition"
-            >
-              Buat Module
-            </Button>
-          </DialogFooter>
+
+            <DialogFooter className="mt-6 flex flex-row items-center justify-end gap-2 border-t border-border/60 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSubmittingModule}
+                onClick={() => setShowCreateModule(false)}
+                className="h-9 rounded-xl border-border/80 px-4 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={!newModuleName.trim() || isSubmittingModule}
+                className="h-9 gap-1.5 rounded-xl bg-indigo-600 px-4 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {isSubmittingModule ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <span>Buat Module</span>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>

@@ -18,10 +18,16 @@ export function TestCaseFilterPanel({ children, mobileDateFilter, activeCount, c
 }) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
-  const trigger = <Button type="button" variant="outline" className="h-11 w-full gap-2 sm:h-10">
-    <SlidersHorizontal data-icon="inline-start" /> Filter
-    {activeCount > 0 ? <Badge variant="secondary">{activeCount}</Badge> : null}
-  </Button>;
+  const trigger = (
+    <Button
+      type="button"
+      variant="outline"
+      className="h-9 w-auto px-3 gap-2 text-xs font-medium rounded-md border-border/70 bg-transparent"
+    >
+      <SlidersHorizontal data-icon="inline-start" className="size-3.5" /> Filter
+      {activeCount > 0 ? <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeCount}</Badge> : null}
+    </Button>
+  );
 
   if (isMobile) return (
     <Sheet open={open} onOpenChange={setOpen}>

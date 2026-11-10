@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
 import crypto from 'node:crypto';
+import { normalizeReportFilters, type ReportFilters } from '@/lib/domain/report-filters';
 import { assertReportMetricsConsistent, executionOutcome } from './report-integrity';
 import type {
   CreateReportInput,
@@ -55,7 +56,7 @@ function pct(part: number, total: number) {
 // Metrics reflect the whole project's current state (a status snapshot), not
 // just rows edited within the reporting period. The reporting period is kept
 // as document metadata / narrative context, not a filter on the headline
-// counts — otherwise a report shows all-zeros whenever nothing was touched in
+// counts: otherwise a report shows all-zeros whenever nothing was touched in
 // that exact window.
 export async function calculateProjectMetrics(projectId: string, testRunId?: string): Promise<ReportMetrics> {
   const [testCases, bugFixItems, testRuns, sourceRun] = await Promise.all([
@@ -321,18 +322,52 @@ export async function generateReport(input: CreateReportInput): Promise<ReportDa
   return mapReport(report);
 }
 
-export async function getProjectReports(projectId: string, options: { cursor?: string; limit?: number } = {}) {
+export async function getProjectReports(projectId: string, options: { cursor?: string; limit?: number; summaryOnly?: boolean; filters?: Partial<ReportFilters> } = {}) {
   const limit = Math.min(100, Math.max(1, options.limit || 50));
-  const rows = await db.report.findMany({
-    where: { projectId },
-    include: { project: true },
-    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+  const filters = normalizeReportFilters(options.filters);
+  const types = {
+    TEST_STATUS_REPORT: ['TEST_STATUS_REPORT', 'TEST_STATUS'],
+    TEST_PLANNING_DOCUMENT: ['TEST_PLANNING_DOCUMENT', 'TEST_PLANNING'],
+  };
+  const where: Prisma.ReportWhereInput = { projectId };
+  if (filters.status !== 'ALL') where.status = filters.status;
+  if (filters.type !== 'ALL') where.reportType = { in: types[filters.type] };
+  if (filters.search) {
+    const project = await db.project.findUnique({ where: { id: projectId }, select: { name: true } });
+    if (!project?.name.toLowerCase().includes(filters.search)) {
+      const matchingTypes = Object.entries(types).filter(([type]) =>
+        (type === 'TEST_STATUS_REPORT' ? 'test status report' : 'test planning document').includes(filters.search),
+      ).flatMap(([, aliases]) => aliases);
+      where.OR = [
+        { reportType: { in: matchingTypes } },
+        { version: {
+          contains: filters.search.replace(/^v(?=\d)/, ''),
+          ...(/^postgres(?:ql)?:\/\//i.test(process.env.DATABASE_URL || '') ? { mode: 'insensitive' as const } : {}),
+        } },
+      ];
+    }
+  }
+  const query = {
+    where,
+    orderBy: [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
     take: limit + 1,
     ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
-  });
+  };
+  const filtered = Boolean(filters.search || filters.status !== 'ALL' || filters.type !== 'ALL');
+  const [rows, total, matchedCount] = await Promise.all([
+    options.summaryOnly
+      ? db.report.findMany({ ...query, select: { id: true, projectId: true, project: { select: { name: true } }, reportType: true, status: true, version: true, reportingPeriodStart: true, reportingPeriodEnd: true, createdAt: true, metricsSnapshot: true } })
+      : db.report.findMany({ ...query, include: { project: true } }),
+    options.summaryOnly ? db.report.count({ where: { projectId } }) : undefined,
+    options.summaryOnly && filtered ? db.report.count({ where }) : undefined,
+  ]);
   const hasMore = rows.length > limit;
   const reports = hasMore ? rows.slice(0, limit) : rows;
-  return { items: reports.map(mapReport), hasMore, nextCursor: hasMore ? reports.at(-1)?.id || null : null };
+  const items = options.summaryOnly ? reports.map(report => {
+    const metrics = asMetrics(report.metricsSnapshot);
+    return { id: report.id, projectId: report.projectId, projectName: report.project.name, reportType: normalizeType(report.reportType), status: report.status || 'DRAFT', version: report.version, reportingPeriodStart: report.reportingPeriodStart, reportingPeriodEnd: report.reportingPeriodEnd, generatedAt: report.createdAt, metrics: { totalPassed: metrics.totalPassed, totalFailed: metrics.totalFailed, passRate: metrics.passRate } };
+  }) : reports.map(mapReport);
+  return { items, hasMore, nextCursor: hasMore ? reports.at(-1)?.id || null : null, total, matchedTotal: matchedCount ?? total };
 }
 
 export async function getReportById(reportId: string): Promise<ReportData | null> {

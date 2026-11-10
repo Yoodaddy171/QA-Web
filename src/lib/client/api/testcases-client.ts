@@ -13,6 +13,7 @@ export type TestCaseQueryOptions = {
   createdFromVal?: string;
   createdToVal?: string;
   pageVal?: number;
+  limitVal?: number;
   sortVal?: string;
   orderVal?: string;
 };
@@ -26,9 +27,11 @@ export async function fetchTestCases(params: URLSearchParams, signal?: AbortSign
   return res.json();
 }
 
-export async function fetchStats(projectId: string): Promise<Stats> {
-  const res = await fetch(`/api/stats?projectId=${projectId}`);
-  return res.json();
+export async function fetchStats(projectId: string, signal?: AbortSignal): Promise<Stats> {
+  const res = await fetch(`/api/stats?projectId=${encodeURIComponent(projectId)}`, { signal });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Statistik gagal dimuat.');
+  return data;
 }
 
 export async function updateTestCase(input: Record<string, unknown>) {

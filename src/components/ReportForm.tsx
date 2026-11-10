@@ -125,8 +125,8 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
               <Select value={reportType} onValueChange={(value) => setReportType(value as ReportType)} disabled={Boolean(report)}>
                 <SelectTrigger id={fieldId("reportType")}><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="TEST_STATUS_REPORT">Test Status Report FDS</SelectItem>
-                  <SelectItem value="TEST_PLANNING_DOCUMENT">Test Planning FDS</SelectItem>
+                  <SelectItem value="TEST_STATUS_REPORT">Test Status Report (TSR)</SelectItem>
+                  <SelectItem value="TEST_PLANNING_DOCUMENT">Test Planning Document (TPD)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -181,9 +181,22 @@ export function ReportForm({ projectId, report, onReportSaved, onCancel }: Repor
         </AccordionItem>
       </Accordion>
 
-      <div className="sticky bottom-4 flex flex-wrap justify-end gap-2 rounded-xl border border-border bg-card p-4 pr-20">
-        <Button type="submit" className="min-h-10" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save Draft'}</Button>
-        <Button type="button" className="min-h-10" variant="outline" onClick={onCancel}>Cancel</Button>
+      <div className="sticky bottom-4 flex flex-wrap justify-end gap-2.5 rounded-2xl border border-border/60 bg-card/95 backdrop-blur-sm p-4 shadow-lg pr-20">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-medium text-xs px-5 hover:bg-secondary"
+        >
+          Batal
+        </Button>
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="h-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-xs px-6 shadow-sm"
+        >
+          {isSubmitting ? 'Menyimpan...' : 'Simpan Draft'}
+        </Button>
       </div>
     </form>
   );

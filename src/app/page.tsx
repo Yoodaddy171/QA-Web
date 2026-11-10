@@ -36,26 +36,9 @@ import {
 } from '@/lib/client/workspace-formatters';
 import { buildWorkspaceViews } from '@/lib/client/workspace-tab-views';
 
-function PanelFallback() {
-  return (
-    <div className="animate-pulse space-y-4" aria-label="Loading view">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="h-20 rounded-xl border border-border/40 bg-card/60" />
-        ))}
-      </div>
-      <div className="space-y-2 rounded-xl border border-border/40 bg-card/60 p-4">
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="h-9 rounded-md bg-secondary/60" style={{ opacity: 1 - i * 0.13 }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-const TestRunsPanel = dynamic(() => import('@/components/TestRunsPanel').then(module => module.TestRunsPanel), { loading: PanelFallback });
-const TraceabilityPanel = dynamic(() => import('@/components/TraceabilityPanel').then(module => module.TraceabilityPanel), { loading: PanelFallback });
-const ReportsPanel = dynamic(() => import('@/components/ReportsPanel').then(module => module.ReportsPanel), { loading: PanelFallback });
+import { TestRunsPanel } from '@/components/TestRunsPanel';
+import { TraceabilityPanel } from '@/components/TraceabilityPanel';
+import { ReportsPanel } from '@/components/ReportsPanel';
 const ProjectModuleDialogs = dynamic(() => import('@/components/ProjectModuleDialogs').then(module => module.ProjectModuleDialogs));
 const TestCaseDialog = dynamic(() => import('@/components/TestCaseDialog').then(module => module.TestCaseDialog));
 const TestCaseDetailDialog = dynamic(() => import('@/components/TestCaseDetailDialog').then(module => module.TestCaseDetailDialog));
@@ -159,6 +142,7 @@ export default function TestCaseManager() {
   } = useTestCases(selectedProject);
   const {
     visibleBugFixItems,
+    bugFixPagination,
     bugFixFilterModules,
     hasUnassignedBugFixItems,
     bugFixSearch,
@@ -173,7 +157,7 @@ export default function TestCaseManager() {
     handleBugFixStatusChange,
     transformBugFixToDetail,
   } = useBugFixes(selectedProject, modules, () => {
-    loadStats(selectedProject);
+    loadStats(selectedProject, true);
     loadTestCases(selectedProject);
   });
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
@@ -239,6 +223,7 @@ export default function TestCaseManager() {
     automatedSearch,
     automatedFilterModule,
     automatedLoading,
+    automatedPage, automatedTotal, automatedTotalPages, automatedSummary, automatedModuleIds, automatedError, setAutomatedPage,
     visibleAutomatedItems,
     testRecordById,
     setAutomatedSearch,
@@ -271,7 +256,7 @@ export default function TestCaseManager() {
     generateAISummary,
     loadLogHistory,
     filterConsoleLogs,
-  } = useAutomationDevlog({ viewTestCase, setViewTestCase, enabled: access.ready && !access.guest });
+  } = useAutomationDevlog({ projectId: selectedProject, historyVisible: activeTab === 'automated', viewTestCase, setViewTestCase, enabled: access.ready && !access.guest });
   const selectedProjectName = useMemo(
     () => projects.find(project => project.id === selectedProject)?.name,
     [projects, selectedProject]
@@ -303,7 +288,7 @@ export default function TestCaseManager() {
 
   // ============== DATA FETCHING ==============
   const loadAll = async (projId: string) => {
-    await Promise.all([loadModules(projId), loadStats(projId), loadTestCases(projId), loadBugFix(projId), loadAutomated(projId)]);
+    await Promise.all([loadModules(projId), loadStats(projId, true), loadTestCases(projId), loadBugFix(projId), loadAutomated(projId)]);
   };
   const {
     showImportDialog,
@@ -417,7 +402,7 @@ export default function TestCaseManager() {
     if (!selectedProject || !access.ready) return;
     const timer = window.setTimeout(() => {
       if (!access.guest || access.guest.permissions.includes('cases.view')) void loadModules(selectedProject);
-      if (!access.guest || access.guest.permissions.includes('dashboard.view')) void loadStats(selectedProject);
+      if (activeTab !== 'dashboard' && (!access.guest || access.guest.permissions.includes('dashboard.view'))) void loadStats(selectedProject);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [selectedProject, access.ready, access.guest?.id]);
@@ -427,15 +412,15 @@ export default function TestCaseManager() {
       if (activeTab === 'testcases') {
         void Promise.all([loadTestCases(selectedProject), loadAutomated(selectedProject)]);
       } else if (activeTab === 'dashboard') {
-        void Promise.all([loadModules(selectedProject), loadStats(selectedProject)]);
+        void loadStats(selectedProject);
       } else if (activeTab === 'bugfix') {
         void loadBugFix(selectedProject);
       } else if (activeTab === 'automated') {
         void loadAutomated(selectedProject);
       }
-    }, 0);
+    }, activeTab === 'automated' ? 250 : 0);
     return () => window.clearTimeout(timer);
-  }, [activeTab, selectedProject, access.ready, access.guest?.id]);
+  }, [activeTab, selectedProject, access.ready, access.guest?.id, automatedPage, automatedSearch, automatedFilterModule]);
   // Auto-refresh dashboard every 60s when on dashboard tab
   useEffect(() => {
     if (activeTab !== 'dashboard' || !selectedProject || !access.ready || (access.guest && !access.guest.permissions.includes('dashboard.view'))) return;
@@ -769,9 +754,10 @@ export default function TestCaseManager() {
     clearSelection: () => setSelectedIds(new Set()),
     getStatusColor, getStatusIcon, getStatusBadgeVariant, getPriorityColor, getTestTypeColor,
     bugFixFilterModules, hasUnassignedBugFixItems, visibleBugFixItems, bugFixSearch, bugFixFilterStatus,
-    bugFixFilterModule, bugFixTab, setBugFixSearch, setBugFixFilterStatus, setBugFixFilterModule, setBugFixTab,
+    bugFixFilterModule, bugFixTab, bugFixPagination, setBugFixSearch, setBugFixFilterStatus, setBugFixFilterModule, setBugFixTab,
     handleBugFixStatusChange, openBugFixDetail, automatedItems, automatedSearch, automatedFilterModule,
     automatedLoading, setAutomatedSearch, setAutomatedFilterModule, loadAutomated, visibleAutomatedItems,
+    automatedPage, automatedTotal, automatedTotalPages, automatedSummary, automatedModuleIds, automatedError, setAutomatedPage,
     projects, setSelectedProject: handleProjectChange, setShowCreateProject, setShowCreateModule, handleDeleteProject, handleDeleteModule,
     setActiveTab: navigateToTab,
   };
@@ -796,6 +782,7 @@ export default function TestCaseManager() {
         projectHealth={stats?.overallProgress ?? null}
         setSelectedProject={handleProjectChange}
         setActiveTab={handleActiveTabChange}
+        onCreateProject={() => setShowCreateProject(true)}
       >
         {{
           dashboard: workspaceViews.dashboard,

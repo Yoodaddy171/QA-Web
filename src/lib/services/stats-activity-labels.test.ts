@@ -3,13 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const db = vi.hoisted(() => Object.fromEntries([
   'testCase', 'module', 'bugFix', 'testRun', 'activityHistory', 'testExecution',
   'guestAccessGrant', 'workspaceMembership', 'requirement', 'testPlan',
-].map(name => [name, { findMany: vi.fn() }])));
-vi.mock('@/lib/db', () => ({ db }));
+].map(name => [name, { findMany: vi.fn(), groupBy: vi.fn() }])));
+const raw = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/db', () => ({ db: { ...db, $queryRaw: raw } }));
 import { getProjectStats } from './stats-service';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const model of Object.values(db)) model.findMany.mockResolvedValue([]);
+  for (const model of Object.values(db)) { model.findMany.mockResolvedValue([]); model.groupBy.mockResolvedValue([]); }
+  raw.mockResolvedValue([]);
 });
 
 describe('recent activity entity labels', () => {

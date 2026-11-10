@@ -2,7 +2,7 @@
 
 ## Compact default
 
-The default now advertises **7 tools** while retaining all 99 endpoint operations. No client configuration change is needed; restart/reconnect the MCP process in Claude/Codex to reload the tool list.
+The default advertises **7 tools** with dynamically discovered endpoint operations. No client configuration change is needed; restart/reconnect the MCP process in Claude/Codex to reload the tool list and catalog.
 
 - `qa_web_guide({topic:"overview"})`: short introduction; load only a relevant topic afterward.
 - `qa_web_catalog({search:"testcases"})`: 15 results per page, operation IDs and routing; follow nextOffset with offset.
@@ -39,7 +39,7 @@ codex mcp add qa-web -- node "C:\path\QA-Web\mcp-qa-web\server.mjs"
 
 ## Available tools and contracts
 
-`qa_web_catalog` lists web/relay operations with keyword search and pagination. Every exported business HTTP handler in `src/app/api/**/route.ts` becomes an operation ID (`web_get_projects`, `web_post_testcases`, etc.). There are currently 99 endpoint operations, accessed through 7 compact tools; full mode advertises 103 tools. New exported routes appear after restarting MCP. Relay routes are an explicit maintained catalog.
+`qa_web_catalog` lists web/relay operations with keyword search and pagination. Exported business HTTP handler functions and variable handlers/aliases in `src/app/api/**/route.ts` become operation IDs (`web_get_projects`, `web_post_testcases`, etc.). The operation count changes with source; use the catalog's total rather than a fixed count. New exported routes appear after restarting MCP. Relay routes are an explicit maintained catalog.
 
 - `qa_web_guide`: current skill plus Claude's accumulated usage findings.
 - `qa_web_contract`: actual route implementation and enums; inspect before unfamiliar payloads. Discovered fields are hints, not complete validation schemas.
@@ -79,6 +79,14 @@ on failure. Replacement accepts exactly one file. Always read back the evidence 
 Connection failures distinguish a server not listening (`ECONNREFUSED`), timeouts and
 other transport failures. Mutation transport failures still have UNKNOWN outcome and
 must be reconciled before retrying. HTTP errors retain their status/envelope.
+
+## Playwright Studio (Automation tab)
+
+Start with `qa_web_guide({topic:"playwright"})`, search catalog for `automation_scripts`, then read the returned contracts. Studio exposes GET/PUT/POST/DELETE at `/api/automation/scripts` through existing compact tools. Resolve the selected project's testcase **internal id**, not display ID. OWNER/ADMIN only. PUT saves JSON script text; POST queues the supplied script snapshot; GET reads worker health, script, history, paged events and downloadable artifacts. DELETE requests Stop and retains the existing explicit-user-confirmation gate; send JSON `body:{}` and poll afterward.
+
+Run the separate host worker (`npm run automation:runner`) with dev dependencies and Chromium installed. Web and worker must share storage configuration. Studio is trusted Node execution, not a sandbox, and is separate from `qa_browser` and relay Manual Capture. HTTP 202 means queued, not passed. It does not automatically update testcase verdicts or Test Run executions. Read stored state and artifacts before reporting results. Full payload recipes, constraints and troubleshooting are in the playwright guide topic; host setup is in `docs/traceva-playwright-studio.md`.
+
+Reconnect/restart MCP after this update and verify that topic `playwright` and all four operations appear. Updating MCP source does not rebuild the web application or start its worker.
 
 ## Local access and deletion warning
 

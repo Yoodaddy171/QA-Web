@@ -12,5 +12,5 @@ export async function GET(req: NextRequest) {
     unreadOnly: req.nextUrl.searchParams.get('unreadOnly') === 'true',
     limit: Number.isFinite(limit) ? limit : 20,
   });
-  return NextResponse.json(result);
+  return NextResponse.json(result, { headers: { 'Cache-Control': 'private, no-store' } });
 }

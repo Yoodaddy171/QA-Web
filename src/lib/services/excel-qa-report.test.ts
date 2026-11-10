@@ -87,7 +87,7 @@ describe('QA Report workbook', () => {
       const { loaded, parsed } = await roundtrip(createQaReport({ projectName: 'Empty', testCases: inputs, generatedAt: at }));
       const summary = loaded.getWorksheet('Summary')!;
       expect(parsed.Sheets.Summary.B19.v).toBe(inputs.length);
-      expect(summary.getCell('B20').value).toMatchObject({ result: '—' });
+      expect(summary.getCell('B20').value).toMatchObject({ result: '-' });
       expect(loaded.getWorksheet('Test Cases')!.rowCount).toBe(inputs.length + 1);
     }
   });

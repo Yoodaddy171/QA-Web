@@ -216,7 +216,7 @@ test('FUNC-8E-10: API failure/retry, missing entity and rapid selection cancella
     if (new URL(route.request().url()).searchParams.has('seedId')) { await route.fulfill({ status: 503, json: { error: 'Synthetic service unavailable' } }); return; }
     await route.continue();
   });
-  await page.getByLabel('Cari nama atau ID').fill('AUTH-001'); await page.getByRole('button', { name: /^AUTH-001 —/ }).click();
+  await page.getByLabel('Cari nama atau ID').fill('AUTH-001'); await page.getByRole('button', { name: /^AUTH-001[: -]/ }).click();
   await expect(canvas(page).getByRole('alert')).toContainText('Synthetic service unavailable');
   await page.unroute('**/api/traceability/graph?*');
   await page.getByRole('button', { name: 'Coba lagi', exact: true }).click(); await expect(canvas(page).locator('[data-graph-node]')).not.toHaveCount(0);
@@ -226,7 +226,7 @@ test('FUNC-8E-10: API failure/retry, missing entity and rapid selection cancella
     if (new URL(route.request().url()).searchParams.get('seedId') === f.cases[0].id) { const response = await route.fetch(); await gate; try { await route.fulfill({ response }); } catch { /* Aborted old request is expected. */ } finished = true; return; }
     await route.continue();
   });
-  await page.getByRole('button', { name: 'Ganti object', exact: true }).click(); await page.getByLabel('Cari nama atau ID').fill('AUTH-001'); await page.getByRole('button', { name: /^AUTH-001 —/ }).click();
+  await page.getByRole('button', { name: 'Ganti object', exact: true }).click(); await page.getByLabel('Cari nama atau ID').fill('AUTH-001'); await page.getByRole('button', { name: /^AUTH-001[: -]/ }).click();
   await expect(canvas(page).getByRole('status')).toContainText('Memuat relasi');
   await choose(page, 'Testcase', 'AUTH-002'); release();
   await expect.poll(() => finished).toBe(true);
@@ -238,7 +238,7 @@ test('FUNC-8E-10: API failure/retry, missing entity and rapid selection cancella
     else await route.continue();
   });
   await page.getByRole('button', { name: 'Ganti object', exact: true }).click();
-  await page.getByLabel('Cari nama atau ID').fill('AUTH-003'); await page.getByRole('button', { name: /^AUTH-003 —/ }).click();
+  await page.getByLabel('Cari nama atau ID').fill('AUTH-003'); await page.getByRole('button', { name: /^AUTH-003[: -]/ }).click();
   await expect(canvas(page).getByRole('alert')).toContainText('Object sudah tidak tersedia.');
   await choose(page, 'Testcase', 'AUTH-004');
   await expect(canvas(page).getByRole('button', { name: 'Testcase: AUTH-004, fokus graph', exact: true })).toHaveAttribute('aria-pressed', 'true');

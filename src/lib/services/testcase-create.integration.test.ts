@@ -3,6 +3,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+import * as XLSX from 'xlsx';
+import { importWorkbook } from '@/lib/services/excel-import-service';
 
 // CREATE-FAILED-BUG-001: direct creation as FAILED must not bypass the Bug queue.
 // Route + real transaction tests; authentication/proxy enforcement is not mocked
@@ -53,11 +55,96 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   await db.$executeRawUnsafe('DROP TRIGGER IF EXISTS create_bug_failure');
   await db.$executeRawUnsafe('DROP TRIGGER IF EXISTS create_history_failure');
+  await db.$executeRawUnsafe('DROP TRIGGER IF EXISTS import_history_failure');
+  await db.$executeRawUnsafe('DROP TRIGGER IF EXISTS import_bug_failure');
   await db.workspace.deleteMany();
   const workspace = await db.workspace.create({ data: { name: 'Create regression workspace', slug: 'create-regression' } });
   projectId = (await db.project.create({ data: { workspaceId: workspace.id, name: 'Create project A' } })).id;
   otherProjectId = (await db.project.create({ data: { workspaceId: workspace.id, name: 'Create project B' } })).id;
   moduleId = (await db.module.create({ data: { projectId, name: 'Synthetic module' } })).id;
+});
+
+it('IMPORT-ATOMIC: activity failure rolls back the testcase and reports the failed row', async () => {
+  await db.$executeRawUnsafe("CREATE TRIGGER import_history_failure BEFORE INSERT ON ActivityHistory WHEN NEW.action = 'IMPORTED' BEGIN SELECT RAISE(ABORT, 'synthetic activity failure'); END");
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['ID','Page','Feature','Test','Expected Result','Status'], ['IMPORT-001','Login','Auth','Login check','Allowed','NOT DONE']]), 'Synthetic');
+  const result = await importWorkbook(workbook, projectId, false);
+  expect(result.imported).toBe(0);
+  expect(result.sheets[0].errors).toEqual([{ row: 1, message: expect.stringContaining('dibatalkan') }]);
+  await expectNoPartialRecords();
+});
+
+it('IMPORT-ATOMIC: bug failure rolls back only its row while the next valid row commits', async () => {
+  await db.$executeRawUnsafe("CREATE TRIGGER import_bug_failure BEFORE INSERT ON BugFix BEGIN SELECT RAISE(ABORT, 'synthetic bug failure'); END");
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['ID','Page','Feature','Test','Expected Result','Status'], ['IMPORT-FAILED','Login','Auth','Failed check','Allowed','FAILED'], ['IMPORT-OK','Login','Auth','Next check','Allowed','NOT DONE']]), 'Synthetic');
+  const result = await importWorkbook(workbook, projectId, false);
+  expect(result.imported).toBe(1); expect(result.sheets[0].skipped).toBe(1);
+  expect(await db.testCase.count()).toBe(1); expect(await db.bugFix.count()).toBe(0); expect(await db.activityHistory.count()).toBe(1);
+  expect((await db.testCase.findFirstOrThrow()).testCaseId).toBe('IMPORT-OK');
+});
+
+it('RUN-SUMMARY: grouped run totals omit testcase arrays and summary-only reads skip case pages', async () => {
+  const created = await (await create({ status: 'NOT DONE', actualResult: '-' })).json();
+  const run = await db.testRun.create({ data: { projectId, name: 'Summary fixture' } });
+  await db.testRunCase.create({ data: { testRunId: run.id, testCaseId: created.id, latestStatus: 'FAILED' } });
+  const { listTestRuns, getTestRun } = await import('@/lib/services/test-run-service');
+  const page = await listTestRuns(projectId);
+  expect(page.items[0].summary).toMatchObject({ total: 1, failed: 1, completed: 1 });
+  expect(page.items[0]).not.toHaveProperty('testCases');
+  expect(await getTestRun(projectId, run.id, { summaryOnly: true })).toMatchObject({ summary: { total: 1, failed: 1 }, testCases: [] });
+});
+
+it('REPORT-SUMMARY: list projection retains card metrics without document sections or metadata', async () => {
+  await db.report.create({ data: { projectId, version: '1.0', reportType: 'TEST_STATUS_REPORT', reportingPeriodStart: new Date(), reportingPeriodEnd: new Date(), metricsSnapshot: { totalPassed: 4, totalFailed: 2, passRate: 66.7 }, sectionsJson: { scope: 'Detail only' }, metadataJson: { documentInformation: 'Detail only' } } });
+  const { getProjectReports } = await import('@/lib/services/report-generator');
+  const summary = await getProjectReports(projectId, { summaryOnly: true, limit: 1 });
+  expect(summary.items[0]).toMatchObject({ metrics: { totalPassed: 4, totalFailed: 2, passRate: 66.7 } });
+  expect(summary.items[0]).not.toHaveProperty('sections'); expect(summary.items[0]).not.toHaveProperty('metadata');
+  const legacy = await getProjectReports(projectId);
+  expect(legacy.items[0]).toHaveProperty('sections.scope', 'Detail only');
+});
+
+it('REPORT-PAGINATION: filters the entire project before taking a cursor page and returns scoped counts', async () => {
+  const { getProjectReports } = await import('@/lib/services/report-generator');
+  const base = { projectId, reportingPeriodStart: new Date('2026-01-01'), reportingPeriodEnd: new Date('2026-01-02'), metricsSnapshot: {} };
+  await db.report.createMany({ data: Array.from({ length: 30 }, (_, index) => ({
+    ...base, version: `1.${index}`, reportType: 'TEST_STATUS_REPORT', status: 'DRAFT', createdAt: new Date(2026, 1, index + 1),
+  })) });
+  const older = await db.report.create({ data: { ...base, version: '2.0', reportType: 'TEST_PLANNING', status: 'FINAL', createdAt: new Date('2025-01-01') } });
+  await db.report.create({ data: { ...base, projectId: otherProjectId, version: '2.0', reportType: 'TEST_PLANNING_DOCUMENT', status: 'FINAL' } });
+
+  const first = await getProjectReports(projectId, { summaryOnly: true, limit: 25 });
+  expect(first.items).toHaveLength(25);
+  expect(first.items.some(item => item.id === older.id)).toBe(false);
+  expect(first).toMatchObject({ total: 31, matchedTotal: 31, hasMore: true });
+  const filtered = await getProjectReports(projectId, { summaryOnly: true, limit: 25, filters: { search: '  TEST PLANNING  ', type: 'TEST_PLANNING_DOCUMENT', status: 'FINAL' } });
+  expect(filtered.items.map(item => item.id)).toEqual([older.id]);
+  expect(filtered).toMatchObject({ total: 31, matchedTotal: 1, hasMore: false });
+
+  const byVersion = await getProjectReports(projectId, { summaryOnly: true, filters: { search: ' V2.0 ' } });
+  expect(byVersion.items.map(item => item.id)).toEqual([older.id]);
+  const drafts = await getProjectReports(projectId, { summaryOnly: true, limit: 25, filters: { status: 'DRAFT' } });
+  const next = await getProjectReports(projectId, { summaryOnly: true, limit: 25, cursor: drafts.nextCursor!, filters: { status: 'DRAFT' } });
+  expect(next.items).toHaveLength(5);
+  expect(new Set([...drafts.items, ...next.items].map(item => item.id)).size).toBe(30);
+  expect(next).toMatchObject({ total: 31, matchedTotal: 30, hasMore: false });
+  const byProject = await getProjectReports(projectId, { summaryOnly: true, filters: { search: ' CREATE PROJECT A ' } });
+  expect(byProject).toMatchObject({ total: 31, matchedTotal: 31 });
+});
+
+it('REPORT-PAGINATION: API forwards filters/counts and rejects invalid filter values', async () => {
+  const { GET } = await import('@/app/api/reports/route');
+  for (const suffix of ['status=WRONG', 'type=WRONG', `search=${'x'.repeat(201)}`]) {
+    expect((await GET(new NextRequest(`http://localhost/api/reports?projectId=${projectId}&${suffix}`))).status).toBe(400);
+  }
+  const base = { projectId, reportingPeriodStart: new Date('2026-01-01'), reportingPeriodEnd: new Date('2026-01-02'), metricsSnapshot: {} };
+  const matching = await db.report.create({ data: { ...base, version: '2.0', reportType: 'TEST_PLANNING_DOCUMENT', status: 'FINAL' } });
+  await db.report.create({ data: { ...base, version: '1.0', reportType: 'TEST_STATUS_REPORT', status: 'DRAFT' } });
+  const response = await GET(new NextRequest(`http://localhost/api/reports?projectId=${projectId}&view=summary&status=FINAL&type=TEST_PLANNING_DOCUMENT&search=%20V2.0%20`));
+  const body = await response.json();
+  expect(body).toMatchObject({ total: 2, matchedTotal: 1, hasMore: false });
+  expect(body.reports.map((report: { id: string }) => report.id)).toEqual([matching.id]);
 });
 afterAll(async () => {
   await db.$disconnect();

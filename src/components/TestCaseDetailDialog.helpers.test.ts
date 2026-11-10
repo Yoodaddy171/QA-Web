@@ -1,10 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dedupeNetworkLogs,
   getExecutionInteraction,
   getExecutionLogText,
   isExecutionLog,
   type LogEntry,
 } from './TestCaseDetailDialog.helpers';
+
+describe('Network request rows', () => {
+  const request = (id: string, requestId?: string): LogEntry => ({
+    id,
+    sessionId: 'capture',
+    eventType: 'network.request',
+    network: { event: 'Request', method: 'POST', url: 'https://example.test/orders', data: { requestId } },
+  });
+  const response = (id: string, status: number, requestId?: string): LogEntry => ({
+    ...request(id, requestId),
+    eventType: 'network.response',
+    network: { ...request(id, requestId).network!, event: 'Response', status },
+  });
+
+  it('replaces only the matching request even when two identical URLs complete out of order', () => {
+    expect(dedupeNetworkLogs([
+      request('start-a', 'a'), request('start-b', 'b'), request('start-c', 'c'),
+      response('end-b', 422, 'b'), response('end-a', 200, 'a'),
+    ]).map(log => log.id)).toEqual(['end-a', 'end-b', 'start-c']);
+  });
+
+  it('does not hide all pending requests for a legacy URL when only one response was captured', () => {
+    expect(dedupeNetworkLogs([
+      request('start-a'), request('start-b'), response('end-a', 200),
+    ]).map(log => log.id)).toEqual(['end-a', 'start-b']);
+  });
+});
 
 describe('execution log helpers', () => {
   it('reads structured manual interaction metadata', () => {

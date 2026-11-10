@@ -1,4 +1,5 @@
 import type { AutomationEventMode, AutomationEventType } from './automation-event-client';
+import { getDevtoolsConsoleLevel } from './devtools-console';
 
 export type VideoEventCategory =
   | 'api.request'
@@ -114,11 +115,20 @@ export function parseAutomationTimestamp(value: VideoSyncEvent['timestamp']) {
 }
 
 function getVideoStartedAtMs(recording: VideoSyncRecording | null | undefined) {
-  return parseAutomationTimestamp(
-    recording?.video?.startedAt
-      ?? recording?.recordingStartedAt
-      ?? recording?.startedAt
-  );
+  const explicitStart = parseAutomationTimestamp(recording?.video?.startedAt ?? undefined);
+  if (explicitStart !== undefined) return explicitStart;
+  const sessionStart = parseAutomationTimestamp(recording?.recordingStartedAt ?? recording?.startedAt);
+  return sessionStart === undefined ? undefined : sessionStart + (recording?.video?.startedAtRelativeMs || 0);
+}
+
+export function getVideoEventOffsetMs(event: VideoSyncEvent, recording: VideoSyncRecording | null | undefined) {
+  // Session-relative timestamps share the recorder's clock and avoid host/browser clock skew.
+  if (typeof event.relativeMs === 'number' && Number.isFinite(event.relativeMs)) {
+    return event.relativeMs - (recording?.video?.startedAtRelativeMs || 0);
+  }
+  const timestamp = parseAutomationTimestamp(event.timestamp);
+  const start = getVideoStartedAtMs(recording);
+  return timestamp !== undefined && start !== undefined ? timestamp - start : undefined;
 }
 
 function getVideoDurationMs(recording: VideoSyncRecording | null | undefined, measuredDurationMs?: number) {
@@ -149,26 +159,25 @@ export function classifyVideoEvent(event: VideoSyncEvent): {
     return { category: 'api.request', severity: 'info', label: event.network?.method || 'REQ' };
   }
   if (eventType === 'network.response' || event.network) {
-    const failed = responseStatus !== undefined
-      ? responseStatus >= 400
-      : event.network?.success === false;
+    const failed = event.network?.success === false || (responseStatus !== undefined && responseStatus >= 400);
     return {
       category: failed ? 'api.response.failed' : 'api.response.success',
       severity: failed ? 'error' : 'success',
       label: responseStatus ? String(responseStatus) : 'RES',
     };
   }
-  if (eventType === 'error' || /exception|javascript error|runtime exception/.test(message)) {
+  if (eventType === 'error' || (eventType !== 'console' && /exception|javascript error|runtime exception/.test(message))) {
     return { category: 'javascript.error', severity: 'error', label: 'JS Error' };
   }
   if (eventType === 'warning') {
     return { category: 'console.warning', severity: 'warning', label: 'Warning' };
   }
   if (eventType === 'console') {
-    if (/severe|error/.test(level) || /error|exception|failed|failure/.test(message)) {
+    const consoleLevel = getDevtoolsConsoleLevel({ level });
+    if (consoleLevel === 'error') {
       return { category: 'console.error', severity: 'error', label: 'Console Error' };
     }
-    if (/warn|warning/.test(level) || /warn|warning/.test(message)) {
+    if (consoleLevel === 'warning') {
       return { category: 'console.warning', severity: 'warning', label: 'Console Warning' };
     }
     return { category: 'console.log', severity: 'info', label: 'Console' };
@@ -187,6 +196,7 @@ export function classifyVideoEvent(event: VideoSyncEvent): {
 
 export function getVideoEventDedupKey(event: VideoSyncEvent) {
   if (event.eventId) return `event:${event.eventId}`;
+  if (event.id) return `id:${event.id}`;
   const timestamp = parseAutomationTimestamp(event.timestamp);
   const timestampBucket = timestamp === undefined ? '' : String(Math.floor(timestamp / 1000));
   return [
@@ -203,9 +213,7 @@ export function buildSyncedVideoEvents(
   recording: VideoSyncRecording | null | undefined,
   options: { measuredDurationMs?: number } = {}
 ) {
-  const videoStartedAtMs = getVideoStartedAtMs(recording);
   const videoDurationMs = getVideoDurationMs(recording, options.measuredDurationMs);
-  const videoStartedAtRelativeMs = Number(recording?.video?.startedAtRelativeMs || 0);
   const seen = new Set<string>();
 
   return events.reduce<SyncedVideoEvent[]>((items, event, index) => {
@@ -214,14 +222,7 @@ export function buildSyncedVideoEvents(
     seen.add(key);
 
     const eventTimestampMs = parseAutomationTimestamp(event.timestamp);
-    const relativeMs = typeof event.relativeMs === 'number' && Number.isFinite(event.relativeMs)
-      ? event.relativeMs
-      : undefined;
-    const eventOffsetMs = eventTimestampMs !== undefined && videoStartedAtMs !== undefined
-      ? eventTimestampMs - videoStartedAtMs
-      : relativeMs !== undefined
-        ? relativeMs - videoStartedAtRelativeMs
-        : undefined;
+    const eventOffsetMs = getVideoEventOffsetMs(event, recording);
     const isBeforeVideo = typeof eventOffsetMs === 'number' && eventOffsetMs < 0;
     const isAfterVideo = typeof eventOffsetMs === 'number' && videoDurationMs !== undefined && eventOffsetMs > videoDurationMs;
     const clampedOffsetMs = typeof eventOffsetMs === 'number'
@@ -283,22 +284,27 @@ export function filterVideoEventsByCategory(events: SyncedVideoEvent[], filters:
   return events.filter((event) => filters[getVideoEventFilterKey(event)] !== false);
 }
 
-export function groupVideoEventMarkers(markers: VideoEventMarker[], thresholdPercent = 2.5): GroupedVideoEventMarker[] {
+export function groupVideoEventMarkers(markers: VideoEventMarker[], thresholdPercent = 2.5, maxSpanMs = 1000): GroupedVideoEventMarker[] {
   const sorted = [...markers].sort((a, b) => a.leftPercent - b.leftPercent);
   const groups: GroupedVideoEventMarker[] = [];
+  let firstPosition = 0;
+  let firstOffset = 0;
+  let positionSum = 0;
 
   for (const marker of sorted) {
     const previous = groups[groups.length - 1];
-    if (previous && Math.abs(marker.leftPercent - previous.leftPercent) <= thresholdPercent) {
+    const offset = marker.event.clampedOffsetMs ?? 0;
+    if (previous && marker.leftPercent - firstPosition <= thresholdPercent && offset - firstOffset <= maxSpanMs) {
       previous.events.push(marker.event);
       previous.count = previous.events.length;
-      previous.leftPercent = previous.events.reduce((total, event) => {
-        const original = sorted.find(item => item.event.id === event.id);
-        return total + (original?.leftPercent ?? previous.leftPercent);
-      }, 0) / previous.events.length;
+      positionSum += marker.leftPercent;
+      previous.leftPercent = positionSum / previous.count;
       continue;
     }
 
+    firstPosition = marker.leftPercent;
+    firstOffset = offset;
+    positionSum = marker.leftPercent;
     groups.push({
       id: marker.event.id,
       events: [marker.event],
@@ -328,13 +334,13 @@ export function getNearestVideoEvent(events: SyncedVideoEvent[], currentOffsetMs
   return nearest;
 }
 
-export function formatVideoOffset(offsetMs?: number) {
+export function formatVideoOffset(offsetMs?: number, milliseconds = false) {
   if (typeof offsetMs !== 'number' || !Number.isFinite(offsetMs)) return '-';
   const safeMs = Math.max(0, Math.round(offsetMs));
   const totalSeconds = Math.floor(safeMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  return `${minutes}:${String(seconds).padStart(2, '0')}${milliseconds ? `.${String(safeMs % 1000).padStart(3, '0')}` : ''}`;
 }
 
 export function formatVideoEventDetail(event: SyncedVideoEvent): VideoEventDetail {

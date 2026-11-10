@@ -24,7 +24,10 @@ async function readSmallJson(req: NextRequest, pathname: string) {
   // project to the query project authorized here. Never skip a JSON handler's body.
   if (contentType === 'multipart/form-data' && (pathname === '/api/excel'
     || /^\/api\/test-runs\/[^/]+\/executions\/[^/]+\/evidence$/.test(pathname))) return null;
-  if (contentType !== 'application/json') throw new RequestGuardError(415, 'Content-Type application/json diperlukan.');
+  // Next can represent a bodyless HTTP DELETE as an empty stream.
+  const emptyDeleteCandidate = req.method === 'DELETE' && !contentType
+    && Number(req.headers.get('content-length') ?? 0) === 0;
+  if (!emptyDeleteCandidate && contentType !== 'application/json') throw new RequestGuardError(415, 'Content-Type application/json diperlukan.');
   if (Number(req.headers.get('content-length') || 0) > 1_000_000) throw new RequestGuardError(413, 'Body JSON terlalu besar.');
   const reader = req.clone().body!.getReader();
   const chunks: Uint8Array[] = [];
@@ -32,6 +35,11 @@ async function readSmallJson(req: NextRequest, pathname: string) {
   while (true) {
     const chunk = await reader.read();
     if (chunk.done) break;
+    if (emptyDeleteCandidate) {
+      if (!chunk.value.byteLength) continue;
+      void reader.cancel().catch(() => undefined);
+      throw new RequestGuardError(415, 'Content-Type application/json diperlukan.');
+    }
     size += chunk.value.byteLength;
     if (size > 1_000_000) {
       void reader.cancel().catch(() => undefined);
@@ -39,6 +47,7 @@ async function readSmallJson(req: NextRequest, pathname: string) {
     }
     chunks.push(chunk.value);
   }
+  if (emptyDeleteCandidate) return null;
   try {
     const body: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('object required');

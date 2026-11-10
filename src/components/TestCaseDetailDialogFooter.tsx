@@ -23,33 +23,52 @@ export function TestCaseDetailDialogFooter({
   openEvidenceReport,
 }: TestCaseDetailDialogFooterProps) {
   return (
-    <div className="qa-inspector-footer flex shrink-0 flex-wrap justify-end gap-2 border-t border-border bg-card p-4 sm:px-6">
-      <Button variant="outline" onClick={() => onOpenChange(false)}>
-        Tutup
-      </Button>
-      {viewTestCase && !isBugFixDetail && onRefine && (
-        <MutationAction><Button
-          variant="outline"
-          onClick={() => onRefine(viewTestCase)}
-        >
-          <Sparkles className="h-4 w-4" /> Refine AI
-        </Button></MutationAction>
-      )}
-      {viewTestCase && (
+    <div className="qa-inspector-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-6 py-3">
+      <div className="mr-auto flex items-center gap-2">
+        {viewTestCase && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={openEvidenceReport}
+            className="h-8 gap-1.5 rounded-md border-border/70 text-xs font-medium"
+          >
+            <FileDown className="h-3.5 w-3.5" /> Evidence Report
+          </Button>
+        )}
+        {viewTestCase && !isBugFixDetail && onRefine && (
+          <MutationAction><Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onRefine(viewTestCase)}
+            className="h-8 gap-1.5 rounded-md border-border/70 text-xs font-medium"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-primary" /> Refine AI
+          </Button></MutationAction>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
         <Button
+          type="button"
           variant="outline"
-          onClick={openEvidenceReport}
+          size="sm"
+          onClick={() => onOpenChange(false)}
+          className="h-8 rounded-md text-xs font-medium"
         >
-          <FileDown className="h-4 w-4" /> Evidence Report
+          Tutup
         </Button>
-      )}
-      {viewTestCase && (
-        <MutationAction><Button
-          onClick={() => { onOpenChange(false); onEdit(viewTestCase); }}
-        >
-          <Edit3 className="h-4 w-4" /> Edit Test Case
-        </Button></MutationAction>
-      )}
+        {viewTestCase && (
+          <MutationAction><Button
+            type="button"
+            size="sm"
+            onClick={() => { onOpenChange(false); onEdit(viewTestCase); }}
+            className="h-8 gap-1.5 rounded-md text-xs font-semibold shadow-none"
+          >
+            <Edit3 className="h-3.5 w-3.5" /> Edit Test Case
+          </Button></MutationAction>
+        )}
+      </div>
     </div>
   );
 }

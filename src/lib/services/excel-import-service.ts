@@ -135,7 +135,7 @@ export async function buildImportPreview(workbook: XLSX.WorkBook, projectId: str
 
 export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string, createModules: boolean, batchId = randomUUID(), mappings?: Record<string, ImportColumnMapping>) {
   let totalImported = 0;
-  const sheetResults: { sheet: string; imported: number; skipped: number; moduleId?: string }[] = [];
+  const sheetResults: { sheet: string; imported: number; skipped: number; moduleId?: string; errors?: Array<{ row: number; message: string }> }[] = [];
 
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName];
@@ -154,8 +154,9 @@ export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string,
     const moduleId = await resolveImportModule(projectId, sheetName, createModules);
     let imported = 0;
     let skipped = 0;
+    const errors: Array<{ row: number; message: string }> = [];
 
-    for (const row of rows) {
+    for (const [index, row] of rows.entries()) {
       const mappedRow = mapImportRow(row, sheetName, projectId, moduleId, mappings?.[sheetName]);
       if (!mappedRow.testCaseId) {
         skipped++;
@@ -163,15 +164,13 @@ export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string,
       }
 
       try {
-        const tc = await db.testCase.create({ data: mappedRow });
-        await recordActivity({ projectId, entityType: 'TestCase', entityId: tc.id, action: 'IMPORTED', afterValue: { batchId, testCaseId: tc.id } });
+        await db.$transaction(async tx => {
+        const tc = await tx.testCase.create({ data: mappedRow });
+        await recordActivity({ projectId, entityType: 'TestCase', entityId: tc.id, action: 'IMPORTED', afterValue: { batchId, testCaseId: tc.id } }, tx);
 
         if (mappedRow.status === TESTCASE_STATUS.FAILED) {
-          const existingBugFix = await db.bugFix.findFirst({
-            where: { sourceTestCaseId: tc.id },
-          });
-          if (!existingBugFix) {
-            await db.bugFix.create({
+            // The source testcase was just created in this transaction: no lookup needed.
+            await tx.bugFix.create({
               data: {
                 sourceTestCaseId: tc.id,
                 testCaseId: mappedRow.testCaseId,
@@ -189,18 +188,19 @@ export async function importWorkbook(workbook: XLSX.WorkBook, projectId: string,
                 reportedAt: new Date(),
               },
             });
-          }
         }
+        });
 
         imported++;
       } catch (err) {
-        console.error(`Failed to import row with ID ${mappedRow.testCaseId}:`, err);
+        console.error('Import row rolled back', { row: index + 1, code: err && typeof err === 'object' && 'code' in err ? err.code : 'IMPORT_ROW_FAILED' });
+        errors.push({ row: index + 1, message: err && typeof err === 'object' && 'code' in err && err.code === 'P2002' ? 'ID sudah digunakan. Baris tidak disimpan.' : 'Baris gagal disimpan; perubahan baris ini dibatalkan.' });
         skipped++;
       }
     }
 
     totalImported += imported;
-    sheetResults.push({ sheet: sheetName, imported, skipped, moduleId: moduleId || undefined });
+    sheetResults.push({ sheet: sheetName, imported, skipped, moduleId: moduleId || undefined, ...(errors.length ? { errors } : {}) });
   }
 
 

@@ -20,8 +20,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   if (!projectId) return errorResponse('projectId wajib diisi.');
 
   const testRun = await getTestRun(projectId, id, {
+    summaryOnly: req.nextUrl.searchParams.get('view') === 'summary',
     caseCursor: req.nextUrl.searchParams.get('caseCursor') || undefined,
     caseLimit: Number(req.nextUrl.searchParams.get('caseLimit') || 100),
+    focusCaseId: req.nextUrl.searchParams.get('focusCaseId') || undefined,
+    focusIndex: req.nextUrl.searchParams.has('focusIndex') ? Number(req.nextUrl.searchParams.get('focusIndex')) : undefined,
   });
   if (!testRun) return errorResponse('Test Run tidak ditemukan.', 404);
   return NextResponse.json(testRun);

@@ -133,9 +133,23 @@ function adaptLegacyLogToAutomationEvent(input = {}) {
   const testCaseId = input.testCaseId;
   const network = input.network || {};
   const networkData = network.data && typeof network.data === 'object' ? network.data : {};
+  const networkDetails = compactObject({
+    requestId: networkData.requestId,
+    resourceType: networkData.resourceType,
+    mimeType: networkData.mimeType,
+    transferSize: networkData.transferSize,
+    protocol: networkData.protocol,
+    remoteAddress: networkData.remoteAddress,
+    statusText: networkData.statusText,
+    initiator: networkData.initiator,
+    timing: networkData.timing,
+    failureText: networkData.failureText,
+    success: network.success,
+  });
   const unknownLegacyFields = getUnknownFields(input, LEGACY_FIELDS);
   const metadata = {
     ...(input.metadata && typeof input.metadata === 'object' ? input.metadata : {}),
+    ...(Object.keys(networkDetails).length > 0 ? { networkDetails } : {}),
     legacy: compactObject({
       type: input.type,
       sessionId: input.sessionId,

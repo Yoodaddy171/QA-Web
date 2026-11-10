@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { LatestRequest } from '@/lib/client/latest-request';
 import { MutationAction, useWorkspaceAccess } from '@/components/WorkspaceAccess';
-import { BookOpen, Bot, Edit3, Eye, EyeOff, FolderOpen, FolderPlus, Layers, Link, Loader2, Plus, RefreshCw, Save, ServerCog, Trash, Upload, UsersRound, X } from 'lucide-react';
+import { Edit3, Eye, EyeOff, FolderOpen, FolderPlus, Layers, Link, Loader2, Plus, RefreshCw, Save, Trash, Upload, UsersRound, X } from 'lucide-react';
+import { WorkspaceSettingsIcon, TeamIcon, CopilotIcon, KnowledgeIcon } from '@/components/icons/qa-icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,7 @@ import {
 import { AISettingsCard } from '@/components/AISettingsCard';
 import { ProjectKnowledgeCard } from '@/components/ProjectKnowledgeCard';
 import { SystemReadinessCard } from '@/components/SystemReadinessCard';
+import { DropzoneSettingsCard } from '@/components/DropzoneSettingsCard';
 import { WorkspaceMembersCard } from '@/components/WorkspaceMembersCard';
 import { GuestAccessCard } from '@/components/GuestAccessCard';
 
@@ -65,7 +68,10 @@ interface ProjectKnowledge {
 
 const EMPTY_KNOWLEDGE_FORM = { id: '', type: 'QA_RULES', title: '', content: '' };
 
-export function SettingsPanel({
+export function SettingsPanel(props: SettingsPanelProps) {
+  return <ProjectSettingsPanel key={props.selectedProject} {...props} />;
+}
+function ProjectSettingsPanel({
   projects,
   modules,
   selectedProject,
@@ -76,6 +82,9 @@ export function SettingsPanel({
   onDeleteModule,
 }: SettingsPanelProps) {
   const { canEdit, canAdmin, canManageTeam, canCreateProject } = useWorkspaceAccess();
+  const [activeTab, setActiveTab] = useState('system');
+  const knowledgeRequests = useRef(new LatestRequest());
+  const [knowledgeError, setKnowledgeError] = useState('');
   const [knowledgeItems, setKnowledgeItems] = useState<ProjectKnowledge[]>([]);
   const [knowledgeLoading, setKnowledgeLoading] = useState(false);
   const [knowledgeSaving, setKnowledgeSaving] = useState(false);
@@ -94,43 +103,50 @@ export function SettingsPanel({
   const [aiMessage, setAiMessage] = useState('');
 
   useEffect(() => {
-    fetch('/api/settings/ai')
-      .then(response => response.json())
+    if (activeTab !== 'ai' || !canAdmin) return;
+    const controller = new AbortController();
+    fetch('/api/settings/ai', { signal: controller.signal })
+      .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Gagal membaca konfigurasi AI.'); return data; })
       .then(data => {
+        if (controller.signal.aborted) return;
         setAiProvider(data.provider || 'auto');
         setGroqStatus(data.groq || 'Not configured');
         setGeminiStatus(data.gemini || 'Not configured');
         setOllamaBaseUrl(data.ollamaBaseUrl || '');
         setAiMessage(data.ollamaError || '');
       })
-      .catch(() => setAiMessage('Gagal membaca konfigurasi AI.'));
-  }, []);
+      .catch(error => { if (!controller.signal.aborted) setAiMessage(error instanceof Error ? error.message : 'Gagal membaca konfigurasi AI.'); });
+    return () => controller.abort();
+  }, [activeTab, canAdmin]);
 
-  const loadKnowledge = async () => {
+  const loadKnowledge = useCallback(async () => {
     if (!selectedProject) {
       setKnowledgeItems([]);
       return;
     }
     setKnowledgeLoading(true);
+    const request = knowledgeRequests.current.begin();
     try {
-      const response = await fetch(`/api/project-knowledge?projectId=${encodeURIComponent(selectedProject)}`);
+      const response = await fetch(`/api/project-knowledge?projectId=${encodeURIComponent(selectedProject)}`, { signal: request.signal });
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Gagal memuat knowledge. Coba buka ulang tab ini.');
+      if (!request.current()) return;
       setKnowledgeItems(Array.isArray(data.items) ? data.items : []);
-    } catch {
-      setKnowledgeItems([]);
+      setKnowledgeError('');
+    } catch (cause) {
+      if (request.current()) setKnowledgeError(cause instanceof Error ? cause.message : 'Knowledge belum dimuat. Coba buka ulang tab ini.');
     } finally {
-      setKnowledgeLoading(false);
+      if (request.current()) setKnowledgeLoading(false);
     }
-  };
+  }, [selectedProject]);
 
   useEffect(() => {
+    if (activeTab !== 'knowledge' && activeTab !== 'integrations') return;
     const timer = window.setTimeout(() => {
       loadKnowledge();
-      setKnowledgeForm(EMPTY_KNOWLEDGE_FORM);
-      setFigmaSyncMessage('');
     }, 0);
-  return () => window.clearTimeout(timer);
-  }, [selectedProject]);
+  return () => { window.clearTimeout(timer); knowledgeRequests.current.cancel(); };
+  }, [activeTab, loadKnowledge]);
 
   const saveKnowledge = async () => {
     if (!selectedProject || !knowledgeForm.title.trim() || !knowledgeForm.content.trim()) return;
@@ -236,6 +252,7 @@ export function SettingsPanel({
     setKnowledgeFile, knowledgeFile, uploadKnowledgeFile, knowledgeUploading,
     figmaUrl, setFigmaUrl, figmaDepth, setFigmaDepth, syncFigmaKnowledge,
     figmaSyncing, figmaSyncMessage, saveKnowledge, knowledgeSaving, deleteKnowledge, knowledgeMessage,
+    knowledgeError, retryKnowledge: () => void loadKnowledge(),
   };
 
   return (
@@ -245,35 +262,39 @@ export function SettingsPanel({
       transition={{ duration: 0 }}
       className="qa-module-page qa-module-form qa-settings-page flex flex-col gap-5"
     >
-      <Tabs defaultValue="system" className="gap-5">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-5">
       <div className="qa-module-tabs w-full overflow-x-auto rounded-xl scrollbar-thin scrollbar-thumb-border/40">
         <TabsList aria-label="Bagian pengaturan" className="h-auto w-max min-w-full justify-start gap-1 border border-border bg-card p-1">
-          <TabsTrigger value="system" className="min-w-max flex-none"><ServerCog className="size-4" />System</TabsTrigger>
-          <TabsTrigger value="team" className="min-w-max flex-none"><UsersRound className="size-4" />Team</TabsTrigger>
+          <TabsTrigger value="system" className="min-w-max flex-none"><WorkspaceSettingsIcon className="size-4" />System</TabsTrigger>
+          <TabsTrigger value="team" className="min-w-max flex-none"><TeamIcon className="size-4" />Team</TabsTrigger>
           {canAdmin && <TabsTrigger value="guests" className="min-w-max flex-none"><UsersRound className="size-4" />Akses tamu</TabsTrigger>}
-          <TabsTrigger value="ai" className="min-w-max flex-none"><Bot className="size-4" />AI</TabsTrigger>
+          <TabsTrigger value="ai" className="min-w-max flex-none"><CopilotIcon className="size-4" />AI</TabsTrigger>
           <TabsTrigger value="projects" className="min-w-max flex-none"><FolderOpen className="size-4" />Projects</TabsTrigger>
-          <TabsTrigger value="knowledge" className="min-w-max flex-none"><BookOpen className="size-4" />Knowledge</TabsTrigger>
+          <TabsTrigger value="knowledge" className="min-w-max flex-none"><KnowledgeIcon className="size-4" />Knowledge</TabsTrigger>
           <TabsTrigger value="integrations" className="min-w-max flex-none"><Link className="size-4" />Integrations</TabsTrigger>
           <TabsTrigger value="modules" className="min-w-max flex-none"><Layers className="size-4" />Modules</TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value="system" className="mt-0">
-        <SystemReadinessCard />
+        <div className="space-y-5">
+          <DropzoneSettingsCard />
+          <SystemReadinessCard />
+        </div>
       </TabsContent>
       <TabsContent value="team" className="mt-0">
         {canManageTeam ? <WorkspaceMembersCard /> : <p className="rounded-xl border border-border bg-card p-5 text-sm leading-6 text-muted-foreground">Administrasi team memerlukan ADMIN pada workspace aktif. Endpoint team saat ini menggunakan workspace administrasi default akun.</p>}
       </TabsContent>
       {canAdmin && <TabsContent value="guests" className="mt-0">{projects.find(project => project.id === selectedProject)?.workspaceId ? <GuestAccessCard key={projects.find(project => project.id === selectedProject)!.workspaceId} workspaceId={projects.find(project => project.id === selectedProject)!.workspaceId!} projects={projects} /> : <p className="text-sm text-muted-foreground">Pilih project untuk mengelola akses tamu workspace.</p>}</TabsContent>}
       <TabsContent value="ai" className="mt-0">
-      <fieldset disabled={!canAdmin}><AISettingsCard
+        {!canAdmin && <p className="mb-3 text-sm text-muted-foreground">Konfigurasi AI hanya dapat dilihat oleh owner/admin workspace.</p>}
+      {canAdmin && <fieldset><AISettingsCard
         projectId={selectedProject}
         provider={aiProvider}
         ollamaBaseUrl={ollamaBaseUrl}
         groqStatus={groqStatus}
         geminiStatus={geminiStatus}
         message={aiMessage}
-      /></fieldset>
+      /></fieldset>}
       </TabsContent>
 
       {/* Projects Card */}
@@ -312,10 +333,10 @@ export function SettingsPanel({
                       <p className="break-words text-sm font-semibold text-foreground">{project.name}</p>
                       {project.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{project.description}</p>}
                       <div className="flex items-center gap-2 mt-1.5">
-                        <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground text-xs font-medium uppercase rounded-lg">
+                        <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground font-mono tabular-nums text-xs font-medium uppercase rounded-lg">
                           {project._count?.testCases || 0} Test Cases
                         </Badge>
-                        <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground text-xs font-medium uppercase rounded-lg">
+                        <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground font-mono tabular-nums text-xs font-medium uppercase rounded-lg">
                           {project._count?.modules || 0} Modules
                         </Badge>
                       </div>
@@ -336,7 +357,7 @@ export function SettingsPanel({
                           <Trash className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="border-border/60 bg-card text-foreground elevation-3 rounded-2xl">
+                      <AlertDialogContent className="border-border bg-card text-foreground shadow-xl rounded-2xl">
                         <AlertDialogHeader>
                           <AlertDialogTitle className="text-foreground">Hapus Project?</AlertDialogTitle>
                           <AlertDialogDescription className="text-muted-foreground">
@@ -345,7 +366,7 @@ export function SettingsPanel({
                         </AlertDialogHeader>
                         <AlertDialogFooter className="border-t border-border/40 pt-4">
                           <AlertDialogCancel className="rounded-xl border-border/60 bg-secondary/30 text-foreground hover:bg-secondary/50 transition duration-200">Batal</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onDeleteProject(project.id)} className="rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-xs">
+                          <AlertDialogAction onClick={() => onDeleteProject(project.id)} className="rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold text-xs">
                             Hapus
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -418,7 +439,7 @@ export function SettingsPanel({
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-foreground truncate">{module.name}</p>
-                      <p className="text-xs font-semibold text-muted-foreground/60 uppercase">{module._count?.testCases || 0} Cases</p>
+                      <p className="text-xs font-mono font-semibold tabular-nums text-muted-foreground uppercase">{module._count?.testCases || 0} Cases</p>
                     </div>
                   </div>
                   <MutationAction><Button

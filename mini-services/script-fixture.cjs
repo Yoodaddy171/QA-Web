@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Playwright loads this bridge as CommonJS. */
 const { test: base, expect } = require('@playwright/test');
 const { emit } = require('./script-telemetry.cjs');
+const { consoleLevel, consoleMetadata } = require('./console-metadata.cjs');
 const path = require('node:path');
 const cap = value => String(value ?? '').slice(0, 12000);
 const test = base.extend({
@@ -12,7 +13,10 @@ const test = base.extend({
       const videoIndex = pageIndex++;
       const relativeMs = Math.max(0, Date.now() - Number(process.env.TRACEVA_RUN_STARTED));
       if (page.video()) void page.video().path().then(file => emit('execution', 'Rekaman video dimulai', { event: 'video.started', relativeMs, metadata: { file: path.basename(file), testId: testInfo.testId, videoIndex } })).catch(() => {});
-      page.on('console', message => emit('console', message.text(), { level: message.type() === 'error' ? 'SEVERE' : message.type() === 'warning' ? 'WARNING' : 'INFO' }));
+      page.on('console', message => {
+        const type = message.type();
+        emit('console', message.text(), { level: consoleLevel(type), metadata: consoleMetadata(type, message.location()) });
+      });
       page.on('pageerror', error => emit('console', error.message, { level: 'SEVERE' }));
       page.on('framenavigated', frame => { if (frame === page.mainFrame()) emit('execution', `Menuju halaman ${frame.url()}`); });
     };

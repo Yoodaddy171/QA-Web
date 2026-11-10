@@ -35,7 +35,7 @@ export async function syncBugFixForTestCaseStatus(input: {
   if (mismatched) throw new MutationError(409, 'Relasi Bug dan Test Case tidak berada dalam project yang sama.');
 
   if (input.finalStatus === TESTCASE_STATUS.FAILED) {
-    // Already tracked in the active queue — nothing to do.
+    // Already tracked in the active queue: nothing to do.
     const activeBugFix = await client.bugFix.findFirst({
       where: {
         sourceTestCaseId: input.sourceTestCaseId,

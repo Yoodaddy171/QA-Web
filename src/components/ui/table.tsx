@@ -3,6 +3,16 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { SimpleTooltip } from "@/components/ui/tooltip"
+
+type TableTooltipProps = {
+  tooltip?: React.ReactNode | false
+}
+
+function TableTooltip({ content, children }: { content: React.ReactNode; children: React.ReactElement }) {
+  if (!content) return children
+  return <SimpleTooltip content={content} contentClassName="z-[120] max-w-[min(28rem,calc(100vw-2rem))] whitespace-pre-wrap break-words text-left">{children}</SimpleTooltip>
+}
 
 function Table({ className, containerClassName, containerProps, ...props }: React.ComponentProps<"table"> & {
   containerClassName?: string
@@ -69,8 +79,9 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   )
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+function TableHead({ className, title, tooltip, ...props }: React.ComponentProps<"th"> & TableTooltipProps) {
   return (
+    <TableTooltip content={tooltip === false ? null : tooltip ?? title}>
     <th
       data-slot="table-head"
       className={cn(
@@ -79,11 +90,13 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
       )}
       {...props}
     />
+    </TableTooltip>
   )
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+function TableCell({ className, title, tooltip, ...props }: React.ComponentProps<"td"> & TableTooltipProps) {
   return (
+    <TableTooltip content={tooltip === false ? null : tooltip ?? title}>
     <td
       data-slot="table-cell"
       className={cn(
@@ -92,6 +105,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
       )}
       {...props}
     />
+    </TableTooltip>
   )
 }
 

@@ -2,7 +2,7 @@
 
 import type React from 'react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Bot, Eye, RefreshCw, Search, Settings2, TerminalSquare } from 'lucide-react';
+import { Bot, Eye, RefreshCw, Search, Settings2, TerminalSquare, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AutomationStatsCards } from '@/components/AutomationStatsCards';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 
 type AutomatedColumnKey = 'module' | 'action' | 'type' | 'priority' | 'status' | 'lastRun' | 'source' | 'history';
 
@@ -95,6 +96,7 @@ export interface AutomatedTestCase {
     hasLegacy: boolean;
     hasAutomationRun: boolean;
     hasManualCapture: boolean;
+    hasPlaywrightStudio?: boolean;
     totalBytes: number;
     lastRunAt: string | null;
     files: Array<{
@@ -107,6 +109,7 @@ export interface AutomatedTestCase {
 }
 
 interface AutomatedPanelProps {
+  pagination?: { page: number; total: number; totalPages: number; onPageChange: (page: number) => void; summary: { total: number; manual: number; lastRunAt: string | null }; moduleIds: string[]; error?: string };
   selectedProject: string;
   modules: Module[];
   items: AutomatedTestCase[];
@@ -136,6 +139,7 @@ const formatSize = (bytes: number) => {
 };
 
 export function AutomatedPanel({
+  pagination,
   selectedProject,
   modules,
   items,
@@ -154,10 +158,11 @@ export function AutomatedPanel({
 }: AutomatedPanelProps) {
   const [visibleColumns, setVisibleColumns] = useState<Record<AutomatedColumnKey, boolean>>(getInitialAutomatedColumns);
   const deferredSearch = useDeferredValue(search);
-  const moduleIdsWithRuns = useMemo(() => new Set(items.map(item => item.moduleId).filter(Boolean)), [items]);
+  const moduleIdsWithRuns = useMemo(() => new Set(pagination?.moduleIds || items.map(item => item.moduleId).filter(Boolean)), [items, pagination?.moduleIds]);
   const availableModules = modules.filter(module => moduleIdsWithRuns.has(module.id) || module.id === filterModule);
-  const hasUnassignedRuns = items.some((item) => !item.moduleId);
-  const filteredItems = useMemo(() => items.filter((item) => {
+  const hasUnassignedRuns = pagination ? pagination.moduleIds.includes('unassigned') : items.some((item) => !item.moduleId);
+  const hasRecords = pagination ? pagination.moduleIds.length > 0 : items.length > 0;
+  const filteredItems = useMemo(() => pagination ? items : items.filter((item) => {
     if (filterModule !== 'all') {
       const moduleKey = item.moduleId || 'unassigned';
       if (moduleKey !== filterModule) return false;
@@ -173,8 +178,8 @@ export function AutomatedPanel({
       item.module?.name || '',
       item.status,
     ].some((value) => value.toLowerCase().includes(keyword));
-  }), [items, filterModule, deferredSearch]);
-  const showingLabel = filteredItems.length !== items.length
+  }), [items, filterModule, deferredSearch, pagination]);
+  const showingLabel = pagination ? `Menampilkan ${items.length} dari ${pagination.total} data` : filteredItems.length !== items.length
     ? `Menampilkan ${filteredItems.length} dari ${items.length} data`
     : `Menampilkan ${filteredItems.length} data`;
   const isColumnVisible = (key: AutomatedColumnKey) => visibleColumns[key];
@@ -201,9 +206,9 @@ export function AutomatedPanel({
   return (
     <div className="qa-module-page flex flex-col gap-5">
       <AutomationStatsCards
-        total={filteredItems.length}
-        manual={filteredItems.filter((item) => item.automation.hasManualCapture).length}
-        lastRunAt={filteredItems[0]?.automation.lastRunAt}
+        total={pagination?.summary.total ?? filteredItems.length}
+        manual={pagination?.summary.manual ?? filteredItems.filter((item) => item.automation.hasManualCapture).length}
+        lastRunAt={pagination?.summary.lastRunAt ?? filteredItems[0]?.automation.lastRunAt}
       />
 
 
@@ -217,9 +222,19 @@ export function AutomatedPanel({
               placeholder="Cari test record..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="pl-9"
+              className="pl-9 pr-8"
               aria-label="Cari automation record"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded"
+                aria-label="Bersihkan pencarian"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           <Select value={filterModule} onValueChange={setFilterModule}>
             <SelectTrigger className="w-full sm:w-48">
@@ -273,28 +288,59 @@ export function AutomatedPanel({
         </div>
       </div>
 
-      {filteredItems.length === 0 ? (
+      {pagination?.error && <p role="alert" className="text-sm text-destructive">{pagination.error}</p>}
+      {loading && filteredItems.length === 0 ? <p role="status" className="py-12 text-center text-sm text-muted-foreground">Memuat Automation Log…</p> : filteredItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card px-5 py-12 text-center">
           <TerminalSquare className="size-9 text-muted-foreground" />
           <p className="qa-module-heading">
-            {items.length === 0 ? 'Belum ada test record' : 'Tidak ada hasil yang cocok'}
+            {!hasRecords ? 'Belum ada test record' : 'Tidak ada hasil yang cocok'}
           </p>
           <p className="max-w-md text-center text-xs font-medium text-muted-foreground/80">
-            {items.length === 0
-              ? 'Capture a manual or automated run from a test case DevLog, then synchronize this vault.'
-              : 'Adjust the search or module filter to find another intelligence record.'}
+            {!hasRecords
+              ? 'Jalankan eksekusi test runner atau manual capture dari DevLog, lalu sinkronkan untuk memuat rekaman ke sini.'
+              : 'Sesuaikan kata kunci pencarian atau filter modul untuk menemukan rekaman lainnya.'}
           </p>
-          {items.length === 0 && (
+
+          {!hasRecords && (
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-400">
+                <span className="size-1.5 rounded-full bg-emerald-500" /> Relay Service Siap
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold text-blue-400">
+                <span className="size-1.5 rounded-full bg-blue-500" /> Evidence Storage Terhubung
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/50 px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+                Engine: Playwright & Katalon
+              </span>
+            </div>
+          )}
+
+          {!hasRecords && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onRefresh}
               disabled={loading}
-              className="mt-3 h-9 gap-2 rounded-xl border-primary/30 bg-primary/10 px-4 text-xs font-semibold uppercase tracking-wider text-primary hover:bg-primary/15"
+              className="mt-3 h-9 gap-2 rounded-xl border-primary/30 bg-primary/10 px-4 text-xs font-semibold text-primary hover:bg-primary/15"
             >
               <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
               {loading ? 'Menyinkronkan...' : 'Sinkronkan sekarang'}
+            </Button>
+          )}
+
+          {hasRecords && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearch('');
+                setFilterModule('all');
+              }}
+              className="mt-3 h-8 gap-1.5 rounded-lg px-3 text-xs font-semibold"
+            >
+              Reset Filter
             </Button>
           )}
         </div>
@@ -322,17 +368,15 @@ export function AutomatedPanel({
                 <TableBody>
                   {filteredItems.map((item, index) => (
                     <TableRow
-                      key={item.id}
-                      className="group h-14 cursor-pointer border-border/30 transition-colors hover:bg-secondary/40"
-
-                      title="Klik untuk melihat detail"
+                      key={`${item.automationSource}:${item.id}`}
+                      className="group h-14 cursor-pointer border-border/30 transition-all hover:bg-secondary/40 active:bg-secondary/60"
                       onClick={(e) => {
                         if ((e.target as HTMLElement).closest('button, a, input, select, [role="checkbox"], [role="combobox"], [role="menu"]')) return;
                         onOpenDetail(item);
                       }}
                     >
-                      <TableCell className="sticky left-0 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">{index + 1}</TableCell>
-                      <TableCell className="sticky left-10 z-10 w-[130px] min-w-[130px] max-w-[130px] overflow-hidden whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary">{item.testCaseId}</TableCell>
+                      <TableCell className="sticky left-0 z-10 bg-card text-center font-mono text-xs font-bold text-muted-foreground group-hover:bg-secondary">{(pagination ? (pagination.page - 1) * 25 : 0) + index + 1}</TableCell>
+                      <TableCell title={item.testCaseId} className="sticky left-10 z-10 w-[130px] min-w-[130px] max-w-[130px] overflow-hidden whitespace-nowrap bg-card font-mono text-sm font-semibold text-foreground group-hover:bg-secondary">{item.testCaseId}</TableCell>
                       <TableCell className="max-w-[130px]" title={`${item.page}${item.subMenu ? ` / ${item.subMenu}` : ''}`}>
                         <div className="min-w-0">
                           <div className="flex min-w-0 items-center gap-2">
@@ -369,6 +413,7 @@ export function AutomatedPanel({
                       <TableCell className={getColumnClass('source')}>
                         <div className="flex flex-wrap gap-1">
                           {item.automation.hasAutomationRun && <Badge className="rounded-xl bg-indigo-500/10 text-status-in-progress border border-indigo-500/20 text-xs font-bold uppercase tracking-wider px-2 py-0.5">Auto</Badge>}
+                          {item.automation.hasPlaywrightStudio && <span className="text-xs font-medium text-foreground">Playwright Studio</span>}
                           {item.automation.hasManualCapture && <Badge className="rounded-xl bg-teal-500/10 text-bug-fixed border border-teal-500/20 text-xs font-bold uppercase tracking-wider px-2 py-0.5">Manual</Badge>}
                         </div>
                       </TableCell>
@@ -382,9 +427,9 @@ export function AutomatedPanel({
                         </div>
                       </TableCell>
                       <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-secondary">
+                        <SimpleTooltip content={`Lihat run ${item.testCaseId}`}>
                         <Button
                           aria-label={`View run ${item.testCaseId}`}
-                          title={`View run ${item.testCaseId}`}
                           variant="ghost"
                           size="sm"
                           className="size-9 rounded-lg p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -392,6 +437,7 @@ export function AutomatedPanel({
                         >
                           <Eye className="h-4 w-4 text-primary" />
                         </Button>
+                        </SimpleTooltip>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -400,6 +446,7 @@ export function AutomatedPanel({
               <p id="automation-scroll-help" className="qa-table-scroll-help">Geser tabel untuk melihat metadata lainnya. ID dan aksi tetap terlihat.</p>
         </div>
       )}
+      {pagination && <nav aria-label="Halaman Automation Log" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3"><p role="status" className="text-sm text-muted-foreground">Halaman {pagination.page} dari {pagination.totalPages} · {pagination.total} data</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={loading || pagination.page <= 1} onClick={() => pagination.onPageChange(pagination.page - 1)}>Sebelumnya</Button><Button variant="outline" size="sm" disabled={loading || pagination.page >= pagination.totalPages} onClick={() => pagination.onPageChange(pagination.page + 1)}>Berikutnya</Button></div></nav>}
     </div>
   );
 }

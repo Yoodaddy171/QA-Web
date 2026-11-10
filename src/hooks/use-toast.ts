@@ -1,5 +1,7 @@
 "use client"
 
+import { toast as sonnerToast } from 'sonner';
+
 // Inspired by react-hot-toast library
 import * as React from "react"
 
@@ -142,8 +144,17 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-function toast({ ...props }: Toast) {
-  const id = genId()
+function toast({ title, description, variant, ...props }: Toast) {
+  const id = genId();
+  try {
+    const textTitle = typeof title === 'string' ? title : '';
+    const textDesc = typeof description === 'string' ? description : undefined;
+    if (variant === 'destructive') {
+      sonnerToast.error(textTitle || 'Error', { description: textDesc, id });
+    } else {
+      sonnerToast(textTitle || 'Notifikasi', { description: textDesc, id });
+    }
+  } catch {}
 
   const update = (props: ToasterToast) =>
     dispatch({

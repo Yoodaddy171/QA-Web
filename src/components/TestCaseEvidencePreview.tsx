@@ -43,16 +43,17 @@ function EvidenceMedia({ evidence, url }: { evidence: Evidence; url: string }) {
   </> : isPdf ? <PdfPreview url={url} fileName={evidence.fileName} /> : <p className="max-w-md p-4 text-center text-sm leading-6 text-muted-foreground">Preview belum tersedia untuk jenis file ini. Gunakan tombol Unduh file untuk melihatnya di perangkat Anda.</p>;
 }
 
-export function TestCaseEvidencePreview({ evidence, url, open, onOpenChange, onReturnFocus, photoIndex = -1, photoCount = 0, onPhotoChange }: {
+export function TestCaseEvidencePreview({ evidence, url, open, onOpenChange, onReturnFocus, photoIndex = -1, photoCount = 0, onPhotoChange, hasMorePhotos = false, loadingMore = false }: {
   evidence: Evidence; url: string; open: boolean; onOpenChange: (open: boolean) => void; onReturnFocus: () => void;
   photoIndex?: number; photoCount?: number; onPhotoChange?: (direction: -1 | 1) => void;
+  hasMorePhotos?: boolean; loadingMore?: boolean;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const isPhoto = evidence.mimeType.startsWith('image/') && photoIndex >= 0;
   const hasPrevious = isPhoto && photoIndex > 0;
-  const hasNext = isPhoto && photoIndex < photoCount - 1;
+  const hasNext = isPhoto && (photoIndex < photoCount - 1 || hasMorePhotos);
   const navigate = (direction: -1 | 1) => {
-    if (direction === -1 ? !hasPrevious : !hasNext) return;
+    if (loadingMore || (direction === -1 ? !hasPrevious : !hasNext)) return;
     onPhotoChange?.(direction);
     // Keep focus inside the stable dialog even when the clicked edge button
     // becomes disabled. The original gallery trigger is restored only on close.
@@ -60,7 +61,7 @@ export function TestCaseEvidencePreview({ evidence, url, open, onOpenChange, onR
   };
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent ref={dialogRef} onKeyDown={event => {
-      if (!open || !isPhoto || photoCount < 2) return;
+      if (!open || !isPhoto || (photoCount < 2 && !hasMorePhotos)) return;
       const interactive = event.target instanceof Element && Boolean(event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], video, audio, iframe, [role="slider"]'));
       const direction = evidenceArrowDirection({ ...event, isComposing: event.nativeEvent.isComposing }, interactive);
       if (!direction) return;
@@ -75,9 +76,9 @@ export function TestCaseEvidencePreview({ evidence, url, open, onOpenChange, onR
       </div>
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border p-3">
         {isPhoto ? <div className="flex items-center gap-2" role="group" aria-label="Navigasi foto evidence">
-          {photoCount > 1 && <Button type="button" variant="outline" size="icon" className="size-11" disabled={!hasPrevious} onClick={() => navigate(-1)} aria-label="Foto sebelumnya" title="Foto sebelumnya (←)"><ChevronLeft /></Button>}
-          <span role="status" aria-live="polite" aria-atomic="true" className="text-xs tabular-nums text-muted-foreground">Foto {photoIndex + 1} dari {photoCount}</span>
-          {photoCount > 1 && <Button type="button" variant="outline" size="icon" className="size-11" disabled={!hasNext} onClick={() => navigate(1)} aria-label="Foto berikutnya" title="Foto berikutnya (→)"><ChevronRight /></Button>}
+          {(photoCount > 1 || hasMorePhotos) && <Button type="button" variant="outline" size="icon" className="size-11" disabled={!hasPrevious || loadingMore} onClick={() => navigate(-1)} aria-label="Foto sebelumnya" title="Foto sebelumnya (←)"><ChevronLeft /></Button>}
+          <span role="status" aria-live="polite" aria-atomic="true" className="text-xs tabular-nums text-muted-foreground">{loadingMore ? 'Memuat foto…' : `Foto ${photoIndex + 1} dari ${photoCount}${hasMorePhotos ? ' dimuat' : ''}`}</span>
+          {(photoCount > 1 || hasMorePhotos) && <Button type="button" variant="outline" size="icon" className="size-11" disabled={!hasNext || loadingMore} onClick={() => navigate(1)} aria-label="Foto berikutnya" title="Foto berikutnya (→)"><ChevronRight /></Button>}
         </div> : <span />}
         <Button asChild variant="outline" size="sm"><a href={url} download={evidence.fileName}><Download data-icon="inline-start" />Unduh file</a></Button>
       </div>

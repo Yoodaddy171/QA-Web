@@ -51,6 +51,9 @@ local-*
 dev.log
 dev.out.log
 test
+!/mcp-qa-web/test/
+/mcp-qa-web/test/*
+!/mcp-qa-web/test/*.test.mjs
 prompt
 
 server.log
@@ -90,3 +93,16 @@ final_commit_review.md
 
 # Skills directory
 /skills/
+
+# Local transient & review artifacts
+/evidence/
+/scratch/
+/graphify-out/
+/artifacts/
+/automation/playwright/playwright-report/
+/automation/playwright/test-results/
+/.codex/
+.mcp.json
+opencode.json
+DROP_IN_INSTRUCTIONS.txt
+Sammy_Raimee_QA_Engineer_CV.pdf

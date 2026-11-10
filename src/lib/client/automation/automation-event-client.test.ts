@@ -80,6 +80,29 @@ describe('automation event client adapter', () => {
     expect(log.network).toMatchObject({ event: 'Request', method: 'POST', url: 'https://example.test/api' });
   });
 
+  it('keeps recorded Network metadata and failure when a saved event returns to the viewer', () => {
+    const log = adaptAutomationEventToLogEntry({
+      ...envelope.event,
+      eventType: 'network.response',
+      method: 'GET',
+      url: 'https://example.test/api',
+      requestHeaders: { accept: 'application/json' },
+      metadata: {
+        networkDetails: {
+          requestId: '91.1:0',
+          resourceType: 'fetch',
+          failureText: 'net::ERR_CONNECTION_RESET',
+          success: false,
+        },
+      },
+    });
+    expect(log.network?.headers).toBeUndefined();
+    expect(log.network).toMatchObject({
+      success: false,
+      data: { requestId: '91.1:0', resourceType: 'fetch', failureText: 'net::ERR_CONNECTION_RESET', requestHeaders: { accept: 'application/json' } },
+    });
+  });
+
   it('maps console to console activity', () => {
     const log = adaptAutomationEventToLogEntry({
       ...envelope,

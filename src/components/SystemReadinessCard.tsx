@@ -77,15 +77,15 @@ export function SystemReadinessCard() {
         ) : data ? (
           <>
             <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-secondary/25 p-4">
-              <div className="grid size-16 place-items-center rounded-2xl bg-primary/10 text-xl font-bold tabular-nums text-primary">{data.score}%</div>
+              <div className="grid size-16 place-items-center rounded-2xl bg-primary/10 text-xl font-bold font-mono tabular-nums text-primary">{data.score}%</div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{data.status === 'ready' ? 'Host siap digunakan' : data.status === 'warning' ? 'Host siap dengan catatan' : 'Ada dependency yang memblokir'}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{data.host} · diperiksa {new Date(data.checkedAt).toLocaleString('id-ID')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{data.host} · diperiksa <span className="font-mono tabular-nums">{new Date(data.checkedAt).toLocaleString('id-ID')}</span></p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="outline" className={statusMeta.ready.className}>{data.summary.ready} ready</Badge>
-                <Badge variant="outline" className={statusMeta.warning.className}>{data.summary.warning} warning</Badge>
-                <Badge variant="outline" className={statusMeta.blocked.className}>{data.summary.blocked} blocked</Badge>
+                <Badge variant="outline" className={`${statusMeta.ready.className} font-mono tabular-nums`}>{data.summary.ready} ready</Badge>
+                <Badge variant="outline" className={`${statusMeta.warning.className} font-mono tabular-nums`}>{data.summary.warning} warning</Badge>
+                <Badge variant="outline" className={`${statusMeta.blocked.className} font-mono tabular-nums`}>{data.summary.blocked} blocked</Badge>
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

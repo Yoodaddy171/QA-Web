@@ -1,93 +1,132 @@
 'use client';
-import { memo } from 'react';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Clock } from 'lucide-react';
+import { memo, useDeferredValue, useMemo, useState, type RefObject } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { DevlogConsoleLevelIcon, DevlogEmptyState } from '@/components/DevlogPanelChrome';
+import { DevtoolsConsoleFilters } from '@/components/DevtoolsConsoleFilters';
+import { VirtualLogList } from '@/components/VirtualLogList';
+import type { ConsoleLogGroup, LogEntry } from '@/components/TestCaseDetailDialog.helpers';
+import {
+  DEFAULT_DEVTOOLS_CONSOLE_LEVELS,
+  filterDevtoolsConsoleGroups,
+  getDevtoolsConsoleLevel,
+  getDevtoolsConsoleSource,
+  getDevtoolsConsoleText,
+  type DevtoolsConsoleLevel,
+} from '@/lib/client/automation/devtools-console';
 import { cn } from '@/lib/utils';
 
-type ConsoleLogViewProps = Record<string, any>;
+type ConsoleLogViewProps = {
+  groupedConsoleLogs: ConsoleLogGroup[];
+  logEndRef?: RefObject<HTMLDivElement | null>;
+  expandedLogId: string | null;
+  setExpandedLogId: (id: string | null) => void;
+  seekRecordingFromLog: (log: LogEntry) => void;
+  formatRelativeTime: (relativeMs?: number) => string;
+  getConsoleLogText: (log: LogEntry) => string;
+  formatPrettyValue: (value: unknown) => string;
+  query?: string;
+  levels?: readonly DevtoolsConsoleLevel[];
+  onQueryChange?: (value: string) => void;
+  onLevelsChange?: (levels: DevtoolsConsoleLevel[]) => void;
+};
 
-export const ConsoleLogView = memo(function ConsoleLogView(props: ConsoleLogViewProps) {
-  const {
-    groupedConsoleLogs, logEndRef, expandedLogId, setExpandedLogId,
-    seekRecordingFromLog, formatRelativeTime, getConsoleLogText, formatPrettyValue,
-  } = props;
+const groupKey = (group: ConsoleLogGroup) => group.id;
+const countMessages = (groups: ConsoleLogGroup[]) => groups.reduce((sum, group) => sum + group.count, 0);
+
+export const ConsoleLogView = memo(function ConsoleLogView({
+  groupedConsoleLogs, logEndRef, expandedLogId, setExpandedLogId,
+  seekRecordingFromLog, formatRelativeTime, getConsoleLogText, formatPrettyValue,
+  query, levels, onQueryChange, onLevelsChange,
+}: ConsoleLogViewProps) {
+  const [localQuery, setLocalQuery] = useState('');
+  const [localLevels, setLocalLevels] = useState<readonly DevtoolsConsoleLevel[]>(DEFAULT_DEVTOOLS_CONSOLE_LEVELS);
+  const filterQuery = query ?? localQuery;
+  const filterLevels = levels ?? localLevels;
+  const deferredQuery = useDeferredValue(filterQuery);
+  const visibleGroups = useMemo(
+    () => filterDevtoolsConsoleGroups(groupedConsoleLogs, deferredQuery, filterLevels),
+    [groupedConsoleLogs, deferredQuery, filterLevels],
+  );
+  const hiddenCount = useMemo(
+    () => countMessages(groupedConsoleLogs) - countMessages(visibleGroups),
+    [groupedConsoleLogs, visibleGroups],
+  );
 
   return (
-    <div className="divide-y divide-border">
-      {groupedConsoleLogs.length === 0 ? (
-        <div className="h-full flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <Clock className="w-8 h-8 mb-3 opacity-20" />
-          <p className="font-bold tracking-wider text-xs uppercase">Awaiting Console Output...</p>
-        </div>
+    <div className="min-w-0">
+      <div className="sticky top-0 z-10 bg-background">
+        <DevtoolsConsoleFilters
+          query={filterQuery}
+          onQueryChange={onQueryChange ?? setLocalQuery}
+          levels={filterLevels}
+          onLevelsChange={onLevelsChange ?? setLocalLevels}
+          hiddenCount={hiddenCount}
+        />
+      </div>
+      {!visibleGroups.length ? (
+        <DevlogEmptyState kind="console" title={hiddenCount ? 'No matching messages' : 'No messages recorded'}
+          hint={hiddenCount ? 'Clear the filter or change the selected levels.' : undefined} />
       ) : (
-        groupedConsoleLogs.map((group: any) => {
-          const { log, entries, count } = group;
-          const logId = group.id;
-          const isError = entries.some((entry: any) => entry.level === 'SEVERE' || entry.log?.toString().toLowerCase().includes('error'));
-          const isWarning = entries.some((entry: any) => entry.level === 'WARNING' || entry.log?.toString().toLowerCase().includes('warn'));
-          const canExpand = count > 1 || typeof log.log === 'object';
+        <VirtualLogList items={visibleGroups} itemKey={groupKey} activeId={expandedLogId} estimate={32}>{group => {
+          const { log, entries, count, id } = group;
+          const level = getDevtoolsConsoleLevel(log);
+          const source = getDevtoolsConsoleSource(log);
+          const isObject = typeof log.log === 'object';
+          const fullMessage = getDevtoolsConsoleText(log);
+          const message = isObject && fullMessage.length > 200 ? `${fullMessage.slice(0, 200)}…` : fullMessage;
+          const canExpand = count > 1 || isObject;
+          const expanded = canExpand && expandedLogId === id;
 
           return (
-            <div key={logId} className={cn('group', isError ? 'bg-rose-50 dark:bg-rose-950/20' : isWarning ? 'bg-amber-50 dark:bg-amber-950/20' : 'hover:bg-secondary/60 dark:hover:bg-secondary/50')}>
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label={`Inspect console event ${getConsoleLogText(log)}`}
-                aria-expanded={canExpand ? expandedLogId === logId : undefined}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
-                }}
-                className="flex items-start gap-3 p-2 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2"
+            <div className={cn(
+              'border-b border-border',
+              level === 'error' && 'bg-rose-50 dark:bg-rose-950/20',
+              level === 'warning' && 'bg-amber-50 dark:bg-amber-950/20',
+            )}>
+              <button
+                type="button"
+                aria-expanded={canExpand ? expanded : undefined}
+                className="flex w-full cursor-pointer items-start gap-2 px-2 py-1.5 text-left leading-5 hover:bg-foreground/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 onClick={() => {
                   seekRecordingFromLog(log);
-                  setExpandedLogId(expandedLogId === logId ? null : logId);
+                  if (canExpand) setExpandedLogId(expanded ? null : id);
                 }}
               >
-                <span className="text-muted-foreground text-xs min-w-[60px] pt-0.5">
-                  {log.timestamp ? new Date(log.timestamp).toLocaleTimeString('id-ID', { hour12: false }) : '-'}
-                </span>
-                {typeof log.relativeMs === 'number' && (
-                  <span className="mt-0.5 rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-950 dark:text-status-in-progress">
-                    {formatRelativeTime(log.relativeMs)}
+                <DevlogConsoleLevelIcon level={level} />
+                {count > 1 && <span aria-label={`${count} occurrences`} className="shrink-0 rounded-full bg-muted px-1.5 tabular-nums text-muted-foreground">{count}</span>}
+                {canExpand && <ChevronDown aria-hidden="true" className={cn('mt-0.5 size-3.5 shrink-0 -rotate-90 text-muted-foreground motion-safe:transition-transform motion-safe:duration-[var(--motion-fast)]', expanded && 'rotate-0')} />}
+                <span className="min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-foreground">{message}</span>
+                {(source || typeof log.relativeMs === 'number') && (
+                  <span className="ml-auto flex max-w-[38%] shrink-0 flex-wrap items-baseline justify-end gap-x-2 text-muted-foreground">
+                    {source && <span className="truncate" title={source.url}>{source.label}</span>}
+                    {typeof log.relativeMs === 'number' && <span className="tabular-nums" title="Recording time">{formatRelativeTime(log.relativeMs)}</span>}
                   </span>
                 )}
-                <div className="flex-1 break-all">
-                  <span className={cn(isError ? 'text-rose-700 dark:text-status-failed' : isWarning ? 'text-amber-700 dark:text-status-blocked' : 'text-emerald-700 dark:text-status-passed/90')}>
-                    {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 200)}...` : String(log.log ?? '')}
-                  </span>
-                </div>
-                {count > 1 && <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">x{count}</span>}
-                {canExpand && <ChevronDown className={cn('w-3.5 h-3.5 text-muted-foreground transition-transform', expandedLogId === logId && 'rotate-180')} />}
-              </div>
-              <AnimatePresence>
-                {expandedLogId === logId && canExpand && (
-                  <motion.div initial={false} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                    <div className="space-y-3 px-10 pb-3">
-                      {count > 1 && (
-                        <div className="rounded-lg border border-border bg-background p-2 dark:bg-card/70">
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Repeated {count} times</p>
-                          <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
-                            {entries.map((entry: any, entryIndex: number) => (
-                              <button key={entry.id ?? `${logId}-repeat-${entryIndex}`} type="button" className="grid w-full grid-cols-[54px_70px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-left text-xs hover:bg-secondary" onClick={() => seekRecordingFromLog(entry)}>
-                                <span className="font-semibold text-muted-foreground">#{entryIndex + 1}</span>
-                                <span className="font-mono text-indigo-700 dark:text-status-in-progress">{formatRelativeTime(entry.relativeMs)}</span>
-                                <span className="truncate text-foreground">{getConsoleLogText(entry)}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      <div className="bg-muted rounded-lg p-3 border border-border shadow-inner">
-                        <pre className="text-emerald-700 whitespace-pre-wrap overflow-x-auto dark:text-emerald-500/80">{formatPrettyValue(log.log)}</pre>
-                      </div>
+              </button>
+              {expanded && (
+                <div className="devlog-inline-detail-enter space-y-2 px-6 pb-2">
+                  {count > 1 && (
+                    <div className="max-h-44 space-y-1 overflow-y-auto">
+                      {entries.map((entry, index) => (
+                        <button
+                          key={entry.id ?? `${id}-repeat-${index}`}
+                          type="button"
+                          className="grid w-full cursor-pointer grid-cols-[auto_1fr] gap-2 rounded px-1.5 py-1 text-left hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-ring"
+                          onClick={() => seekRecordingFromLog(entry)}
+                        >
+                          <span className="tabular-nums text-muted-foreground">{formatRelativeTime(entry.relativeMs)}</span>
+                          <span className="truncate">{getConsoleLogText(entry)}</span>
+                        </button>
+                      ))}
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  )}
+                  {isObject && <pre className="overflow-x-auto whitespace-pre-wrap break-words text-foreground">{formatPrettyValue(log.log)}</pre>}
+                </div>
+              )}
             </div>
           );
-        })
+        }}</VirtualLogList>
       )}
       <div ref={logEndRef} className="h-4" />
     </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useTransition, type SetStateAction } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition, type SetStateAction } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
   bulkUpdateTestCaseStatus,
@@ -36,7 +36,8 @@ export function useTestCases(selectedProject: string) {
     setList(previous => ({ ...previous, testCases: typeof update === 'function' ? update(previous.testCases) : update }));
   }, []);
   const [isRenderingResults, startResultsTransition] = useTransition();
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [statsState, setStatsState] = useState<{ projectId: string; value: Stats } | null>(null);
+  const stats = statsState?.projectId === selectedProject ? statsState.value : null;
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterTestType, setFilterTestType] = useState<string>('all');
@@ -52,17 +53,47 @@ export function useTestCases(selectedProject: string) {
   const [sortBy, setSortBy] = useState<string>('testCaseId');
   const [sortOrder, setSortOrder] = useState<string>('asc');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimitState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('qaDesk.testcases.pageSize');
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if ([10, 25, 50, 100].includes(parsed)) return parsed;
+        }
+        if (window.innerWidth >= 1024) return 25;
+      } catch {
+        // fallback to default
+      }
+    }
+    return 25;
+  });
+
+  const setLimit = useCallback((newLimit: number | ((prev: number) => number)) => {
+    setLimitState(prev => {
+      const val = typeof newLimit === 'function' ? newLimit(prev) : newLimit;
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('qaDesk.testcases.pageSize', String(val));
+        }
+      } catch {
+        // ignore
+      }
+      return val;
+    });
+  }, []);
   const [isLoadingTestCases, setIsLoadingTestCases] = useState(false);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const testCaseAbortRef = useRef<AbortController | null>(null);
   const requestVersion = useRef(0);
+  const statsVersion = useRef(0);
+  const statsRequest = useRef<{ projectId: string; controller: AbortController; promise: Promise<void> } | null>(null);
   const selectedProjectRef = useRef(selectedProject);
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     selectedProjectRef.current = selectedProject;
   }, [selectedProject]);
 
@@ -79,7 +110,7 @@ export function useTestCases(selectedProject: string) {
       const params = new URLSearchParams({
         projectId: projId,
         page: String(opts?.pageVal ?? page),
-        limit: String(limit),
+        limit: String(opts?.limitVal ?? limit),
         sortBy: opts?.sortVal ?? sortBy,
         sortOrder: opts?.orderVal ?? sortOrder,
       });
@@ -146,17 +177,26 @@ export function useTestCases(selectedProject: string) {
     return () => controller.abort();
   }, [selectedProject]);
 
-  const loadStats = useCallback(async (projId: string) => {
-    if (!projId) return;
+  useEffect(() => () => { ++statsVersion.current; statsRequest.current?.controller.abort(); statsRequest.current = null; }, [selectedProject]);
+  const loadStats = useCallback((projId: string, force = false): Promise<void> => {
+    if (!projId || projId !== selectedProjectRef.current) return Promise.resolve();
+    if (!force && statsRequest.current?.projectId === projId) return statsRequest.current.promise;
+    statsRequest.current?.controller.abort();
+    const controller = new AbortController();
+    const version = ++statsVersion.current;
     setIsLoadingStats(true);
-    try {
-      setStats(await fetchStats(projId));
+    const promise = (async () => { try {
+      const data = await fetchStats(projId, controller.signal);
+      if (!isLatestResult(controller.signal, version, statsVersion.current, projId, selectedProjectRef.current)) return;
+      setStatsState({ projectId: projId, value: data });
       setLastRefreshed(new Date());
     } catch {
       // Preserve existing silent stats failure behavior.
     } finally {
-      setIsLoadingStats(false);
-    }
+      if (version === statsVersion.current) { statsRequest.current = null; setIsLoadingStats(false); }
+    } })();
+    statsRequest.current = { projectId: projId, controller, promise };
+    return promise;
   }, []);
 
   useEffect(() => {
@@ -181,7 +221,7 @@ export function useTestCases(selectedProject: string) {
       // The server owns retest/result rules; never invent a successful status.
       setTestCases(prev => prev.map(tc => tc.id === testCaseId ? { ...tc, ...saved } : tc));
       if (query.filterStatus !== 'all' || query.sortBy === 'status' || query.sortBy === 'updatedAt' || hadPendingRead) void query.loadTestCases(selectedProject);
-      loadStats(selectedProject);
+      loadStats(selectedProject, true);
       toast({ variant: 'success', title: 'Status updated', description: `Status diubah ke ${saved.status}` });
     } catch {
       toast({ title: 'Gagal', description: 'Status gagal diubah', variant: 'destructive' });

@@ -41,7 +41,7 @@ function body(row: ExcelJS.Row, shaded = false) {
   });
 }
 
-function display(value: string | null | undefined) { return value || '—'; }
+function display(value: string | null | undefined) { return value || '-'; }
 function moduleName(tc: ExportTestCase) { return tc.module?.name || 'Ungrouped'; }
 function fraction(value: number) { return value / 100; }
 
@@ -101,7 +101,7 @@ export function createQaReport({ projectName, testCases, selectedOnly = false, g
   summary.getCell('A1').value = QA_REPORT_MARKER;
   summary.getRow(1).hidden = true;
   summary.mergeCells('A3:H3');
-  summary.getCell('A3').value = `QA Report — ${projectName}`;
+  summary.getCell('A3').value = `QA Report - ${projectName}`;
   summary.getCell('A3').font = { name: 'Arial', size: 16, bold: true, color: { argb: INK } };
   summary.getCell('A3').alignment = { wrapText: true, vertical: 'middle' };
   summary.getRow(3).height = Math.max(30, Math.ceil(projectName.length / 100) * 22);
@@ -118,7 +118,7 @@ export function createQaReport({ projectName, testCases, selectedOnly = false, g
   summary.getCell('A8').value = 'Untuk import kembali gunakan Legacy XLSX. Weight mengikuti bobot kelompok di project; jumlahnya tidak harus 100%.';
   summary.getRow(8).height = 30;
   summary.mergeCells('A9:H9');
-  summary.getCell('A9').value = 'Progress = rata-rata progress testcase non-TBA. — berarti belum ada testcase yang memenuhi perhitungan.';
+  summary.getCell('A9').value = 'Progress = rata-rata progress testcase non-TBA. - berarti belum ada testcase yang memenuhi perhitungan.';
   for (const n of [5, 6, 7, 8, 9]) {
     summary.getRow(n).eachCell(cell => { cell.font = { name: 'Arial', size: 10, color: { argb: MUTED } }; cell.alignment = { vertical: 'middle', wrapText: true }; });
     if (n !== 8) summary.getRow(n).height = 24;
@@ -128,7 +128,7 @@ export function createQaReport({ projectName, testCases, selectedOnly = false, g
   const range = (col: string) => `'Test Cases'!$${col}$2:$${col}$${end}`;
   const count = (status: string) => testCases.filter(tc => tc.status === status).length;
   const eligible = testCases.filter(tc => tc.status !== TESTCASE_STATUS.TBA);
-  const avg = (values: ExportTestCase[]) => values.length ? values.reduce((sum, tc) => sum + fraction(tc.progress), 0) / values.length : '—';
+  const avg = (values: ExportTestCase[]) => values.length ? values.reduce((sum, tc) => sum + fraction(tc.progress), 0) / values.length : '-';
   const formula = (expression: string, result: number | string): ExcelJS.CellFormulaValue => ({ formula: expression, result });
   summary.getRow(11).values = ['Status', 'Jumlah', 'Proporsi'];
   header(summary.getRow(11));
@@ -144,7 +144,7 @@ export function createQaReport({ projectName, testCases, selectedOnly = false, g
   summary.getRow(totalRow).values = ['Total testcase', formula(`COUNTA(${range('A')})`, testCases.length)];
   body(summary.getRow(totalRow)); summary.getRow(totalRow).font = { name: 'Arial', size: 10, bold: true, color: { argb: INK } };
   summary.getRow(totalRow).height = 26;
-  summary.getRow(totalRow + 1).values = ['Progress (non-TBA)', formula(`IFERROR(AVERAGEIF(${range('L')},"<>TBA",${range('M')}),"—")`, avg(eligible))];
+  summary.getRow(totalRow + 1).values = ['Progress (non-TBA)', formula(`IFERROR(AVERAGEIF(${range('L')},"<>TBA",${range('M')}),"-")`, avg(eligible))];
   body(summary.getRow(totalRow + 1)); summary.getRow(totalRow + 1).getCell(2).numFmt = '0.0%'; summary.getRow(totalRow + 1).height = 26;
 
   const moduleRow = totalRow + 4;
@@ -156,7 +156,7 @@ export function createQaReport({ projectName, testCases, selectedOnly = false, g
     const key = groupKeys.get(name)!;
     row.values = [name, formula(`COUNTIF(${range('T')},${key})`, group.length),
       ...[TESTCASE_STATUS.DONE, TESTCASE_STATUS.FAILED, TESTCASE_STATUS.BLOCKED, TESTCASE_STATUS.READY_TO_RETEST, TESTCASE_STATUS.TBA].map(status => formula(`COUNTIFS(${range('T')},${key},${range('L')},"${status}")`, group.filter(tc => tc.status === status).length)),
-      formula(`IFERROR(AVERAGEIFS(${range('M')},${range('T')},${key},${range('L')},"<>TBA"),"—")`, avg(group.filter(tc => tc.status !== TESTCASE_STATUS.TBA)))];
+      formula(`IFERROR(AVERAGEIFS(${range('M')},${range('T')},${key},${range('L')},"<>TBA"),"-")`, avg(group.filter(tc => tc.status !== TESTCASE_STATUS.TBA)))];
     body(row, next % 2 === 0); row.height = Math.max(28, Math.ceil(name.length / 29) * 14 + 8); row.getCell(8).numFmt = '0.0%';
   }
   if (!testCases.length) {

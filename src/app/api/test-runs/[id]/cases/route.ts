@@ -13,9 +13,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   const page = await getTestRunCasesPage(projectId, id, {
     cursor: req.nextUrl.searchParams.get('cursor') || undefined,
     limit: Number(req.nextUrl.searchParams.get('limit') || 100),
+    offset: req.nextUrl.searchParams.has('offset') ? Number(req.nextUrl.searchParams.get('offset')) : undefined,
   });
   if (!page) return errorResponse('Test Run tidak ditemukan.', 404);
-  return NextResponse.json({ testCases: page.items, hasMore: page.hasMore, nextCursor: page.nextCursor });
+  return NextResponse.json({ testCases: page.items, hasMore: page.hasMore, nextCursor: page.nextCursor, startOffset: page.startOffset });
 }
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {

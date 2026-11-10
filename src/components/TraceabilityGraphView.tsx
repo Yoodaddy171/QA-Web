@@ -172,7 +172,52 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
           onPointerDown={e => { if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return; drag.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, startX: view.x, startY: view.y }; e.currentTarget.setPointerCapture(e.pointerId); }}
           onPointerMove={e => { const d = drag.current; if (d && d.pointerId === e.pointerId) setView(v => ({ ...v, x: d.startX + e.clientX - d.x, y: d.startY + e.clientY - d.y })); }}
           onPointerUp={e => { if (drag.current?.pointerId === e.pointerId) { drag.current = null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); } }} onPointerCancel={() => { drag.current = null; }}>
-          {loading ? <div className="grid h-full place-content-center gap-4 p-8" role="status" aria-label="Memuat dan menyiapkan graph"><Skeleton className="h-24 w-56" /><Skeleton className="h-24 w-56" /><p className="text-sm text-muted-foreground">Memuat relasi dan menyiapkan layout...</p></div> : error ? <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => setReload(v => v + 1)}>Coba lagi</Button></div> : !seed ? <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"><GitBranch className="size-8 text-primary" /><h3 className="text-sm font-semibold">Pilih testcase atau requirement untuk melihat hubungan</h3><p className="max-w-md text-sm leading-6 text-muted-foreground">Cari object di atas. Graph hanya membaca hubungan yang tersimpan dan tidak mengubah data.</p></div> : !positioned.length ? <div className="grid h-full place-content-center p-6 text-center text-sm text-muted-foreground">Tidak ada object yang cocok dengan filter. Gunakan “Semua yang dimuat” untuk memulihkan tampilan.</div> : <div className="absolute left-0 top-0" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`, transformOrigin: '0 0' }}>
+          {loading ? <div className="grid h-full place-content-center gap-4 p-8" role="status" aria-label="Memuat dan menyiapkan graph"><Skeleton className="h-24 w-56" /><Skeleton className="h-24 w-56" /><p className="text-sm text-muted-foreground">Memuat relasi dan menyiapkan layout...</p></div> : error ? <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => setReload(v => v + 1)}>Coba lagi</Button></div> : !seed ? (
+            <div className="flex h-full flex-col items-center justify-center gap-5 p-8 text-center max-w-lg mx-auto">
+              <div className="relative flex size-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-sm">
+                <GitBranch className="size-7" />
+                <div className="absolute -top-1 -right-1 size-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-bold text-foreground">
+                  Peta Hubungan Traceability Interaktif
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Visualisasikan jalur relasi end-to-end antara <span className="font-semibold text-foreground">Requirement</span>, <span className="font-semibold text-foreground">Test Case</span>, <span className="font-semibold text-foreground">Test Plan/Cycle</span>, hingga <span className="font-semibold text-foreground">Bug Defect</span> dalam satu kanvas graf.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 w-full pt-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Pilih Titik Awal Pencarian:
+                </p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {SEED_TYPES.map((t) => {
+                    const meta = TYPE_META[t];
+                    const Icon = meta.icon;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => {
+                          setSeedType(t);
+                          setQuery('');
+                          setOptions([]);
+                          setHasMore(false);
+                          setSearchLoading(true);
+                          setSearchOpen(true);
+                          window.setTimeout(() => document.getElementById(`${uid}-search`)?.focus(), 50);
+                        }}
+                        className="flex flex-col items-center gap-1.5 rounded-lg border border-border/70 bg-card p-2.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/50 hover:bg-secondary/60 hover:text-primary active:scale-[0.98]"
+                      >
+                        <Icon className={cn('size-4', meta.tone)} />
+                        <span>{meta.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : !positioned.length ? <div className="grid h-full place-content-center p-6 text-center text-sm text-muted-foreground">Tidak ada object yang cocok dengan filter. Gunakan “Semua yang dimuat” untuk memulihkan tampilan.</div> : <div className="absolute left-0 top-0" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`, transformOrigin: '0 0' }}>
             <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width="1" height="1" aria-hidden="true"><defs><marker id={marker} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7" fill="var(--muted-foreground)" /></marker></defs>{visibleEdges.map(e => {
               const source = positions.get(e.source)!, target = positions.get(e.target)!;
               const forward = target.x >= source.x, sx = source.x + (forward ? GRAPH_NODE_WIDTH : 0), tx = target.x + (forward ? 0 : GRAPH_NODE_WIDTH), sy = source.y + GRAPH_NODE_HEIGHT / 2, ty = target.y + GRAPH_NODE_HEIGHT / 2;
@@ -180,7 +225,7 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
               const active = e.source === selectedId || e.target === selectedId;
               return <path key={e.id} data-graph-edge={e.id} data-source={e.source} data-target={e.target} data-relation={e.label} d={`M${sx},${sy} C${sx + curve},${sy} ${tx - curve},${ty} ${tx},${ty}`} fill="none" stroke={active ? 'var(--primary)' : 'var(--muted-foreground)'} opacity={active ? 1 : selectedId ? 0.2 : 0.4} strokeWidth={active ? 2 : 1.2} markerEnd={`url(#${marker})`} />;
             })}</svg>
-            {positioned.map(n => { const meta = TYPE_META[n.type], Icon = meta.icon, active = n.id === selectedId; return <button key={n.id} data-graph-node={n.id} type="button" aria-pressed={active} aria-label={`${meta.label}: ${n.label}${n.id === data?.rootId ? ', fokus graph' : ''}`} title={`${meta.label}: ${n.label} — ${n.title} — ${n.status}`} className={cn('absolute flex flex-col gap-2 overflow-hidden rounded-xl border bg-card p-3 text-left text-foreground transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-ring', active ? 'border-primary ring-2 ring-primary/30' : 'border-border')} style={{ left: n.x, top: n.y, width: GRAPH_NODE_WIDTH, height: GRAPH_NODE_HEIGHT, opacity: !selectedId || neighbors.has(n.id) ? 1 : 0.75 }} onFocus={event => { if (!event.currentTarget.matches(':focus-visible')) return; if (viewport.current) { viewport.current.scrollLeft = 0; viewport.current.scrollTop = 0; } setView(v => ({ ...v, x: size.width / 2 - (n.x + GRAPH_NODE_WIDTH / 2) * v.zoom, y: size.height / 2 - (n.y + GRAPH_NODE_HEIGHT / 2) * v.zoom })); }} onClick={() => setSelectedId(n.id)}>
+            {positioned.map(n => { const meta = TYPE_META[n.type], Icon = meta.icon, active = n.id === selectedId; return <button key={n.id} data-graph-node={n.id} type="button" aria-pressed={active} aria-label={`${meta.label}: ${n.label}${n.id === data?.rootId ? ', fokus graph' : ''}`} title={`${meta.label}: ${n.label} · ${n.title} · ${n.status}`} className={cn('absolute flex flex-col gap-2 overflow-hidden rounded-xl border bg-card p-3 text-left text-foreground transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-ring', active ? 'border-primary ring-2 ring-primary/30' : 'border-border')} style={{ left: n.x, top: n.y, width: GRAPH_NODE_WIDTH, height: GRAPH_NODE_HEIGHT, opacity: !selectedId || neighbors.has(n.id) ? 1 : 0.75 }} onFocus={event => { if (!event.currentTarget.matches(':focus-visible')) return; if (viewport.current) { viewport.current.scrollLeft = 0; viewport.current.scrollTop = 0; } setView(v => ({ ...v, x: size.width / 2 - (n.x + GRAPH_NODE_WIDTH / 2) * v.zoom, y: size.height / 2 - (n.y + GRAPH_NODE_HEIGHT / 2) * v.zoom })); }} onClick={() => setSelectedId(n.id)}>
               <span className="flex items-center gap-2"><Icon className={cn('size-4 shrink-0', meta.tone)} /><span className="truncate text-xs font-semibold">{n.label}</span><span className="ml-auto text-xs text-muted-foreground">{meta.label}</span></span><span className="line-clamp-2 text-xs leading-4 text-muted-foreground">{n.title}</span><span className="mt-auto flex items-center gap-2 text-xs"><span className={cn('truncate', meta.tone)}>{n.status || meta.label}</span>{n.id === data?.rootId && <span className="ml-auto text-primary">Fokus</span>}</span>
             </button>; })}
           </div>}
@@ -196,7 +241,33 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
           {selected.type === 'BugFix' && <p className="mt-3 text-xs leading-5 text-muted-foreground">Buka menu Bugs, lalu cari {selected.label}. Navigasi ini tidak langsung memilih satu Bug.</p>}
           {!positions.has(selected.id) && <p className="mt-3 text-xs text-muted-foreground">Node terpilih disembunyikan filter aktif.</p>}
           <h4 className="mt-6 text-sm font-semibold">Relasi dalam area ini ({links.length})</h4><div className="mt-3 flex max-h-80 flex-col gap-2 overflow-y-auto">{links.length ? links.map(l => { const other = nodeMap.get(l.source === selected.id ? l.target : l.source); return other ? <button key={l.id} type="button" className="rounded-lg border border-border p-3 text-left text-xs hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-ring" onClick={() => { setSelectedId(other.id); const n = positions.get(other.id); if (n) { if (viewport.current) { viewport.current.scrollLeft = 0; viewport.current.scrollTop = 0; } setView({ zoom: 1, x: size.width / 2 - n.x - GRAPH_NODE_WIDTH / 2, y: size.height / 2 - n.y - GRAPH_NODE_HEIGHT / 2 }); } }}><span className="block text-muted-foreground">{l.source === selected.id ? '→' : '←'} {l.label}</span><span className="mt-1 block break-words font-semibold">{TYPE_META[other.type].label}: {other.label}</span></button> : null; }) : <p className="text-xs text-muted-foreground">Belum ada hubungan pada area yang dimuat. Ini bukan jaminan bahwa seluruh riwayat sudah dimuat.</p>}</div>
-        </> : <p className="text-sm leading-6 text-muted-foreground">Pilih node untuk melihat ID, status, konteks dan relasi langsungnya.</p>}
+        </> : (
+          <div className="flex flex-col gap-4 text-xs">
+            <div className="rounded-lg border border-border/60 bg-secondary/30 p-3.5 space-y-2">
+              <h4 className="font-semibold text-sm text-foreground">Panduan Node Graf</h4>
+              <p className="text-muted-foreground leading-relaxed">
+                Pilih salah satu node di canvas untuk memeriksa informasi teknis lengkap:
+              </p>
+              <ul className="space-y-1.5 pt-1 text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <span className="size-1.5 rounded-full bg-primary shrink-0" />
+                  <span>Konteks & status eksekusi terkini</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <span>Daftar relasi langsung (hulu & hilir)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span>Aksi lompat langsung ke halaman modul</span>
+                </li>
+              </ul>
+            </div>
+            <p className="text-muted-foreground text-[11px] leading-relaxed">
+              Gunakan kontrol Zoom atau geser kanvas untuk menelusuri rantai uji secara mendalam.
+            </p>
+          </div>
+        )}
       </aside>
     </div>
   </section>;

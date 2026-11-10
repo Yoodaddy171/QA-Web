@@ -20,7 +20,6 @@ export async function listTestRuns(projectId: string, options: { cursor?: string
     where: { projectId },
     include: {
       ...testRunInclude,
-      testCases: { select: { latestStatus: true } },
     },
     orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
     take: limit + 1,
@@ -29,8 +28,19 @@ export async function listTestRuns(projectId: string, options: { cursor?: string
 
   const hasMore = runs.length > limit;
   const page = hasMore ? runs.slice(0, limit) : runs;
+  const counts = page.length ? await db.testRunCase.groupBy({
+    by: ['testRunId', 'latestStatus'],
+    where: { testRunId: { in: page.map(run => run.id) }, testCase: { projectId } },
+    _count: { _all: true },
+  }) : [];
+  const summaries = new Map<string, ReturnType<typeof summarizeStatusCounts>>();
+  for (const row of counts) {
+    const summary = summaries.get(row.testRunId) || summarizeStatusCounts([]);
+    addStatusCount(summary, row.latestStatus, row._count._all);
+    summaries.set(row.testRunId, summary);
+  }
   const items = page.map(run => {
-    const summary = summarizeStatuses(run.testCases.map(item => item.latestStatus));
+    const summary = summaries.get(run.id) || summarizeStatusCounts([]);
     return {
       ...run,
       progress: summary.total ? Math.round((summary.completed / summary.total) * 100) : 0,
@@ -40,9 +50,20 @@ export async function listTestRuns(projectId: string, options: { cursor?: string
   return { items, hasMore, nextCursor: hasMore ? page.at(-1)?.id || null : null };
 }
 
-export async function getTestRunCasesPage(projectId: string, id: string, options: { cursor?: string; limit?: number } = {}) {
+export async function getTestRunCasesPage(projectId: string, id: string, options: { cursor?: string; limit?: number; offset?: number; focusCaseId?: string; focusIndex?: number } = {}) {
   const limit = Math.min(200, Math.max(1, options.limit || 100));
   if (!await db.testRun.findFirst({ where: { id, projectId }, select: { id: true } })) return null;
+  let offset = Number.isFinite(options.offset) ? Math.max(0, Math.floor(options.offset!)) : 0;
+  if (options.focusCaseId) {
+    const target = await db.testRunCase.findFirst({ where: { testRunId: id, testCaseId: options.focusCaseId }, select: { id: true, createdAt: true } });
+    if (target) {
+      const before = await db.testRunCase.count({ where: { testRunId: id, OR: [{ createdAt: { lt: target.createdAt } }, { createdAt: target.createdAt, id: { lt: target.id } }] } });
+      offset = Math.floor(before / limit) * limit;
+    }
+  } else if (Number.isFinite(options.focusIndex)) {
+    const total = await db.testRunCase.count({ where: { testRunId: id } });
+    offset = Math.floor(Math.min(Math.max(0, total - 1), Math.max(0, options.focusIndex!)) / limit) * limit;
+  }
   const rows = await db.testRunCase.findMany({
     where: { testRunId: id },
     include: {
@@ -50,7 +71,7 @@ export async function getTestRunCasesPage(projectId: string, id: string, options
     },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     take: limit + 1,
-    ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+    ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : { skip: offset }),
   });
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
@@ -71,28 +92,29 @@ export async function getTestRunCasesPage(projectId: string, id: string, options
     items: page.map(item => ({ ...item.testCase, membershipId: item.id, assignedTo: item.assignedTo, executions: byMembership.has(item.id) ? [byMembership.get(item.id)!] : [] })),
     hasMore,
     nextCursor: hasMore ? page.at(-1)?.id || null : null,
+    startOffset: offset,
   });
 }
 
-export async function getTestRun(projectId: string, id: string, options: { caseCursor?: string; caseLimit?: number } = {}) {
+export async function getTestRun(projectId: string, id: string, options: { caseCursor?: string; caseLimit?: number; summaryOnly?: boolean; focusCaseId?: string; focusIndex?: number } = {}) {
   const [run, statusRows, casePage] = await Promise.all([db.testRun.findFirst({
     where: { id, projectId },
     include: {
       testPlan: true,
       _count: { select: { testCases: true, executions: true } },
     },
-  }), db.testRunCase.findMany({
+  }), db.testRunCase.groupBy({
+    by: ['latestStatus'],
     where: { testRunId: id },
-    select: { latestStatus: true },
-  }), getTestRunCasesPage(projectId, id, { cursor: options.caseCursor, limit: options.caseLimit })]);
+    _count: { _all: true },
+  }), options.summaryOnly ? Promise.resolve(null) : getTestRunCasesPage(projectId, id, { cursor: options.caseCursor, limit: options.caseLimit, focusCaseId: options.focusCaseId, focusIndex: options.focusIndex })]);
   if (!run) return null;
 
-  const latestStatuses = statusRows.map(item => item.latestStatus);
-  const summary = summarizeStatuses(latestStatuses);
+  const summary = summarizeStatusCounts(statusRows.map(item => ({ status: item.latestStatus, count: item._count._all })));
   return {
     ...run,
     testCases: casePage?.items || [],
-    casePage: { hasMore: casePage?.hasMore || false, nextCursor: casePage?.nextCursor || null },
+    casePage: { hasMore: casePage?.hasMore || false, nextCursor: casePage?.nextCursor || null, startOffset: casePage?.startOffset || 0 },
     progress: summary.total ? Math.round((summary.completed / summary.total) * 100) : 0,
     summary,
   };
@@ -327,15 +349,18 @@ async function assertTestRun(client: DbClient | TransactionClient, projectId: st
   return run;
 }
 
-function summarizeStatuses(statuses: string[]) {
-  return {
-    total: statuses.length,
-    completed: statuses.filter(status => ![TEST_EXECUTION_STATUS.NOT_RUN, TEST_EXECUTION_STATUS.IN_PROGRESS].includes(status as never)).length,
-    passed: statuses.filter(status => status === TEST_EXECUTION_STATUS.PASSED || status === TEST_EXECUTION_STATUS.VERIFIED).length,
-    failed: statuses.filter(status => status === TEST_EXECUTION_STATUS.FAILED).length,
-    blocked: statuses.filter(status => status === TEST_EXECUTION_STATUS.BLOCKED).length,
-    notRun: statuses.filter(status => status === TEST_EXECUTION_STATUS.NOT_RUN).length,
-  };
+function addStatusCount(summary: { total: number; completed: number; passed: number; failed: number; blocked: number; notRun: number }, status: string, count: number) {
+  summary.total += count;
+  if (status !== TEST_EXECUTION_STATUS.NOT_RUN && status !== TEST_EXECUTION_STATUS.IN_PROGRESS) summary.completed += count;
+  if (status === TEST_EXECUTION_STATUS.PASSED || status === TEST_EXECUTION_STATUS.VERIFIED) summary.passed += count;
+  if (status === TEST_EXECUTION_STATUS.FAILED) summary.failed += count;
+  if (status === TEST_EXECUTION_STATUS.BLOCKED) summary.blocked += count;
+  if (status === TEST_EXECUTION_STATUS.NOT_RUN) summary.notRun += count;
+}
+export function summarizeStatusCounts(rows: Array<{ status: string; count: number }>) {
+  const summary = { total: 0, completed: 0, passed: 0, failed: 0, blocked: 0, notRun: 0 };
+  for (const row of rows) addStatusCount(summary, row.status, row.count);
+  return summary;
 }
 
 export async function createExecutionNotification(input: {

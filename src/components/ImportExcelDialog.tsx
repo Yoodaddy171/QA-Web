@@ -3,6 +3,7 @@
 import React from 'react';
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Target, Upload, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { BasketballUploadDropzone } from '@/components/BasketballUploadDropzone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -82,17 +83,15 @@ export function ImportExcelDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden border-border/60 bg-card text-foreground elevation-3 rounded-2xl sm:max-w-5xl p-0">
-        <div className="absolute left-0 top-0 h-px w-full bg-primary/70" />
-
-        <DialogHeader className="shrink-0 border-b border-border/60 px-6 py-5">
+      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden border-border bg-card text-foreground shadow-xl rounded-2xl sm:max-w-5xl p-0">
+        <DialogHeader className="shrink-0 border-b border-border/40 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/15 text-primary shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
               <Upload className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-semibold tracking-tight">Import Excel</DialogTitle>
-              <DialogDescription className="text-muted-foreground text-[11px] font-medium leading-relaxed">Preview dan validasi data Excel Anda sebelum diintegrasikan ke database.</DialogDescription>
+              <DialogTitle className="text-base font-semibold text-foreground tracking-tight">Import Excel</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-relaxed">Preview dan validasi data Excel Anda sebelum diintegrasikan ke database.</DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -117,30 +116,56 @@ export function ImportExcelDialog({
           </div>
 
           {!hasPreview && (
-            <div className="space-y-4 rounded-2xl border border-border/60 bg-secondary/20 p-5 shadow-inner">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pemetaan Kolom yang Didukung</p>
+            <>
+              <BasketballUploadDropzone
+                title="Upload File Excel"
+                subtitle="Drag and drop, or take the shot (.xlsx / .xls)"
+                dropLabel="Drop Excel file here"
+                helperText="or take the shot to preview sheets & rows"
+                helperBadges={['XLSX', 'XLS']}
+                accept=".xlsx,.xls"
+                defaultBadge="XLS"
+                busy={busy}
+                uploadedCount={selectedFileName ? 1 : 0}
+                selectedFile={selectedFileName ? { name: selectedFileName } : null}
+                onClearFile={onClearPreview}
+                onFileSelect={(file) => {
+                  const input = fileInputRef.current;
+                  if (!input || typeof DataTransfer === 'undefined') {
+                    onChooseFile();
+                    return;
+                  }
+                  const dt = new DataTransfer();
+                  dt.items.add(file);
+                  input.files = dt.files;
+                  input.dispatchEvent(new Event('change', { bubbles: true }));
+                }}
+              />
+              <div className="space-y-4 rounded-2xl border border-border/60 bg-secondary/20 p-5 shadow-inner">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pemetaan Kolom yang Didukung</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                  {[
+                    { label: 'ID / TC ID', desc: 'ID Test Case' },
+                    { label: 'Page / Module', desc: 'Halaman Utama' },
+                    { label: 'Sub Menu', desc: 'Bagian Fitur' },
+                    { label: 'Feature', desc: 'Fitur Utama' },
+                    { label: 'Action / Steps', desc: 'Langkah Test' },
+                    { label: 'Expected Result', desc: 'Hasil Harapan' },
+                    { label: 'Status', desc: 'Done/Failed' },
+                    { label: 'Priority', desc: 'Urgency' },
+                    { label: 'Bobot / Weight', desc: 'Complexity' },
+                  ].map((item) => (
+                    <div key={item.label} className="flex flex-col gap-0.5">
+                      <span className="text-[11px] font-bold text-foreground">{item.label}</span>
+                      <span className="text-[10px] text-muted-foreground font-medium">{item.desc}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
-                {[
-                  { label: 'ID / TC ID', desc: 'ID Test Case' },
-                  { label: 'Page / Module', desc: 'Halaman Utama' },
-                  { label: 'Sub Menu', desc: 'Bagian Fitur' },
-                  { label: 'Feature', desc: 'Fitur Utama' },
-                  { label: 'Action / Steps', desc: 'Langkah Test' },
-                  { label: 'Expected Result', desc: 'Hasil Harapan' },
-                  { label: 'Status', desc: 'Done/Failed' },
-                  { label: 'Priority', desc: 'Urgency' },
-                  { label: 'Bobot / Weight', desc: 'Complexity' },
-                ].map((item) => (
-                  <div key={item.label} className="flex flex-col gap-0.5">
-                    <span className="text-[11px] font-bold text-foreground">{item.label}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium">{item.desc}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            </>
           )}
 
           {selectedFileName && (
@@ -285,8 +310,8 @@ export function ImportExcelDialog({
                             {sheet.previewRows.map((row, index) => (
                               <TableRow key={`${sheet.sheet}-${index}`} className="border-b border-border/30 hover:bg-secondary/10 transition-colors h-12">
                                 {['ID', 'Page', 'Sub Menu', 'Feature', 'Status'].map((header) => (
-                                  <TableCell key={header} className="max-w-[200px] truncate text-foreground font-medium text-[11px] px-5 py-0">
-                                    {row[header] || <span className="text-muted-foreground/30">—</span>}
+                                  <TableCell key={header} tooltip={row[header] || undefined} className="max-w-[200px] truncate text-foreground font-medium text-[11px] px-5 py-0">
+                                    {row[header] || <span className="text-muted-foreground/40">-</span>}
                                   </TableCell>
                                 ))}
                               </TableRow>
@@ -314,12 +339,12 @@ export function ImportExcelDialog({
         </div>
 
         <DialogFooter className="shrink-0 gap-3 border-t border-border/40 px-6 py-5 bg-secondary/10">
-          {lastImportBatchId && onUndoImport && <Button variant="outline" onClick={onUndoImport} disabled={busy} className="mr-auto h-10 rounded-xl border-amber-500/40 text-amber-600">Undo last import</Button>}
+          {lastImportBatchId && onUndoImport && <Button variant="outline" onClick={onUndoImport} disabled={busy} className="mr-auto h-10 rounded-xl border-amber-500/40 text-amber-600 font-medium text-xs">Undo last import</Button>}
           <Button
             variant="outline"
             onClick={() => hasPreview ? onClearPreview() : onOpenChange(false)}
             disabled={busy}
-            className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition hover:bg-secondary"
+            className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-medium text-xs px-5 transition hover:bg-secondary"
           >
             {hasPreview ? 'Ganti File' : 'Batal'}
           </Button>
@@ -327,10 +352,10 @@ export function ImportExcelDialog({
             onClick={hasPreview ? onConfirmImport : onChooseFile}
             disabled={busy || (hasPreview && !importPreview?.canImport)}
             className={cn(
-              "h-10 gap-2.5 rounded-xl text-white font-semibold text-xs px-8 shadow-lg transition duration-300 uppercase tracking-wider",
+              "h-10 gap-2.5 rounded-xl font-medium text-xs px-6 shadow-sm transition",
               hasPreview && !importPreview?.canImport
                 ? "bg-muted text-muted-foreground"
-                : "bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 hover:shadow-primary/30"
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
             )}
           >
             {importing ? (

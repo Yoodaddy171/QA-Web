@@ -126,6 +126,10 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    if (url.searchParams.get('view') === 'options') {
+      const [total, testCases] = await Promise.all([db.testCase.count({ where }), db.testCase.findMany({ where, select: { id: true, testCaseId: true, page: true, status: true }, orderBy: [{ [sortBy]: sortOrder }, { id: sortOrder }], skip: (page - 1) * limit, take: limit })]);
+      return NextResponse.json({ total, totalPages: Math.ceil(total / limit), testCases });
+    }
     const [total, testCases, weightMap] = await Promise.all([db.testCase.count({ where }), db.testCase.findMany({
       where,
       select: {

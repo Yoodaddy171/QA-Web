@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LatestRequest } from '@/lib/client/latest-request';
+import { useCommittedActions } from '@/hooks/use-committed-actions';
 import { Bell, BellRing, CheckCheck, CircleAlert, CircleCheck, Clock3, Info, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,29 +46,46 @@ function relativeTime(value: string) {
 }
 
 export function NotificationCenter({ projectId, onNavigate }: NotificationCenterProps) {
+  return <ProjectNotificationCenter key={projectId} projectId={projectId} onNavigate={onNavigate} />;
+}
+
+function ProjectNotificationCenter({ projectId, onNavigate }: NotificationCenterProps) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [marking, setMarking] = useState(false);
+  const requests = useRef(new LatestRequest());
+  const mounted = useRef(true);
+  const mutating = useRef(false);
 
   const load = useCallback(async (quiet = false) => {
-    if (!projectId) return;
+    if (!projectId || mutating.current) return;
+    const request = requests.current.begin();
     if (!quiet) setLoading(true);
     try {
-      const response = await fetch(`/api/notifications?projectId=${encodeURIComponent(projectId)}&limit=30`);
+      const response = await fetch(`/api/notifications?projectId=${encodeURIComponent(projectId)}&limit=30`, { signal: request.signal, cache: 'no-store' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Gagal memuat notifikasi.');
+      if (!request.current()) return;
       setItems(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
+      setError('');
+    } catch (cause) {
+      if (request.current()) setError(cause instanceof Error ? cause.message : 'Notifikasi gagal dimuat. Coba lagi.');
     } finally {
-      if (!quiet) setLoading(false);
+      if (request.current()) setLoading(false);
     }
   }, [projectId]);
 
   useEffect(() => {
+    mounted.current = true;
     const timer = window.setTimeout(() => void load(), 0);
-    const interval = window.setInterval(() => void load(true), 30_000);
-    return () => { window.clearTimeout(timer); window.clearInterval(interval); };
+    const refresh = () => { if (document.visibilityState === 'visible') void load(true); };
+    const interval = window.setInterval(refresh, 30_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { mounted.current = false; requests.current.cancel(); window.clearTimeout(timer); window.clearInterval(interval); document.removeEventListener('visibilitychange', refresh); };
   }, [load]);
 
   const grouped = useMemo(() => {
@@ -80,36 +99,67 @@ export function NotificationCenter({ projectId, onNavigate }: NotificationCenter
   }, [items]);
 
   const markAllRead = async () => {
-    if (!projectId || unreadCount === 0) return;
-    const response = await fetch('/api/notifications/read-all', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId }),
-    });
-    if (response.ok) {
-      const readAt = new Date().toISOString();
-      setItems(current => current.map(item => ({ ...item, readAt: item.readAt || readAt })));
-      setUnreadCount(0);
+    if (!projectId || unreadCount === 0 || mutating.current) return;
+    mutating.current = true;
+    const previousItems = items;
+    const previousUnreadCount = unreadCount;
+    const readAt = new Date().toISOString();
+    requests.current.cancel();
+    setLoading(false);
+    setMarking(true);
+    setError('');
+    setItems(current => current.map(item => ({ ...item, readAt: item.readAt || readAt })));
+    setUnreadCount(0);
+    let saved = false;
+    try {
+      const response = await fetch('/api/notifications/read-all', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      });
+      if (!response.ok) throw new Error('Notifikasi belum ditandai dibaca. Coba lagi.');
+      saved = true;
+    } catch (cause) {
+      if (mounted.current) {
+        setItems(previousItems);
+        setUnreadCount(previousUnreadCount);
+        setError(cause instanceof Error ? cause.message : 'Gagal menandai notifikasi.');
+      }
+    } finally {
+      mutating.current = false;
+      if (mounted.current) {
+        setMarking(false);
+        if (saved) void load(true);
+      }
     }
   };
 
-  const openItem = async (item: NotificationItem) => {
+  const openItem = useCallback(async (item: NotificationItem) => {
     if (!item.readAt) {
-      setItems(current => current.map(candidate => candidate.id === item.id ? { ...candidate, readAt: new Date().toISOString() } : candidate));
-      setUnreadCount(current => Math.max(0, current - 1));
-      void fetch(`/api/notifications/${item.id}`, {
+      if (mutating.current) return;
+      mutating.current = true; requests.current.cancel();
+      try {
+      const response = await fetch(`/api/notifications/${item.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId, read: true }),
       });
+      if (!response.ok) throw new Error('Status dibaca belum tersimpan. Coba lagi.');
+      if (!mounted.current) return;
+      setItems(current => current.map(candidate => candidate.id === item.id ? { ...candidate, readAt: new Date().toISOString() } : candidate));
+      setUnreadCount(current => Math.max(0, current - 1));
+      } catch (cause) { if (mounted.current) setError(cause instanceof Error ? cause.message : 'Status dibaca belum tersimpan.'); return; }
+      finally { mutating.current = false; }
     }
+    if (!mounted.current) return;
     const tab = item.metadata?.tab || (item.entityType === 'TestRun' ? 'testRuns' : 'testcases');
     const target = { entityType: item.entityType, entityId: item.entityId, ...item.metadata };
     window.localStorage.setItem(`qaDesk.navigationTarget.v1.${projectId}`, JSON.stringify(target));
     window.dispatchEvent(new CustomEvent('qa-desk:navigate-entity', { detail: target }));
     onNavigate(tab);
     setOpen(false);
-  };
+  }, [projectId, onNavigate]);
+  const notificationActions = useCommittedActions({ openItem });
 
   return (
     <Popover open={open} onOpenChange={nextOpen => { setOpen(nextOpen); if (nextOpen) void load(true); }}>
@@ -127,12 +177,13 @@ export function NotificationCenter({ projectId, onNavigate }: NotificationCenter
         <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
           <div>
             <p className="text-sm font-semibold">Notification Center</p>
-            <p className="text-[11px] text-muted-foreground">{unreadCount ? `${unreadCount} belum dibaca` : 'Semua sudah dibaca'}</p>
+            <p aria-live="polite" className="text-[11px] text-muted-foreground">{marking ? 'Menyimpan status dibaca...' : unreadCount ? `${unreadCount} belum dibaca` : 'Semua sudah dibaca'}</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => void markAllRead()} disabled={!unreadCount}>
-            <CheckCheck data-icon="inline-start" /> Tandai semua
+          <Button variant="ghost" size="sm" onClick={() => void markAllRead()} disabled={!unreadCount || marking} aria-busy={marking}>
+            {marking ? <Loader2 data-icon="inline-start" className="motion-safe:animate-spin" /> : <CheckCheck data-icon="inline-start" />} Tandai semua
           </Button>
         </div>
+        {error && <div className="flex items-center gap-2 border-b border-border px-4 py-3"><p role="alert" className="flex-1 text-sm text-destructive">{error}</p><Button variant="outline" size="sm" onClick={() => void load()}>Coba lagi</Button></div>}
         <ScrollArea className="h-[min(520px,70vh)]">
           {loading && items.length === 0 ? (
             <div className="flex h-48 items-center justify-center text-muted-foreground"><Loader2 className="animate-spin" /></div>
@@ -149,7 +200,7 @@ export function NotificationCenter({ projectId, onNavigate }: NotificationCenter
                 const config = severityConfig[item.severity as keyof typeof severityConfig] || severityConfig.info;
                 const Icon = config.icon;
                 return (
-                  <button key={item.id} type="button" onClick={() => void openItem(item)} className={cn('flex w-full gap-3 border-b border-border/40 px-4 py-3 text-left transition-colors duration-150 hover:bg-secondary/60 focus-visible:bg-secondary/60 focus-visible:outline-none', !item.readAt && 'bg-primary/[0.035]')}>
+                  <button key={item.id} type="button" onClick={() => void notificationActions.openItem(item)} className={cn('flex w-full gap-3 border-b border-border/40 px-4 py-3 text-left transition-colors duration-150 hover:bg-secondary/60 focus-visible:bg-secondary/60 focus-visible:outline-none', !item.readAt && 'bg-primary/[0.035]')}>
                     <span className={cn('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border', config.className)}><Icon className="size-4" /></span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-3"><strong className="text-xs font-semibold text-foreground">{item.title}</strong>{!item.readAt && <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />}</span>

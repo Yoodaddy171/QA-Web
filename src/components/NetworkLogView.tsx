@@ -1,250 +1,101 @@
 'use client';
-import { memo } from 'react';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Filter, RefreshCw, Search } from 'lucide-react';
+import { memo, useRef, useState, type Ref } from 'react';
+import { X } from 'lucide-react';
+import { DevlogEmptyState } from '@/components/DevlogPanelChrome';
+import {
+  DEVTOOLS_NETWORK_GRID, DevtoolsNetworkCells, DevtoolsNetworkColumns, DevtoolsNetworkFilters,
+} from '@/components/DevtoolsNetworkFilters';
+import { NetworkRequestDetails } from '@/components/NetworkRequestDetails';
+import {
+  formatPrettyValue, getRequestHeaders, getRequestPayload, getResponsePayload,
+  type LogEntry, type NetworkLogGroup,
+} from '@/components/TestCaseDetailDialog.helpers';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { VirtualLogList } from '@/components/VirtualLogList';
+import { getDevtoolsNetworkName, type DevtoolsNetworkFilterState } from '@/lib/client/automation/devtools-network';
 import { cn } from '@/lib/utils';
 
-type NetworkLogViewProps = Record<string, any>;
+type RequestRow = Pick<NetworkLogGroup, 'id' | 'log'>;
 
-export const NetworkLogView = memo(function NetworkLogView(props: NetworkLogViewProps) {
-  const {
-    networkFilters, updateNetworkFilters, networkLogItems, networkHosts, networkMethods,
-    setNetworkFilters, DEFAULT_NETWORK_FILTERS, networkCategoryCounts, hiddenNetworkCount,
-    toggleNetworkFilter, groupedNetworkLogs, logEndRef, seekRecordingFromLog, expandedLogId,
-    setExpandedLogId, getNetworkMethod, getNetworkCategoryClass, getNetworkStatusClass,
-    getNetworkStatus, getNetworkDuration, formatRelativeTime, networkCodeWhitespaceClass,
-    networkCodePanelClass, formatPrettyValue, getRequestPayload, getResponsePayload,
-  } = props;
+interface NetworkLogViewProps {
+  filters: DevtoolsNetworkFilterState;
+  onFiltersChange: (filters: DevtoolsNetworkFilterState) => void;
+  totalCount: number;
+  groupedNetworkLogs: RequestRow[];
+  logEndRef: Ref<HTMLDivElement>;
+  seekRecordingFromLog: (log: LogEntry) => void;
+  expandedLogId: string | null;
+  setExpandedLogId: (id: string | null) => void;
+  networkCodeWrap?: boolean;
+  setNetworkCodeWrap?: (wrap: boolean) => void;
+}
+
+const rowKey = (row: RequestRow) => row.id;
+
+export const NetworkLogView = memo(function NetworkLogView({
+  filters, onFiltersChange, totalCount, groupedNetworkLogs, logEndRef, seekRecordingFromLog,
+  expandedLogId, setExpandedLogId, networkCodeWrap, setNetworkCodeWrap,
+}: NetworkLogViewProps) {
+  const [localWrap, setLocalWrap] = useState(true);
+  const selected = groupedNetworkLogs.find(group => group.id === expandedLogId);
+  const selectedButton = useRef<HTMLButtonElement>(null);
+  const network = selected?.log.network;
+
   return (
-                                <div className="h-full flex flex-col">
-                                  <div className="space-y-2 border-b border-border bg-muted/60 p-3 dark:border-border dark:bg-card">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <div className="relative min-w-[220px] flex-1">
-                                        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                                        <Input
-                                          value={networkFilters.search}
-                                          onChange={(event) => updateNetworkFilters({ search: event.target.value })}
-                                          placeholder="Search URL, host, method, status..."
-                                          className="h-8 border-border bg-background pl-8 text-xs text-foreground placeholder:text-muted-foreground dark:border-border dark:bg-muted dark:text-foreground dark:placeholder:text-muted-foreground"
-                                        />
-                                      </div>
-                                      <select
-                                        value={networkFilters.host}
-                                        onChange={(event) => updateNetworkFilters({ host: event.target.value })}
-                                        className="h-8 min-w-[150px] rounded-md border border-border bg-background px-2 text-xs font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-foreground"
-                                      >
-                                        <option value="all">All hosts ({networkLogItems.length})</option>
-                                        {networkHosts.map((host) => (
-                                          <option key={host} value={host}>{host}</option>
-                                        ))}
-                                      </select>
-                                      <select
-                                        value={networkFilters.method}
-                                        onChange={(event) => updateNetworkFilters({ method: event.target.value })}
-                                        className="h-8 rounded-md border border-border bg-background px-2 text-xs font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-foreground"
-                                      >
-                                        <option value="all">All methods</option>
-                                        {networkMethods.map((method) => (
-                                          <option key={method} value={method}>{method}</option>
-                                        ))}
-                                      </select>
-                                      <select
-                                        value={networkFilters.status}
-                                        onChange={(event) => updateNetworkFilters({ status: event.target.value })}
-                                        className="h-8 rounded-md border border-border bg-background px-2 text-xs font-semibold text-foreground outline-none focus:border-indigo-500 dark:border-border dark:bg-muted dark:text-foreground"
-                                      >
-                                        <option value="all">All status</option>
-                                        <option value="2xx">2xx</option>
-                                        <option value="3xx">3xx</option>
-                                        <option value="4xx">4xx</option>
-                                        <option value="5xx">5xx</option>
-                                        <option value="unknown">Unknown</option>
-                                      </select>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 gap-1.5 px-2 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-foreground dark:text-muted-foreground dark:hover:text-white"
-                                        onClick={() => setNetworkFilters(DEFAULT_NETWORK_FILTERS)}
-                                      >
-                                        <Filter className="h-3.5 w-3.5" />
-                                        Reset
-                                      </Button>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                                      {[
-                                        { key: 'showPreflight' as const, label: `Preflight ${networkCategoryCounts.preflight}` },
-                                        { key: 'showDocument' as const, label: `Document ${networkCategoryCounts.document}` },
-                                        { key: 'showScript' as const, label: `Script ${networkCategoryCounts.script}` },
-                                        { key: 'showImage' as const, label: `Image ${networkCategoryCounts.image}` },
-                                        { key: 'showStatic' as const, label: `Static ${networkCategoryCounts.static}` },
-                                        { key: 'showTelemetry' as const, label: `Telemetry ${networkCategoryCounts.telemetry}` },
-                                        { key: 'showDataUrls' as const, label: `Data URL ${networkCategoryCounts.data}` },
-                                        { key: 'showOther' as const, label: `Other ${networkCategoryCounts.other}` },
-                                      ].map((filter) => (
-                                        <Button
-                                          key={filter.key}
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className={cn(
-                                            "h-7 rounded-full border px-3 text-xs font-bold",
-                                            networkFilters[filter.key]
-                                              ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-500/40 dark:bg-indigo-950/60 dark:text-indigo-200 dark:hover:bg-indigo-900/60'
-                                              : 'border-border bg-muted text-muted-foreground hover:bg-secondary hover:text-foreground dark:text-muted-foreground'
-                                          )}
-                                          onClick={() => toggleNetworkFilter(filter.key)}
-                                        >
-                                          {filter.label}
-                                        </Button>
-                                      ))}
-                                      <span className="ml-auto rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 font-bold text-cyan-700 dark:border-cyan-500/20 dark:bg-cyan-950/40 dark:text-status-retest">
-                                        API {networkCategoryCounts.business}
-                                      </span>
-                                      {hiddenNetworkCount > 0 && (
-                                        <span className="rounded-full border border-border bg-muted px-2 py-1 font-bold text-muted-foreground">
-                                          {hiddenNetworkCount} hidden
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-12 gap-2 p-2 bg-muted/70 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-tighter shrink-0 dark:bg-muted dark:border-border dark:text-muted-foreground">
-                                    <div className="col-span-1">Method</div>
-                                    <div className="col-span-1">Type</div>
-                                    <div className="col-span-5">Name / URL</div>
-                                    <div className="col-span-2 text-center">Status</div>
-                                    <div className="col-span-2 text-right">Time</div>
-                                    <div className="col-span-1"></div>
-                                  </div>
-                                  <div className="flex-1 overflow-y-auto divide-y divide-border">
-                                    {groupedNetworkLogs.length === 0 ? (
-                                      <div className="h-full flex flex-col items-center justify-center py-20 text-muted-foreground">
-                                        <RefreshCw className="w-8 h-8 mb-3 opacity-20 animate-spin-slow" />
-                                        <p className="font-bold tracking-wider text-xs uppercase">Waiting for Network Traffic...</p>
-                                      </div>
-                                    ) : (
-                                      groupedNetworkLogs.map((group) => {
-                                        const { log: net, meta, entries, count } = group;
-                                        const logId = group.id;
-
-                                        return (
-                                          <div key={logId} className="group hover:bg-secondary/60 dark:hover:bg-secondary/50">
-                                            <div
-                                              role="button"
-                                              tabIndex={0}
-                                              aria-label={`Inspect ${getNetworkMethod(net.network)} ${meta.name || meta.host || net.network.url}`}
-                                              aria-expanded={expandedLogId === logId}
-                                              onKeyDown={(event) => {
-                                                if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
-                                              }}
-                                              className="grid grid-cols-12 gap-2 p-2 cursor-pointer items-center transition-colors focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2"
-                                              onClick={() => {
-                                                seekRecordingFromLog(net);
-                                                setExpandedLogId(expandedLogId === logId ? null : logId);
-                                              }}
-                                            >
-                                              <div className="col-span-1 font-semibold text-indigo-700 truncate dark:text-status-in-progress">{getNetworkMethod(net.network)}</div>
-                                              <div className="col-span-1 truncate">
-                                                <span className={`rounded border px-1.5 py-0.5 text-xs font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
-                                                  {meta.label}
-                                                </span>
-                                              </div>
-                                              <div className="col-span-5 min-w-0">
-                                                <div className="truncate text-foreground dark:text-foreground">{meta.pathname.split('/').pop() || meta.pathname || net.network.url}</div>
-                                                <div className="truncate text-xs text-muted-foreground">{meta.host}</div>
-                                              </div>
-                                              <div className="col-span-2 text-center">
-                                                <span className={cn("px-1.5 py-0.5 rounded text-xs font-bold", getNetworkStatusClass(net.network))}>
-                                                  {getNetworkStatus(net.network)}
-                                                </span>
-                                              </div>
-                                              <div className="col-span-2 text-right text-muted-foreground">
-                                                <span>{getNetworkDuration(net.network)}</span>
-                                                {typeof net.relativeMs === 'number' && (
-                                                  <span className="ml-2 text-indigo-700 dark:text-status-in-progress">{formatRelativeTime(net.relativeMs)}</span>
-                                                )}
-                                              </div>
-                                              <div className="col-span-1 flex items-center justify-end gap-1.5">
-                                                {count > 1 && (
-                                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-xs font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
-                                                    x{count}
-                                                  </span>
-                                                )}
-                                                <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", expandedLogId === logId && "rotate-180")} />
-                                              </div>
-                                            </div>
-                                            <AnimatePresence>
-                                              {expandedLogId === logId && (
-                                                <motion.div
-                                                  initial={false}
-                                                  animate={{ opacity: 1 }}
-                                                  exit={{ opacity: 0 }}
-                                                  transition={{ duration: 0.2 }}
-                                                  className="overflow-hidden"
-                                                >
-                                                  <div className="p-4 bg-muted/50 border-t border-border dark:bg-muted/50 dark:border-border">
-                                                    {count > 1 && (
-                                                      <div className="mb-3 rounded-lg border border-border bg-background p-3 dark:border-border dark:bg-card/70">
-                                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Repeated {count} times</p>
-                                                        <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
-                                                          {entries.map((entry, entryIndex) => (
-                                                            <button
-                                                              key={entry.log.id ?? `${logId}-repeat-${entryIndex}`}
-                                                              type="button"
-                                                              className="grid w-full grid-cols-[54px_72px_72px_1fr] gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-left text-xs hover:bg-secondary"
-                                                              onClick={() => seekRecordingFromLog(entry.log)}
-                                                            >
-                                                              <span className="font-semibold text-muted-foreground">#{entryIndex + 1}</span>
-                                                              <span className="font-mono text-indigo-700 dark:text-status-in-progress">{formatRelativeTime(entry.log.relativeMs)}</span>
-                                                              <span className={cn("rounded px-1.5 py-0.5 text-center font-bold", getNetworkStatusClass(entry.log.network))}>
-                                                                {getNetworkStatus(entry.log.network)}
-                                                              </span>
-                                                              <span className="truncate text-foreground">{getNetworkDuration(entry.log.network)}</span>
-                                                            </button>
-                                                          ))}
-                                                        </div>
-                                                      </div>
-                                                    )}
-                                                    <div className="mb-3 rounded-lg border border-border bg-background p-3 dark:border-border dark:bg-card/70">
-                                                      <p className="mb-1 text-xs font-bold uppercase text-muted-foreground">Full URL</p>
-                                                      <pre className={cn("overflow-auto rounded border border-border bg-muted/40 p-2 font-mono text-xs leading-relaxed text-foreground dark:text-foreground", networkCodeWhitespaceClass)}>
-                                                        {net.network.url}
-                                                      </pre>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 items-start gap-4 overflow-x-auto xl:grid-cols-3">
-                                                      <div className="space-y-3">
-                                                        <p className="text-xs font-bold text-muted-foreground uppercase">Headers</p>
-                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[320px] min-h-[180px] resize-y text-foreground dark:text-muted-foreground")}>
-                                                          {formatPrettyValue(net.network.headers)}
-                                                        </pre>
-                                                      </div>
-                                                      <div className="space-y-3">
-                                                        <p className="text-xs font-bold text-muted-foreground uppercase">Request Payload</p>
-                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[420px] min-h-[180px] resize-y text-cyan-700 dark:text-status-retest/90")}>
-                                                          {formatPrettyValue(getRequestPayload(net.network.data))}
-                                                        </pre>
-                                                      </div>
-                                                      <div className="space-y-3">
-                                                        <p className="text-xs font-bold text-muted-foreground uppercase">Response</p>
-                                                        <pre className={cn(networkCodePanelClass, networkCodeWhitespaceClass, "max-h-[420px] min-h-[180px] resize-y text-emerald-700 dark:text-emerald-500/80")}>
-                                                          {formatPrettyValue(getResponsePayload(net.network.data))}
-                                                        </pre>
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                </motion.div>
-                                              )}
-                                            </AnimatePresence>
-                                          </div>
-                                        );
-                                      })
-                                    )}
-                                    <div ref={logEndRef} className="h-4" />
-                                  </div>
-                                </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <DevtoolsNetworkFilters filters={filters} onChange={onFiltersChange} shownCount={groupedNetworkLogs.length} totalCount={totalCount} />
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="@container min-h-24 min-w-0 flex-1 overflow-auto">
+          <div className="sticky top-0 z-10 bg-background"><DevtoolsNetworkColumns /></div>
+          {groupedNetworkLogs.length === 0 ? (
+            <DevlogEmptyState kind="network" title={totalCount ? 'No matching requests' : 'No requests recorded'}
+              hint={totalCount ? 'Clear the filter or choose All to see more requests.' : undefined} />
+          ) : (
+            <VirtualLogList items={groupedNetworkLogs} itemKey={rowKey} activeId={expandedLogId} estimate={28}>
+              {row => (
+                <button
+                  type="button"
+                  ref={row.id === expandedLogId ? selectedButton : undefined}
+                  aria-pressed={row.id === expandedLogId}
+                  aria-label={`Inspect ${getDevtoolsNetworkName(row.log.network)}`}
+                  className={cn(
+                    DEVTOOLS_NETWORK_GRID,
+                    'min-h-9 w-full cursor-pointer border-b border-border text-left text-xs text-muted-foreground hover:bg-teal-50 dark:hover:bg-teal-950/60 focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2',
+                    row.id === expandedLogId && 'bg-teal-100 dark:bg-teal-950',
+                  )}
+                  onClick={() => { seekRecordingFromLog(row.log); setExpandedLogId(row.id); }}
+                >
+                  <DevtoolsNetworkCells network={row.log.network} />
+                </button>
+              )}
+            </VirtualLogList>
+          )}
+          <div ref={logEndRef} />
+        </div>
+        {network && (
+          <section key={selected?.id} aria-label="Request details" className="devlog-detail-enter min-h-0 min-w-0 flex-1 overflow-auto border-t border-border p-2 lg:border-l lg:border-t-0">
+            <div className="mb-1 flex items-center gap-2">
+              <Button type="button" size="icon" variant="ghost" aria-label="Close request details" className="size-7" onClick={() => {
+                setExpandedLogId(null);
+                selectedButton.current?.focus();
+              }}><X aria-hidden="true" /></Button>
+              <p className="truncate text-xs font-medium" title={getDevtoolsNetworkName(network)}>{getDevtoolsNetworkName(network)}</p>
+            </div>
+            <NetworkRequestDetails
+              key={selected.id}
+              network={network}
+              headers={network.headers}
+              requestHeaders={getRequestHeaders(network.data)}
+              payload={getRequestPayload(network.data)}
+              response={getResponsePayload(network.data)}
+              wrap={networkCodeWrap ?? localWrap}
+              onWrapChange={setNetworkCodeWrap ?? setLocalWrap}
+              formatValue={formatPrettyValue}
+            />
+          </section>
+        )}
+      </div>
+    </div>
   );
 });
-

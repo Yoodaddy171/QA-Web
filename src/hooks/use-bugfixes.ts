@@ -29,10 +29,16 @@ export function useBugFixes(
 ) {
   const { toast } = useToast();
   const [bugFixItems, setBugFixItems] = useState<BugFixItem[]>([]);
-  const [bugFixSearch, setBugFixSearch] = useState('');
-  const [bugFixFilterStatus, setBugFixFilterStatus] = useState<string>('all');
-  const [bugFixFilterModule, setBugFixFilterModule] = useState<string>('all');
-  const [bugFixTab, setBugFixTab] = useState<BugFixTab>('active');
+  const [bugFixSearch, setSearch] = useState('');
+  const [bugFixFilterStatus, setStatus] = useState<string>('all');
+  const [bugFixFilterModule, setModule] = useState<string>('all');
+  const [bugFixTab, setTab] = useState<BugFixTab>('active');
+  const [page, setPage] = useState(1);
+  const [paging, setPaging] = useState({ total: 0, totalPages: 1, loading: false, error: '' });
+  const setBugFixSearch = useCallback((value: string) => { setSearch(value); setPage(1); }, []);
+  const setBugFixFilterStatus = useCallback((value: string) => { setStatus(value); setPage(1); }, []);
+  const setBugFixFilterModule = useCallback((value: string) => { setModule(value); setPage(1); }, []);
+  const setBugFixTab = useCallback((value: BugFixTab) => { setTab(value); setPage(1); }, []);
   const debouncedBugFixSearch = useDebouncedValue(bugFixSearch, 300);
   const selectedProjectRef = useRef(selectedProject);
   const currentSearchRef = useRef(bugFixSearch);
@@ -48,7 +54,7 @@ export function useBugFixes(
     currentStatusFilterRef.current = bugFixFilterStatus;
     requestVersion.current++;
     requestController.current?.abort();
-  }, [selectedProject, bugFixSearch, bugFixFilterStatus, bugFixTab]);
+  }, [selectedProject, bugFixSearch, bugFixFilterStatus, bugFixTab, bugFixFilterModule, page]);
 
   useLayoutEffect(() => { refreshRelatedRef.current = refreshRelatedData; }, [refreshRelatedData]);
   useEffect(() => () => { requestVersion.current++; requestController.current?.abort(); }, []);
@@ -66,22 +72,9 @@ export function useBugFixes(
     [bugFixFilterModule, bugFixItems, bugFixTab, selectedProject]
   );
 
-  const bugFixFilterModules = useMemo(() => {
-    const visibleModuleIds = new Set(bugFixItems
-      .filter(item => item.projectId === selectedProject)
-      .filter((item) => bugFixTab === 'resolved' ? item.status === BUGFIX_STATUS.VERIFIED_FIXED : item.status !== BUGFIX_STATUS.VERIFIED_FIXED)
-      .map(item => item.moduleId)
-      .filter((id): id is string => Boolean(id)));
-    return modules.filter(module => visibleModuleIds.has(module.id) || module.id === bugFixFilterModule);
-  }, [bugFixFilterModule, bugFixItems, bugFixTab, modules, selectedProject]);
-
-  const hasUnassignedBugFixItems = useMemo(
-    () => bugFixItems
-      .filter(item => item.projectId === selectedProject)
-      .filter((item) => bugFixTab === 'resolved' ? item.status === BUGFIX_STATUS.VERIFIED_FIXED : item.status !== BUGFIX_STATUS.VERIFIED_FIXED)
-      .some(item => !item.moduleId),
-    [bugFixItems, bugFixTab, selectedProject]
-  );
+  // Options must not disappear just because their records are on another page.
+  const bugFixFilterModules = modules;
+  const hasUnassignedBugFixItems = true;
 
   const loadBugFix = useCallback(async (projId: string) => {
     if (!projId || projId !== selectedProjectRef.current || currentSearchRef.current !== debouncedBugFixSearch) return;
@@ -89,6 +82,7 @@ export function useBugFixes(
     const controller = new AbortController();
     requestController.current = controller;
     const version = ++requestVersion.current;
+    setPaging(previous => ({ ...previous, loading: true, error: '' }));
     try {
       const status = bugFixTab === 'resolved'
         ? BUGFIX_STATUS.VERIFIED_FIXED
@@ -97,19 +91,23 @@ export function useBugFixes(
           : undefined;
       const data = await fetchBugFixes({
         projectId: projId,
-        limit: 100,
+        limit: 25,
+        page, moduleId: bugFixFilterModule, tab: bugFixTab,
         search: debouncedBugFixSearch || undefined,
         status,
       }, controller.signal);
       if (!isLatestResult(controller.signal, version, requestVersion.current, projId, selectedProjectRef.current)) return;
+      const pages = Math.max(1, data.totalPages || 1);
+      if (page > pages) setPage(pages);
+      setPaging({ total: data.total || 0, totalPages: pages, loading: false, error: '' });
       setBugFixItems(previous => isLatestResult(controller.signal, version, requestVersion.current, projId, selectedProjectRef.current)
         ? reconcileRows(previous, (data.bugFixItems || []).filter(item => item.projectId === projId)) : previous);
     } catch {
-      // Preserve existing silent bugfix fetch failure behavior.
+      if (!controller.signal.aborted && version === requestVersion.current) setPaging(previous => ({ ...previous, loading: false, error: 'Bug gagal dimuat. Coba muat ulang.' }));
     } finally {
       if (requestController.current === controller) requestController.current = null;
     }
-  }, [bugFixTab, bugFixFilterStatus, debouncedBugFixSearch]);
+  }, [bugFixTab, bugFixFilterStatus, debouncedBugFixSearch, bugFixFilterModule, page]);
 
   useLayoutEffect(() => { latestLoad.current = loadBugFix; }, [loadBugFix]);
 
@@ -127,7 +125,7 @@ export function useBugFixes(
     try {
       const updatedItem = await updateBugFix({ id: bfId, status: newStatus });
       if (selectedProjectRef.current !== project || updatedItem.projectId !== project) return;
-      const needsQueryRefresh = hadPendingQuery || requestVersion.current !== mutationVersion || currentStatusFilterRef.current !== 'all';
+      const needsQueryRefresh = hadPendingQuery || requestVersion.current !== mutationVersion || currentStatusFilterRef.current !== 'all' || updatedItem.status === BUGFIX_STATUS.VERIFIED_FIXED;
       requestVersion.current++;
       requestController.current?.abort();
       setBugFixItems(prev => prev.map(item => item.id === bfId ? updatedItem : item));
@@ -155,6 +153,7 @@ export function useBugFixes(
 
   return {
     bugFixItems,
+    bugFixPagination: { ...paging, page, setPage, reload: () => loadBugFix(selectedProject) },
     setBugFixItems,
     visibleBugFixItems,
     bugFixFilterModules,

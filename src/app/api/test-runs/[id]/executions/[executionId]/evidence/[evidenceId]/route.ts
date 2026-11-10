@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { evidenceStorage } from '@/lib/storage/evidence-storage';
 import { getRequestActor } from '@/lib/request-actor';
+import { evidenceThumbnail } from '@/lib/services/evidence-thumbnail';
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string; executionId: string; evidenceId: string }> }) {
   const { id, executionId, evidenceId } = await context.params;
@@ -15,6 +16,12 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
   try {
     const actor = await getRequestActor();
+    if (req.nextUrl.searchParams.get('thumbnail') === '1' && evidence.mimeType.startsWith('image/')) {
+      try {
+        const thumb = await evidenceThumbnail(`${projectId}:${evidence.id}:${evidence.sha256}:${evidence.updatedAt.toISOString()}`, () => evidenceStorage.read(evidence.storagePath));
+        return new NextResponse(new Uint8Array(thumb), { headers: { 'Content-Type': 'image/webp', 'Content-Length': String(thumb.length), 'Cache-Control': actor?.guest ? 'private, no-store' : 'private, max-age=3600', Vary: 'Cookie', 'X-Content-Type-Options': 'nosniff' } });
+      } catch { return NextResponse.json({ error: 'Thumbnail belum tersedia. Buka gambar asli.' }, { status: 503 }); }
+    }
     const file = await evidenceStorage.read(evidence.storagePath);
     const inlineSafe = ['image/png', 'image/jpeg', 'image/webp', 'video/mp4', 'video/webm'].includes(evidence.mimeType);
     const safeName = evidence.fileName.replace(/["\r\n]/g, '_');

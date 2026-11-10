@@ -123,6 +123,10 @@ export interface ReportData {
   snapshotChecksum?: string;
 }
 
+export type ReportSummary = Pick<ReportData, 'id' | 'projectId' | 'projectName' | 'reportType' | 'status' | 'version' | 'reportingPeriodStart' | 'reportingPeriodEnd' | 'generatedAt'> & {
+  metrics: Pick<ReportMetrics, 'totalPassed' | 'totalFailed' | 'passRate'>;
+};
+
 export interface CreateReportInput {
   projectId: string;
   reportType: ReportType;

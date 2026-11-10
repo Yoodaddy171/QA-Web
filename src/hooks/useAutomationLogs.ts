@@ -1,50 +1,22 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { detailTestCaseId } from '@/lib/client/testcase-detail-identity';
 import type { Dispatch, SetStateAction } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
-  inferDevLogCategory,
   inferDevLogRunner,
   type AutomationRunner,
-  type DevLogCategory,
-  type DevLogEventName,
 } from '@/lib/devlog-contract';
 import { buildDevlogRelayUrl, buildDevlogRelayWebSocketUrl } from '@/lib/client/api/devlog-client';
+import { CaptureLogBuffer, normalizeCaptureLog, parseCaptureLogs, type CaptureLogEntry } from '@/lib/client/automation/capture-log-buffer';
+import { LatestRequest } from '@/lib/client/latest-request';
 
 export type DevLogTab = 'console' | 'network' | 'execution';
 export type ManualCaptureBrowserMode = 'clean' | 'profiled';
 export type ManualCaptureMode = 'frame' | 'video' | 'hybrid';
 
-export interface AutomationLogEntry {
-  id?: string;
-  schemaVersion?: number;
-  type?: string;
-  category?: DevLogCategory;
-  event?: DevLogEventName | string;
-  source?: string;
-  runner?: AutomationRunner;
-  testCaseId?: string;
-  timestamp?: string | number | Date;
-  relativeMs?: number;
-  level?: string;
-  log?: unknown;
-  console?: unknown;
-  isExecution?: boolean;
-  isConsole?: boolean;
-  isNetwork?: boolean;
-  network?: {
-    event?: string;
-    method?: string;
-    url: string;
-    status?: number;
-    duration?: number;
-    headers?: unknown;
-    data?: unknown;
-    success?: boolean;
-  };
-  sessionId?: string;
-}
+export type AutomationLogEntry = CaptureLogEntry;
 
 export interface ManualRecordingFrame {
   file: string;
@@ -97,6 +69,7 @@ const DEBUG_AUTOMATION_LOGS = false;
 
 interface AutomationLogTestCase {
   id: string;
+  sourceTestCaseId?: string | null;
   stepLogs?: string | null;
 }
 
@@ -109,26 +82,6 @@ interface UseAutomationLogsOptions<TTestCase extends AutomationLogTestCase> {
 interface StartManualCaptureOptions {
   browserMode?: ManualCaptureBrowserMode;
   captureMode?: ManualCaptureMode;
-}
-
-function createLogId() {
-  return Math.random().toString(36).slice(2, 11);
-}
-
-function normalizeLogEntry(message: AutomationLogEntry): AutomationLogEntry {
-  const category = inferDevLogCategory(message);
-  const runner = inferDevLogRunner(message);
-
-  return {
-    ...message,
-    category,
-    runner,
-    id: message.id || createLogId(),
-    timestamp: message.timestamp || new Date().toISOString(),
-    isExecution: category === 'execution',
-    isConsole: category === 'console',
-    isNetwork: category === 'network',
-  };
 }
 
 export const filterConsoleLogs = (logs: AutomationLogEntry[]) => logs.filter(log => log.isConsole);
@@ -151,17 +104,7 @@ export const filterNetworkLogs = (logs: AutomationLogEntry[]) => logs.filter(log
 });
 
 function parseJsonlLogs(text: string) {
-  return text
-    .split('\n')
-    .filter(line => line.trim())
-    .map(line => {
-      try {
-        return normalizeLogEntry(JSON.parse(line));
-      } catch {
-        return null;
-      }
-    })
-    .filter((log): log is AutomationLogEntry => log !== null);
+  return parseCaptureLogs(text);
 }
 
 function getManualRecordingSessionId(logs: AutomationLogEntry[]) {
@@ -187,8 +130,14 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   setViewTestCase,
 }: UseAutomationLogsOptions<TTestCase>) {
   const { toast } = useToast();
+  const testCaseId = detailTestCaseId(viewTestCase);
   const logEndRef = useRef<HTMLDivElement>(null);
   const currentViewIdRef = useRef<string | null>(null);
+  const captureBuffer = useRef(new CaptureLogBuffer());
+  const historyRequests = useRef(new LatestRequest());
+  const recordingRequests = useRef(new LatestRequest());
+  const runSelection = useRef<'current' | 'previous'>('current');
+  const syncCurrentRef = useRef<(id: string) => Promise<void>>(async () => {});
   const [socketReady, setSocketReady] = useState(false);
   const [liveLogs, setLiveLogs] = useState<AutomationLogEntry[]>([]);
   const [activeDevLogTab, setActiveDevLogTab] = useState<DevLogTab>('execution');
@@ -207,12 +156,14 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   const isManualCaptureActive = !!manualCaptureSessionId;
   const currentAutomationRunner = getAutomationRunnerFromLogs(liveLogs);
 
-  const loadLatestRecording = async (testCaseId = viewTestCase?.id) => {
-    if (!testCaseId) return null;
+  const loadLatestRecording = async (recordTestCaseId = testCaseId) => {
+    if (!recordTestCaseId || currentViewIdRef.current !== recordTestCaseId) return null;
+    const request = recordingRequests.current.begin();
 
     try {
-      const response = await fetch(buildDevlogRelayUrl(`recordings/${encodeURIComponent(testCaseId)}/latest`));
+      const response = await fetch(buildDevlogRelayUrl(`recordings/${encodeURIComponent(recordTestCaseId)}/latest`), { signal: request.signal, cache: 'no-store' });
       const data = await response.json().catch(() => ({}));
+      if (!request.current() || currentViewIdRef.current !== recordTestCaseId) return null;
       if (!response.ok || !data.recording) {
         setManualRecording(null);
         return null;
@@ -220,7 +171,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       setManualRecording(data.recording);
       return data.recording as ManualRecordingMeta;
     } catch {
-      setManualRecording(null);
+      if (request.current() && currentViewIdRef.current === recordTestCaseId) setManualRecording(null);
       return null;
     }
   };
@@ -230,26 +181,30 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     const sessionId = getManualRecordingSessionId(logs);
     if (!sessionId) return loadLatestRecording(testCaseId);
 
+    const request = recordingRequests.current.begin();
     try {
-      const response = await fetch(buildDevlogRelayUrl(`recordings/${encodeURIComponent(testCaseId)}/${encodeURIComponent(sessionId)}/metadata`));
+      const response = await fetch(buildDevlogRelayUrl(`recordings/${encodeURIComponent(testCaseId)}/${encodeURIComponent(sessionId)}/metadata`), { signal: request.signal, cache: 'no-store' });
       const data = await response.json().catch(() => ({}));
+      if (!request.current() || currentViewIdRef.current !== testCaseId) return null;
       if (!response.ok || !data.recording) return loadLatestRecording(testCaseId);
       setManualRecording(data.recording);
       return data.recording as ManualRecordingMeta;
     } catch {
-      return loadLatestRecording(testCaseId);
+      return request.current() && currentViewIdRef.current === testCaseId ? loadLatestRecording(testCaseId) : null;
     }
   };
 
-  const loadCurrentRun = async (testCaseId = viewTestCase?.id) => {
-    if (!testCaseId) return null;
+  const loadCurrentRun = async (recordTestCaseId = testCaseId) => {
+    if (!recordTestCaseId || currentViewIdRef.current !== recordTestCaseId) return null;
+    const request = historyRequests.current.begin();
 
     try {
-      const response = await fetch(buildDevlogRelayUrl(`logs/${encodeURIComponent(testCaseId)}?run=current`));
+      const response = await fetch(buildDevlogRelayUrl(`logs/${encodeURIComponent(recordTestCaseId)}?run=current`), { signal: request.signal, cache: 'no-store' });
       if (!response.ok) return null;
 
       const logs = parseJsonlLogs(await response.text());
-      const visibleLogs = logs.length > 500 ? logs.slice(logs.length - 500) : logs;
+      if (!request.current() || currentViewIdRef.current !== recordTestCaseId || runSelection.current !== 'current') return null;
+      const visibleLogs = captureBuffer.current.reconcile(logs);
       setLiveLogs(visibleLogs);
       setLoadedRunLabel('current');
       return visibleLogs;
@@ -259,10 +214,22 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   };
 
   useEffect(() => {
-    currentViewIdRef.current = viewTestCase?.id || null;
+    syncCurrentRef.current = async (id) => {
+      if (currentViewIdRef.current !== id || runSelection.current !== 'current') return;
+      const logs = await loadCurrentRun(id);
+      if (logs && currentViewIdRef.current === id && runSelection.current === 'current') await loadRecordingForRun(id, logs);
+    };
+  });
 
-    if (!enabled || !viewTestCase?.id) return;
-    const targetId = viewTestCase.id;
+  useEffect(() => {
+    currentViewIdRef.current = enabled ? testCaseId || null : null;
+    historyRequests.current.cancel();
+    recordingRequests.current.cancel();
+    captureBuffer.current.reset();
+    runSelection.current = 'current';
+
+    if (!enabled || !testCaseId) return;
+    const targetId = testCaseId;
 
     const timer = window.setTimeout(() => {
       setLiveLogs([]);
@@ -274,56 +241,59 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       loadLatestRecording(targetId);
     }, 0);
 
-    return () => window.clearTimeout(timer);
-  }, [enabled, viewTestCase?.id]);
+    return () => {
+      window.clearTimeout(timer);
+      historyRequests.current.cancel();
+      recordingRequests.current.cancel();
+      currentViewIdRef.current = null;
+    };
+  }, [enabled, testCaseId]);
 
   useEffect(() => {
     if (!enabled) return;
     let ws: WebSocket | null = null;
     let reconnectTimer: number | null = null;
+    let flushTimer: number | null = null;
+    let queuedTestCaseId: string | null = null;
+    let executionLines: string[] = [];
     let closedByHook = false;
+
+    const flushLogs = () => {
+      flushTimer = null;
+      const lines = executionLines;
+      executionLines = [];
+      const targetId = queuedTestCaseId;
+      if (closedByHook || !targetId || currentViewIdRef.current !== targetId || runSelection.current !== 'current') return;
+      setLiveLogs(captureBuffer.current.snapshot());
+      setLoadedRunLabel('live');
+      if (lines.length) setViewTestCase(previous => previous && detailTestCaseId(previous) === targetId
+        ? { ...previous, stepLogs: `${previous.stepLogs || ''}${lines.join('\n')}\n` } : previous);
+    };
 
     const handleMessage = (event: MessageEvent) => {
       try {
-        const message = JSON.parse(event.data) as AutomationLogEntry;
+        const logEntry = normalizeCaptureLog(JSON.parse(event.data));
+        if (!logEntry || currentViewIdRef.current !== logEntry.testCaseId || runSelection.current !== 'current') return;
         if (DEBUG_AUTOMATION_LOGS) {
-          console.log(`[WS INCOMING] Type: ${message.type}, TC: ${message.testCaseId}`);
+          console.log(`[WS INCOMING] Type: ${logEntry.eventType}, TC: ${logEntry.testCaseId}`);
         }
 
-        if (message.type !== 'log' || !message.testCaseId) return;
-
-        const logText = typeof message.log === 'string' ? message.log : JSON.stringify(message.log);
-        if (/Manual Capture Stopped/i.test(logText)) {
+        if (queuedTestCaseId !== logEntry.testCaseId) executionLines = [];
+        queuedTestCaseId = logEntry.testCaseId!;
+        if (logEntry.eventType === 'run.started') historyRequests.current.cancel();
+        if (captureBuffer.current.append(logEntry)) {
+          if (logEntry.isExecution) executionLines.push(typeof logEntry.log === 'string' ? logEntry.log : JSON.stringify(logEntry.log) ?? '');
+          if (flushTimer === null) flushTimer = window.setTimeout(flushLogs, 100);
+        }
+        const logText = typeof logEntry.log === 'string' ? logEntry.log : '';
+        if (logEntry.eventType === 'run.finished' || /Manual Capture Stopped/i.test(logText)) {
+          if (flushTimer !== null) window.clearTimeout(flushTimer);
+          flushLogs();
           setManualCaptureSessionId(null);
-          return;
-        }
-
-        const logEntry = normalizeLogEntry(message);
-
-        if (currentViewIdRef.current === message.testCaseId) {
-          if (DEBUG_AUTOMATION_LOGS) {
-            console.log(`[WS ACCEPTED] Matching TC ID: ${message.testCaseId}`);
-          }
-          setLiveLogs(prev => {
-            const next = [...prev, logEntry];
-            return next.length > 500 ? next.slice(next.length - 500) : next;
-          });
-          setLoadedRunLabel('live');
-
-          if (logEntry.isExecution) {
-            const executionText = typeof message.log === 'string' ? message.log : JSON.stringify(message.log);
-            setViewTestCase(prev => {
-              if (prev && prev.id === message.testCaseId) {
-                return { ...prev, stepLogs: `${prev.stepLogs || ''}${executionText}\n` };
-              }
-              return prev;
-            });
-          }
-        } else if (DEBUG_AUTOMATION_LOGS) {
-          console.warn(`[WS FILTERED OUT] Expected: ${currentViewIdRef.current}, Got: ${message.testCaseId}`);
+          void syncCurrentRef.current(logEntry.testCaseId!);
         }
       } catch (error) {
-        console.error('[WS ERROR] Failed to process message:', error, event.data);
+        console.error('[WS ERROR] Failed to process message:', error);
       }
     };
 
@@ -351,6 +321,8 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       ws.onopen = () => {
         console.log('Connected to Log Relay');
         setSocketReady(true);
+        const targetId = currentViewIdRef.current;
+        if (targetId) void syncCurrentRef.current(targetId);
       };
 
       ws.onclose = () => {
@@ -370,22 +342,25 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
     return () => {
       closedByHook = true;
       if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
+      if (flushTimer !== null) window.clearTimeout(flushTimer);
       ws?.close();
     };
   }, [enabled, setViewTestCase]);
 
   useEffect(() => {
-    if (liveLogs.length > 0) {
+    if (loadedRunLabel === 'live' && liveLogs.length > 0) {
       logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [liveLogs]);
+  }, [liveLogs, loadedRunLabel]);
 
   const loadCurrentLogRun = async () => {
-    if (!viewTestCase?.id) return;
+    if (!testCaseId) return;
+    if (runSelection.current === 'previous') captureBuffer.current.reset();
+    runSelection.current = 'current';
     setIsLoadingHistory(true);
     try {
-      const logs = await loadCurrentRun(viewTestCase.id);
-      await loadRecordingForRun(viewTestCase.id, logs || []);
+      const logs = await loadCurrentRun(testCaseId);
+      await loadRecordingForRun(testCaseId, logs || []);
       if (!logs) throw new Error('Run terbaru belum ditemukan.');
       toast({
         title: 'Current Run Dimuat',
@@ -403,17 +378,22 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   };
 
   const loadLogHistory = async () => {
-    if (!viewTestCase?.id) return;
-    const targetId = viewTestCase.id;
+    if (!testCaseId) return;
+    const targetId = testCaseId;
+    const previousSelection = runSelection.current;
+    runSelection.current = 'previous';
+    const request = historyRequests.current.begin();
 
     setIsLoadingHistory(true);
     try {
-      const response = await fetch(buildDevlogRelayUrl(`logs/${encodeURIComponent(viewTestCase.id)}?run=previous`));
+      const response = await fetch(buildDevlogRelayUrl(`logs/${encodeURIComponent(targetId)}?run=previous`), { signal: request.signal, cache: 'no-store' });
       if (!response.ok) throw new Error('Riwayat run sebelumnya belum ada. Run terbaru sudah dimuat otomatis jika tersedia.');
 
       const logs = parseJsonlLogs(await response.text());
+      if (!request.current() || currentViewIdRef.current !== targetId) return;
 
-      setLiveLogs(logs.length > 500 ? logs.slice(logs.length - 500) : logs);
+      captureBuffer.current.reset(logs);
+      setLiveLogs(captureBuffer.current.snapshot());
       setLoadedRunLabel('previous');
       await loadRecordingForRun(targetId, logs);
       toast({
@@ -421,6 +401,8 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
         description: `Berhasil memuat ${logs.length} entri log dari run sebelumnya.`,
       });
     } catch (error: any) {
+      if (!request.current() || currentViewIdRef.current !== targetId) return;
+      runSelection.current = previousSelection;
       toast({
         title: 'Gagal memuat riwayat',
         description: error.message,
@@ -432,7 +414,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   };
 
   const generateAISummary = async () => {
-    const targetId = viewTestCase?.id;
+    const targetId = testCaseId;
     if (!targetId) return;
 
     setIsSummarizing(true);
@@ -462,6 +444,8 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   };
 
   const clearLogs = () => {
+    historyRequests.current.cancel();
+    captureBuffer.current.reset();
     setLiveLogs([]);
     setViewTestCase(prev => prev ? { ...prev, stepLogs: '' } : null);
   };
@@ -478,7 +462,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
   };
 
   const startManualCapture = async (options: StartManualCaptureOptions = {}) => {
-    if (!viewTestCase?.id) return;
+    if (!testCaseId) return;
 
     setIsStartingManualCapture(true);
     const sessionId = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -488,12 +472,17 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       const targetUrl = manualCaptureTargetUrl.trim();
       if (!targetUrl) throw new Error('Isi URL target terlebih dahulu.');
 
-      const captureUrl = buildManualCaptureUrl(targetUrl, sessionId, viewTestCase.id);
+      const captureUrl = buildManualCaptureUrl(targetUrl, sessionId, testCaseId);
+      runSelection.current = 'current';
+      historyRequests.current.cancel();
+      recordingRequests.current.cancel();
+      captureBuffer.current.reset();
+      setLiveLogs([]);
       const response = await fetch(buildDevlogRelayUrl('manual/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          testCaseId: viewTestCase.id,
+          testCaseId,
           sessionId,
           targetUrl,
           captureUrl,
@@ -504,12 +493,13 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Relay manual capture tidak siap.');
+      if (currentViewIdRef.current !== testCaseId) return;
 
-      setLiveLogs([]);
       setAiSummary(null);
       setManualRecording(null);
       setActiveDevLogTab('console');
       setManualCaptureSessionId(sessionId);
+      void syncCurrentRef.current(testCaseId);
       toast({
         title: 'Manual capture dimulai',
         description: data.mode === 'cdp'
@@ -531,6 +521,7 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
 
   const stopManualCapture = async () => {
     if (!manualCaptureSessionId) return;
+    const targetId = testCaseId;
 
     setIsStoppingManualCapture(true);
     try {
@@ -541,9 +532,13 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Gagal menghentikan manual capture.');
+      if (currentViewIdRef.current !== targetId) return;
 
       setManualCaptureSessionId(null);
-      const recording = await loadLatestRecording(viewTestCase?.id);
+      runSelection.current = 'current';
+      const [logs, recording] = await Promise.all([loadCurrentRun(targetId), loadLatestRecording(targetId)]);
+      if (currentViewIdRef.current !== targetId) return;
+      if (!logs) toast({ title: 'Rekaman tersimpan, DevLog belum tersinkron', description: 'Pilih Current untuk mencoba memuat ulang log tanpa refresh halaman.', variant: 'destructive' });
       const frameCount = data.cleanup?.recording?.frameCount;
       const video = data.cleanup?.recording?.video || recording?.video;
       const videoSizeMb = typeof video?.sizeBytes === 'number' ? `${(video.sizeBytes / 1024 / 1024).toFixed(1)} MB` : '';
@@ -562,7 +557,9 @@ export function useAutomationLogs<TTestCase extends AutomationLogTestCase>({
         const pollDelays = [800, 1800, 3200, 5200, 8000];
         pollDelays.forEach((delay, index) => {
           window.setTimeout(async () => {
-            const latest = await loadLatestRecording(viewTestCase?.id);
+            if (currentViewIdRef.current !== targetId) return;
+            const latest = await loadLatestRecording(testCaseId);
+            if (currentViewIdRef.current !== targetId) return;
             const status = latest?.video?.status;
             if (status === 'ready' || status === 'failed' || index === pollDelays.length - 1) {
               setIsProcessingManualRecording(false);

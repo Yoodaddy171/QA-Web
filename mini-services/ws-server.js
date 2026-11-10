@@ -14,6 +14,7 @@ const { connectDevlogStore } = require('./devlog-store');
 const { createVideoFrameWriter, getVideoFrameCopies, markInterruptedVideoFailed } = require('./video-frame-writer');
 const { createRelaySecurity } = require('./relay-security');
 const { createRelayLogStore } = require('./relay-log-store');
+const { consoleLevel, consoleMetadata } = require('./console-metadata.cjs');
 const { runtimePaths } = require('../src/lib/storage/data-storage-path.cjs');
 let sharp = null;
 try {
@@ -255,6 +256,40 @@ function redactHeaders(headers = {}) {
       : value;
   }
   return output;
+}
+
+function redactNetworkUrl(value) {
+  if (process.env.QA_REDACT_SENSITIVE_LOGS === '0' || !/^(https?|wss?):/i.test(value || '')) return value;
+  try {
+    const url = new URL(value);
+    url.username = '';
+    url.password = '';
+    for (const key of new Set(url.searchParams.keys())) {
+      if (isSensitiveKey(key)) url.searchParams.set(key, '[REDACTED]');
+    }
+    return url.href;
+  } catch {
+    return value;
+  }
+}
+
+function networkResponseDetails(response) {
+  const timing = response.timing;
+  return {
+    status: response.status,
+    statusText: response.statusText || undefined,
+    responseHeaders: redactHeaders(response.headers),
+    mimeType: response.mimeType || undefined,
+    protocol: response.protocol || undefined,
+    remoteAddress: response.remoteIPAddress && response.remotePort
+      ? `${response.remoteIPAddress.includes(':') ? `[${response.remoteIPAddress}]` : response.remoteIPAddress}:${response.remotePort}`
+      : undefined,
+    timing: timing && Object.fromEntries(
+      ['proxyStart', 'proxyEnd', 'dnsStart', 'dnsEnd', 'connectStart', 'connectEnd', 'sslStart', 'sslEnd', 'sendStart', 'sendEnd', 'receiveHeadersStart', 'receiveHeadersEnd']
+        .filter(key => Number.isFinite(timing[key]) && timing[key] >= 0)
+        .map(key => [key, timing[key]])
+    ),
+  };
 }
 
 async function findBrowserPath() {
@@ -1342,6 +1377,39 @@ async function startCdpCapture(session, targetUrl, options = {}) {
   };
   cdpSessions.set(session.sessionId, sessionInfo);
 
+  const finishNetworkRequest = (request, finishedRelativeMs, { body, transferSize, failureText } = {}) => {
+    return emitLog({
+      type: 'log', source: 'manual-cdp', sessionId: session.sessionId,
+      testCaseId: session.testCaseId, log: 'Network Trace',
+      network: {
+        event: 'Response',
+        method: request.method,
+        url: request.url,
+        status: request.status,
+        success: failureText ? false : typeof request.status === 'number' ? request.status < 400 : undefined,
+        duration: Math.max(0, Math.round(finishedRelativeMs - request.requestRelativeMs)),
+        headers: request.responseHeaders,
+        data: {
+          requestId: request.requestId,
+          resourceType: request.resourceType,
+          initiator: request.initiator,
+          mimeType: request.mimeType,
+          protocol: request.protocol,
+          remoteAddress: request.remoteAddress,
+          timing: request.timing,
+          statusText: request.statusText,
+          transferSize,
+          failureText,
+          requestHeaders: request.headers,
+          requestBody: request.requestBody,
+          responseBody: body,
+        },
+      },
+      timestamp: new Date(session.startedAtMs + finishedRelativeMs).toISOString(),
+      relativeMs: finishedRelativeMs,
+    });
+  };
+
   cdp.ws.on('message', async (data) => {
     let message;
     try {
@@ -1371,26 +1439,34 @@ async function startCdpCapture(session, targetUrl, options = {}) {
     }
 
     if (message.method === 'Runtime.consoleAPICalled') {
-      const args = message.params.args || [];
-      const relativeMs = getRelativeMsFromCdpTimestamp(currentSession, message.params.timestamp);
+      const { args = [], type, stackTrace, timestamp } = message.params;
+      const relativeMs = getRelativeMsFromCdpTimestamp(currentSession, timestamp);
+      const level = consoleLevel(type);
+      const argumentText = args.map(arg => {
+        const value = arg.value === null ? 'null' : arg.unserializableValue ?? arg.value ?? arg.description ?? arg.type;
+        return truncateText(value);
+      }).join(' ');
       emitLog({
         type: 'log',
         source: 'manual-cdp',
         sessionId: session.sessionId,
         testCaseId: session.testCaseId,
-        level: message.params.type === 'error' ? 'SEVERE' : message.params.type === 'warning' ? 'WARNING' : 'INFO',
+        level,
         console: true,
-        log: args.map(arg => truncateText(arg.value ?? arg.description ?? arg.type)).join(' '),
+        log: type === 'assert' ? `Assertion failed${argumentText ? `: ${argumentText}` : ''}` : argumentText,
+        metadata: consoleMetadata(type, stackTrace?.callFrames?.[0]),
         timestamp: new Date(currentSession.startedAtMs + relativeMs).toISOString(),
         relativeMs,
       });
-      if (message.params.type === 'error' || message.params.type === 'warning') {
+      if (level === 'SEVERE' || level === 'WARNING') {
         sessionInfo.recording?.captureNow?.('console-error');
       }
     }
 
     if (message.method === 'Runtime.exceptionThrown') {
-      const relativeMs = getRelativeMsFromCdpTimestamp(currentSession, message.params.timestamp);
+      const { exceptionDetails: details, timestamp } = message.params;
+      const relativeMs = getRelativeMsFromCdpTimestamp(currentSession, timestamp);
+      const error = details?.exception?.description?.split(/\r?\n/, 1)[0];
       emitLog({
         type: 'log',
         source: 'manual-cdp',
@@ -1398,7 +1474,8 @@ async function startCdpCapture(session, targetUrl, options = {}) {
         testCaseId: session.testCaseId,
         level: 'SEVERE',
         console: true,
-        log: message.params.exceptionDetails?.text || 'Runtime exception',
+        log: truncateText([details?.text, error].filter(Boolean).join(' ') || 'Uncaught exception'),
+        metadata: consoleMetadata('exception', details?.url ? details : details?.stackTrace?.callFrames?.[0]),
         timestamp: new Date(currentSession.startedAtMs + relativeMs).toISOString(),
         relativeMs,
       });
@@ -1408,22 +1485,38 @@ async function startCdpCapture(session, targetUrl, options = {}) {
     if (message.method === 'Network.requestWillBeSent') {
       if (sessionInfo.recording) sessionInfo.recording.lastNetworkActivityAt = Date.now();
       const requestRelativeMs = getRelativeMsFromCdpTimestamp(currentSession, message.params.timestamp);
-      sessionInfo.requestMeta.set(message.params.requestId, {
+      const { requestId, redirectResponse, initiator } = message.params;
+      const previous = sessionInfo.requestMeta.get(requestId);
+      if (redirectResponse && previous) {
+        finishNetworkRequest({ ...previous, ...networkResponseDetails(redirectResponse) }, requestRelativeMs, {
+          transferSize: redirectResponse.encodedDataLength,
+        });
+      }
+      const redirectIndex = previous ? previous.redirectIndex + 1 : 0;
+      const initiatorFrame = initiator?.stack?.callFrames?.[0];
+      const request = {
+        requestId: `${requestId}:${redirectIndex}`,
+        redirectIndex,
         method: message.params.request.method,
-        url: message.params.request.url,
+        url: redactNetworkUrl(message.params.request.url),
+        resourceType: String(message.params.type || '').toLowerCase(),
+        initiator: initiator?.type ? {
+          type: initiator.type,
+          url: redactNetworkUrl(initiator.url || initiatorFrame?.url),
+          lineNumber: initiator.lineNumber ?? initiatorFrame?.lineNumber,
+        } : undefined,
         headers: redactHeaders(message.params.request.headers),
         requestBody: redactPayload(message.params.request.postData),
-        startedAt: Date.now(),
         requestRelativeMs,
-        requestTimestamp: message.params.timestamp,
-      });
+      };
+      sessionInfo.requestMeta.set(requestId, request);
       if (sessionInfo.recording?.mode === 'frame') sessionInfo.recording.captureNow?.('network-request');
-      const request = sessionInfo.requestMeta.get(message.params.requestId);
       emitLog({
         type: 'log', source: 'manual-cdp', sessionId: session.sessionId,
         testCaseId: session.testCaseId, log: 'Network Request',
         network: { event: 'Request', method: request.method, url: request.url,
-          data: { requestHeaders: request.headers, requestBody: request.requestBody } },
+          data: { requestId: request.requestId, resourceType: request.resourceType, initiator: request.initiator,
+            requestHeaders: request.headers, requestBody: request.requestBody } },
         timestamp: new Date(currentSession.startedAtMs + requestRelativeMs).toISOString(),
         relativeMs: requestRelativeMs,
       });
@@ -1431,54 +1524,34 @@ async function startCdpCapture(session, targetUrl, options = {}) {
 
     if (message.method === 'Network.responseReceived') {
       if (sessionInfo.recording) sessionInfo.recording.lastNetworkActivityAt = Date.now();
-      const request = sessionInfo.requestMeta.get(message.params.requestId) || {};
+      const request = sessionInfo.requestMeta.get(message.params.requestId);
+      if (!request) return;
       const response = message.params.response;
-      const responseRelativeMs = getRelativeMsFromCdpTimestamp(currentSession, message.params.timestamp);
-      sessionInfo.requestMeta.set(message.params.requestId, {
-        ...request,
-        status: response.status,
-        responseHeaders: redactHeaders(response.headers),
-        responseRelativeMs,
-        responseTimestamp: message.params.timestamp,
-      });
+      Object.assign(request, networkResponseDetails(response));
+      request.resourceType = String(message.params.type || '').toLowerCase() || request.resourceType;
       if (response.status >= 400) sessionInfo.recording?.captureNow?.('network-error');
     }
 
-    if (message.method === 'Network.loadingFinished') {
+    if (message.method === 'Network.loadingFinished' || message.method === 'Network.loadingFailed') {
       if (sessionInfo.recording) sessionInfo.recording.lastNetworkActivityAt = Date.now();
       const request = sessionInfo.requestMeta.get(message.params.requestId);
       if (!request?.url) return;
-      const finishedRelativeMs = getRelativeMsFromCdpTimestamp(currentSession, message.params.timestamp);
-      let body = null;
-      try {
-        const result = await cdp.send('Network.getResponseBody', { requestId: message.params.requestId });
-        body = result?.base64Encoded ? '[base64 response omitted]' : redactPayload(result?.body);
-      } catch (_) {}
       sessionInfo.requestMeta.delete(message.params.requestId);
-      emitLog({
-        type: 'log',
-        source: 'manual-cdp',
-        sessionId: session.sessionId,
-        testCaseId: session.testCaseId,
-        log: 'Network Trace',
-        network: {
-          event: 'Response',
-          method: request.method,
-          url: request.url,
-          status: request.status,
-          success: typeof request.status === 'number' ? request.status < 400 : undefined,
-          duration: Math.max(0, Math.round(finishedRelativeMs - (request.requestRelativeMs ?? finishedRelativeMs))),
-          headers: request.responseHeaders || request.headers,
-          data: {
-            requestHeaders: request.headers,
-            requestBody: request.requestBody,
-            responseBody: body,
-          },
-        },
-        timestamp: new Date(currentSession.startedAtMs + finishedRelativeMs).toISOString(),
-        relativeMs: finishedRelativeMs,
+      const finishedRelativeMs = getRelativeMsFromCdpTimestamp(currentSession, message.params.timestamp);
+      const failed = message.method === 'Network.loadingFailed';
+      let body;
+      if (!failed) {
+        try {
+          const result = await cdp.send('Network.getResponseBody', { requestId: message.params.requestId });
+          body = result?.base64Encoded ? '[base64 response omitted]' : redactPayload(result?.body);
+        } catch (_) {}
+      }
+      finishNetworkRequest(request, finishedRelativeMs, {
+        body,
+        transferSize: message.params.encodedDataLength,
+        failureText: failed ? message.params.errorText || 'Request failed' : undefined,
       });
-      if (typeof request.status === 'number' && request.status >= 400) {
+      if (failed || (typeof request.status === 'number' && request.status >= 400)) {
         sessionInfo.recording?.captureNow?.('network-error');
       } else if (sessionInfo.recording?.mode === 'frame') {
         sessionInfo.recording.captureNow?.('network-finished');

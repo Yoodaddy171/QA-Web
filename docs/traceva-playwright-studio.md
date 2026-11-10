@@ -5,7 +5,44 @@ Editor mempertahankan pola visual inspector; hasil memakai viewer video,
 Execution, Console, Network, timeline, dan fullscreen yang sudah tersedia.
 Manual capture tetap terpisah dan dapat dipilih kembali.
 
-## Menjalankan
+## Menghapus percobaan dari riwayat
+
+Di Riwayat eksekusi, gunakan **Hapus** untuk satu run, atau centang run selesai
+dan pilih **Hapus terpilih**. Konfirmasi menampilkan ID, waktu dan status run.
+Pilihan semua hanya berlaku untuk run selesai yang sedang ditampilkan, bukan
+semua riwayat di disk. Run aktif harus di-Stop dan selesai difinalisasi dahulu.
+
+Penghapusan permanen mencakup folder run (video, screenshot, trace, snapshot
+script/input, devlog) dan pointer riwayatnya. Script tersimpan di editor,
+testcase, evidence QA terpisah dan run lain tetap ada. Tidak ada pembersihan
+otomatis berdasarkan FAILED; kegagalan bisa menandakan bug aplikasi sungguhan.
+Run lama dapat muncul kembali karena daftar menampilkan 20 run terbaru tersisa.
+
+MCP: `web_delete_automation_scripts_history` memakai query projectId/testCaseId
+dan JSON `{runIds:[...],confirmed:true}` (1–20 UUID unik). Guard MCP tetap
+memerlukan persetujuan manusia atas challenge yang terikat payload. API Stop
+lama tidak berubah. Respons `{deletedRunIds,failedRunIds}` dapat menunjukkan
+hasil parsial jika penyimpanan bermasalah; baca ulang sebelum retry.
+
+## Verifikasi penghapusan riwayat — 23 Oktober 2026
+
+- Full unit suite serial: 393 lulus, 1 skip. Run pertama mengalami timeout pada
+  persiapan SQLite Devlog saat preview aktif; run ulang tanpa preview lulus,
+  tanpa menaikkan timeout. Tes penghapusan memakai folder temporer saja.
+- Mencakup scoped deletion, bulk preflight, run aktif/finalisasi, invalid ID,
+  foreign testcase, symlink/junction, kegagalan disk parsial, pointer lama,
+  script/evidence terpisah yang tetap ada, session/role/origin dan konfirmasi.
+- TypeScript dan targeted ESLint lulus. Detector Impeccable tidak menemukan
+  antipattern pada panel yang diubah.
+- Preview komponen terisolasi dengan respons sintetis di port 3112: 21
+  pemeriksaan Playwright desktop 1440/mobile 390 lulus, tanpa runtime error.
+  Konfirmasi, batal tanpa request, error server, single/bulk delete dan Stop
+  diperiksa; screenshot desktop/mobile juga ditinjau. Preview sudah dihentikan.
+- Ini bukan penghapusan riwayat asli atau E2E produksi. Web/relay yang sedang
+  dipakai tidak dihentikan; diperlukan build/restart terpisah untuk memakai
+  kode baru di mode production dan reconnect MCP untuk discovery baru.
+
+## Menjalankan script
 
 1. Install dependency project lengkap (`npm install`, termasuk devDependencies).
 2. Pastikan Chromium tersedia: `npx playwright install chromium` jika belum ada.
@@ -99,3 +136,9 @@ Fixture dan reporter mengikuti kontrak resmi
 [Playwright fixtures](https://playwright.dev/docs/test-fixtures),
 [reporters](https://playwright.dev/docs/test-reporters), dan
 [video](https://playwright.dev/docs/videos).
+# Automation Log integration
+
+Automation Log now merges relay/devlog history with Playwright Studio metadata at read time. Existing Studio runs appear without rerunning or copying artifacts into the database. The table retains one row per testcase; open Automation → Hasil to select individual Studio runs. Use **Sinkronkan** to refresh the list.
+
+Studio metadata remains restricted to project owners/admins, matching the Studio API. The merge never changes the testcase verdict and does not expose script contents, event payloads or artifact filesystem paths. Removing Studio history is reflected on the next synchronization, with retained older runs becoming the latest result where applicable.
+

@@ -1,72 +1,141 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FileImage, FileVideo, Paperclip } from 'lucide-react';
 import { TestCaseEvidencePreview } from '@/components/TestCaseEvidencePreview';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
+import { LatestRequest } from '@/lib/client/latest-request';
 
-type Evidence = { id: string; fileName: string; mimeType: string; createdAt: string };
-type Run = { testRun: { id: string; name: string }; executions: Array<{ id: string; status: string; createdAt: string; evidence: Evidence[] }> };
-
-export function TestCaseEvidenceTab({ projectId, testCaseId }: { projectId: string; testCaseId: string }) {
-  const [runs, setRuns] = useState<Run[]>([]);
+type Evidence = { id: string; fileName: string; mimeType: string; createdAt: string; updatedAt?: string };
+type Item = { evidence: Evidence; execution: { id: string; status: string }; run: { id: string; name: string } };
+const urlFor = (item: Item, projectId: string) => `/api/test-runs/${item.run.id}/executions/${item.execution.id}/evidence/${item.evidence.id}?${new URLSearchParams({ projectId })}`;
+function Thumbnail({ url, name }: { url: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  return failed ? <span className="flex items-center gap-2 text-sm"><FileImage className="size-5" />Buka gambar asli</span> : <img src={url} alt={name} loading="lazy" decoding="async" className="h-full w-full object-contain" onError={() => setFailed(true)} />;
+}
+export function TestCaseEvidenceTab(props: { projectId: string; testCaseId: string }) {
+  return <EvidenceGallery key={`${props.projectId}:${props.testCaseId}`} {...props} />;
+}
+function EvidenceGallery({ projectId, testCaseId }: { projectId: string; testCaseId: string }) {
+  const [items, setItems] = useState<Item[]>([]);
+  const [total, setTotal] = useState(0);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ evidence: Evidence; url: string; testCaseId: string } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
+  const [preview, setPreview] = useState<Item | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const requests = useRef(new LatestRequest());
   const previewTrigger = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void (async () => {
-      try {
-        const response = await fetch(`/api/traceability?projectId=${encodeURIComponent(projectId)}&testCaseId=${encodeURIComponent(testCaseId)}`, { signal: controller.signal });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Gagal memuat evidence.');
-        setRuns(data.testCase?.testRuns || []);
-      } catch (loadError) {
-        if (loadError instanceof DOMException && loadError.name === 'AbortError') return;
-        setError(loadError instanceof Error ? loadError.message : 'Gagal memuat evidence.');
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    })();
-    return () => controller.abort();
+  const load = useCallback(async (after?: string) => {
+    const request = requests.current.begin();
+    if (after) setLoadingMore(true); else setLoading(true);
+    try {
+      const params = new URLSearchParams({ projectId, limit: '25' }); if (after) params.set('cursor', after);
+      const response = await fetch(`/api/testcases/${encodeURIComponent(testCaseId)}/evidence?${params}`, { signal: request.signal });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Gagal memuat evidence. Coba lagi.');
+      if (!request.current()) return;
+      const next: Item[] = data.items || [];
+      setItems(previous => after ? [...previous, ...next.filter(item => !previous.some(old => old.evidence.id === item.evidence.id))] : next);
+      setTotal(data.total || 0); setCursor(data.nextCursor || null); setError('');
+      return next;
+    } catch (cause) { if (request.current()) setError(cause instanceof Error ? cause.message : 'Evidence belum dimuat.'); }
+    finally { if (request.current()) { setLoading(false); setLoadingMore(false); } }
   }, [projectId, testCaseId]);
-
-  const evidenceItems = runs.flatMap(run => run.executions.flatMap(execution => execution.evidence.map(evidence => ({ evidence, execution, run: run.testRun }))));
-  const photos = evidenceItems.filter(item => item.evidence.mimeType.startsWith('image/'));
-  const photoIndex = preview ? photos.findIndex(item => item.evidence.id === preview.evidence.id) : -1;
-  const changePhoto = (direction: -1 | 1) => {
-    setPreview(current => {
-      if (!current || current.testCaseId !== testCaseId) return current;
-      const index = photos.findIndex(item => item.evidence.id === current.evidence.id);
-      if (index < 0) return current;
-      const next = photos[index + direction];
-      return next ? { evidence: next.evidence, url: `/api/test-runs/${next.run.id}/executions/${next.execution.id}/evidence/${next.evidence.id}?projectId=${encodeURIComponent(projectId)}`, testCaseId } : current;
-    });
+  useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => { clearTimeout(timer); requests.current.cancel(); }; }, [load]);
+  const photos = items.filter(item => item.evidence.mimeType.startsWith('image/'));
+  const photoIndex = photos.findIndex(item => item.evidence.id === preview?.evidence.id);
+  const changePhoto = async (direction: -1 | 1) => {
+    if (!preview || loadingMore) return;
+    const next = photos[photoIndex + direction];
+    if (next) { setPreview(next); return; }
+    if (direction === 1 && cursor) {
+      const currentId = preview.evidence.id;
+      const rows = await load(cursor);
+      const nextPhoto = rows?.find(item => item.evidence.mimeType.startsWith('image/'));
+      if (nextPhoto) setPreview(current => current?.evidence.id === currentId ? nextPhoto : current);
+    }
   };
-
-  return <TabsContent value="evidence" className="mt-0 space-y-4 outline-none">
-    <Card><CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Paperclip className="h-4 w-4 text-primary" />Evidence ({evidenceItems.length})</CardTitle></CardHeader><CardContent>
-      {loading && <p className="text-sm text-muted-foreground">Memuat evidence...</p>}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {!loading && !error && !evidenceItems.length && <p className="text-sm text-muted-foreground">Belum ada evidence. Tambahkan dari Execution Workspace.</p>}
-      {!loading && !error && evidenceItems.length > 0 && <div className="grid gap-4 sm:grid-cols-2">
-        {evidenceItems.map(({ evidence, execution, run }) => {
-          const url = `/api/test-runs/${run.id}/executions/${execution.id}/evidence/${evidence.id}?projectId=${encodeURIComponent(projectId)}`;
-          const isVideo = evidence.mimeType.startsWith('video/');
-          return <div key={evidence.id} className="overflow-hidden rounded-lg border border-border/60 bg-secondary/20">
-            <button type="button" aria-label={`Preview evidence ${evidence.fileName}`} className="flex h-44 w-full items-center justify-center bg-secondary/20 text-primary hover:bg-secondary/40 focus-visible:outline-2 focus-visible:outline-ring" onClick={event => { previewTrigger.current = event.currentTarget; setPreview({ evidence, url, testCaseId }); setPreviewOpen(true); }}>
-              {evidence.mimeType.startsWith('image/') ? <img src={url} alt={evidence.fileName} loading="lazy" className="h-full w-full object-contain" /> : <span className="flex items-center gap-2">{isVideo ? <FileVideo className="size-5" /> : <FileImage className="size-5" />}Preview {isVideo ? 'video' : evidence.mimeType === 'application/pdf' ? 'PDF' : 'file'}</span>}
-            </button>
-            <div className="space-y-1 p-3"><p className="truncate text-sm font-semibold" title={evidence.fileName}>{isVideo && <FileVideo className="mr-1 inline h-4 w-4" />}{evidence.fileName}</p><p className="text-[11px] text-muted-foreground">{run.name} · {new Date(evidence.createdAt).toLocaleString('id-ID')}</p><Badge variant="outline">{execution.status}</Badge></div>
-          </div>;
-        })}
-      </div>}
-    </CardContent></Card>
-    {preview && <TestCaseEvidencePreview evidence={preview.evidence} url={preview.url} open={previewOpen && preview.testCaseId === testCaseId} onOpenChange={setPreviewOpen} photoIndex={photoIndex} photoCount={photos.length} onPhotoChange={changePhoto} onReturnFocus={() => { if (previewTrigger.current?.isConnected) previewTrigger.current.focus(); }} />}
-  </TabsContent>;
+  return (
+    <TabsContent value="evidence" className="mt-0 flex flex-col gap-4 outline-none">
+      <section className="space-y-3">
+        <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <Paperclip className="size-4 text-primary" />
+          Evidence ({total})
+        </h3>
+        {loading && <p role="status" className="text-sm text-muted-foreground">Memuat evidence…</p>}
+        {error && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <p role="alert" className="text-sm text-destructive">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => void load(items.length && cursor ? cursor : undefined)}>Coba lagi</Button>
+          </div>
+        )}
+        {!loading && !error && !items.length && (
+          <p className="text-sm text-muted-foreground">Belum ada evidence. Tambahkan dari Execution Workspace.</p>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {items.map(item => {
+            const { evidence, execution, run } = item;
+            const url = urlFor(item, projectId);
+            const isVideo = evidence.mimeType.startsWith('video/');
+            return (
+              <div key={evidence.id} className="overflow-hidden rounded-lg border border-border bg-secondary/20">
+                <button
+                  type="button"
+                  aria-label={`Preview evidence ${evidence.fileName}`}
+                  className="flex h-44 w-full items-center justify-center bg-secondary/20 text-primary hover:bg-secondary/40 focus-visible:outline-2 focus-visible:outline-ring"
+                  onClick={event => {
+                    previewTrigger.current = event.currentTarget;
+                    setPreview(item);
+                    setPreviewOpen(true);
+                  }}
+                >
+                  {evidence.mimeType.startsWith('image/') ? (
+                    <Thumbnail url={`${url}&thumbnail=1&v=${encodeURIComponent(evidence.updatedAt || evidence.createdAt)}`} name={evidence.fileName} />
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      {isVideo ? <FileVideo className="size-5" /> : <FileImage className="size-5" />}
+                      Preview {isVideo ? 'video' : evidence.mimeType === 'application/pdf' ? 'PDF' : 'file'}
+                    </span>
+                  )}
+                </button>
+                <div className="flex flex-col gap-1 p-3">
+                  <p className="truncate text-sm font-semibold" title={evidence.fileName}>{evidence.fileName}</p>
+                  <p className="text-xs text-muted-foreground">{run.name} · {new Date(evidence.createdAt).toLocaleString('id-ID')}</p>
+                  <Badge variant="outline">{execution.status}</Badge>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {!loading && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">{items.length} dari {total} evidence dimuat</p>
+            {cursor && (
+              <Button variant="outline" disabled={loadingMore} onClick={() => void load(cursor)}>
+                {loadingMore ? 'Memuat…' : 'Muat evidence berikutnya'}
+              </Button>
+            )}
+          </div>
+        )}
+      </section>
+      {preview && (
+        <TestCaseEvidencePreview
+          evidence={preview.evidence}
+          url={urlFor(preview, projectId)}
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          photoIndex={photoIndex}
+          photoCount={photos.length}
+          hasMorePhotos={Boolean(cursor)}
+          loadingMore={loadingMore}
+          onPhotoChange={direction => void changePhoto(direction)}
+          onReturnFocus={() => { if (previewTrigger.current?.isConnected) previewTrigger.current.focus(); }}
+        />
+      )}
+    </TabsContent>
+  );
 }

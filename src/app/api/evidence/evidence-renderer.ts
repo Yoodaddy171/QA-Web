@@ -22,6 +22,7 @@ function escapeHtml(value: unknown) {
 
 function formatDate(value?: string | Date | null) {
   if (!value) return '-';
+  if (!Number.isFinite(new Date(value).getTime())) return '-';
   return new Date(value).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
@@ -50,84 +51,59 @@ export function renderHtml(params: {
   video: EvidenceVideo | null;
 }) {
   const { record, type, logs, recording, frames, video } = params;
-  const statusClass = /done|fixed|as expected/i.test(`${record.status} ${record.actualResult}`) ? 'pass' : /fail|not as expected/i.test(`${record.status} ${record.actualResult}`) ? 'fail' : 'neutral';
+  const status = record.status.trim().toUpperCase();
+  const actual = record.actualResult?.trim().toUpperCase();
+  const statusClass = ['FAILED', 'FAIL'].includes(status) ? 'fail' : ['DONE', 'PASSED', 'VERIFIED', 'VERIFIED & FIXED'].includes(status) ? 'pass' : 'neutral';
+  const actualClass = actual === 'NOT AS EXPECTED' ? 'fail' : actual === 'AS EXPECTED' ? 'pass' : 'neutral';
   const initialFrame = frames[0];
   const videoUrl = video?.src || '';
   const videoDurationText = typeof recording?.metadata.video?.durationMs === 'number' ? formatRelativeTime(recording.metadata.video.durationMs) : '-';
   const recordingSummary = recording
-    ? `${recording.metadata.mode || 'frame'} / ${recording.metadata.frames?.length || 0} frames${videoUrl ? ` / video ${videoDurationText}` : ''}`
-    : 'No recording';
+    ? `${recording.metadata.mode || 'frame'} · ${recording.metadata.frames?.length || 0} frame${videoUrl ? ` · video ${videoDurationText}` : ''}`
+    : 'Tanpa rekaman';
   const hasVisualEvidence = Boolean(frames.length || videoUrl);
+  const networkCount = logs.filter(log => log.tab === 'network').length;
+  const failureCount = logs.filter(log => (log.status || 0) >= 400 || /^(SEVERE|ERROR)$/i.test(log.level || '')).length;
 
   return `<!doctype html>
 <html lang="id">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>QA Evidence - ${escapeHtml(record.testCaseId)}</title>
+  <title>Traceva Evidence Report - ${escapeHtml(record.testCaseId)}</title>
   <style>
     ${EVIDENCE_STYLES}
   </style>
 </head>
 <body>
   <main class="wrap">
-    <section class="hero">
-      <div class="eyebrow">QA Evidence Report</div>
-      <h1>${escapeHtml(record.testCaseId)} - ${escapeHtml(record.testAction)}</h1>
-      <p class="muted">${escapeHtml(type)} generated ${escapeHtml(formatDate(new Date()))}</p>
-      <span class="status ${statusClass}">${escapeHtml(record.status)}${record.actualResult ? ` / ${escapeHtml(record.actualResult)}` : ''}</span>
-    </section>
-
-    <section class="grid">
-      <div class="box"><b>Project</b>${escapeHtml(record.project?.name || record.projectId)}</div>
-      <div class="box"><b>Module</b>${escapeHtml(record.module?.name || record.moduleId || '-')}</div>
-      <div class="box"><b>Page</b>${escapeHtml(record.page)}</div>
-      <div class="box"><b>Sub Menu</b>${escapeHtml(record.subMenu || '-')}</div>
-      <div class="box"><b>Type</b>${escapeHtml(record.testType)}</div>
-      <div class="box"><b>Priority</b>${escapeHtml(record.priority || '-')}</div>
-      <div class="box"><b>Updated</b>${escapeHtml(formatDate(record.updatedAt))}</div>
-      <div class="box"><b>Recording</b>${escapeHtml(recordingSummary)}</div>
-    </section>
-
-    <section class="section">
-      <h2>Test Case Detail</h2>
-      <div class="meta-row"><b>Test Case ID</b><span>${escapeHtml(record.testCaseId)}</span></div>
-
-      <div class="meta-row"><b>Source</b><span>${escapeHtml(type)}</span></div>
-      <div class="meta-row"><b>Project</b><span>${escapeHtml(record.project?.name || record.projectId)}</span></div>
-      <div class="meta-row"><b>Module</b><span>${escapeHtml(record.module?.name || record.moduleId || '-')}</span></div>
-      <div class="meta-row"><b>Page</b><span>${escapeHtml(record.page)}</span></div>
-      <div class="meta-row"><b>Sub Menu</b><span>${escapeHtml(record.subMenu || '-')}</span></div>
-      <div class="meta-row"><b>Type</b><span>${escapeHtml(record.testType)}</span></div>
-      <div class="meta-row"><b>Priority</b><span>${escapeHtml(record.priority || '-')}</span></div>
-      <div class="meta-row"><b>Status</b><span>${escapeHtml(record.status)}</span></div>
-      <div class="meta-row"><b>Created</b><span>${escapeHtml(formatDate(record.createdAt))}</span></div>
-      <div class="meta-row"><b>Updated</b><span>${escapeHtml(formatDate(record.updatedAt))}</span></div>
-      <h2>Test Steps</h2>
-      <pre>${escapeHtml(record.steps)}</pre>
-      <h2>Expected Result</h2>
-      <pre>${escapeHtml(record.expectedResult)}</pre>
-      <h2>Actual Result</h2>
-      <pre>${escapeHtml(record.actualResult || 'Belum ada actual result.')}</pre>
-      <h2>Remarks</h2>
-      <pre>${escapeHtml(record.remarks || '-')}</pre>
-    </section>
-
-    <section class="section evidence-section">
-      <h2>Interactive Screen Recording & DevTools</h2>
-      ${hasVisualEvidence ? `
-      <div class="viewer">
+    <header class="report-bar"><a class="brand" href="#report-title" aria-label="Traceva Evidence Report">Traceva</a><span class="muted">Evidence Report</span><button type="button" id="printReport" class="print-button">Cetak / Simpan PDF</button></header>
+    <header class="report-heading" id="report-title">
+      <div><p class="case-id">${escapeHtml(record.testCaseId)}</p><h1>${escapeHtml(record.testAction || 'Skenario pengujian')}</h1><p class="muted">${escapeHtml(type === 'BugFix' ? 'Bug fix' : 'Testcase')} · Dibuat ${escapeHtml(formatDate(new Date()))}</p></div>
+      <div class="outcome"><div class="outcome-item"><span class="field-label">Status testcase</span><span class="status ${statusClass}">${escapeHtml(record.status)}</span></div>${record.actualResult ? `<div class="outcome-item"><span class="field-label">Hasil tercatat</span><span class="status ${actualClass}">${escapeHtml(record.actualResult)}</span></div>` : ''}</div>
+    </header>
+    <dl class="context-grid">
+      <div><dt>Project</dt><dd>${escapeHtml(record.project?.name || record.projectId)}</dd></div>
+      <div><dt>Module</dt><dd>${escapeHtml(record.module?.name || record.moduleId || '-')}</dd></div>
+      <div><dt>Halaman / Submenu</dt><dd>${escapeHtml([record.page, record.subMenu].filter(Boolean).join(' / ') || '-')}</dd></div>
+      <div><dt>Tipe / Prioritas</dt><dd>${escapeHtml(record.testType || '-')} · ${escapeHtml(record.priority || '-')}</dd></div>
+    </dl>
+    <nav class="report-nav" aria-label="Bagian laporan"><a href="#evidence">Bukti & DevTools</a><a href="#scenario">Skenario</a><a href="#appendix">Lampiran log</a></nav>
+    <section class="section evidence-section" id="evidence" aria-labelledby="evidence-title">
+      <div class="section-heading"><div><h2 id="evidence-title">Bukti & DevTools</h2><p class="muted">${escapeHtml(recordingSummary)} · ${frames.length} frame disertakan</p></div><p class="log-summary">${networkCount} network · ${logs.length - networkCount} console · ${failureCount} error terindikasi</p></div>
+      ${!hasVisualEvidence ? '<p class="notice">Tidak ada rekaman visual yang disertakan. Log yang tersedia tetap dapat ditinjau di bawah.</p>' : ''}
+      <div class="viewer${!hasVisualEvidence ? logs.length ? ' viewer-logs-only' : ' viewer-empty' : ''}">
         <div class="screen">
           <div class="screen-head">
-            <div class="screen-title"><b>Screen Record Review</b><small class="muted">${escapeHtml(recording?.metadata.targetUrl || '-')}</small></div>
-            <span id="currentTime" class="status neutral">${escapeHtml(initialFrame?.time || (videoUrl ? '0:00' : '-'))}</span>
+            <div class="screen-title"><b>Rekaman pengujian</b><small class="muted">${escapeHtml(recording?.metadata.targetUrl || 'Tanpa rekaman visual')}</small></div>
+            <span id="currentTime" class="status neutral">${escapeHtml(videoUrl ? '0:00' : initialFrame?.time || '-')}</span>
           </div>
           <div class="screen-body">
-            ${videoUrl ? `<video id="frameVideo" src="${escapeHtml(videoUrl)}" controls preload="metadata"></video>` : `<img id="frameImage" src="${initialFrame?.src || ''}" alt="Selected evidence frame" />`}
-            ${videoUrl && initialFrame ? `<img id="frameImage" src="${initialFrame.src}" alt="Selected evidence frame" style="display:none" />` : ''}
+            ${videoUrl ? `<video id="frameVideo" src="${escapeHtml(videoUrl)}"${initialFrame ? ` poster="${escapeHtml(initialFrame.src)}"` : ''} controls preload="metadata" aria-label="Video bukti pengujian"></video>` : initialFrame ? `<img id="frameImage" src="${escapeHtml(initialFrame.src)}" alt="Frame bukti pengujian pada ${escapeHtml(initialFrame.time)}" />` : '<p class="visual-empty">Rekaman visual belum tersedia.</p>'}
+            ${videoUrl && initialFrame ? `<img id="frameImage" src="${escapeHtml(initialFrame.src)}" alt="Frame bukti pengujian" style="display:none" />` : ''}
           </div>
           <div class="timeline">
-            <div class="timeline-label"><span>Timeline</span><span>${escapeHtml(frames.length)} keyframes</span></div>
+            <div class="timeline-label"><span>Timeline rekaman</span><span>${escapeHtml(frames.length)} keyframe</span></div>
             <div class="timeline-row" id="timeline"></div>
           </div>
         </div>
@@ -135,22 +111,26 @@ export function renderHtml(params: {
           <div class="dev-head">
             <div class="dev-title"><b>DevTools</b><small class="muted">Klik log untuk pindah timestamp.</small></div>
             <div class="tabs">
-              <button class="tab-btn active" data-tab="network">Network</button>
-              <button class="tab-btn" data-tab="console">Console</button>
+              <button type="button" class="tab-btn active" data-tab="network" aria-pressed="true">Network</button>
+              <button type="button" class="tab-btn" data-tab="console" aria-pressed="false">Console</button>
             </div>
           </div>
           <div class="filters" id="networkFilters">
-            <input id="networkSearch" placeholder="Search URL/status..." />
-            <select id="hostFilter"><option value="all">All hosts</option></select>
-            <select id="methodFilter"><option value="all">All methods</option></select>
-            <button class="filter-btn" data-filter="preflight">Preflight</button>
-            <button class="filter-btn" data-filter="static">Static</button>
-            <button class="filter-btn" data-filter="telemetry">Telemetry</button>
-            <button class="filter-btn" data-filter="other">Other</button>
-            <div class="hidden-count" id="hiddenCount"></div>
+            <label class="filter-search">Cari aktivitas<input id="networkSearch" aria-label="Cari network berdasarkan URL atau status" placeholder="URL, status, atau metode…" /></label>
+            <label class="filter-select">Host<select id="hostFilter" aria-label="Filter host"><option value="all">Semua host</option></select></label>
+            <label class="filter-select">Metode<select id="methodFilter" aria-label="Filter metode HTTP"><option value="all">Semua metode</option></select></label>
+            <div class="category-filters" role="group" aria-label="Sertakan kategori network">
+              <span class="filter-badge" aria-label="Filter default Fetch/XHR aktif">Fetch/XHR</span>
+              <button class="filter-btn" data-filter="preflight" aria-pressed="false">Preflight</button>
+              <button class="filter-btn" data-filter="static" aria-pressed="false">Static</button>
+              <button class="filter-btn" data-filter="telemetry" aria-pressed="false">Telemetry</button>
+              <button class="filter-btn" data-filter="other" aria-pressed="false">Lainnya</button>
+            </div>
+            <div class="filter-feedback"><span class="hidden-count" id="hiddenCount" role="status"></span><button type="button" id="resetNetworkFilters" class="filter-btn" disabled>Reset filter</button></div>
           </div>
           <div class="log-list" id="logList"></div>
           <div class="detail-panel">
+            <p class="detail-context" id="detailContext">Detail aktivitas</p>
             <div class="detail-tabs" id="detailTabs">
               <button class="detail-tab active" data-detail="headers">Headers</button>
               <button class="detail-tab" data-detail="payload">Payload</button>
@@ -159,13 +139,20 @@ export function renderHtml(params: {
             <div class="log-detail" id="logDetail">Pilih salah satu log untuk melihat detail.</div>
           </div>
         </div>
-      </div>` : '<p class="muted">Tidak ada screen recording untuk testcase ini.</p>'}
+      </div>
+      <div class="print-frames">${frames.map((frame, index) => `<figure><img src="${escapeHtml(frame.src)}" alt="Bukti ${index + 1}" loading="eager" /><figcaption>Frame ${index + 1} · ${escapeHtml(frame.time)}</figcaption></figure>`).join('')}</div>
+      <p class="print-note">Video dan detail request dapat ditinjau pada file HTML asli. ${frames.length ? 'Frame terpilih disertakan pada cetakan.' : 'Laporan ini tidak menyertakan frame statis.'}</p>
     </section>
-
-    <section class="section">
-      <h2>Important DevTools / Automation Logs</h2>
-      <p class="muted">Log lengkap yang relevan tersedia di viewer interaktif di atas.</p>
+    <section class="section" id="scenario" aria-labelledby="scenario-title">
+      <h2 id="scenario-title">Skenario pengujian</h2>
+      <div class="scenario-grid"><div><h3>Langkah pengujian</h3><pre class="prose-block">${escapeHtml(record.steps || 'Belum ada langkah pengujian.')}</pre></div><div><h3>Hasil yang diharapkan</h3><pre class="prose-block">${escapeHtml(record.expectedResult || 'Belum ada hasil yang diharapkan.')}</pre></div></div>
+      <div class="remarks"><h3>Catatan</h3><p class="prose-block">${escapeHtml(record.remarks || 'Tidak ada catatan tambahan.')}</p></div>
     </section>
+    <section class="section" id="appendix" aria-labelledby="appendix-title">
+      <details class="log-appendix"><summary id="appendix-title">Lampiran log <span>${logs.length} event disertakan</span></summary><p class="muted">Ringkasan event yang disertakan dalam ekspor ini, bukan seluruh riwayat testcase. Error teknis tidak otomatis menentukan verdict testcase.</p>
+      ${logs.length ? `<div class="table-scroll"><table><caption class="sr-only">Ringkasan log pengujian</caption><thead><tr><th>Waktu sesi</th><th>Jenis</th><th>Status</th><th>Aktivitas</th></tr></thead><tbody>${logs.map(log => `<tr><td>${escapeHtml(formatRelativeTime(log.relativeMs))}</td><td>${escapeHtml(log.method || log.tab)}</td><td>${escapeHtml(log.status ?? log.level ?? '-')}</td><td>${escapeHtml(log.url || log.message || '-')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Belum ada log yang disertakan.</p>'}</details>
+    </section>
+    <footer class="report-footer"><p>Traceva · Evidence Report · ${escapeHtml(record.testCaseId)}</p><p>Dibuat: ${escapeHtml(formatDate(record.createdAt))} · Diperbarui: ${escapeHtml(formatDate(record.updatedAt))}</p><p class="internal-id">UUID: ${escapeHtml(record.id)} · Project ID: ${escapeHtml(record.projectId)}</p></footer>
   </main>
   <script>
     ${buildEvidenceBrowserScript({

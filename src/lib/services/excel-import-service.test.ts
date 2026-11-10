@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { TESTCASE_ACTUAL_RESULT, TESTCASE_STATUS } from '@/lib/domain/testcase';
 
 const dbMock = vi.hoisted(() => ({
+  $transaction: vi.fn(),
   testCase: {
     findMany: vi.fn(),
     create: vi.fn(),
@@ -35,6 +36,7 @@ describe('excel import service', async () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    dbMock.$transaction.mockImplementation(async callback => callback(dbMock));
     dbMock.testCase.findMany.mockResolvedValue([]);
     dbMock.testCase.create.mockResolvedValue({ id: 'created-testcase-id' });
     dbMock.testCase.update.mockResolvedValue({});

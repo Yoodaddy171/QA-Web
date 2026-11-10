@@ -1,12 +1,23 @@
 'use client';
 
+import { CheckCircle2, Layers } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 
 interface BulkStatusDialogProps {
@@ -18,6 +29,16 @@ interface BulkStatusDialogProps {
   onSubmit: () => void;
 }
 
+const STATUS_OPTIONS: Array<{ value: string; label: string; color: string }> = [
+  { value: 'DONE', label: 'Done', color: 'bg-emerald-500' },
+  { value: 'NOT DONE', label: 'Not Done', color: 'bg-zinc-400' },
+  { value: 'IN PROGRESS', label: 'In Progress', color: 'bg-blue-500' },
+  { value: 'BLOCKED', label: 'Blocked', color: 'bg-amber-500' },
+  { value: 'FAILED', label: 'Failed', color: 'bg-rose-500' },
+  { value: 'READY TO RETEST', label: 'Ready to Retest', color: 'bg-purple-500' },
+  { value: 'TBA', label: 'TBA (To Be Announced)', color: 'bg-slate-400' },
+];
+
 export function BulkStatusDialog({
   open,
   selectedCount,
@@ -28,31 +49,64 @@ export function BulkStatusDialog({
 }: BulkStatusDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-border bg-card text-foreground elevation-3 rounded-2xl sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-foreground">Update Status Massal</DialogTitle>
-          <DialogDescription className="text-muted-foreground">Ubah status {selectedCount} test case yang dipilih.</DialogDescription>
+      <DialogContent className="border-border bg-card text-foreground shadow-xl rounded-2xl sm:max-w-md p-0 overflow-hidden">
+        <DialogHeader className="border-b border-border/40 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <Layers className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <DialogTitle className="text-base font-semibold text-foreground tracking-tight">
+                  Update Status Massal
+                </DialogTitle>
+                <Badge variant="outline" className="text-[10px] font-semibold text-primary border-primary/20 bg-primary/5">
+                  {selectedCount} item
+                </Badge>
+              </div>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                Ubah status pengerjaan untuk semua test case yang dipilih sekaligus.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
-        <div className="space-y-4">
+
+        <div className="p-6 space-y-4">
           <div className="space-y-2">
-            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status Baru</Label>
+            <Label className="text-xs font-medium text-foreground">Status Baru</Label>
             <Select value={bulkStatus} onValueChange={setBulkStatus}>
-              <SelectTrigger className="border-border/60 bg-secondary/50 text-foreground focus:ring-primary/30 rounded-xl"><SelectValue /></SelectTrigger>
-              <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
-                <SelectItem value="DONE" className="rounded-lg">Done</SelectItem>
-                <SelectItem value="NOT DONE" className="rounded-lg">Not Done</SelectItem>
-                <SelectItem value="IN PROGRESS" className="rounded-lg">In Progress</SelectItem>
-                <SelectItem value="BLOCKED" className="rounded-lg">Blocked</SelectItem>
-                <SelectItem value="FAILED" className="rounded-lg">Failed</SelectItem>
-                <SelectItem value="READY TO RETEST" className="rounded-lg">Ready to Retest</SelectItem>
-                <SelectItem value="TBA" className="rounded-lg">TBA (To Be Announced)</SelectItem>
+              <SelectTrigger className="h-10 rounded-xl border-border/60 bg-secondary/30 text-sm font-medium text-foreground focus:ring-primary/20">
+                <SelectValue placeholder="Pilih status" />
+              </SelectTrigger>
+              <SelectContent className="border-border/60 bg-card rounded-xl shadow-lg">
+                {STATUS_OPTIONS.map((status) => (
+                  <SelectItem key={status.value} value={status.value} className="rounded-lg text-xs font-medium cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full ${status.color}`} />
+                      <span>{status.label}</span>
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
-        <DialogFooter className="border-t border-border/50 pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Batal</Button>
-          <Button onClick={onSubmit} variant="majestic" className="rounded-xl">Update Status</Button>
+
+        <DialogFooter className="border-t border-border/40 px-6 py-4 bg-secondary/10 flex items-center justify-end gap-2.5">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="h-9 rounded-xl border-border/60 bg-card text-muted-foreground font-medium text-xs px-4 hover:bg-secondary"
+          >
+            Batal
+          </Button>
+          <Button
+            onClick={onSubmit}
+            className="h-9 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-xs px-5 shadow-sm"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Terapkan ({selectedCount})
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

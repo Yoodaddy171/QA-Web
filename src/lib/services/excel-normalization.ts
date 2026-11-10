@@ -102,17 +102,20 @@ export function getDetectedHeaders(sheet: XLSX.WorkSheet): string[] {
   return (rawData[headerRow] || []).map((h: unknown) => String(h || '').trim()).filter(Boolean);
 }
 
+const MOJIBAKE_CHECK = String.fromCodePoint(0xe2, 0x153, 0x201c).toLowerCase();
+const MOJIBAKE_CROSS = String.fromCodePoint(0xe2, 0x153, 0x2014).toLowerCase();
+
 export function normalizeImportStatus(statusRaw: string, actualResultRaw: string): string {
   let status: string = TESTCASE_STATUS.NOT_DONE;
   if (statusRaw) {
     const lower = statusRaw.toLowerCase().trim();
-    if (lower === 'done' || lower === 'pass' || lower === 'passed' || lower === 'âœ“') {
+    if (lower === 'done' || lower === 'pass' || lower === 'passed' || lower === '✓' || lower === MOJIBAKE_CHECK) {
       status = TESTCASE_STATUS.DONE;
     } else if (lower === 'in progress' || lower === 'in-progress' || lower === 'wip') {
       status = TESTCASE_STATUS.IN_PROGRESS;
     } else if (lower === 'blocked') {
       status = TESTCASE_STATUS.BLOCKED;
-    } else if (lower === 'failed' || lower === 'fail' || lower === 'âœ—') {
+    } else if (lower === 'failed' || lower === 'fail' || lower === '✗' || lower === MOJIBAKE_CROSS) {
       status = TESTCASE_STATUS.FAILED;
     } else if (lower === 'ready to retest') {
       status = TESTCASE_STATUS.READY_TO_RETEST;
@@ -126,10 +129,10 @@ export function normalizeImportStatus(statusRaw: string, actualResultRaw: string
   }
 
   const actualLower = actualResultRaw.toLowerCase().trim();
-  if ((actualLower === 'not as expected' || actualLower === 'fail' || actualLower === 'failed' || actualLower === 'âœ—') && status === TESTCASE_STATUS.NOT_DONE) {
+  if ((actualLower === 'not as expected' || actualLower === 'fail' || actualLower === 'failed' || actualLower === '✗' || actualLower === MOJIBAKE_CROSS) && status === TESTCASE_STATUS.NOT_DONE) {
     return TESTCASE_STATUS.FAILED;
   }
-  if ((actualLower === 'as expected' || actualLower === 'pass' || actualLower === 'passed' || actualLower === 'âœ“') && status === TESTCASE_STATUS.NOT_DONE) {
+  if ((actualLower === 'as expected' || actualLower === 'pass' || actualLower === 'passed' || actualLower === '✓' || actualLower === MOJIBAKE_CHECK) && status === TESTCASE_STATUS.NOT_DONE) {
     return TESTCASE_STATUS.DONE;
   }
   return status;
@@ -139,10 +142,10 @@ export function normalizeActualResult(actualResultRaw: string): string | null {
   if (!actualResultRaw) return null;
 
   const lower = actualResultRaw.toLowerCase().trim();
-  if (lower === 'as expected' || lower === 'pass' || lower === 'passed' || lower === 'âœ“') {
+  if (lower === 'as expected' || lower === 'pass' || lower === 'passed' || lower === '✓' || lower === MOJIBAKE_CHECK) {
     return TESTCASE_ACTUAL_RESULT.AS_EXPECTED;
   }
-  if (lower === 'not as expected' || lower === 'fail' || lower === 'failed' || lower === 'âœ—') {
+  if (lower === 'not as expected' || lower === 'fail' || lower === 'failed' || lower === '✗' || lower === MOJIBAKE_CROSS) {
     return TESTCASE_ACTUAL_RESULT.NOT_AS_EXPECTED;
   }
   return actualResultRaw;

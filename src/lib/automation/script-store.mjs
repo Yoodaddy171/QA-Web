@@ -49,11 +49,59 @@ export async function saveScript(root, projectId, testCaseId, input) {
   await writeJson(path.join(caseDirectory(root, projectId, testCaseId), 'script.json'), value);
   return value;
 }
-export async function listRuns(root, projectId, testCaseId) {
+export async function listRuns(root, projectId, testCaseId, limit = 20) {
   const directory = caseDirectory(root, projectId, testCaseId);
   const names = await fs.readdir(path.join(directory, 'history')).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
-  const entries = await Promise.all(names.filter(name => /^\d+-[a-f0-9-]{36}\.json$/.test(name)).sort().reverse().slice(0, 20).map(name => readJson(path.join(directory, 'history', name))));
-  return (await Promise.all(entries.filter(Boolean).map(item => readJson(path.join(runDirectory(root, projectId, testCaseId, item.runId), 'run.json'))))).filter(Boolean);
+  const runs = [];
+  const seen = new Set();
+  for (const name of names.filter(name => /^\d+-[a-f0-9-]{36}\.json$/.test(name)).sort().reverse()) {
+    const item = await readJson(path.join(directory, 'history', name));
+    if (!item || typeof item.runId !== 'string' || !/^[a-f0-9-]{36}$/.test(item.runId) || seen.has(item.runId)) continue;
+    const run = await readJson(path.join(runDirectory(root, projectId, testCaseId, item.runId), 'run.json'));
+    if (run && run.runId === item.runId && run.projectId === projectId && run.testCaseId === testCaseId) {
+      seen.add(item.runId);
+      runs.push(run);
+    }
+    if (runs.length >= Math.max(1, Math.min(20, limit))) break;
+  }
+  return runs;
+}
+
+function projectIndexDirectory(root, projectId) {
+  return path.join(root, 'history-index-v1', crypto.createHash('sha256').update(projectId).digest('hex'));
+}
+export async function registerStudioCase(root, projectId, testCaseId) {
+  const key = path.basename(caseDirectory(root, projectId, testCaseId));
+  await writeJson(path.join(projectIndexDirectory(root, projectId), `${key}.json`), { projectId, testCaseId });
+}
+export async function indexedStudioCaseIds(root, projectId, authorizedIds) {
+  const directory = projectIndexDirectory(root, projectId);
+  const ready = await readJson(path.join(directory, 'ready.json'));
+  if (!ready || ready.projectId !== projectId || ready.version !== 1) {
+    // One compatibility scan, not one scan per request. Admission writes independent
+    // case markers, so concurrent enqueue cannot be lost by a manifest overwrite.
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(8, authorizedIds.length) }, async () => {
+      while (next < authorizedIds.length) {
+        const id = authorizedIds[next++];
+        if ((await listRuns(root, projectId, id, 1)).length) await registerStudioCase(root, projectId, id);
+      }
+    }));
+    await writeJson(path.join(directory, 'ready.json'), { projectId, version: 1 });
+  }
+  const allowed = new Set(authorizedIds);
+  const names = await fs.readdir(directory);
+  const ids = new Set();
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(8, names.length) }, async () => {
+    while (next < names.length) {
+      const name = names[next++];
+      if (!/^[a-f0-9]{64}\.json$/.test(name)) continue;
+      const marker = await readJson(path.join(directory, name));
+      if (marker?.projectId === projectId && allowed.has(marker.testCaseId)) ids.add(marker.testCaseId);
+    }
+  }));
+  return [...ids];
 }
 export async function enqueueScript(root, projectId, testCaseId, actor, input) {
   const script = validateScript(input);
@@ -95,6 +143,7 @@ export async function enqueueScript(root, projectId, testCaseId, actor, input) {
     const pointer = { projectId, testCaseId, runId };
     await writeJson(path.join(root, 'queue', `${now}-${runId}.json`), pointer);
     await writeJson(path.join(directory, 'history', `${now}-${runId}.json`), pointer);
+    await registerStudioCase(root, projectId, testCaseId);
     return run;
   } finally { await fs.unlink(path.join(lock, 'owner.json')).catch(() => {}); await fs.rmdir(lock).catch(() => {}); }
 }
@@ -104,4 +153,82 @@ export async function cancelScript(root, projectId, testCaseId, runId) {
   if (!run) throw new Error('Run tidak ditemukan.');
   if (ACTIVE_SCRIPT_STATES.includes(run.status)) await writeJson(path.join(directory, 'cancel.json'), { requestedAt: new Date().toISOString() });
   return run;
+}
+
+export class ScriptHistoryError extends Error {
+  constructor(status, message) { super(message); this.status = status; }
+}
+const TERMINAL_SCRIPT_STATES = new Set(['PASSED', 'FAILED', 'CANCELLED', 'INTERRUPTED', 'TIMED_OUT', 'RESOURCE_LIMIT', 'SKIPPED']);
+
+// Refuse linked ancestors: a hashed case directory must not redirect deletion elsewhere.
+async function unlinkedPath(root, destination) {
+  const relative = path.relative(path.resolve(root), path.resolve(destination));
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) throw new ScriptHistoryError(400, 'Lokasi riwayat tidak valid.');
+  let current = path.resolve(root);
+  for (const segment of ['', ...relative.split(path.sep)]) {
+    if (segment) current = path.join(current, segment);
+    try { if ((await fs.lstat(current)).isSymbolicLink()) throw new ScriptHistoryError(409, 'Folder riwayat berupa link. Penghapusan ditolak.'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+}
+
+export async function deleteScriptRuns(root, projectId, testCaseId, runIds) {
+  if (!Array.isArray(runIds) || runIds.length < 1 || runIds.length > 20 || new Set(runIds).size !== runIds.length
+    || runIds.some(id => typeof id !== 'string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(id))) {
+    throw new ScriptHistoryError(400, 'Pilih 1–20 run unik dengan ID yang valid.');
+  }
+  const directory = caseDirectory(root, projectId, testCaseId);
+  await unlinkedPath(root, directory);
+  const lock = path.join(directory, '.history-delete-lock');
+  await unlinkedPath(root, lock);
+  try { await fs.mkdir(lock); }
+  catch (error) {
+    if (error.code === 'EEXIST') {
+      const owner = await readJson(path.join(lock, 'owner.json'));
+      let stale = false;
+      if (owner?.pid) { try { process.kill(owner.pid, 0); } catch (cause) { stale = cause.code === 'ESRCH'; } }
+      else stale = Date.now() - (await fs.stat(lock)).mtimeMs > 30000;
+      if (!stale) throw new ScriptHistoryError(409, 'Penghapusan lain sedang diproses. Muat ulang riwayat sebelum mencoba lagi.');
+      await fs.unlink(path.join(lock, 'owner.json')).catch(cause => { if (cause.code !== 'ENOENT') throw cause; });
+      await fs.rmdir(lock);
+      try { await fs.mkdir(lock); } catch { throw new ScriptHistoryError(409, 'Penghapusan lain sedang diproses. Muat ulang riwayat.'); }
+    }
+    else if (error.code === 'ENOENT') throw new ScriptHistoryError(404, 'Riwayat tidak ditemukan.');
+    else throw error;
+  }
+  try {
+    await writeJson(path.join(lock, 'owner.json'), { pid: process.pid });
+    const queueNames = await fs.readdir(path.join(root, 'queue')).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
+    const queued = await Promise.all(queueNames.filter(name => /^\d+-[a-f0-9-]{36}\.json$/.test(name)).map(name => readJson(path.join(root, 'queue', name))));
+    const history = await fs.readdir(path.join(directory, 'history')).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
+    // Validate the whole batch before removing anything. Unknown states fail closed.
+    for (const id of runIds) {
+      const runDir = runDirectory(root, projectId, testCaseId, id);
+      await unlinkedPath(root, runDir);
+      await unlinkedPath(root, path.join(runDir, 'run.json'));
+      const run = await readJson(path.join(runDir, 'run.json'));
+      if (!run || run.runId !== id || run.projectId !== projectId || run.testCaseId !== testCaseId) throw new ScriptHistoryError(404, 'Salah satu run tidak ditemukan dalam testcase ini. Muat ulang riwayat.');
+      if (!TERMINAL_SCRIPT_STATES.has(run.status) || queued.some(item => item?.runId === id && item.projectId === projectId && item.testCaseId === testCaseId)) {
+        throw new ScriptHistoryError(409, 'Run masih aktif atau sedang difinalisasi. Stop lalu tunggu sampai selesai sebelum menghapus.');
+      }
+    }
+    const deletedRunIds = [];
+    const failedRunIds = [];
+    for (const id of runIds) {
+      try {
+        // runDir is derived from validated UUIDs and checked above, never from artifact metadata.
+        await fs.rm(runDirectory(root, projectId, testCaseId, id), { recursive: true, force: false, maxRetries: 2, retryDelay: 100 });
+        deletedRunIds.push(id);
+        for (const name of history.filter(name => new RegExp(`^\\d+-${id}\\.json$`).test(name))) {
+          const pointer = path.join(directory, 'history', name);
+          await unlinkedPath(root, pointer);
+          await fs.unlink(pointer).catch(error => { if (error.code !== 'ENOENT') throw error; });
+        }
+      } catch { if (!deletedRunIds.includes(id)) failedRunIds.push(id); }
+    }
+    // Retain a small case marker, not a copied run. Readers re-read run metadata;
+    // an empty/deleted history produces no row, and concurrent enqueue stays visible.
+    if (deletedRunIds.length) await registerStudioCase(root, projectId, testCaseId);
+    return { deletedRunIds, failedRunIds };
+  } finally { await fs.unlink(path.join(lock, 'owner.json')).catch(error => { if (error.code !== 'ENOENT') throw error; }); await fs.rmdir(lock); }
 }

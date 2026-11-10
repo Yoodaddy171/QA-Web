@@ -397,7 +397,7 @@ JSON schema:
   "answer": "short Indonesian explanation",
   "test_cases": [
     {
-      "testCaseId": "string (pick from the pool above — match prefix to module)",
+      "testCaseId": "string (pick from the pool above, match prefix to module)",
       "page": "string",
       "subMenu": "string",
       "testType": "Positive or Negative",

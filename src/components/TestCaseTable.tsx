@@ -6,11 +6,13 @@ import { useCommittedActions } from '@/hooks/use-committed-actions';
 import {
   ArrowUpDown, Bookmark, CalendarClock, ChevronLeft, ChevronRight, Copy, Edit3, Eye, FileDown,
   FileSpreadsheet, MoreHorizontal, Plus, RefreshCw, Search, Settings2,
-  Sparkles, Trash2, Upload, UserRound, X
+  Trash2, Upload, UserRound, X
 } from 'lucide-react';
+import { GenerateTestCaseIcon } from '@/components/icons/qa-icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
@@ -23,6 +25,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';
 import { DateRangePicker } from '@/components/ui/date-picker';
+import { Kbd } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
 import type { TestCase, TestCaseTableProps } from './TestCaseTable.types';
 import { TestCaseTableBody } from './TestCaseTableBody';
@@ -45,12 +48,19 @@ const TESTCASE_COLUMN_OPTIONS: Array<{ key: TestCaseColumnKey; label: string; re
   { key: 'progress', label: 'Progress', responsiveClass: 'hidden 2xl:table-cell' },
 ];
 
-const DEFAULT_TESTCASE_COLUMNS = TESTCASE_COLUMN_OPTIONS.reduce<Record<TestCaseColumnKey, boolean>>((columns, option) => {
-  columns[option.key] = true;
-  return columns;
-}, {} as Record<TestCaseColumnKey, boolean>);
+const DEFAULT_TESTCASE_COLUMNS: Record<TestCaseColumnKey, boolean> = {
+  subMenu: true,
+  weight: false,
+  type: true,
+  priority: true,
+  action: true,
+  status: true,
+  result: true,
+  record: false,
+  progress: false,
+};
 
-const TESTCASE_COLUMN_STORAGE_KEY = 'qaDesk.testcaseTable.columns.v1';
+const TESTCASE_COLUMN_STORAGE_KEY = 'qaDesk.testcaseTable.columns.v2';
 const TESTCASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 type SavedView = { name: string; search: string; status: string; testType: string; priority: string; module: string; subMenu: string; testRun: string; bug: string; tag: string; createdFrom: string; createdTo: string };
 
@@ -257,7 +267,7 @@ export function TestCaseTable({
   });
   const tableBodyProps = {
     selectedProject, testCases, selectedIds, testRecordById, page, limit, total, totalPages, tableColSpan,
-    isLoading, hasActiveFilters, getColumnClass, mountedColumns,
+    isLoading, hasActiveFilters, getColumnClass, mountedColumns, showingLabel,
     ...rowActions, onQuickStatusChange: canEdit && onQuickStatusChange ? rowActions.onQuickStatusChange : undefined,
     celebrateId, setCelebrateId, getStatusColor, getStatusIcon, getStatusBadgeVariant,
     getPriorityColor, getTestTypeColor, rowClassName,
@@ -281,23 +291,23 @@ export function TestCaseTable({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      className="qa-data-workspace flex min-w-0 flex-col gap-4"
+      className="qa-data-workspace flex flex-1 flex-col min-w-0 gap-4"
     >
-      <div className="qa-workspace-toolbar rounded-xl border border-border bg-card p-3 sm:p-4">
-        <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-[minmax(260px,1fr)_auto_minmax(220px,auto)_auto]">
-        <div className="relative col-span-2 min-w-0 md:col-span-3 xl:col-span-1">
-          <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 size-4 text-primary', isLoading && 'opacity-60')} />
-          <Input
-            data-search-input
-            aria-label="Cari testcase berdasarkan ID, page, action, atau steps"
-            placeholder="Cari ID, page, action, atau steps..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-            className="h-11 rounded-lg border-border/70 bg-background pl-9 pr-9 text-base shadow-none sm:h-10 sm:text-sm"
-          />
-          <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:block">/</kbd>
-        </div>
-        <TestCaseFilterPanel activeCount={activeFilterChips.filter(chip => chip.key !== 'search').length} canReset={hasActiveFilters} onReset={resetFilters} mobileDateFilter={dateFilter}>
+      <div className="qa-workspace-toolbar flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          <div className="relative w-full min-w-[200px] max-w-xs sm:w-64">
+            <Search className={cn('absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground', isLoading && 'opacity-60')} />
+            <Input
+              data-search-input
+              aria-label="Cari testcase berdasarkan ID, page, action, atau steps"
+              placeholder="Cari ID, page, action, steps..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+              className="h-9 rounded-md border-border/70 bg-background pl-8 pr-8 text-sm shadow-none placeholder:text-muted-foreground/60"
+            />
+            <Kbd size="sm" className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 sm:inline-flex">/</Kbd>
+          </div>
+          <TestCaseFilterPanel activeCount={activeFilterChips.filter(chip => chip.key !== 'search').length} canReset={hasActiveFilters} onReset={resetFilters} mobileDateFilter={dateFilter}>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 [&_[data-slot=select-trigger]]:min-h-11 [&_input]:min-h-11 [&_input]:text-base sm:[&_input]:text-sm">
           <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); resetPage(); }}>
             <SelectTrigger aria-label="Status testcase" className="h-10 w-full"><SelectValue placeholder="Status" /></SelectTrigger>
@@ -378,8 +388,8 @@ export function TestCaseTable({
         <div className="hidden md:block">{dateFilter}</div>
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" className="h-11 w-full justify-center gap-2 rounded-lg border-border/70 bg-background px-3 font-semibold sm:h-10">
-                <Bookmark /> Views{savedViews.length ? ` (${savedViews.length})` : ''}
+              <Button type="button" variant="outline" className="h-9 w-auto gap-1.5 rounded-md border-border/70 bg-transparent px-3 text-xs font-medium">
+                <Bookmark className="size-3.5" /> Views{savedViews.length ? ` (${savedViews.length})` : ''}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64 rounded-xl bg-card">
@@ -389,151 +399,188 @@ export function TestCaseTable({
               {!savedViews.length && <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Belum ada saved view.</DropdownMenuLabel>}
             </DropdownMenuContent>
         </DropdownMenu>
-        </div>
+        <SimpleTooltip content="Urutkan berdasarkan aktivitas terakhir: baru dibuat atau diedit. Klik lagi untuk kembali ke urutan ID.">
+        <Button
+          type="button"
+          variant={sortBy === 'updatedAt' && sortOrder === 'desc' ? 'secondary' : 'outline'}
+          size="sm"
+          aria-pressed={sortBy === 'updatedAt' && sortOrder === 'desc'}
+          onClick={toggleNewestSort}
+          className="h-9 gap-1.5 rounded-md border-border/70 bg-transparent px-3 text-xs font-medium"
+        >
+          <CalendarClock className="size-3.5" data-icon="inline-start" /> Terbaru
+        </Button>
+        </SimpleTooltip>
+      </div>
 
-        <AnimatePresence initial={false}>
-          {activeFilterChips.length > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
-              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/35 pt-3" aria-label="Active filters">
-                <span className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Active</span>
-                {activeFilterChips.map(chip => (
-                  <button key={chip.key} type="button" onClick={() => { chip.clear(); resetPage(); }} className="group inline-flex max-w-56 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/7 px-2.5 py-1 text-xs font-semibold text-primary transition-colors duration-150 hover:border-primary/40 hover:bg-primary/12" aria-label={`Remove filter ${chip.label}`}>
-                    <span className="truncate">{chip.label}</span><X className="h-3 w-3 opacity-60 group-hover:opacity-100" />
-                  </button>
-                ))}
-                <button type="button" onClick={resetFilters} className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Clear all</button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-      <p className="mt-3 hidden text-xs leading-5 text-muted-foreground sm:block">Status inventory: retest Bug diselesaikan dengan Done / As Expected pada testcase terkait.</p>
-      {!canEdit && <p className="text-xs leading-5 text-muted-foreground">Mode baca saja. Perubahan memerlukan role QA atau lebih tinggi pada workspace ini.</p>}
-      <div className="mt-3 flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant={sortBy === 'updatedAt' && sortOrder === 'desc' ? 'secondary' : 'outline'}
-            size="sm"
-            aria-pressed={sortBy === 'updatedAt' && sortOrder === 'desc'}
-            title="Urutkan berdasarkan aktivitas terakhir: baru dibuat atau diedit. Klik lagi untuk kembali ke urutan ID."
-            onClick={toggleNewestSort}
-            className="h-11 gap-1.5 sm:h-9"
-          >
-            <CalendarClock data-icon="inline-start" /> Terbaru
-          </Button>
-          <MutationAction><Button onClick={openCreateDialog} size="sm" variant="majestic" title="Shortcut: N" className="group h-11 rounded-lg gap-1.5 font-bold shadow-sm transition duration-150 sm:h-9">
-            <Plus className="w-4 h-4" /> Add Test Case
-            <kbd className="ml-0.5 hidden rounded border border-primary-foreground/30 px-1 font-mono text-xs leading-4 opacity-70 lg:inline-block">N</kbd>
+      <div className="flex items-center gap-1.5">
+        <DataTableDensityToggle value={density} onValueChange={setDensity} />
+        <DropdownMenu>
+          <SimpleTooltip content={canExport ? 'Atur kolom tabel' : 'Export tidak diizinkan oleh admin'}><span className="inline-flex">
+          <DropdownMenuTrigger asChild>
+            <Button disabled={!canExport} variant="outline" size="sm" className="h-9 rounded-md border-border/70 bg-transparent px-2.5 text-xs font-medium gap-1.5">
+              <Settings2 className="w-3.5 h-3.5" /> Columns
+            </Button>
+          </DropdownMenuTrigger>
+          </span></SimpleTooltip>
+          <DropdownMenuContent align="end" className="w-52 bg-card border border-border/50 text-foreground rounded-2xl shadow-xl">
+            <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">
+              Kolom Tabel
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-border/40" />
+            {TESTCASE_COLUMN_OPTIONS.map((column) => (
+              <DropdownMenuCheckboxItem
+                key={column.key}
+                checked={visibleColumns[column.key]}
+                onCheckedChange={(checked) => setColumnVisible(column.key, Boolean(checked))}
+                className="text-xs font-semibold rounded-lg mx-1 my-0.5"
+              >
+                {column.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={resetColumns} className="text-xs font-bold">
+              Reset columns
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          className="hidden"
+          onChange={handleImportExcel}
+        />
+        <MutationAction><Button onClick={openImportDialog} variant="outline" size="sm" className="h-9 rounded-md border-border/70 bg-transparent px-2.5 text-xs font-medium gap-1.5">
+          <Upload className="w-3.5 h-3.5 text-muted-foreground" /> Import Excel
+        </Button></MutationAction>
+        <DropdownMenu>
+          <SimpleTooltip content={canExport ? 'Export testcase' : 'Export tidak diizinkan oleh admin'}><span className="inline-flex">
+          <DropdownMenuTrigger asChild>
+            <Button disabled={!canExport} variant="outline" size="sm" className="h-9 rounded-md border-border/70 bg-transparent px-2.5 text-xs font-medium gap-1.5">
+              <FileSpreadsheet className="w-3.5 h-3.5 text-muted-foreground" /> Export
+            </Button>
+          </DropdownMenuTrigger>
+          </span></SimpleTooltip>
+          <DropdownMenuContent className="bg-card border border-border/50 text-foreground rounded-2xl shadow-xl">
+            <DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => handleExportExcel('qa-report')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
+              <FileSpreadsheet className="w-4 h-4 mr-2 text-primary" /> QA Report XLSX (Summary + Cases)
+            </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+            <DropdownMenuLabel className="text-xs text-muted-foreground">Format legacy untuk import kembali</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleExportExcel('xlsx')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
+              <FileDown className="w-4 h-4 mr-2 text-primary" /> Legacy XLSX (1 Sheet)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { if (!selectedProject) return; window.open(`/api/excel?projectId=${selectedProject}&format=xlsx&multiSheet=true`, '_blank'); }} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
+              <FileDown className="w-4 h-4 mr-2 text-primary" /> Legacy XLSX (Per Module)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportExcel('csv')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
+              <FileDown className="w-4 h-4 mr-2 text-primary" /> Export CSV
+            </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <SimpleTooltip content="Refresh test cases (shortcut: R)">
+        <Button aria-label="Refresh test cases" onClick={refreshList} variant="outline" size="sm" className="h-9 w-9 rounded-md border-border/70 bg-transparent p-0 text-muted-foreground hover:text-foreground">
+          <RefreshCw className="w-3.5 h-3.5" />
+        </Button>
+        </SimpleTooltip>
+        {aiEnabled && (
+          <MutationAction><Button onClick={openAIDialog} size="sm" variant="outline" className="h-9 rounded-md gap-1.5 text-xs font-medium border-border/70 bg-transparent">
+            <GenerateTestCaseIcon className="w-3.5 h-3.5 text-primary" /> Generate AI
           </Button></MutationAction>
-          {aiEnabled && (
-            <MutationAction><Button onClick={openAIDialog} size="sm" variant="outline" className="h-11 sm:h-8">
-              <Sparkles className="w-4 h-4" /> Generate AI
-            </Button></MutationAction>
-          )}
-        </div>
-        <Button type="button" variant="outline" className="h-11 sm:hidden" aria-expanded={showTableTools} aria-controls={tableToolsId} onClick={() => setShowTableTools(value => !value)}><MoreHorizontal /> Opsi tabel</Button>
-        <p className="w-full text-xs text-muted-foreground sm:hidden" aria-live="polite">{showingLabel}</p>
-        <div id={tableToolsId} className={cn('min-w-0 flex-wrap items-center gap-2 sm:flex lg:justify-end', showTableTools ? 'flex' : 'hidden')}>
-          <Badge key={showingLabel} variant="outline" className="hidden h-9 justify-center rounded-xl border border-border/50 bg-muted/60 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:inline-flex tabular-nums">
-            {showingLabel}
-          </Badge>
-          <DataTableDensityToggle value={density} onValueChange={setDensity} />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button disabled={!canExport} title={!canExport ? 'Export tidak diizinkan oleh admin' : undefined} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
-                <Settings2 className="w-4 h-4" /> Columns
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 bg-card border border-border/50 text-foreground rounded-2xl shadow-xl">
-              <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">
-                Kolom Tabel
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-border/40" />
-              {TESTCASE_COLUMN_OPTIONS.map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.key}
-                  checked={visibleColumns[column.key]}
-                  onCheckedChange={(checked) => setColumnVisible(column.key, Boolean(checked))}
-                  className="text-xs font-semibold rounded-lg mx-1 my-0.5"
-                >
-                  {column.label}
-                </DropdownMenuCheckboxItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={resetColumns} className="text-xs font-bold">
-                Reset columns
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            onChange={handleImportExcel}
-          />
-          <MutationAction><Button onClick={openImportDialog} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
-            <Upload className="w-4 h-4 text-primary" /> Import Excel
-          </Button></MutationAction>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button disabled={!canExport} title={!canExport ? 'Export tidak diizinkan oleh admin' : undefined} variant="outline" size="sm" className="h-9 rounded-xl gap-1.5 font-bold border border-border/50 bg-secondary/35 text-foreground hover:bg-secondary/65 transition">
-                <FileSpreadsheet className="w-4 h-4 text-primary" /> Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-card border border-border/50 text-foreground rounded-2xl shadow-xl">
-              <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => handleExportExcel('qa-report')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
-                <FileSpreadsheet className="w-4 h-4 mr-2 text-primary" /> QA Report XLSX (Summary + Cases)
-              </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Format legacy untuk import kembali</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleExportExcel('xlsx')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
-                <FileDown className="w-4 h-4 mr-2 text-primary" /> Legacy XLSX (1 Sheet)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { if (!selectedProject) return; window.open(`/api/excel?projectId=${selectedProject}&format=xlsx&multiSheet=true`, '_blank'); }} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
-                <FileDown className="w-4 h-4 mr-2 text-primary" /> Legacy XLSX (Per Module)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExportExcel('csv')} className="rounded-lg text-xs font-semibold mx-1 my-0.5">
-                <FileDown className="w-4 h-4 mr-2 text-primary" /> Export CSV
-              </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button aria-label="Refresh test cases" title="Refresh test cases (shortcut: R)" onClick={refreshList} variant="ghost" size="sm" className="h-9 w-9 rounded-xl border border-border/50 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/65 transition">
-            <RefreshCw className="w-4 h-4" />
-          </Button>
-        </div>
+        )}
+        <MutationAction><SimpleTooltip content="Tambah testcase (shortcut: N)"><Button onClick={openCreateDialog} size="sm" variant="default" className="group h-9 rounded-md px-3 text-xs font-semibold shadow-none gap-1.5">
+          <Plus className="w-3.5 h-3.5" /> Add Test Case
+          <Kbd size="sm" className="hidden border-primary-foreground/30 bg-primary-foreground/15 text-primary-foreground lg:inline-flex">N</Kbd>
+        </Button></SimpleTooltip></MutationAction>
       </div>
       </div>
 
       <AnimatePresence initial={false}>
-        {selectedIds.size > 0 && (
-          <motion.div initial={{ opacity: 0, y: -8, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.99 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} className="sticky top-[72px] z-30 flex flex-col gap-3 rounded-xl border border-primary/25 bg-card/95 p-3 shadow-[0_16px_50px_-28px_rgba(99,102,241,.45)] backdrop-blur-md lg:flex-row lg:items-center">
-            <div className="flex min-w-40 items-center gap-3">
-              <span className="font-mono text-sm font-bold text-primary">{selectedIds.size}</span>
-              <span className="text-xs font-semibold text-foreground">testcase selected</span>
-              <button type="button" onClick={clearSelection} className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground lg:ml-0" aria-label="Clear selection"><X className="h-4 w-4" /></button>
+        {activeFilterChips.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
+            <div className="flex flex-wrap items-center gap-2 pt-1" aria-label="Active filters">
+              <span className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Active</span>
+              {activeFilterChips.map(chip => (
+                <button key={chip.key} type="button" onClick={() => { chip.clear(); resetPage(); }} className="group inline-flex max-w-56 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/7 px-2.5 py-1 text-xs font-semibold text-primary transition-colors duration-150 hover:border-primary/40 hover:bg-primary/12" aria-label={`Remove filter ${chip.label}`}>
+                  <span className="truncate">{chip.label}</span><X className="h-3 w-3 opacity-60 group-hover:opacity-100" />
+                </button>
+              ))}
+              <button type="button" onClick={resetFilters} className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Clear all</button>
             </div>
-            <div className="flex flex-1 flex-wrap gap-2 lg:justify-end">
-              <MutationAction><Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-8 gap-1.5"><Settings2 className="h-3.5 w-3.5" /> Status</Button></MutationAction>
-              <MutationAction><Button onClick={() => setShowBulkExecution(true)} variant="outline" size="sm" className="h-8 gap-1.5"><CalendarClock className="h-3.5 w-3.5" /> Execute</Button></MutationAction>
-              <MutationAction><Button onClick={() => setShowBulkAssign(true)} variant="outline" size="sm" className="h-8 gap-1.5"><UserRound className="h-3.5 w-3.5" /> Assign</Button></MutationAction>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!canEdit && <p className="text-xs leading-5 text-muted-foreground">Mode baca saja. Perubahan memerlukan role QA atau lebih tinggi pada workspace ini.</p>}
+
+      <AnimatePresence initial={false}>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.96 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-border/80 bg-card/95 px-4 py-2.5 shadow-2xl backdrop-blur-md max-w-[calc(100vw-2rem)] flex-wrap sm:flex-nowrap ring-1 ring-border/50"
+          >
+            <div className="flex items-center gap-2 pr-3 border-r border-border/70">
+              <span className="flex size-6 items-center justify-center rounded-md bg-primary/15 font-mono text-xs font-bold text-primary">
+                {selectedIds.size}
+              </span>
+              <span className="text-xs font-semibold text-foreground whitespace-nowrap">
+                skenario terpilih
+              </span>
+              <SimpleTooltip content="Batalkan semua pilihan"><button
+                type="button"
+                onClick={clearSelection}
+                className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors ml-1"
+                aria-label="Batalkan pilihan"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button></SimpleTooltip>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <MutationAction>
+                <Button onClick={() => setShowBulkAction(true)} variant="outline" size="sm" className="h-8 rounded-lg text-xs gap-1.5 hover:bg-secondary/70">
+                  <Settings2 className="h-3.5 w-3.5 text-primary" /> Ubah Status
+                </Button>
+              </MutationAction>
+              <MutationAction>
+                <Button onClick={() => setShowBulkExecution(true)} variant="outline" size="sm" className="h-8 rounded-lg text-xs gap-1.5 hover:bg-secondary/70">
+                  <CalendarClock className="h-3.5 w-3.5 text-status-in-progress" /> Jalankan
+                </Button>
+              </MutationAction>
+              <MutationAction>
+                <Button onClick={() => setShowBulkAssign(true)} variant="outline" size="sm" className="h-8 rounded-lg text-xs gap-1.5 hover:bg-secondary/70">
+                  <UserRound className="h-3.5 w-3.5" /> Tugaskan
+                </Button>
+              </MutationAction>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button disabled={!canExport} variant="outline" size="sm" className="h-8 gap-1.5"><FileDown className="h-3.5 w-3.5" /> Export selected</Button>
+                  <Button disabled={!canExport} variant="outline" size="sm" className="h-8 rounded-lg text-xs gap-1.5 hover:bg-secondary/70">
+                    <FileDown className="h-3.5 w-3.5" /> Export ({selectedIds.size})
+                  </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
+                <DropdownMenuContent align="end" className="rounded-xl bg-card border-border/70 shadow-xl text-xs">
                   <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => handleExportExcel('qa-report', [...selectedIds])}>QA Report XLSX (selected)</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExportExcel('xlsx', [...selectedIds])}>Legacy XLSX (selected)</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExportExcel('qa-report', [...selectedIds])}>
+                      QA Report XLSX ({selectedIds.size} terpilih)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExportExcel('xlsx', [...selectedIds])}>
+                      Standard XLSX ({selectedIds.size} terpilih)
+                    </DropdownMenuItem>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <MutationAction><Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-8 gap-1.5"><Trash2 className="h-3.5 w-3.5" /> Delete</Button></MutationAction>
+              <MutationAction>
+                <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive" size="sm" className="h-8 rounded-lg text-xs gap-1.5">
+                  <Trash2 className="h-3.5 w-3.5" /> Hapus
+                </Button>
+              </MutationAction>
             </div>
           </motion.div>
         )}

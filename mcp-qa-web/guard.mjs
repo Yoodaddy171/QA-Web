@@ -16,7 +16,9 @@ export class DeletionGuard {
     this.pending.set(challenge, { fingerprint, until: Date.now() + 300_000 });
     return {
       confirmationRequired: true, executed: false,
-      warning: 'Penghapusan dapat menghapus banyak record terkait (cascade), evidence, atau seluruh import batch. Tampilkan scope ini kepada user dan tunggu persetujuan eksplisit. Jangan mengonfirmasi sendiri atau memecah bulk menjadi delete satu per satu.',
+      warning: operation.path === '/api/automation/scripts/history'
+        ? 'Hapus permanen riwayat Studio pada project/testcase/runIds berikut, termasuk video, screenshot, trace, salinan input dan devlog. Script editor, testcase dan evidence QA terpisah tetap ada. Tampilkan scope persis ini dan tunggu persetujuan eksplisit; jangan konfirmasi sendiri atau memecah bulk.'
+        : 'Penghapusan dapat menghapus banyak record terkait (cascade), evidence, atau seluruh import batch. Tampilkan scope ini kepada user dan tunggu persetujuan eksplisit. Jangan mengonfirmasi sendiri atau memecah bulk menjadi delete satu per satu.',
       operation: operation.name, path: operation.path, scope: payload,
       confirmation: challenge, expiresInSeconds: 300,
       next: 'After user approval, repeat the EXACT request with confirmation and userConfirmed:true. Confirmation is single-use. On timeout read state before retrying.',

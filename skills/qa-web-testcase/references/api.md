@@ -169,6 +169,16 @@ Verified through real MCP during setup: authenticated reads, testcase creation/r
 
 The UI exposes AI generation and refinement. The client implementation is in `src/lib/client/api/ai-client.ts` and the flow is in `src/hooks/use-ai-testcase-flows.ts`. AI output is a draft and must be reviewed before saving. Do not send secrets, production credentials, OTPs, or sensitive customer data in prompts.
 
+## Playwright Studio API (Automation tab)
+
+Read `qa_web_guide({topic:"playwright"})` for full save/run/poll/artifact/Stop recipes. All four handlers at `/api/automation/scripts` require query `projectId` and `testCaseId` (internal testcase database id), plus OWNER/ADMIN membership. MCP operation IDs: `web_get_automation_scripts`, `web_put_automation_scripts`, `web_post_automation_scripts`, `web_delete_automation_scripts`.
+
+- GET without runId: `{health,script,runs}` (latest 20); with runId and optional cursor: `{run,events,nextCursor,hasMore}`, up to 500 event lines. Add artifact=<returned opaque artifact id> for binary webm/png/zip.
+- PUT JSON `{script,baseURL?,timeoutSeconds?}` saves only; POST the same JSON enqueues that supplied input snapshot (202 `{run}`), not the saved script implicitly. Script <=100000 UTF-8 bytes; timeout 10..180/default 60; HTTP/HTTPS baseURL without credentials. Do not send multipart/files.
+- DELETE with runId and JSON `{}` requests Stop, not history deletion. The MCP confirmation gate applies unchanged; obtain explicit user approval, then poll stored state until terminal.
+
+Separate `npm run automation:runner` worker and Chromium required for running; GET health.online distinguishes worker readiness. Studio is trusted local Node execution, not a sandbox, and is independent of qa_browser/relay. No automatic testcase verdict synchronization or Test Run execution/evidence attachment. Read back every write; 202/contract discovery alone is not proof the test passed. See `docs/traceva-playwright-studio.md` for host setup.
+
 ## Automation capture
 
 QA-Web DevLog is runner-agnostic. Katalon, Playwright, and Manual Capture may all produce events consumed by the same DevLog UI, but they are distinct runner/session types.

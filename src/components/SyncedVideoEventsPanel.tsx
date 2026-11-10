@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +13,12 @@ export function SyncedVideoEventsPanel(props: SyncedVideoEventsPanelProps) {
     seekRecordingFromSyncedEvent, formatRelativeTime, selectedSyncedVideoEventDetail,
     selectedSyncedVideoEvent,
   } = props;
+  const [paging, setPaging] = useState({ key: '', page: 0, selection: '' });
+  const pageKey = `${filteredSyncedVideoEvents.length}:${filteredSyncedVideoEvents[0]?.id}:${filteredSyncedVideoEvents.at(-1)?.id}:${Object.values(syncedEventFilters).join(',')}`;
+  const selectedIndex = filteredSyncedVideoEvents.findIndex((event: { id: string }) => event.id === selectedSyncedEventId);
+  const pageCount = Math.max(1, Math.ceil(filteredSyncedVideoEvents.length / 24));
+  const page = Math.min(pageCount - 1, selectedIndex >= 0 && paging.selection !== selectedSyncedEventId ? Math.floor(selectedIndex / 24) : paging.key === pageKey ? paging.page : 0);
+  const changePage = (next: number) => setPaging({ key: pageKey, page: next, selection: selectedSyncedEventId || '' });
   return (
               hasManualRecordingVideo ? (
                 <div className="shrink-0 border-b border-border bg-background px-3 py-2">
@@ -55,8 +62,8 @@ export function SyncedVideoEventsPanel(props: SyncedVideoEventsPanelProps) {
                       Tidak ada synced event yang cocok dengan filter aktif.
                     </p>
                   ) : (
-                    <div className="flex max-h-32 gap-2 overflow-x-auto pb-1">
-                      {filteredSyncedVideoEvents.slice(0, 24).map((event) => (
+                    <><div className="flex max-h-32 gap-2 overflow-x-auto pb-1">
+                      {filteredSyncedVideoEvents.slice(page * 24, (page + 1) * 24).map((event) => (
                         <button
                           key={event.id}
                           type="button"
@@ -79,7 +86,7 @@ export function SyncedVideoEventsPanel(props: SyncedVideoEventsPanelProps) {
                           )}
                         </button>
                       ))}
-                    </div>
+                    </div>{pageCount > 1 && <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground"><span>{page * 24 + 1}–{Math.min((page + 1) * 24, filteredSyncedVideoEvents.length)} dari {filteredSyncedVideoEvents.length} event</span><div className="flex gap-1"><Button variant="ghost" size="sm" disabled={page === 0} onClick={() => changePage(page - 1)}>Sebelumnya</Button><Button variant="ghost" size="sm" disabled={page + 1 >= pageCount} onClick={() => changePage(page + 1)}>Berikutnya</Button></div></div>}</>
                   )}
                   {selectedSyncedVideoEventDetail && (
                     <div className={cn("mt-2 rounded-lg border p-2 text-[10px]", getSyncedEventSeverityClass(selectedSyncedVideoEvent!))}>

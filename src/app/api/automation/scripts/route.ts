@@ -3,30 +3,15 @@ import fs from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 import path from 'node:path';
-import { db } from '@/lib/db';
-import { getSessionByToken, hasMinimumRole, isAllowedRequestOrigin, SESSION_COOKIE } from '@/lib/auth';
+import { authorizeScriptRequest } from '@/lib/automation/script-auth';
 import { MutationError } from '@/lib/services/mutation-error';
+import { readEventPage } from '@/lib/automation/event-page.mjs';
 import { runnerRoot, caseDirectory, runDirectory, readJson, runnerHealth, saveScript, enqueueScript, listRuns, cancelScript } from '@/lib/automation/script-store.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const json = (value: unknown, status = 200) => NextResponse.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
 
-export async function authorizeScriptRequest(req: NextRequest) {
-  const session = await getSessionByToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!session) throw new MutationError(401, 'Silakan masuk kembali.');
-  if (session.guest || session.user.isGuest) throw new MutationError(403, 'Akses tamu tidak dapat menjalankan atau membaca script.');
-  const projectId = req.nextUrl.searchParams.get('projectId') || '';
-  const testCaseId = req.nextUrl.searchParams.get('testCaseId') || '';
-  if (!projectId || !testCaseId) throw new MutationError(400, 'Project dan testcase wajib diisi.');
-  const project = await db.project.findFirst({ where: { id: projectId, deletionState: 'ACTIVE' }, select: { workspaceId: true } });
-  const member = session.user.memberships.find(item => item.workspaceId === project?.workspaceId);
-  if (!project || !member || !hasMinimumRole(member.role, 'ADMIN')) throw new MutationError(403, 'Hanya owner/admin project ini yang dapat mengelola script.');
-  const testCase = await db.testCase.findFirst({ where: { id: testCaseId, projectId }, select: { id: true } });
-  if (!testCase) throw new MutationError(404, 'Testcase tidak ditemukan dalam project ini.');
-  if (!['GET', 'HEAD'].includes(req.method) && !isAllowedRequestOrigin(req.nextUrl, req.headers.get('origin'), req.headers.get('host'))) throw new MutationError(403, 'Origin request tidak diizinkan.');
-  return { projectId, testCaseId, root: runnerRoot(), actor: session.user.name };
-}
 
 function publicRun(run: Record<string, unknown>) {
   return { ...run, artifacts: Array.isArray(run.artifacts) ? run.artifacts.map(({ file: _file, ...item }) => item) : [] };
@@ -64,10 +49,7 @@ async function handle(req: NextRequest) {
       }
       const cursor = Math.max(0, Number(req.nextUrl.searchParams.get('cursor') || 0));
       if (!Number.isSafeInteger(cursor)) throw new MutationError(400, 'Cursor tidak valid.');
-      const content = await fs.readFile(path.join(directory, 'events.jsonl'), 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; });
-      const lines = content.split('\n').filter(Boolean);
-      const events = lines.slice(cursor, cursor + 500).flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
-      return json({ run: publicRun(run), events, nextCursor: Math.min(lines.length, cursor + 500), hasMore: lines.length > cursor + 500 });
+      return json({ run: publicRun(run), ...await readEventPage(path.join(directory, 'events.jsonl'), cursor) });
     }
     const input = await req.json().catch(() => { throw new MutationError(400, 'Body JSON tidak valid.'); });
     if (req.method === 'PUT') return json({ script: await saveScript(root, projectId, testCaseId, input) });

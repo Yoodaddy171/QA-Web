@@ -1,17 +1,11 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { FEATURES } from '@/lib/features';
-
-function WorkspaceFallback() {
-  return <div className="space-y-3" aria-label="Loading workspace"><div className="h-24 animate-pulse rounded-xl border border-border/50 bg-card/60 motion-reduce:animate-none" /><div className="h-64 animate-pulse rounded-xl border border-border/50 bg-card/60 motion-reduce:animate-none" /></div>;
-}
-
-const DashboardPanel = dynamic(() => import('@/components/DashboardPanel').then(module => module.DashboardPanel), { loading: WorkspaceFallback });
-const TestCaseTable = dynamic(() => import('@/components/TestCaseTable').then(module => module.TestCaseTable), { loading: WorkspaceFallback });
-const BugFixPanel = dynamic(() => import('@/components/BugFixPanel').then(module => module.BugFixPanel), { loading: WorkspaceFallback });
-const AutomatedPanel = dynamic(() => import('@/components/AutomatedPanel').then(module => module.AutomatedPanel), { loading: WorkspaceFallback });
-const SettingsPanel = dynamic(() => import('@/components/SettingsPanel').then(module => module.SettingsPanel), { loading: WorkspaceFallback });
+import { DashboardPanel } from '@/components/DashboardPanel';
+import { TestCaseTable } from '@/components/TestCaseTable';
+import { BugFixPanel } from '@/components/BugFixPanel';
+import { AutomatedPanel } from '@/components/AutomatedPanel';
+import { SettingsPanel } from '@/components/SettingsPanel';
 
 type WorkspaceViewProps = Record<string, any>;
 
@@ -27,7 +21,7 @@ setShowImportDialog, handleImportExcel, handleExportExcel, isLoadingTestCases, h
 toggleSelectAll, toggleSelect, clearSelection, toggleSort, sortBy, sortOrder, toggleNewestSort, openEditDialog, handleDuplicate, setEditingTestCase,
 getStatusColor, getStatusIcon, getStatusBadgeVariant, getPriorityColor, getTestTypeColor,
 bugFixFilterModules, hasUnassignedBugFixItems, visibleBugFixItems, bugFixSearch, bugFixFilterStatus,
-bugFixFilterModule, bugFixTab, setBugFixSearch, setBugFixFilterStatus, setBugFixFilterModule, setBugFixTab,
+bugFixFilterModule, bugFixTab, bugFixPagination, setBugFixSearch, setBugFixFilterStatus, setBugFixFilterModule, setBugFixTab,
 handleBugFixStatusChange, openBugFixDetail, automatedItems, automatedSearch, automatedFilterModule,
 automatedLoading, setAutomatedSearch, setAutomatedFilterModule, loadAutomated, visibleAutomatedItems,
 projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleDeleteProject, handleDeleteModule } = props;
@@ -136,6 +130,7 @@ projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleD
   // ============== RENDER: BUGFIX ==============
   const renderBugFix = () => (
     <BugFixPanel
+      pagination={bugFixPagination}
       selectedProject={selectedProject}
       modules={bugFixFilterModules}
       hasUnassignedModule={hasUnassignedBugFixItems}
@@ -161,6 +156,7 @@ projects, setSelectedProject, setShowCreateProject, setShowCreateModule, handleD
       selectedProject={selectedProject}
       modules={modules}
       items={automatedItems}
+      pagination={{ page: props.automatedPage, total: props.automatedTotal, totalPages: props.automatedTotalPages, onPageChange: props.setAutomatedPage, summary: props.automatedSummary, moduleIds: props.automatedModuleIds, error: props.automatedError }}
       search={automatedSearch}
       filterModule={automatedFilterModule}
       loading={automatedLoading}

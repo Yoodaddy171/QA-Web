@@ -2,6 +2,7 @@
 
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import { SimpleTooltip } from '@/components/ui/tooltip';
 
 const TESTCASE_ID_PATTERN = /\b[A-Z]{1,4}-\d{2,4}\b/g;
 
@@ -108,7 +109,7 @@ export function MessageContent({
                 <tbody className="text-foreground/80">
                   {rows.map((row, rowIndex) => (
                     <tr key={`row-${rowIndex}`} className="border-t border-border/30 transition-colors hover:bg-secondary/30">
-                      {row.map((cell, cellIndex) => <td key={`${cell}-${cellIndex}`} className="max-w-[220px] align-top px-3 py-2.5 leading-relaxed"><LinkedText value={cell} compact={compact} onOpenTestCaseId={onOpenTestCaseId} /></td>)}
+                      {row.map((cell, cellIndex) => <SimpleTooltip key={`${cell}-${cellIndex}`} content={cell} contentClassName="z-[120] max-w-[min(28rem,calc(100vw-2rem))] whitespace-pre-wrap break-words text-left"><td className="max-w-[220px] align-top px-3 py-2.5 leading-relaxed"><LinkedText value={cell} compact={compact} onOpenTestCaseId={onOpenTestCaseId} /></td></SimpleTooltip>)}
                     </tr>
                   ))}
                 </tbody>

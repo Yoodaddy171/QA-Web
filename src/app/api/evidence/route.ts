@@ -9,6 +9,11 @@ import { renderHtml } from './evidence-renderer';
 import fs from 'node:fs/promises';
 import path from 'path';
 import storagePaths from '@/lib/storage/data-storage-path.cjs';
+import { authorizeScriptRequest } from '@/lib/automation/script-auth';
+import { studioReportSource } from '@/lib/automation/studio-report';
+import { MutationError } from '@/lib/services/mutation-error';
+import { randomUUID } from 'node:crypto';
+import { evidenceHtmlStream } from '@/lib/storage/evidence-html-stream';
 
 export const maxDuration = 60;
 
@@ -196,13 +201,78 @@ function parseNetworkUrl(url: string) {
   }
 }
 
-function getNetworkMeta(network: { method?: string; event?: string; url?: string }) {
+function getHeaderContentType(headers: unknown) {
+  if (!headers || typeof headers !== 'object' || Array.isArray(headers)) return '';
+  for (const [key, value] of Object.entries(headers as Record<string, unknown>)) {
+    if (key.toLowerCase() === 'content-type' && value != null) return String(value).toLowerCase();
+  }
+  return '';
+}
+
+function dedupeEvidenceLogs(logs: EvidenceLog[]) {
+  const completedKeys = new Set<string>();
+  for (const log of logs) {
+    if (log.tab === 'network' && typeof log.status === 'number') {
+      completedKeys.add(`${(log.method || 'GET').toUpperCase()}|${log.url || ''}`);
+    }
+  }
+  return logs.filter(log => {
+    if (log.tab !== 'network' || typeof log.status === 'number') return true;
+    const key = `${(log.method || 'GET').toUpperCase()}|${log.url || ''}`;
+    return !completedKeys.has(key);
+  });
+}
+
+function getNetworkMeta(network: { method?: string; event?: string; url?: string; headers?: unknown; data?: unknown }) {
   const url = network.url || '';
   const parsed = parseNetworkUrl(url);
   const method = (network.method || network.event || 'TRACE').toUpperCase();
   const pathname = parsed.pathname.toLowerCase();
+  const dataRecord = network.data && typeof network.data === 'object' && !Array.isArray(network.data)
+    ? network.data as Record<string, unknown>
+    : null;
+  const resourceType = String(dataRecord?.resourceType || '').toLowerCase();
+  const contentType = getHeaderContentType(network.headers);
+  const hostLower = parsed.host.toLowerCase();
+  const isTelemetry =
+    pathname.includes('/cdn-cgi/') ||
+    pathname.includes('/collect') ||
+    pathname.includes('/analytics') ||
+    pathname.includes('/telemetry') ||
+    pathname.includes('/_next/webpack-hmr') ||
+    pathname.includes('.hot-update.') ||
+    hostLower.includes('google-analytics') ||
+    hostLower.includes('googletagmanager') ||
+    hostLower.includes('doubleclick') ||
+    hostLower.includes('cloudflareinsights') ||
+    hostLower.includes('hotjar') ||
+    hostLower.includes('sentry');
+  const isStaticAsset =
+    ['document', 'script', 'image', 'stylesheet', 'font', 'media'].includes(resourceType) ||
+    contentType.includes('text/html') ||
+    contentType.includes('javascript') ||
+    contentType.includes('text/css') ||
+    contentType.startsWith('image/') ||
+    contentType.startsWith('font/') ||
+    pathname.includes('/_next/static/') ||
+    pathname.includes('/assets/') ||
+    pathname.includes('/public/') ||
+    pathname.includes('/media/') ||
+    pathname.includes('/images/') ||
+    pathname.includes('/fonts/') ||
+    pathname.endsWith('/favicon.ico') ||
+    pathname.endsWith('/manifest.json') ||
+    /\.(html?|m?js|css|png|jpe?g|svg|gif|webp|avif|ico|woff2?|ttf|map)$/i.test(pathname);
+  const isJsonContent =
+    contentType.includes('application/json') ||
+    contentType.includes('application/problem+json') ||
+    contentType.includes('application/vnd.api+json') ||
+    contentType.includes('application/graphql');
   const isLikelyApi =
     pathname.startsWith('/api/') ||
+    resourceType === 'fetch' ||
+    resourceType === 'xhr' ||
+    isJsonContent ||
     pathname.startsWith('/graphql') ||
     pathname.startsWith('/rest/') ||
     pathname.startsWith('/rpc/') ||
@@ -216,7 +286,9 @@ function getNetworkMeta(network: { method?: string; event?: string; url?: string
     !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method);
 
   if (parsed.protocol === 'data:' || parsed.protocol === 'blob:') return { category: 'data' as const, host: parsed.host };
-  if (method === 'OPTIONS') return { category: 'preflight' as const, host: parsed.host };
+  if (method === 'OPTIONS' || resourceType === 'preflight') return { category: 'preflight' as const, host: parsed.host };
+  if (isTelemetry) return { category: 'telemetry' as const, host: parsed.host };
+  if (isStaticAsset) return { category: 'static' as const, host: parsed.host };
   if (pathname.includes('/cdn-cgi/rum') || pathname.includes('/collect') || pathname.includes('/analytics')) return { category: 'telemetry' as const, host: parsed.host };
   if (isLikelyApi) return { category: 'business' as const, host: parsed.host };
   if (
@@ -249,7 +321,7 @@ function buildRunLogs(raw: string, logPath: string | null) {
     .filter((log): log is EvidenceLog => Boolean(log))
     .slice(0, 300);
 
-  return { raw, path: logPath, selected, logs };
+  return { raw, path: logPath, selected, logs: dedupeEvidenceLogs(logs) };
 }
 async function readRunLogs(candidateIds: string[]) {
   for (const id of candidateIds) {
@@ -369,13 +441,14 @@ function pickFrames(frames: RecordingFrame[], importantTimes: number[]) {
 }
 
 async function imageDataUri(filePath: string) {
-  try { return `data:image/jpeg;base64,${(await fs.readFile(filePath)).toString('base64')}`; } catch (error: any) { if (error.code === 'ENOENT') return ''; throw error; }
+  try { return `data:${path.extname(filePath).toLowerCase() === '.png' ? 'image/png' : 'image/jpeg'};base64,${(await fs.readFile(filePath)).toString('base64')}`; } catch (error: any) { if (error.code === 'ENOENT') return ''; throw error; }
 }
 
-async function videoDataUri(filePath: string, mimeType = 'video/webm'): Promise<EvidenceVideo | null> {
+async function videoReference(filePath: string, marker: string, mimeType = 'video/webm'): Promise<EvidenceVideo | null> {
   try {
-    const [stat, file] = await Promise.all([fs.stat(filePath), fs.readFile(filePath)]);
-    return { src: `data:${mimeType};base64,${file.toString('base64')}`, sizeBytes: stat.size, mimeType };
+    const stat = await fs.stat(filePath);
+    if (!stat.isFile()) return null;
+    return { src: `data:${mimeType};base64,${marker}`, sizeBytes: stat.size, mimeType };
   } catch (error: any) { if (error.code === 'ENOENT') return null; throw error; }
 }
 
@@ -420,30 +493,50 @@ export async function GET(req: NextRequest) {
       ? await db.testCase.findFirst({ where: { id: record.sourceTestCaseId, projectId }, select: { id: true } })
       : null;
     const candidateIds = [...new Set([record.id, ...(source ? [source.id] : [])])];
-    const { raw, logs } = await readRunLogsFromDatabase(candidateIds, projectId) || await readRunLogs(candidateIds);
-    const recording = await readLatestRecordingFromDatabase(candidateIds, projectId) || await readLatestRecording(candidateIds);
+    const reportSource = req.nextUrl.searchParams.get('source');
+    if (reportSource && reportSource !== 'studio') throw new MutationError(400, 'Sumber report tidak dikenal.');
+    let studio: Awaited<ReturnType<typeof studioReportSource>> | null = null;
+    if (reportSource === 'studio') {
+      const scope = await authorizeScriptRequest(req);
+      const runId = req.nextUrl.searchParams.get('runId');
+      if (!runId) throw new MutationError(400, 'Pilih run Studio yang akan diekspor.');
+      studio = await studioReportSource(scope.root, projectId, scope.testCaseId, runId, req.nextUrl.searchParams.get('artifactId'));
+    } else if (req.nextUrl.searchParams.has('runId')) throw new MutationError(400, 'Sumber run wajib diisi.');
+    const { raw, logs } = studio ? buildRunLogs(studio.raw, null) : await readRunLogsFromDatabase(candidateIds, projectId) || await readRunLogs(candidateIds);
+    const recording = studio ? studio.recording : await readLatestRecordingFromDatabase(candidateIds, projectId) || await readLatestRecording(candidateIds);
     const pickedFrames = recording ? pickFrames(recording.metadata.frames, extractImportantRelativeTimes(raw)) : [];
     const frames = recording ? (await Promise.all(pickedFrames.map(async frame => ({
       time: formatRelativeTime(frame.relativeMs),
       relativeMs: frame.relativeMs,
       src: await imageDataUri(path.join(/*turbopackIgnore: true*/ recording.framesDir, frame.file)),
     })))).filter(frame => frame.src) : [];
-    const video = recording?.metadata.video?.file
-      ? await videoDataUri(
-          path.join(/*turbopackIgnore: true*/ recording.videoDir, recording.metadata.video.file),
-          recording.metadata.video.mimeType || 'video/webm'
+    const videoMarker = `TRACEVA_VIDEO_${randomUUID()}`;
+    const videoPath = recording?.metadata.video?.file ? path.join(/*turbopackIgnore: true*/ recording.videoDir, recording.metadata.video.file) : null;
+    const video = videoPath
+      ? await videoReference(
+          videoPath, videoMarker,
+          recording?.metadata.video?.mimeType || 'video/webm'
         )
       : null;
     const html = renderHtml({ record, type, logs, recording, frames, video });
     const safeName = record.testCaseId.replace(/[^a-z0-9-_]/gi, '_');
 
-    return new NextResponse(html, {
+    let body: string | ReadableStream<Uint8Array> = html;
+    if (video && videoPath) {
+      try { body = await evidenceHtmlStream(html, videoMarker, videoPath, req.signal); }
+      catch (error: any) {
+        if (error.code !== 'ENOENT') throw error;
+        body = renderHtml({ record, type, logs, recording, frames, video: null });
+      }
+    }
+    return new NextResponse(body, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Content-Disposition': `${shouldDownload ? 'attachment' : 'inline'}; filename="qa-evidence-${safeName}.html"`,
       },
     });
   } catch (error: any) {
+    if (error instanceof MutationError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error('GET /api/evidence failed', { code: typeof error?.code === 'string' ? error.code : 'UNKNOWN' });
     return NextResponse.json({ error: 'Failed to generate evidence report' }, { status: 500 });
   }

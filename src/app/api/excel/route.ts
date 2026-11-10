@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
     await createNotification({
       projectId,
       type: 'IMPORT_COMPLETED',
-      severity: 'success',
-      title: 'Import Excel selesai',
+      severity: importResult.sheets.some(sheet => sheet.skipped > 0) ? 'warning' : 'success',
+      title: importResult.sheets.some(sheet => sheet.skipped > 0) ? 'Import Excel selesai dengan baris dilewati' : 'Import Excel selesai',
       message: `${importResult.imported} testcase berhasil diimport dari ${importResult.totalSheets} sheet.`,
       entityType: 'ImportBatch',
       entityId: importResult.batchId,

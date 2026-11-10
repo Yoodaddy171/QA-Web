@@ -32,7 +32,7 @@ export function isEditableBugFixStatus(value: unknown): value is typeof EDITABLE
 }
 
 // Ordered lifecycle. Status may only move one step at a time (forward or
-// backward) — skipping a stage is not allowed. VERIFIED_FIXED is the final
+// backward) - skipping a stage is not allowed. VERIFIED_FIXED is the final
 // stage and is reached from the Test Case page, not the Bugs menu.
 export const BUGFIX_STATUS_ORDER: readonly BugFixStatus[] = [
   BUGFIX_STATUS.REPORTED,

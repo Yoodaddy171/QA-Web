@@ -1,7 +1,6 @@
-// Pure helpers, types, and constants for TestCaseDetailDialog.
-// Extracted verbatim from the dialog component; no behavior changes.
 import type { TestCase } from '@/components/TestCaseTable';
 import { buildDevlogRelayUrl } from '@/lib/client/api/devlog-client';
+import { getDevtoolsConsoleLevel, getDevtoolsConsoleSource } from '@/lib/client/automation/devtools-console';
 
 export type DevLogTab = 'console' | 'network' | 'execution';
 export type FullscreenLogFilter = 'all' | 'errors' | 'api';
@@ -18,6 +17,7 @@ export interface LogEntry {
   id?: string;
   eventId?: string;
   runId?: string;
+  sessionId?: string;
   mode?: 'manual' | 'katalon' | 'unknown';
   source?: string;
   timestamp?: string | number | Date;
@@ -112,12 +112,50 @@ export const DEFAULT_NETWORK_FILTERS: NetworkFilterState = {
 };
 
 export const STATIC_EXTENSIONS = [
-  '.css', '.woff', '.woff2', '.ttf', '.map', '.json',
+  '.css', '.woff', '.woff2', '.ttf', '.map',
 ];
 
 export const DOCUMENT_EXTENSIONS = ['.html', '.htm'];
 export const SCRIPT_EXTENSIONS = ['.js', '.mjs'];
 export const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.ico', '.avif'];
+
+const HTTP_STATUS_TEXT: Record<number, string> = {
+  200: 'OK',
+  201: 'Created',
+  202: 'Accepted',
+  204: 'No Content',
+  206: 'Partial Content',
+  301: 'Moved Permanently',
+  302: 'Found',
+  304: 'Not Modified',
+  307: 'Temporary Redirect',
+  308: 'Permanent Redirect',
+  400: 'Bad Request',
+  401: 'Unauthorized',
+  403: 'Forbidden',
+  404: 'Not Found',
+  405: 'Method Not Allowed',
+  408: 'Request Timeout',
+  409: 'Conflict',
+  413: 'Payload Too Large',
+  415: 'Unsupported Media Type',
+  422: 'Unprocessable Entity',
+  429: 'Too Many Requests',
+  500: 'Internal Server Error',
+  502: 'Bad Gateway',
+  503: 'Service Unavailable',
+  504: 'Gateway Timeout',
+};
+
+export const formatHttpStatus = (status?: number | string) => {
+  if (status === undefined || status === null || status === '' || status === '-') return 'Pending';
+  const numeric = typeof status === 'number' ? status : Number(status);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    const label = HTTP_STATUS_TEXT[numeric];
+    return label ? `${numeric} ${label}` : String(numeric);
+  }
+  return String(status);
+};
 
 export const networkCodePanelClass = "overflow-auto rounded border border-border bg-muted p-3 font-mono text-xs leading-relaxed [tab-size:2]";
 export const networkFullscreenCodePanelClass = "min-h-[420px] min-w-[280px] max-h-[64vh] resize overflow-auto rounded-xl border border-border bg-background p-4 font-mono text-xs leading-relaxed shadow-sm [tab-size:2]";
@@ -205,6 +243,12 @@ export const isExecutionLog = (log: LogEntry) => (
   || log.eventType === 'run.finished'
 );
 
+export const getRequestHeaders = (data: unknown) => {
+  const record = asRecord(data);
+  if (!record) return null;
+  return record.requestHeaders ?? null;
+};
+
 export const getRequestPayload = (data: unknown) => {
   const record = asRecord(data);
   if (!record) return null;
@@ -215,6 +259,17 @@ export const getResponsePayload = (data: unknown) => {
   const record = asRecord(data);
   if (!record) return data;
   return record.responseBody ?? record.response ?? record.data ?? data;
+};
+
+const getHeaderContentType = (headers: unknown) => {
+  const record = asRecord(headers);
+  if (!record) return '';
+  for (const [key, value] of Object.entries(record)) {
+    if (key.toLowerCase() === 'content-type' && value != null) {
+      return String(value).toLowerCase();
+    }
+  }
+  return '';
 };
 
 export const getConsoleLogText = (log: LogEntry) => (
@@ -246,10 +301,44 @@ export const getNetworkMeta = (network: NonNullable<LogEntry['network']>): Netwo
   const url = network.url || '';
   const parsed = parseNetworkUrl(url);
   const method = (network.method || network.event || 'TRACE').toUpperCase();
-  const resourceType = (network.method || '').toLowerCase();
+  const dataRecord = asRecord(network.data);
+  const resourceType = String(dataRecord?.resourceType || '').toLowerCase();
+  const contentType = getHeaderContentType(network.headers);
   const pathname = parsed.pathname.toLowerCase();
+  const hostLower = parsed.host.toLowerCase();
   const isError = typeof network.status === 'number' && network.status >= 400;
+  const isTelemetry =
+    pathname.includes('/cdn-cgi/') ||
+    pathname.includes('/collect') ||
+    pathname.includes('/analytics') ||
+    pathname.includes('/telemetry') ||
+    pathname.includes('/_next/webpack-hmr') ||
+    pathname.includes('.hot-update.') ||
+    hostLower.includes('google-analytics') ||
+    hostLower.includes('googletagmanager') ||
+    hostLower.includes('doubleclick') ||
+    hostLower.includes('cloudflareinsights') ||
+    hostLower.includes('hotjar') ||
+    hostLower.includes('sentry');
+  const isStaticAssetPath =
+    STATIC_EXTENSIONS.some((extension) => pathname.endsWith(extension)) ||
+    pathname.includes('/_next/static/') ||
+    pathname.includes('/assets/') ||
+    pathname.includes('/public/') ||
+    pathname.includes('/media/') ||
+    pathname.includes('/images/') ||
+    pathname.includes('/fonts/') ||
+    pathname.endsWith('/favicon.ico') ||
+    pathname.endsWith('/manifest.json');
+  const isJsonContent =
+    contentType.includes('application/json') ||
+    contentType.includes('application/problem+json') ||
+    contentType.includes('application/vnd.api+json') ||
+    contentType.includes('application/graphql');
   const isLikelyApi =
+    resourceType === 'fetch' ||
+    resourceType === 'xhr' ||
+    isJsonContent ||
     pathname.startsWith('/api/') ||
     pathname.startsWith('/graphql') ||
     pathname.startsWith('/rest/') ||
@@ -271,44 +360,80 @@ export const getNetworkMeta = (network: NonNullable<LogEntry['network']>): Netwo
     return { category: 'preflight', label: 'Preflight', host: parsed.host, method, pathname: parsed.pathname, isError };
   }
 
-  if (resourceType === 'document' || DOCUMENT_EXTENSIONS.some((extension) => pathname.endsWith(extension))) {
-    return { category: 'document', label: 'Document', host: parsed.host, method, pathname: parsed.pathname, isError };
-  }
-
-  if (resourceType === 'script' || SCRIPT_EXTENSIONS.some((extension) => pathname.endsWith(extension))) {
-    return { category: 'script', label: 'Script', host: parsed.host, method, pathname: parsed.pathname, isError };
-  }
-
-  if (resourceType === 'image' || IMAGE_EXTENSIONS.some((extension) => pathname.endsWith(extension))) {
-    return { category: 'image', label: 'Image', host: parsed.host, method, pathname: parsed.pathname, isError };
-  }
-
-  if (pathname.includes('/cdn-cgi/rum') || pathname.includes('/collect') || pathname.includes('/analytics')) {
+  if (isTelemetry) {
     return { category: 'telemetry', label: 'Telemetry', host: parsed.host, method, pathname: parsed.pathname, isError };
   }
 
-  if (isLikelyApi) {
-    return { category: 'business', label: 'API', host: parsed.host, method, pathname: parsed.pathname, isError };
+  if (resourceType === 'document' || DOCUMENT_EXTENSIONS.some((extension) => pathname.endsWith(extension)) || contentType.includes('text/html')) {
+    return { category: 'document', label: 'Document', host: parsed.host, method, pathname: parsed.pathname, isError };
   }
 
-  const isStatic = STATIC_EXTENSIONS.some((extension) => pathname.endsWith(extension)) ||
-    pathname.includes('/_next/') ||
-    pathname.includes('/assets/') ||
-    pathname.includes('/public/') ||
-    pathname.includes('/media/') ||
-    pathname.includes('/images/');
+  if (resourceType === 'script' || SCRIPT_EXTENSIONS.some((extension) => pathname.endsWith(extension)) || contentType.includes('javascript')) {
+    return { category: 'script', label: 'Script', host: parsed.host, method, pathname: parsed.pathname, isError };
+  }
 
-  if (isStatic) {
+  if (resourceType === 'image' || IMAGE_EXTENSIONS.some((extension) => pathname.endsWith(extension)) || contentType.startsWith('image/')) {
+    return { category: 'image', label: 'Image', host: parsed.host, method, pathname: parsed.pathname, isError };
+  }
+
+  if (resourceType === 'stylesheet' || resourceType === 'font' || resourceType === 'media' || contentType.includes('text/css') || contentType.startsWith('font/') || isStaticAssetPath) {
     return { category: 'static', label: 'Static', host: parsed.host, method, pathname: parsed.pathname, isError };
+  }
+
+  if (isLikelyApi) {
+    return { category: 'business', label: 'Fetch/XHR', host: parsed.host, method, pathname: parsed.pathname, isError };
   }
 
   return { category: 'other', label: 'Other', host: parsed.host, method, pathname: parsed.pathname, isError };
 };
 
-export const getConsoleLogSignature = (log: LogEntry) => [
-  log.level || 'INFO',
-  getConsoleLogText(log),
-].join('|');
+export const getNetworkRequestKey = (log: LogEntry) => {
+  const requestId = asRecord(log.network?.data)?.requestId;
+  return typeof requestId === 'string' && requestId
+    ? JSON.stringify([log.sessionId ?? log.runId, log.source, requestId])
+    : undefined;
+};
+
+export const dedupeNetworkLogs = (logs: LogEntry[]) => {
+  const rows: LogEntry[] = [];
+  const requestIndexes = new Map<string, number>();
+  const legacyPending = new Map<string, { indexes: number[]; consumed: number }>();
+  for (const log of logs) {
+    if (!log.network) continue;
+    const pending = (log.network.event === 'Request' || log.eventType === 'network.request') && log.network.status == null;
+    const key = getNetworkRequestKey(log);
+    if (key) {
+      const previous = requestIndexes.get(key);
+      if (previous === undefined) {
+        requestIndexes.set(key, rows.length);
+        rows.push(log);
+      } else if (!pending) {
+        rows[previous] = log;
+      }
+      continue;
+    }
+
+    // Older recordings have no request ID. A response can consume only one earlier matching request.
+    const legacyKey = JSON.stringify([log.sessionId ?? log.runId, log.source, log.network.method?.toUpperCase(), log.network.url]);
+    const queue = legacyPending.get(legacyKey);
+    if (!pending && queue && queue.consumed < queue.indexes.length) {
+      rows[queue.indexes[queue.consumed++]] = log;
+    } else {
+      if (pending) {
+        const waiting = queue ?? { indexes: [], consumed: 0 };
+        waiting.indexes.push(rows.length);
+        if (!queue) legacyPending.set(legacyKey, waiting);
+      }
+      rows.push(log);
+    }
+  }
+  return rows;
+};
+
+export const getConsoleLogSignature = (log: LogEntry) => {
+  const source = getDevtoolsConsoleSource(log);
+  return JSON.stringify([getDevtoolsConsoleLevel(log), getConsoleLogText(log), source?.url, source?.lineNumber, source?.columnNumber]);
+};
 
 export const getNetworkLogSignature = (item: NetworkLogItem) => [
   item.meta.method,

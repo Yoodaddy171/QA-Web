@@ -3,6 +3,7 @@ import { getRequestActor } from '@/lib/request-actor';
 import { db } from '@/lib/db';
 import { generateReport, getProjectReports } from '@/lib/services/report-generator';
 import type { CreateReportInput } from '@/lib/services/report-types';
+import type { ReportFilters } from '@/lib/domain/report-filters';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,12 +24,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const status = searchParams.get('status') || 'ALL';
+    const type = searchParams.get('type') || 'ALL';
+    const search = searchParams.get('search') || '';
+    if (!['ALL', 'DRAFT', 'FINAL'].includes(status) ||
+        !['ALL', 'TEST_STATUS_REPORT', 'TEST_PLANNING_DOCUMENT'].includes(type) || search.length > 200) {
+      return NextResponse.json({ error: 'Filter report tidak valid.' }, { status: 400 });
+    }
     const page = await getProjectReports(projectId, {
+      summaryOnly: searchParams.get('view') === 'summary',
       cursor: searchParams.get('cursor') || undefined,
       limit: Number(searchParams.get('limit') || 50),
+      filters: { search, status, type } as ReportFilters,
     });
 
-    return NextResponse.json({ reports: page.items, hasMore: page.hasMore, nextCursor: page.nextCursor });
+    return NextResponse.json({ reports: page.items, hasMore: page.hasMore, nextCursor: page.nextCursor, total: page.total, matchedTotal: page.matchedTotal });
   } catch (error) {
     console.error('Error fetching reports:', error);
     return NextResponse.json(

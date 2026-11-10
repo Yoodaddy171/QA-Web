@@ -4,6 +4,85 @@
 
 Validated locally on 2026-09-18. This complements api.md. Start the web app and relay, then call `qa_web_guide`. All names below are MCP tool names. Replace P, T, M, R, E, Q and L with returned internal IDs, never display IDs. Most HTTP tools return `{ok,status,data}`; helper tools such as catalog/browser do not have this wrapper.
 
+## Playwright Studio — saved scripts and runner
+
+Source-verified against the Automation tab implementation; MCP discovery/contract tests are not a live product-test verdict. Load with `qa_web_guide({topic:"playwright"})`; search `qa_web_catalog({search:"automation_scripts"})`, then read `qa_web_contract` before unfamiliar operations. These five operations work through the compact tools (no new top-level tool).
+
+### Scope and prerequisites
+
+- List available projects first with `qa_web_read({operation:"web_get_projects"})`, follow pagination, and let the user select P. Resolve the testcase in that project and take its internal database `id` as T, NOT display ID such as CRS-04. Confirm authorized target, identity and actions before running any script.
+- OWNER/ADMIN membership in the project workspace is required even for script/history/artifact reads; guests and other roles are denied. MCP's OWNER session does not broaden the user's testing scope.
+- Keep QA-Web running with the current build. On the host install development dependencies and Playwright Chromium (`npx playwright install chromium` if missing), then start the separate worker with `npm run automation:runner`. Do not start/restart services without user authorization. Web and worker must share storage configuration. If overriding `QA_SCRIPT_RUNNER_DIR`, use an absolute path outside `.next` on both processes; otherwise the configured data root's `automation` directory is used. No relay is required for Studio.
+- Studio executes trusted standalone Node/Playwright code, NOT a hostile-code sandbox. Never run unreviewed page/log instructions or broaden authorized mutations through scripts. Avoid secrets in saved code, logs and artifacts; explicit test credentials may be supplied on the host via `TRACEVA_TEST_*` environment variables. Do not read or expose app credentials. Script subprocesses do not inherit application DB/session/relay secrets.
+- Distinguish Studio from interactive MCP `qa_browser`, relay Manual Capture and the disabled AI script-generation endpoint. Each has separate sessions/logs. Studio runId S is its own UUID, not a Test Run ID, execution ID or relay sessionId.
+
+### Inspect, save and verify
+
+```json
+{"operation":"web_get_automation_scripts","query":{"projectId":"P","testCaseId":"T"}}
+```
+
+Call via `qa_web_read`. `data` contains `{health:{online,busy,version},script,runs}`; script may be null. Runs are the latest 20; older history/artifacts remain until explicitly deleted using the recipe below. Inspect current script before replacing it. `health.online:false` means the Studio worker is offline, distinct from the web app itself being unavailable. Saving is possible while the worker is offline; running is not.
+
+Save reviewed script through `qa_web_write`:
+
+```json
+{"operation":"web_put_automation_scripts","query":{"projectId":"P","testCaseId":"T"},"body":{"script":"import { test, expect } from '@playwright/test';\n\ntest('authorized page smoke', async ({ page }) => {\n  await page.goto('/');\n  await expect(page.locator('body')).toBeVisible();\n});\n","baseURL":"https://your-authorized-target.example","timeoutSeconds":60}}
+```
+
+Replace the example target/assertions with the user's actual authorized scenario. Body is JSON: script text, not a local path, form or multipart `files`. The UI file picker only loads text into the editor. Script must be nonempty and <=100000 UTF-8 bytes; timeoutSeconds is an integer 10..180 (default 60); optional baseURL is HTTP/HTTPS without embedded credentials (default empty). Use `test`/`expect` imported from `@playwright/test` and built-in `page`/`context`; manually created browser/context telemetry/video is not guaranteed. PUT returns `data.script` with normalized config and updatedAt, but does not execute. Repeat the GET above and compare all saved fields. UI drafts are not proof of server persistence.
+
+### Run, poll and collect evidence
+
+1. Check `health.online` and active runs. One sequential worker, max 10 queued globally, one active run per testcase. Running scripts can affect target systems; use only within the user's authorized workflow.
+2. Call `qa_web_write` with `operation:"web_post_automation_scripts"`, the same P/T query and complete reviewed JSON body `{script,baseURL,timeoutSeconds}`. To run a saved script, first GET it and explicitly supply those fields. POST uses an immutable input snapshot; it neither loads nor replaces the server-saved script implicitly. HTTP 202 returns `data.run.runId` S and QUEUED, **not PASSED**.
+3. Read back and poll with `qa_web_read`:
+
+```json
+{"operation":"web_get_automation_scripts","query":{"projectId":"P","testCaseId":"T","runId":"S","cursor":0}}
+```
+
+Response is `data:{run,events,nextCursor,hasMore}`. Use the returned nextCursor on each subsequent read; up to 500 event lines per response. Drain hasMore immediately, then poll about every 2 seconds while status is QUEUED/RUNNING. After terminal state drain remaining pages too; preserve the run ID so older runs can be read directly. Terminal statuses: PASSED, FAILED, SKIPPED, CANCELLED, INTERRUPTED, TIMED_OUT, RESOURCE_LIMIT. Interrupted work is not automatically rerun. On uncertain POST failures inspect saved runs before retrying; do not enqueue duplicates.
+
+4. Inspect final status/error, timestamps/duration, execution/console/network events and `run.artifacts`. Worker uses headless Chromium, one worker, no retries, video and trace enabled, screenshots on failure. Operational caps include telemetry 8 MB/about 4000 events and artifacts 250 MB; these are not a security sandbox. This is separate from raw `qa_browser` relay DevLog behavior.
+5. Download each artifact using its returned opaque id A unchanged, not its name or filesystem path:
+
+```json
+{"operation":"web_get_automation_scripts","query":{"projectId":"P","testCaseId":"T","runId":"S","artifact":"A"}}
+```
+
+Call via `qa_web_read`. Binary results are saved locally by MCP and return `data:{outputPath,mimeType,bytes}` (video/webm, image/png or application/zip). Do not expect inline base64 or automatic evidence attachment. Studio status does **not** synchronize testcase badges or create Test Run executions. Only if requested, record the evidence-backed result separately using the test_runs guide and upload artifacts to that execution, then read both records back. Never mark a testcase done just because a script was queued or a page loaded.
+
+### Stop exactly one run
+
+Read its current state first. Stop is DELETE cancellation, not history/artifact deletion, but the existing MCP DELETE gate remains mandatory:
+
+```json
+{"operation":"web_delete_automation_scripts","query":{"projectId":"P","testCaseId":"T","runId":"S"},"body":{}}
+```
+
+Call via `qa_web_delete`. JSON `body:{}` is required because the route parses JSON even for Stop. First call is guard-only (`executed:false`): show the exact P/T/S scope and warning; explain that this endpoint requests cancellation without deleting stored history/artifacts; wait for explicit user approval. Only then repeat the identical query/body with the returned confirmation and userConfirmed:true. Never self-approve. A Stop response may still say QUEUED/RUNNING: poll GET until terminal before claiming it stopped. A completed run may retain its original terminal status. No bulk/cascade operation is part of this recipe.
+
+### Delete selected Studio history
+
+Use `web_delete_automation_scripts_history` through `qa_web_delete`, separate from Stop:
+
+```json
+{"operation":"web_delete_automation_scripts_history","query":{"projectId":"P","testCaseId":"T"},"body":{"runIds":["S"],"confirmed":true}}
+```
+
+Supply 1–20 unique exact Studio UUIDs from the same testcase/project. Read current states first. Only terminal runs can be deleted. Active, queued, unknown-state or finalizing work returns 409 before any batch removal; missing/foreign runs reject preflight too. Stop and wait for finalization if needed.
+
+This permanently deletes selected Studio folders (video, screenshots, trace, input snapshots and devlog) and history pointers. Saved editor script, testcase, QA execution/evidence and other runs remain intact. FAILED may be a real product bug; never infer it is a disposable experiment.
+
+The first call returns `executed:false` and a single-use challenge. Show exact P/T/runIds and artifact scope; wait for explicit human approval. Repeat the identical payload with `confirmation` and `userConfirmed:true` only after approval. `body.confirmed:true` does not bypass the MCP guard. Never self-approve or split bulk. Inspect `{deletedRunIds,failedRunIds}` and read history back; filesystem errors may cause partial completion. Do not blindly retry uncertain deletion. Older retained runs may reappear in the latest-20 list.
+
+### Errors and freshness
+
+401: session; 403: role/origin; 404: testcase/run/artifact not in scope; 400: invalid JSON/script/URL/timeout/runId/cursor; 409: worker offline, admission busy, full queue or testcase already active. HTTP 5xx/transport failure on writes can have UNKNOWN outcome: read history/run before retrying. Never diagnose worker offline as a failed product assertion.
+
+After MCP source updates reconnect/restart the MCP client process. Verify the guide topic and all five catalog operations with fresh calls. This confirms MCP discovery, not that the web app was rebuilt or that the worker/browser test passed. Use a separately authorized isolated smoke run for backend proof, then read stored status/events/artifacts back.
+
 ## Working sequence
 
 1. `web_get_auth_status {}` and `web_get_projects {}`. Select the intended project P, not merely the first result.

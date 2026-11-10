@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({ session: vi.fn(), origin: vi.fn(), project: vi
 vi.mock('@/lib/db', () => ({ db: { project: { findFirst: mocks.project }, testCase: { findFirst: mocks.testCase } } }));
 vi.mock('@/lib/auth', () => ({ SESSION_COOKIE: 'qa_session', getSessionByToken: mocks.session, isAllowedRequestOrigin: mocks.origin, hasMinimumRole: (role: string) => role === 'ADMIN' || role === 'OWNER' }));
 import { GET, PUT, POST, DELETE } from './route';
+import { DELETE as deleteHistory } from './history/route';
 let root: string;
 let previous: string | undefined;
 beforeEach(async () => {
@@ -20,6 +21,30 @@ beforeEach(async () => {
 afterEach(async () => { if (previous === undefined) delete process.env.QA_SCRIPT_RUNNER_DIR; else process.env.QA_SCRIPT_RUNNER_DIR = previous; await fs.rm(root, { recursive: true, force: true }); });
 const request = (method = 'GET', extra = '', body?: unknown, headers?: Record<string, string>) => new NextRequest(`http://localhost:3000/api/automation/scripts?projectId=p&testCaseId=c${extra}`, { method, headers: { cookie: 'qa_session=synthetic', 'content-type': 'application/json', origin: 'http://localhost:3000', ...headers }, ...(body ? { body: JSON.stringify(body) } : {}) });
 describe('script execution access boundaries', () => {
+  it('requires explicit confirmation and preserves Stop semantics for history deletion', async () => {
+    const runId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const directory = runDirectory(root, 'p', 'c', runId);
+    await writeJson(path.join(directory, 'run.json'), { runId, projectId: 'p', testCaseId: 'c', status: 'FAILED', artifacts: [] });
+    expect((await deleteHistory(request('DELETE', '', { runIds: [runId] }))).status).toBe(400);
+    expect((await DELETE(request('DELETE', `&runId=${runId}`, {}))).status).toBe(200);
+    expect((await fs.stat(directory)).isDirectory()).toBe(true);
+    const result = await deleteHistory(request('DELETE', '', { runIds: [runId], confirmed: true }));
+    expect(result.status).toBe(200); expect((await result.json()).deletedRunIds).toEqual([runId]);
+  });
+  it('enforces session, guest, role, project, testcase and origin checks for history deletion', async () => {
+    const body = { runIds: ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'], confirmed: true };
+    mocks.origin.mockReturnValue(false);
+    expect((await deleteHistory(request('DELETE', '', body))).status).toBe(403);
+    mocks.origin.mockReturnValue(true); mocks.testCase.mockResolvedValue(null);
+    expect((await deleteHistory(request('DELETE', '', body))).status).toBe(404);
+    mocks.testCase.mockResolvedValue({ id: 'c' }); mocks.project.mockResolvedValue({ workspaceId: 'other' });
+    expect((await deleteHistory(request('DELETE', '', body))).status).toBe(403);
+    mocks.project.mockResolvedValue({ workspaceId: 'w' });
+    for (const session of [null, { guest: {}, user: { isGuest: true, memberships: [{ workspaceId: 'w', role: 'OWNER' }] } }, { user: { memberships: [{ workspaceId: 'w', role: 'QA' }] } }]) {
+      mocks.session.mockResolvedValue(session);
+      expect((await deleteHistory(request('DELETE', '', body))).status).toBe(session ? 403 : 401);
+    }
+  });
   it('requires authentication for script and artifact reads', async () => {
     mocks.session.mockResolvedValue(null);
     expect((await GET(request())).status).toBe(401);

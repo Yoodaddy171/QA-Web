@@ -40,7 +40,7 @@ export const TestCaseStatusCell = memo(function TestCaseStatusCell({ id, display
       onChange(id, value);
     }}>
       <SelectTrigger aria-label={label} aria-controls={optionsId} className={triggerClass}>{icon(status)} <SelectValue /></SelectTrigger>
-      <SelectContent id={optionsId} className="rounded-xl bg-card border-border/60 elevation-3">
+      <SelectContent id={optionsId} className="rounded-xl bg-card border-border/60 shadow-lg">
         <SelectGroup>{STATUSES.map(value => <SelectItem key={value} value={value} className="text-xs font-bold rounded-lg">{value}</SelectItem>)}</SelectGroup>
       </SelectContent>
     </Select>

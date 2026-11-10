@@ -14,6 +14,7 @@ vi.mock('@/lib/db', async () => {
 });
 import { db } from '@/lib/db';
 import { getProjectStats, buildReleaseReadiness } from '@/lib/services/stats-service';
+import { calculateDashboardStats } from '@/lib/services/stats-aggregation';
 let data: Awaited<ReturnType<typeof seedAuthorizationFixture>>;
 beforeAll(async () => {
   await fs.writeFile(path.join(fixture.root, 'synthetic.db'), '');
@@ -50,4 +51,46 @@ it.each([
   expect(actual.releaseReadiness).toEqual(buildReleaseReadiness(oldRuns, bugs));
   expect(actual.totalTestCases).toBe(1);
   expect(JSON.stringify(actual)).not.toContain(data.resources.b.tc.id);
+});
+
+it('STATS-EQUIVALENCE: grouped counters and bounded queues preserve a mixed full-inventory snapshot', async () => {
+  const projectId = data.resources.a.project.id;
+  const modules = await Promise.all(['Alpha', 'Beta'].map(name => db.module.create({ data: { projectId, name } })));
+  const statuses = ['DONE', 'NOT DONE', 'IN PROGRESS', 'BLOCKED', 'FAILED', 'READY TO RETEST', 'TBA', 'UNKNOWN'];
+  for (let i = 0; i < 60; i++) {
+    await db.testCase.create({ data: {
+      projectId, testCaseId: `OPT-${i}`, page: `Page ${i % 4}`, subMenu: i % 2 ? 'Sub' : null,
+      moduleId: i % 3 === 0 ? null : modules[i % 2].id, testType: i % 2 ? 'Negative' : 'Positive',
+      testAction: 'Synthetic action', steps: 'Synthetic steps', expectedResult: 'Expected',
+      status: i < 16 ? 'READY TO RETEST' : statuses[i % statuses.length], priority: ['Low', 'Medium', 'High', 'Critical'][i % 4],
+      updatedAt: new Date(Date.UTC(2020, 0, i + 1)),
+    } });
+  }
+  for (let i = 0; i < 18; i++) await db.bugFix.create({ data: {
+    projectId, sourceTestCaseId: data.resources.a.tc.id, actualResult: 'Not As Expected', testCaseId: `BUG-${i}`, page: 'Bugs', testType: 'Negative', testAction: 'Synthetic bug',
+    steps: 'Synthetic steps', expectedResult: 'Expected', status: ['SUDAH DILAPORKAN', 'SEDANG DI FIX', 'READY TO RETEST', 'VERIFIED & FIXED'][i % 4],
+    priority: i % 2 ? 'Critical' : 'High', reportedAt: new Date(Date.UTC(2010, 0, i + 1)),
+    fixingAt: i % 2 ? new Date(Date.UTC(2011, 0, i + 1)) : null,
+  } });
+  const [cases, bugs, projectModules] = await Promise.all([
+    db.testCase.findMany({ where: { projectId }, include: { module: { select: { id: true, name: true } } } }),
+    db.bugFix.findMany({ where: { projectId }, include: { module: { select: { id: true, name: true } } } }),
+    db.module.findMany({ where: { projectId } }),
+  ]);
+  const legacy = calculateDashboardStats(cases, bugs, projectModules);
+  const caseReads = vi.spyOn(db.testCase, 'findMany');
+  const bugReads = vi.spyOn(db.bugFix, 'findMany');
+  const actual = await getProjectStats(projectId);
+  expect(actual).toEqual({ ...legacy, releaseReadiness: buildReleaseReadiness([], bugs), recentActivities: [] });
+  expect(actual.retestQueue).toHaveLength(8);
+  expect(actual.bugAging).toHaveLength(8);
+  expect(actual.weightMap).toHaveProperty(cases.find(item => item.status === 'DONE')!.id);
+  expect(JSON.stringify(actual)).not.toContain(data.resources.b.tc.id);
+  const queueQuery = caseReads.mock.calls.find(([query]) => query?.where?.status === 'READY TO RETEST')?.[0];
+  expect(queueQuery).toMatchObject({ take: 8 });
+  const inventoryQuery = caseReads.mock.calls.find(([query]) => !query?.where?.status)?.[0];
+  expect(inventoryQuery?.select).not.toHaveProperty('updatedAt');
+  expect(inventoryQuery?.select).not.toHaveProperty('testType');
+  expect(bugReads.mock.calls.every(([query]) => Array.isArray((query?.where?.id as { in?: unknown[] })?.in) && ((query?.where?.id as { in: unknown[] }).in.length <= 8))).toBe(true);
+  caseReads.mockRestore(); bugReads.mockRestore();
 });

@@ -5,15 +5,21 @@ export type BugFixQueryOptions = {
   search?: string;
   status?: string;
   limit?: number;
+  page?: number;
+  moduleId?: string;
+  tab?: 'active' | 'resolved';
 };
 
-export async function fetchBugFixes(options: BugFixQueryOptions, signal?: AbortSignal): Promise<{ bugFixItems?: BugFixItem[] }> {
+export async function fetchBugFixes(options: BugFixQueryOptions, signal?: AbortSignal): Promise<{ bugFixItems?: BugFixItem[]; total?: number; totalPages?: number }> {
   const params = new URLSearchParams({
     projectId: options.projectId,
     limit: String(options.limit ?? 100),
   });
   if (options.search) params.set('search', options.search);
   if (options.status) params.set('status', options.status);
+  if (options.page) params.set('page', String(options.page));
+  if (options.moduleId && options.moduleId !== 'all') params.set('moduleId', options.moduleId);
+  if (options.tab) params.set('tab', options.tab);
 
   const res = await fetch(`/api/bugfix?${params}`, { signal });
   if (!res.ok) throw new Error('Bug fix data gagal dimuat');

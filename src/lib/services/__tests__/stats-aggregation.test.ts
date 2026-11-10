@@ -6,6 +6,7 @@ import {
   aggregateTestCaseStatusCounts,
   buildMenuWeightProgress,
   buildModuleProgress,
+  buildModuleData,
   calculateDashboardStats,
   type StatsBugFix,
   type StatsModule,
@@ -54,6 +55,18 @@ function bugFix(overrides: Partial<StatsBugFix>): StatsBugFix {
 }
 
 describe('stats aggregation', () => {
+  it('STATS-LINEAR: groups module counters in one inventory pass rather than scanning per module', () => {
+    const modules = Array.from({ length: 200 }, (_, i) => ({ id: `module-${i}`, name: `Module ${i}` }));
+    let lookups = 0;
+    const cases = Array.from({ length: 2000 }, (_, i) => {
+      const item = testCase({ id: `c-${i}`, status: 'DONE' });
+      Object.defineProperty(item, 'moduleId', { get: () => { lookups++; return modules[i % modules.length].id; } });
+      return item;
+    });
+    const rows = buildModuleData(modules, cases);
+    expect(rows.every(row => row.total === 10 && row.done === 10)).toBe(true);
+    expect(lookups).toBeLessThanOrEqual(cases.length * 3);
+  });
   it('aggregates testcase statuses with legacy fallback for unknown statuses', () => {
     const counts = aggregateTestCaseStatusCounts([
       testCase({ id: '1', status: TESTCASE_STATUS.DONE }),

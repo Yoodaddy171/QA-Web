@@ -1,36 +1,60 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import { Clock, Copy, Filter, Layers, RefreshCw, Search, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Copy, Link2, Pause, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ResizablePanel } from '@/components/ui/resizable';
 import { cn } from '@/lib/utils';
-import type { FullscreenLogFilter } from '@/components/TestCaseDetailDialog.helpers';
 import { SyncedVideoEventsPanel } from '@/components/SyncedVideoEventsPanel';
 import { ExecutionLogView } from '@/components/ExecutionLogView';
+import { VirtualLogList } from '@/components/VirtualLogList';
+import { useDevlogTabMemory } from '@/hooks/use-devlog-tab-memory';
+import { useDevlogSearch } from '@/hooks/use-devlog-search';
+import { DevlogFilterBar, DevlogSearchEmpty } from '@/components/DevlogSearchBar';
+import { DevlogConsoleLevelIcon, DevlogEmptyState, DevlogTabs } from '@/components/DevlogPanelChrome';
+import { DEVTOOLS_NETWORK_GRID, DevtoolsNetworkCells, DevtoolsNetworkColumns } from '@/components/DevtoolsNetworkFilters';
+import { getDevtoolsConsoleLevel, getDevtoolsConsoleSource } from '@/lib/client/automation/devtools-console';
+import { NetworkRequestDetails } from '@/components/NetworkRequestDetails';
+import { minimumEvidencePane } from '@/lib/client/automation/devlog-review';
 
 type RecordingEvidencePanelProps = Record<string, any>;
 
 export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
   const {
-    isClosingRecordingFullscreen, activeDevLogTab, setActiveDevLogTab, fullscreenLogFilter,
-    setFullscreenLogFilter, selectedFullscreenLog, setSelectedFullscreenLog, networkCodeWrap,
-    setNetworkCodeWrap, copyFullscreenEvidence, copiedEvidence, fullscreenNetworkGroups,
-    fullscreenConsoleGroups, executionLogs, getNetworkMethod, getNetworkCategoryClass, getNetworkStatusClass,
+    activeDevLogTab, setActiveDevLogTab,
+    selectedFullscreenLog, setSelectedFullscreenLog, networkCodeWrap,
+    setNetworkCodeWrap, copyFullscreenEvidence, copiedEvidence, fullscreenNetworkGroups: allNetworkGroups,
+    fullscreenConsoleGroups: allConsoleGroups, executionLogs: allExecutionLogs, getNetworkMethod, getNetworkCategoryClass, getNetworkStatusClass,
     getNetworkStatus, getNetworkDuration, formatLogRecordingTime, formatRelativeTime, selectFullscreenNetworkLog,
     selectFullscreenConsoleLog, networkCodeWhitespaceClass, networkFullscreenCodePanelClass,
-    networkCodePanelClass, formatPrettyValue, getRequestPayload, getResponsePayload,
+    networkCodePanelClass, formatPrettyValue, getRequestHeaders, getRequestPayload, getResponsePayload,
     selectedSyncedVideoEventDetail, selectedSyncedVideoEvent, getSyncedEventSeverityClass,
     filteredSyncedVideoEvents, syncedVideoEvents, syncedEventFilters, toggleSyncedEventFilter,
     selectedSyncedEventId, seekRecordingFromSyncedEvent, seekRecordingFromLog, getConsoleLogText,
     groupedSyncedVideoMarkers, setSelectedSyncedEventId, currentSyncedVideoEvent,
     syncedVideoEvents: syncedEvents, getSyncedMarkerClass, scrollFullscreenTimeline,
-    fullscreenTimelineRef, handleTimelineWheel, isRecordingFullscreenExpanded,
+    fullscreenTimelineRef, handleTimelineWheel,
     selectedRecordingFrame, manualRecording, hasManualRecordingVideo, syncedNetworkLogIdSet,
     fullscreenNetworkRowRefs, setExpandedLogId, expandedLogId,
   } = props;
+  const search = useDevlogSearch({ executionLogs: allExecutionLogs, networkGroups: allNetworkGroups, consoleGroups: allConsoleGroups, tab: activeDevLogTab, onSearch: props.pauseRecordingFollow, filters: props.devtoolsFilters });
+  const { execution: executionLogs, network: fullscreenNetworkGroups, console: fullscreenConsoleGroups } = search;
+  const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
+  const [showSyncedWithDetail, setShowSyncedWithDetail] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [minimumSize, setMinimumSize] = useState(() => minimumEvidencePane(typeof window === 'undefined' ? 1440 : window.innerWidth));
+  useEffect(() => {
+    const group = contentRef.current?.closest('[data-slot="resizable-panel-group"]');
+    if (!group) return;
+    const observer = new ResizeObserver(() => setMinimumSize(minimumEvidencePane(group.clientWidth)));
+    observer.observe(group);
+    return () => observer.disconnect();
+  }, []);
+  const { listRef, changeTab, rememberScroll } = useDevlogTabMemory({
+    tab: activeDevLogTab, selection: selectedFullscreenLog, expanded: expandedLogId,
+    onTabChange: setActiveDevLogTab, onSelectionChange: setSelectedFullscreenLog, onExpandedChange: setExpandedLogId,
+  });
 
   const toggleNetworkRow = (net: any, logId: string) => {
     seekRecordingFromLog(net);
@@ -39,113 +63,45 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
   };
 
   return (
-            <ResizablePanel defaultSize={42} minSize={26} className={cn("min-h-0 min-w-[420px] overflow-hidden border-l border-border bg-background transition duration-200", isClosingRecordingFullscreen ? 'translate-x-4' : 'translate-x-0')}>
-            <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-              <div className="flex min-h-[116px] shrink-0 flex-col justify-end gap-3 border-b border-border px-4 pb-3 pt-4 pr-16">
-                <div className="flex items-end justify-between gap-4">
+            <ResizablePanel defaultSize={props.evidencePaneSize ?? 42} minSize={minimumSize} className="min-h-0 min-w-0 overflow-hidden border-l border-border bg-background">
+            <div ref={contentRef} className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+              onWheelCapture={() => props.pauseRecordingFollow?.()}
+              onTouchStart={() => props.pauseRecordingFollow?.()}
+              onPointerDownCapture={event => { const target = event.target as HTMLElement; if (target.scrollHeight > target.clientHeight && /auto|scroll/.test(getComputedStyle(target).overflowY)) props.pauseRecordingFollow?.(); }}
+              onKeyDownCapture={event => { if (['PageDown', 'PageUp', 'Home', 'End', 'ArrowDown', 'ArrowUp'].includes(event.key) && !(event.target as HTMLElement).closest('input, [role="tab"]')) props.pauseRecordingFollow?.(); }}>
+              <header className="shrink-0 space-y-2.5 border-b border-border bg-card px-3 py-3 sm:px-4">
+                <div className="flex flex-wrap items-start justify-between gap-2 pr-10 md:pr-12">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-foreground">DevTools</p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">Klik log untuk loncat ke timestamp record.</p>
+                    <p className="text-sm font-semibold text-foreground">Devlog rekaman</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Pilih log untuk lompat ke waktunya di video.</p>
                   </div>
-                  <div className="flex shrink-0 rounded-md bg-muted p-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "h-7 px-2 text-xs font-bold",
-                        activeDevLogTab === 'execution'
-                          ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-100 dark:hover:bg-teal-500/20'
-                          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                      )}
-                      onClick={() => setActiveDevLogTab('execution')}
-                    >
-                      EXECUTION
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "h-7 px-2 text-xs font-bold",
-                        activeDevLogTab === 'console'
-                          ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-100 dark:hover:bg-teal-500/20'
-                          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                      )}
-                      onClick={() => setActiveDevLogTab('console')}
-                    >
-                      CONSOLE
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "h-7 px-2 text-xs font-bold",
-                        activeDevLogTab === 'network'
-                          ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-100 dark:hover:bg-teal-500/20'
-                          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                      )}
-                      onClick={() => setActiveDevLogTab('network')}
-                    >
-                      NETWORK
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex rounded-md bg-muted p-1">
-                    {[
-                      { value: 'all', label: 'All' },
-                      { value: 'errors', label: 'Errors' },
-                      { value: 'api', label: 'API' },
-                    ].map((item) => (
-                      <Button
-                        key={item.value}
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          "h-7 px-2 text-xs font-bold",
-                          fullscreenLogFilter === item.value
-                            ? 'bg-indigo-100 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-100 dark:hover:bg-indigo-500/25'
-                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                        )}
-                        onClick={() => setFullscreenLogFilter(item.value as FullscreenLogFilter)}
-                      >
-                        {item.label}
-                      </Button>
-                    ))}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1.5 rounded-md border border-border bg-muted px-2 text-xs font-bold text-foreground hover:bg-secondary"
-                    onClick={copyFullscreenEvidence}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
+                  <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 px-2"
+                    onClick={copyFullscreenEvidence}>
+                    <Copy aria-hidden="true" />
                     {copiedEvidence ? 'Copied' : 'Copy Evidence'}
                   </Button>
                 </div>
-              </div>
+                <DevlogTabs active={activeDevLogTab} onChange={changeTab} />
+              </header>
 
-              <AnimatePresence>
+              <DevlogFilterBar tab={activeDevLogTab} search={search} />
+              {hasManualRecordingVideo && <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-1">
+                <span className={cn('flex items-center gap-1.5 text-xs font-medium', props.isFollowingRecording
+                  ? 'text-teal-800 dark:text-teal-200' : 'text-muted-foreground')}>
+                  {props.isFollowingRecording ? <Link2 className="size-3.5" aria-hidden="true" /> : <Pause className="size-3.5" aria-hidden="true" />}
+                  {props.isFollowingRecording ? 'Mengikuti video' : 'Jelajah manual'}
+                </span>
+                <Button type="button" variant={props.isFollowingRecording ? 'secondary' : 'outline'} size="sm" aria-pressed={Boolean(props.isFollowingRecording)}
+                  onClick={() => { if (props.isFollowingRecording) props.pauseRecordingFollow?.(); else { search.setQuery(''); props.resumeRecordingFollow?.(); } }}>
+                  {props.isFollowingRecording ? 'Jeda mengikuti' : 'Ikuti video'}
+                </Button>
+              </div>}
+
                 {selectedFullscreenLog && (
-                  <motion.div
-                    initial={false}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.18 }}
-                    className="max-h-[48%] shrink-0 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain border-b border-border bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-                    onWheelCapture={(event) => {
-                      const panel = event.currentTarget;
-                      if (!event.deltaY || panel.scrollHeight <= panel.clientHeight) return;
-                      const maxScrollTop = panel.scrollHeight - panel.clientHeight;
-                      const nextScrollTop = Math.max(0, Math.min(maxScrollTop, panel.scrollTop + event.deltaY));
-                      event.preventDefault();
-                      event.stopPropagation();
-                      panel.scrollTop = nextScrollTop;
-                    }}
+                  <div
+                    key={selectedFullscreenLog.id}
+                    className="devlog-inline-detail-enter max-h-[min(36%,300px)] shrink-0 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain border-b border-border bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                    data-lenis-prevent
                   >
                     <div className="m-3 space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3 shadow-sm dark:border-indigo-500/20 dark:bg-indigo-950/20">
                       <div className="flex items-start justify-between gap-3">
@@ -167,21 +123,13 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 shrink-0 rounded-md p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          aria-label="Tutup detail evidence"
                           onClick={() => setSelectedFullscreenLog(null)}
                         >
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="rounded-md border border-border bg-background p-2">
-                          <p className="font-semibold uppercase tracking-wider text-muted-foreground">Frame</p>
-                          <p className="mt-1 truncate font-mono text-foreground">{selectedRecordingFrame?.file || '-'}</p>
-                        </div>
-                        <div className="rounded-md border border-border bg-background p-2">
-                          <p className="font-semibold uppercase tracking-wider text-muted-foreground">Target</p>
-                          <p className="mt-1 truncate text-foreground">{manualRecording?.targetUrl || '-'}</p>
-                        </div>
-                      </div>
+                      {selectedRecordingFrame?.file && <p className="truncate text-xs text-muted-foreground">Frame: {selectedRecordingFrame.file}</p>}
                       {selectedFullscreenLog.kind === 'network' && (
                         <div className="space-y-3 rounded-lg border border-border bg-background p-3">
                           <div>
@@ -190,26 +138,21 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                               {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.url || '-')}
                             </pre>
                           </div>
-                          <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-                            <div className="min-w-0 space-y-1">
-                              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Headers</p>
-                              <pre className={cn("max-h-56 resize-y overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-xs leading-relaxed text-foreground", networkCodeWhitespaceClass)}>
-                                {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.headers)}
-                              </pre>
-                            </div>
-                            <div className="min-w-0 space-y-1">
-                              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payload</p>
-                              <pre className={cn("max-h-56 resize-y overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-xs leading-relaxed text-cyan-700 dark:text-cyan-200", networkCodeWhitespaceClass)}>
-                                {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.request)}
-                              </pre>
-                            </div>
-                            <div className="min-w-0 space-y-1">
-                              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Response</p>
-                              <pre className={cn("max-h-56 resize-y overflow-auto rounded-md border border-border bg-muted p-2 font-mono text-xs leading-relaxed text-emerald-700 dark:text-emerald-200", networkCodeWhitespaceClass)}>
-                                {formatPrettyValue((selectedFullscreenLog.detail as Record<string, unknown>)?.response)}
-                              </pre>
-                            </div>
-                          </div>
+                          <NetworkRequestDetails
+                            key={selectedFullscreenLog.id}
+                            network={allNetworkGroups.find((group: { id: string }) => `fullscreen-${group.id}` === selectedFullscreenLog.id)?.log.network}
+                            url={String((selectedFullscreenLog.detail as Record<string, unknown>)?.url || '')}
+                            method={String((selectedFullscreenLog.detail as Record<string, unknown>)?.method || 'GET')}
+                            status={(selectedFullscreenLog.detail as Record<string, unknown>)?.status as string | number | undefined}
+                            duration={String((selectedFullscreenLog.detail as Record<string, unknown>)?.duration || '-')}
+                            headers={selectedFullscreenLog.detail?.headers}
+                            requestHeaders={selectedFullscreenLog.detail?.requestHeaders}
+                            payload={selectedFullscreenLog.detail?.request}
+                            response={selectedFullscreenLog.detail?.response}
+                            wrap={networkCodeWrap}
+                            onWrapChange={setNetworkCodeWrap}
+                            formatValue={formatPrettyValue}
+                          />
                         </div>
                       )}
                       {selectedFullscreenLog.kind !== 'network' && (
@@ -238,11 +181,13 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                         </span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
-              </AnimatePresence>
 
-              <SyncedVideoEventsPanel
+              {(activeDevLogTab !== 'execution' || selectedFullscreenLog) && hasManualRecordingVideo && <Button type="button" variant="ghost" size="sm" className="shrink-0 justify-start rounded-none border-b border-border" aria-expanded={showSyncedWithDetail} onClick={() => setShowSyncedWithDetail(value => !value)}>
+                {showSyncedWithDetail ? 'Sembunyikan' : 'Tampilkan'} Synced Events ({filteredSyncedVideoEvents.length})
+              </Button>}
+              {((activeDevLogTab === 'execution' && !selectedFullscreenLog) || showSyncedWithDetail) && <SyncedVideoEventsPanel
                 hasManualRecordingVideo={hasManualRecordingVideo}
                 filteredSyncedVideoEvents={filteredSyncedVideoEvents}
                 syncedVideoEvents={syncedVideoEvents}
@@ -254,44 +199,45 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                 formatRelativeTime={formatRelativeTime}
                 selectedSyncedVideoEventDetail={selectedSyncedVideoEventDetail}
                 selectedSyncedVideoEvent={selectedSyncedVideoEvent}
-              />
+              />}
 
-              <div className="min-h-0 flex flex-1 flex-col overflow-hidden bg-muted/25">
-                {activeDevLogTab === 'execution' ? (
+              <div key={activeDevLogTab} className="devlog-view-enter min-h-0 flex flex-1 flex-col overflow-hidden bg-muted/25">
+                {activeDevLogTab === 'execution' && search.query.trim() && !search.pending && search.count === 0 ? <DevlogSearchEmpty query={search.query} onReset={() => search.setQuery('')} /> : activeDevLogTab === 'execution' ? (
                   <div
+                    ref={listRef}
+                    onScroll={rememberScroll}
                     className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-                    onWheelCapture={(event) => {
-                      const target = event.currentTarget;
-                      if (target.scrollHeight <= target.clientHeight) return;
-                      event.preventDefault();
-                      target.scrollTop += event.deltaY;
-                    }}
+                    data-lenis-prevent
                   >
                     <ExecutionLogView
                       evidenceLogs={props.evidenceLogs}
                       logs={executionLogs}
                       compact
                       formatLogTime={formatLogRecordingTime}
-                      onSelectLog={seekRecordingFromLog}
+                      selectedLogId={selectedFullscreenLog?.kind === 'execution' ? selectedSyncedVideoEvent?.originalEvent?.eventId || selectedSyncedVideoEvent?.originalEvent?.id || selectedExecutionId : selectedExecutionId}
+                      onSelectLog={(log) => {
+                        setSelectedExecutionId(log.eventId || log.id || null);
+                        seekRecordingFromLog(log);
+                      }}
                     />
                   </div>
                 ) : activeDevLogTab === 'network' ? (
-                  <div
-                    className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-                    onWheelCapture={(event) => {
-                      const target = event.currentTarget;
-                      if (target.scrollHeight <= target.clientHeight) return;
-                      event.preventDefault();
-                      target.scrollTop += event.deltaY;
-                    }}
-                  >
-                    {fullscreenNetworkGroups.length === 0 ? (
-                      <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
-                        <RefreshCw className="mb-3 h-8 w-8 opacity-20" />
-                        <p className="text-xs font-bold uppercase tracking-wider">No Network Rows</p>
+                  <div className="@container flex min-h-0 flex-1 flex-col">
+                    {fullscreenNetworkGroups.length > 0 && (
+                      <div className="shrink-0 overflow-y-hidden [scrollbar-gutter:stable] scrollbar-thin">
+                        <DevtoolsNetworkColumns />
                       </div>
+                    )}
+                    <div
+                      ref={listRef}
+                      onScroll={rememberScroll}
+                      className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                      data-lenis-prevent
+                    >
+                    {fullscreenNetworkGroups.length === 0 ? (
+                      <DevlogEmptyState kind="network" title={search.networkTotal ? 'No matching requests' : 'No requests recorded'} hint={search.networkTotal ? 'Clear the filter or choose All to see more requests.' : undefined} />
                     ) : (
-                      fullscreenNetworkGroups.map((group) => {
+                      <VirtualLogList items={fullscreenNetworkGroups} itemKey={(group: any) => `fullscreen-${group.id}`} activeId={props.isFollowingRecording ? [...syncedNetworkLogIdSet][0] as string | undefined : selectedFullscreenLog?.kind === 'network' ? selectedFullscreenLog.id : undefined}>{(group: any) => {
                         const { log: net, meta, entries, count } = group;
                         const logId = `fullscreen-${group.id}`;
                         const isSyncedWithVideo = syncedNetworkLogIdSet.has(logId);
@@ -304,74 +250,34 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                               else fullscreenNetworkRowRefs.current.delete(logId);
                             }}
                             className={cn(
-                              "overflow-hidden rounded-lg border border-border bg-background shadow-sm transition hover:border-indigo-200 hover:bg-secondary/50 dark:hover:border-indigo-500/30 dark:hover:bg-secondary/50",
-                              isSyncedWithVideo && "border-teal-300 bg-teal-50 shadow-[0_0_0_1px_rgba(20,184,166,0.25),0_0_24px_rgba(20,184,166,0.28)] dark:border-teal-400/50 dark:bg-teal-950/30 dark:shadow-[0_0_0_1px_rgba(45,212,191,0.2),0_0_28px_rgba(45,212,191,0.2)]",
-                              selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'network' && "border-indigo-300 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-950/30"
+                              "overflow-hidden border-b border-border bg-background",
+                              isSyncedWithVideo && "bg-teal-50 dark:bg-teal-950/40",
+                              selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'network' && "bg-teal-100 dark:bg-teal-950"
                             )}
                           >
                             <div
                               role="button"
+                              aria-expanded={expandedLogId === logId}
                               tabIndex={0}
-                              className="grid w-full cursor-pointer grid-cols-12 items-center gap-2 p-2 text-left"
+                              className={cn(DEVTOOLS_NETWORK_GRID, "w-full cursor-pointer min-h-9 py-1.5 text-left hover:bg-teal-50/70 dark:hover:bg-teal-950/50 focus-visible:outline-2 focus-visible:outline-ring")}
                               onClick={() => toggleNetworkRow(net, logId)}
                               onKeyDown={(event) => {
+                                if (event.target !== event.currentTarget) return;
                                 if (event.key === 'Enter' || event.key === ' ') {
                                   event.preventDefault();
                                   toggleNetworkRow(net, logId);
                                 }
                               }}
                             >
-                              <span className="col-span-2 truncate font-semibold text-indigo-700 dark:text-status-in-progress">{getNetworkMethod(net.network)}</span>
-                              <span className="col-span-2 truncate">
-                                <span className={`rounded border px-1.5 py-0.5 text-xs font-bold uppercase ${getNetworkCategoryClass(meta.category)}`}>
-                                  {meta.label}
-                                </span>
-                              </span>
-                              <span className="col-span-4 min-w-0">
-                                <span className="block truncate text-xs text-foreground dark:text-foreground">{meta.pathname.split('/').pop() || meta.pathname || net.network.url}</span>
-                                <span className="block truncate text-xs text-muted-foreground">{meta.host}</span>
-                              </span>
-                              <span className="col-span-2 text-center">
-                                <span className={cn("rounded px-1.5 py-0.5 text-xs font-bold", getNetworkStatusClass(net.network))}>
-                                  {getNetworkStatus(net.network)}
-                                </span>
-                              </span>
-                              <span className="col-span-2 flex items-center justify-end gap-2 text-right text-xs font-bold text-muted-foreground">
-                                <span>{formatLogRecordingTime(net)}</span>
-                                {isSyncedWithVideo && (
-                                  <span className="rounded-full border border-teal-200 bg-teal-100 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:border-teal-400/30 dark:bg-teal-500/15 dark:text-teal-200">
-                                    Now
-                                  </span>
-                                )}
-                                {count > 1 && (
-                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-xs font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
-                                    x{count}
-                                  </span>
-                                )}
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 rounded-md border border-border bg-muted px-1.5 text-xs font-semibold uppercase tracking-wider text-foreground hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    selectFullscreenNetworkLog(net, meta, logId);
-                                  }}
-                                >
-                                  Use
-                                </Button>
-                              </span>
+                              <DevtoolsNetworkCells network={net.network} />
                             </div>
-                            <AnimatePresence>
                               {expandedLogId === logId && (
-                                <motion.div
-                                  initial={false}
-                                  animate={{ opacity: 1 }}
-                                  exit={{ opacity: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                  className="overflow-hidden"
-                                >
+                                <div className="devlog-inline-detail-enter overflow-hidden">
                                   <div className="space-y-2 border-t border-border bg-muted/60 p-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <span className="text-xs tabular-nums text-muted-foreground">{formatLogRecordingTime(net)}</span>
+                                      <Button type="button" variant="outline" size="sm" onClick={() => selectFullscreenNetworkLog(net, meta, logId)}>Use as evidence</Button>
+                                    </div>
                                     {count > 1 && (
                                       <div className="rounded border border-border bg-background p-2">
                                         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Repeated {count} times</p>
@@ -391,48 +297,57 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                                         </div>
                                       </div>
                                     )}
-                                    <pre className={cn("max-h-24 overflow-auto rounded border border-border bg-background p-2 font-mono text-xs text-foreground dark:text-foreground", networkCodeWhitespaceClass)}>{net.network.url}</pre>
-                                    <pre className={cn("max-h-44 resize-y overflow-auto rounded border border-border bg-background p-2 font-mono text-xs text-foreground", networkCodeWhitespaceClass)}>{formatPrettyValue(getResponsePayload(net.network.data))}</pre>
+                                    <NetworkRequestDetails
+                                      network={net.network}
+                                      url={net.network.url}
+                                      method={getNetworkMethod(net.network)}
+                                      status={getNetworkStatus(net.network)}
+                                      duration={getNetworkDuration(net.network)}
+                                      headers={net.network.headers}
+                                      requestHeaders={getRequestHeaders ? getRequestHeaders(net.network.data) : undefined}
+                                      payload={getRequestPayload(net.network.data)}
+                                      response={getResponsePayload(net.network.data)}
+                                      wrap={networkCodeWrap}
+                                      onWrapChange={setNetworkCodeWrap}
+                                      formatValue={formatPrettyValue}
+                                    />
                                   </div>
-                                </motion.div>
+                                </div>
                               )}
-                            </AnimatePresence>
                           </div>
                         );
-                      })
+                      }}</VirtualLogList>
                     )}
+                    </div>
                   </div>
                 ) : (
                   <div
+                    ref={listRef}
+                    onScroll={rememberScroll}
                     className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-                    onWheelCapture={(event) => {
-                      const target = event.currentTarget;
-                      if (target.scrollHeight <= target.clientHeight) return;
-                      event.preventDefault();
-                      target.scrollTop += event.deltaY;
-                    }}
+                    data-lenis-prevent
                   >
                     {fullscreenConsoleGroups.length === 0 ? (
-                      <div className="flex h-full flex-col items-center justify-center py-20 text-muted-foreground">
-                        <Clock className="mb-3 h-8 w-8 opacity-20" />
-                        <p className="text-xs font-bold uppercase tracking-wider">No Console Rows</p>
-                      </div>
+                      <DevlogEmptyState kind="console" title={search.consoleHidden ? 'No matching messages' : 'No messages recorded'} hint={search.consoleHidden ? 'Clear the filter or change the selected levels.' : undefined} />
                     ) : (
-                      fullscreenConsoleGroups.map((group) => {
+                      <VirtualLogList items={fullscreenConsoleGroups} itemKey={(group: any) => group.id}>{(group: any) => {
                         const { log, entries, count } = group;
                         const logId = `fullscreen-${group.id}`;
-                        const isError = entries.some((entry) => entry.level === 'SEVERE' || entry.log?.toString().toLowerCase().includes('error'));
-                        const isWarning = entries.some((entry) => entry.level === 'WARNING' || entry.log?.toString().toLowerCase().includes('warn'));
+                        const level = getDevtoolsConsoleLevel(log);
+                        const isError = level === 'error';
+                        const isWarning = level === 'warning';
+                        const source = getDevtoolsConsoleSource(log);
 
                         return (
                           <div
                             key={logId}
                             role="button"
+                            aria-pressed={selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'console'}
                             tabIndex={0}
                             className={cn(
-                              "grid w-full cursor-pointer grid-cols-12 gap-2 rounded-lg border border-border bg-background p-2 text-left shadow-sm transition hover:border-indigo-200 hover:bg-secondary/50 dark:hover:border-indigo-500/30 dark:hover:bg-secondary/50",
+                              "grid min-h-9 w-full cursor-pointer grid-cols-[1rem_3.25rem_minmax(0,1fr)_auto] items-start gap-2 border-b border-border px-2 py-2 text-left hover:bg-sky-50/60 dark:hover:bg-sky-950/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
                               isError ? 'bg-rose-50 dark:bg-rose-950/20' : isWarning ? 'bg-amber-50 dark:bg-amber-950/20' : '',
-                              selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'console' && 'border-indigo-300 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-950/30'
+                              selectedFullscreenLog?.id === logId && selectedFullscreenLog.kind === 'console' && 'bg-sky-100 dark:bg-sky-950'
                             )}
                             onClick={() => selectFullscreenConsoleLog(log, logId)}
                             onKeyDown={(event) => {
@@ -442,21 +357,22 @@ export function RecordingEvidencePanel(props: RecordingEvidencePanelProps) {
                               }
                             }}
                           >
-                            <span className="col-span-2 text-xs font-bold text-muted-foreground">{formatLogRecordingTime(log)}</span>
-                            <span className={cn("col-span-8 break-all text-xs", isError ? 'text-rose-700 dark:text-status-failed' : isWarning ? 'text-amber-700 dark:text-status-blocked' : 'text-emerald-700 dark:text-status-passed/90')}>
-                              {typeof log.log === 'object' ? `${JSON.stringify(log.log).substring(0, 240)}...` : String(log.log ?? '')}
+                            <DevlogConsoleLevelIcon level={level} />
+                            <span className="text-xs tabular-nums text-muted-foreground">{formatLogRecordingTime(log)}</span>
+                            <span className="min-w-0 break-words font-mono text-xs leading-relaxed text-foreground">
+                              {getConsoleLogText(log)}
+                              {source && <span className="block truncate text-muted-foreground" title={source.url}>{source.label}</span>}
                             </span>
-                            <span className="col-span-2 flex items-center justify-end gap-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            <span className="text-xs font-semibold tabular-nums text-muted-foreground">
                               {count > 1 && (
                                 <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-xs font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/60 dark:text-indigo-200">
                                   x{count}
                                 </span>
                               )}
-                              Use
                             </span>
                           </div>
                         );
-                      })
+                      }}</VirtualLogList>
                     )}
                   </div>
                 )}

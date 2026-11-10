@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Bot, Loader2, RefreshCw, Save, ShieldCheck, Sparkles, Target, Wand2 } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Save, ShieldCheck, Target } from 'lucide-react';
+import { GenerateTestCaseIcon, CopilotIcon } from '@/components/icons/qa-icons';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -155,17 +156,15 @@ export function AIGenerateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-border/60 bg-card text-foreground elevation-3 rounded-2xl p-0">
-        <div className="absolute left-0 top-0 h-px w-full bg-primary/70" />
-
-        <DialogHeader className="border-b border-border/60 px-6 py-5">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-border bg-card text-foreground shadow-xl rounded-2xl p-0">
+        <DialogHeader className="border-b border-border/40 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/15 text-primary">
-              <Sparkles className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <GenerateTestCaseIcon className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-semibold tracking-tight">AI Test Case Generator</DialogTitle>
-              <DialogDescription className="text-muted-foreground text-[11px] font-medium leading-relaxed">AI akan menganalisis project patterns dan menghasilkan test case baru yang akurat.</DialogDescription>
+              <DialogTitle className="text-base font-semibold text-foreground tracking-tight">AI Test Case Generator</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-relaxed">AI menganalisis pola project dan merekomendasikan skenario pengujian baru.</DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -256,7 +255,7 @@ export function AIGenerateDialog({
                   </div>
                 ) : (
                   <div className="py-6 flex flex-col items-center justify-center text-muted-foreground/40">
-                    <Bot className="h-10 w-10 mb-2 opacity-20" />
+                    <CopilotIcon className="h-10 w-10 mb-2 opacity-20" />
                     <p className="text-[11px] font-medium">Analyzing project knowledge base...</p>
                   </div>
                 )}
@@ -270,7 +269,7 @@ export function AIGenerateDialog({
                       <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition duration-300">
                         <SelectValue placeholder="Semua Module" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
+                      <SelectContent className="rounded-xl bg-card border-border/60 shadow-lg">
                         <SelectItem value="all" className="rounded-lg font-medium">Semua Module</SelectItem>
                         {modules.map((module) => (
                           <SelectItem key={module.id} value={module.id} className="rounded-lg font-medium">{module.name}</SelectItem>
@@ -285,7 +284,7 @@ export function AIGenerateDialog({
                     <SelectTrigger className="h-11 rounded-xl border-border/60 bg-secondary/30 text-sm font-bold text-foreground focus:ring-primary/20 transition duration-300">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl bg-card border-border/60 elevation-3">
+                    <SelectContent className="rounded-xl bg-card border-border/60 shadow-lg">
                       <SelectItem value="3" className="rounded-lg font-medium">3 Test Case</SelectItem>
                       <SelectItem value="4" className="rounded-lg font-medium">4 Test Case</SelectItem>
                       <SelectItem value="6" className="rounded-lg font-medium">6 Test Case</SelectItem>
@@ -297,7 +296,7 @@ export function AIGenerateDialog({
 
               <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex gap-4 items-start shadow-inner">
                 <div className="mt-1 p-1.5 rounded-lg bg-primary/10 text-primary">
-                  <Sparkles className="h-4 w-4" />
+                  <CopilotIcon className="h-4 w-4" />
                 </div>
                 <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
                   <strong className="text-primary font-semibold uppercase tracking-tight mr-1.5">Pro Tip:</strong> AI mempelajari format dan terminologi yang Anda gunakan. Instruksi yang spesifik akan menghasilkan skenario yang lebih akurat dan siap pakai.
@@ -311,10 +310,7 @@ export function AIGenerateDialog({
               <div className="relative">
                 <div className="w-24 h-24 rounded-full border-4 border-primary/10 border-t-primary animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Bot className="h-10 w-10 text-primary animate-pulse" />
-                </div>
-                <div className="absolute -top-1 -right-1">
-                  <Sparkles className="h-6 w-6 text-status-retest animate-bounce" />
+                  <CopilotIcon className="h-10 w-10 text-primary animate-pulse" />
                 </div>
               </div>
               <div className="text-center space-y-2">
@@ -405,7 +401,7 @@ export function AIGenerateDialog({
               <Button
                 variant="outline"
                 onClick={closeDialog}
-                className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-bold text-xs px-6 transition hover:bg-secondary"
+                className="h-10 rounded-xl border-border/60 bg-card text-muted-foreground font-medium text-xs px-5 transition hover:bg-secondary"
               >
                 Close
               </Button>
@@ -415,35 +411,47 @@ export function AIGenerateDialog({
                   <Button
                     variant="outline"
                     onClick={resetGeneratedCases}
-                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-primary font-bold text-xs px-5 hover:bg-primary/5 transition"
+                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-foreground font-medium text-xs px-4 hover:bg-secondary transition"
                   >
-                    <RefreshCw className="w-4 h-4" /> Rese
+                    <RefreshCw className="w-4 h-4" /> Reset
                   </Button>
                   <Button
                     onClick={handleAISaveSelected}
                     disabled={aiSelectedCases.size === 0 || aiSaving}
-                    className="h-10 gap-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-7 shadow-lg hover:shadow-emerald-500/20 transition duration-300"
+                    className="h-10 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-xs px-5 shadow-sm transition"
                   >
                     {aiSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Approve & Save
+                    Simpan Terpilih
                   </Button>
                 </>
               ) : (
-                <><Button type="button" variant="outline" onClick={() => void previewData()} disabled={!prompt.trim() || previewLoading}>{previewLoading ? <Loader2 className="animate-spin" /> : <ShieldCheck />}Preview data</Button><Button
-                  onClick={() => handleAIGenerate({ prompt, moduleFilter, count: generateCount })}
-                  disabled={!prompt.trim() || aiGenerating || !dataPreview}
-                  className="h-11 gap-2.5 rounded-xl bg-gradient-to-r from-primary via-indigo-600 to-cyan-600 hover:from-primary/90 hover:via-indigo-600/90 hover:to-cyan-600/90 text-white font-semibold text-xs px-8 shadow-lg hover:shadow-primary/30 transition duration-300 uppercase tracking-wider"
-                >
-                  {aiGenerating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" /> Generate Scenarios
-                    </>
-                  )}
-                </Button></>
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void previewData()}
+                    disabled={!prompt.trim() || previewLoading}
+                    className="h-10 gap-2 rounded-xl border-border/60 bg-card text-muted-foreground hover:text-foreground font-medium text-xs px-4 transition hover:bg-secondary"
+                  >
+                    {previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    Preview Data
+                  </Button>
+                  <Button
+                    onClick={() => handleAIGenerate({ prompt, moduleFilter, count: generateCount })}
+                    disabled={!prompt.trim() || aiGenerating || !dataPreview}
+                    className="h-10 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-xs px-6 shadow-sm transition"
+                  >
+                    {aiGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Memproses...
+                      </>
+                    ) : (
+                      <>
+                        <GenerateTestCaseIcon className="h-4 w-4" /> Generate Skenario
+                      </>
+                    )}
+                  </Button>
+                </>
               )}
             </div>
           </div>

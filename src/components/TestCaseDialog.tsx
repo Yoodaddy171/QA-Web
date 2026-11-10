@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useId, useRef } from 'react';
-import { Save } from 'lucide-react';
+import { Save, FileEdit, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -192,231 +192,256 @@ export function TestCaseDialog({
       <DialogContent
         onOpenAutoFocus={() => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
         onCloseAutoFocus={(event) => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus(); }}
-        className="qa-case-form flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden rounded-xl border-border bg-card p-0 text-foreground sm:max-w-3xl">
-        <DialogHeader className="shrink-0 border-b border-border p-5 pr-12 text-left sm:px-6">
-          <DialogTitle className="text-xl font-semibold tracking-tight">
-            {editingTestCase ? 'Edit Test Case' : 'Tambah Test Case Baru'}
-          </DialogTitle>
-          <DialogDescription className="text-muted-foreground text-sm">
-            {editingTestCase ? 'Ubah detail test case.' : 'Isi informasi test case yang akan dibuat.'}
-          </DialogDescription>
+        className="qa-case-form flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden rounded-2xl border-border bg-card p-0 text-foreground shadow-xl sm:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-border/40 p-5 pr-12 text-left sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+              {editingTestCase ? <FileEdit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
+            </div>
+            <div>
+              <DialogTitle className="text-base font-semibold text-foreground tracking-tight">
+                {editingTestCase ? 'Edit Test Case' : 'Tambah Test Case Baru'}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                {editingTestCase ? 'Perbarui informasi dan ekspektasi hasil pengujian.' : 'Isi form berikut untuk menambahkan skenario pengujian baru.'}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="min-h-0 overflow-y-auto p-5 sm:px-6">
-          <fieldset className="flex min-w-0 flex-col gap-4 border-0 p-0">
-          <legend className="mb-4 text-sm font-semibold">Identitas dan klasifikasi</legend>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor={fieldId("testCaseId")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Case ID <span className="text-red-500">*</span></Label>
-              <Input
-                id={fieldId("testCaseId")} aria-required="true" value={formData.testCaseId}
-                onChange={(e) => setFormData({ ...formData, testCaseId: e.target.value })}
-                placeholder="contoh: A-001"
-                disabled={Boolean(editingTestCase)}
-                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
-              />
-              {editingTestCase ? <p className="text-[10px] text-muted-foreground">ID bersifat permanen agar report, evidence, dan relasi tetap konsisten.</p> : null}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={fieldId("page")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Page / Menu <span className="text-red-500">*</span></Label>
-              <Input
-                id={fieldId("page")} aria-required="true" value={formData.page}
-                onChange={(e) => setFormData({ ...formData, page: e.target.value })}
-                placeholder="contoh: CMS Login"
-                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor={fieldId("subMenu")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sub Menu</Label>
-              <Input
-                id={fieldId("subMenu")} value={formData.subMenu}
-                onChange={(e) => setFormData({ ...formData, subMenu: e.target.value })}
-                placeholder="contoh: Order List"
-                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bobot (Otomatis)</Label>
-              <div className="flex items-center h-9 px-3 rounded-xl border border-border/60 bg-secondary/20 text-sm text-muted-foreground/80 font-medium">
-                {editingTestCase?.calculatedWeight != null
-                  ? `${editingTestCase.calculatedWeight.toFixed(2)}%`
-                  : 'Akan dihitung otomatis'}
-              </div>
-              <p className="text-[10px] text-muted-foreground/60 leading-tight">
-                Bobot dihitung otomatis: 100% ÷ total test case dalam menu yang sama
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label htmlFor={fieldId("testType")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tipe Test <span className="text-red-500">*</span></Label>
-              <Select value={formData.testType} onValueChange={(v) => setFormData({ ...formData, testType: v })}>
-                <SelectTrigger id={fieldId("testType")} aria-required="true" className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
-                <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
-                  <SelectItem value="Positive" className="rounded-lg">Positive</SelectItem>
-                  <SelectItem value="Negative" className="rounded-lg">Negative</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={fieldId("priority")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Prioritas</Label>
-              <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
-                <SelectTrigger id={fieldId("priority")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
-                <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
-                  <SelectItem value="Critical" className="rounded-lg text-status-failed font-medium">Critical</SelectItem>
-                  <SelectItem value="High" className="rounded-lg text-bug-open font-medium">High</SelectItem>
-                  <SelectItem value="Medium" className="rounded-lg text-yellow-400 font-medium">Medium</SelectItem>
-                  <SelectItem value="Low" className="rounded-lg text-blue-400 font-medium">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {modules.length > 0 && (
+        <div className="min-h-0 overflow-y-auto p-5 sm:px-6 space-y-5">
+          <div className="rounded-xl border border-border/50 bg-secondary/15 p-4 space-y-4">
+            <div className="text-xs font-semibold text-foreground uppercase tracking-wider">Identitas & Klasifikasi</div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor={fieldId("moduleId")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Module</Label>
-                <Select value={formData.moduleId || 'none'} onValueChange={(v) => setFormData({ ...formData, moduleId: v === 'none' ? '' : v })}>
-                  <SelectTrigger id={fieldId("moduleId")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih Module" /></SelectTrigger>
-                  <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
-                    <SelectItem value="none" className="rounded-lg">Tanpa Module</SelectItem>
-                    {modules.map((m) => (
-                      <SelectItem key={m.id} value={m.id} className="rounded-lg">{m.name}</SelectItem>
-                    ))}
+                <Label htmlFor={fieldId("testCaseId")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Case ID <span className="text-red-500">*</span></Label>
+                <Input
+                  id={fieldId("testCaseId")} aria-required="true" value={formData.testCaseId}
+                  onChange={(e) => setFormData({ ...formData, testCaseId: e.target.value })}
+                  placeholder="contoh: A-001"
+                  disabled={Boolean(editingTestCase)}
+                  className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
+                />
+                {editingTestCase ? <p className="text-[10px] text-muted-foreground">ID bersifat permanen agar report, evidence, dan relasi tetap konsisten.</p> : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={fieldId("page")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Page / Menu <span className="text-red-500">*</span></Label>
+                <Input
+                  id={fieldId("page")} aria-required="true" value={formData.page}
+                  onChange={(e) => setFormData({ ...formData, page: e.target.value })}
+                  placeholder="contoh: CMS Login"
+                  className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor={fieldId("subMenu")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sub Menu</Label>
+                <Input
+                  id={fieldId("subMenu")} value={formData.subMenu}
+                  onChange={(e) => setFormData({ ...formData, subMenu: e.target.value })}
+                  placeholder="contoh: Order List"
+                  className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Bobot (Otomatis)</Label>
+                <div className="flex items-center h-9 px-3 rounded-xl border border-border/60 bg-secondary/20 text-sm text-muted-foreground/80 font-medium">
+                  {editingTestCase?.calculatedWeight != null
+                    ? `${editingTestCase.calculatedWeight.toFixed(2)}%`
+                    : 'Akan dihitung otomatis'}
+                </div>
+                <p className="text-[10px] text-muted-foreground/60 leading-tight">
+                  Bobot dihitung otomatis: 100% ÷ total test case dalam menu yang sama
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor={fieldId("testType")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tipe Test <span className="text-red-500">*</span></Label>
+                <Select value={formData.testType} onValueChange={(v) => setFormData({ ...formData, testType: v })}>
+                  <SelectTrigger id={fieldId("testType")} aria-required="true" className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
+                  <SelectContent className="border-border/60 bg-card rounded-xl shadow-lg">
+                    <SelectItem value="Positive" className="rounded-lg">Positive</SelectItem>
+                    <SelectItem value="Negative" className="rounded-lg">Negative</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            )}
+              <div className="space-y-1.5">
+                <Label htmlFor={fieldId("priority")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Prioritas</Label>
+                <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
+                  <SelectTrigger id={fieldId("priority")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
+                  <SelectContent className="border-border/60 bg-card rounded-xl shadow-lg">
+                    <SelectItem value="Critical" className="rounded-lg text-status-failed font-medium">Critical</SelectItem>
+                    <SelectItem value="High" className="rounded-lg text-bug-open font-medium">High</SelectItem>
+                    <SelectItem value="Medium" className="rounded-lg text-yellow-400 font-medium">Medium</SelectItem>
+                    <SelectItem value="Low" className="rounded-lg text-blue-400 font-medium">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {modules.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label htmlFor={fieldId("moduleId")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Module</Label>
+                  <Select value={formData.moduleId || 'none'} onValueChange={(v) => setFormData({ ...formData, moduleId: v === 'none' ? '' : v })}>
+                    <SelectTrigger id={fieldId("moduleId")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih Module" /></SelectTrigger>
+                    <SelectContent className="border-border/60 bg-card rounded-xl shadow-lg">
+                      <SelectItem value="none" className="rounded-lg">Tanpa Module</SelectItem>
+                      {modules.map((m) => (
+                        <SelectItem key={m.id} value={m.id} className="rounded-lg">{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
           </div>
 
-          </fieldset>
-          <fieldset className="mt-6 flex min-w-0 flex-col gap-4 border-0 p-0">
-          <legend className="mb-4 text-sm font-semibold">Prosedur dan hasil</legend>
-          <div className="space-y-1.5">
-            <Label htmlFor={fieldId("testAction")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Action <span className="text-red-500">*</span></Label>
-            <Textarea
-              id={fieldId("testAction")} aria-required="true" value={formData.testAction}
-              onChange={(e) => setFormData({ ...formData, testAction: e.target.value })}
-              placeholder="Deskripsi aksi test yang dilakukan"
-              rows={2}
-              className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor={fieldId("steps")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Steps <span className="text-red-500">*</span></Label>
-            <Textarea
-              id={fieldId("steps")} aria-required="true" value={formData.steps}
-              onChange={(e) => setFormData({ ...formData, steps: e.target.value })}
-              placeholder="- Langkah 1&#10;- Langkah 2&#10;- Langkah 3"
-              rows={4}
-              className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200 font-mono text-xs"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-border/50 bg-secondary/15 p-4 space-y-4">
+            <div className="text-xs font-semibold text-foreground uppercase tracking-wider">Prosedur & Ekspektasi Hasil</div>
             <div className="space-y-1.5">
-              <Label htmlFor={fieldId("expectedResult")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expected Result <span className="text-red-500">*</span></Label>
+              <Label htmlFor={fieldId("testAction")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Action <span className="text-red-500">*</span></Label>
               <Textarea
-                id={fieldId("expectedResult")} aria-required="true" value={formData.expectedResult}
-                onChange={(e) => setFormData({ ...formData, expectedResult: e.target.value })}
-                placeholder="Hasil yang diharapkan"
+                id={fieldId("testAction")} aria-required="true" value={formData.testAction}
+                onChange={(e) => setFormData({ ...formData, testAction: e.target.value })}
+                placeholder="Deskripsi aksi test yang dilakukan"
                 rows={2}
                 className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={fieldId("actualResult")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Actual Result</Label>
-              <Select
-                value={
-                  formData.actualResult === 'As Expected' ? 'As Expected' :
-                  formData.actualResult === 'Not As Expected' ? 'Not As Expected' :
-                  '__none__'
-                }
-                onValueChange={(val) => {
-                  const newActualResult = val === '__none__' ? '' : val;
-                  if (newActualResult === 'Not As Expected') {
-                    setFormData({ ...formData, actualResult: newActualResult, status: 'FAILED', progress: 0 });
-                  } else if (newActualResult === 'As Expected') {
-                    setFormData({ ...formData, actualResult: newActualResult, status: 'DONE', progress: 100 });
-                  } else {
-                    setFormData({ ...formData, actualResult: newActualResult, status: 'NOT DONE', progress: 0 });
-                  }
-                }}
-              >
-                <SelectTrigger id={fieldId("actualResult")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih hasil..." /></SelectTrigger>
-                <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
-                  <SelectItem value="__none__" className="rounded-lg">-</SelectItem>
-                  <SelectItem value="As Expected" className="rounded-lg text-status-passed font-medium">As Expected</SelectItem>
-                  <SelectItem value="Not As Expected" className="rounded-lg text-status-failed font-medium">Not As Expected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor={fieldId("status")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</Label>
-              <Select value={formData.status} onValueChange={(v) => {
-                const progress = v === 'DONE' ? 100 : (v === 'IN PROGRESS' || v === 'READY TO RETEST') ? 50 : 0;
-                const actualResult = v === 'DONE'
-                  ? 'As Expected'
-                  : v === 'FAILED'
-                    ? 'Not As Expected'
-                    : formData.actualResult;
-                setFormData({ ...formData, status: v, progress, actualResult });
-              }}>
-                <SelectTrigger id={fieldId("status")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
-                <SelectContent className="border-border/60 bg-card rounded-xl elevation-3">
-                  <SelectItem value="NOT DONE" className="rounded-lg">Not Done</SelectItem>
-                  <SelectItem value="IN PROGRESS" className="rounded-lg">In Progress</SelectItem>
-                  <SelectItem value="DONE" className="rounded-lg">Done</SelectItem>
-                  <SelectItem value="BLOCKED" className="rounded-lg">Blocked</SelectItem>
-                  <SelectItem value="FAILED" className="rounded-lg">Failed</SelectItem>
-                  <SelectItem value="READY TO RETEST" className="rounded-lg">Ready to Retest</SelectItem>
-                  <SelectItem value="TBA" className="rounded-lg">TBA (To Be Announced)</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor={fieldId("steps")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Test Steps <span className="text-red-500">*</span></Label>
+              <Textarea
+                id={fieldId("steps")} aria-required="true" value={formData.steps}
+                onChange={(e) => setFormData({ ...formData, steps: e.target.value })}
+                placeholder="- Langkah 1&#10;- Langkah 2&#10;- Langkah 3"
+                rows={4}
+                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200 font-mono text-xs"
+              />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Progress (Otomatis)</Label>
-              <div className="flex items-center gap-3 h-9 px-3 rounded-xl border border-border/60 bg-secondary/20">
-                <Progress value={formData.progress} className="h-2 flex-1 bg-muted-foreground/10" />
-                <span className="text-xs font-bold min-w-[36px] text-right text-foreground">{formData.progress}%</span>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor={fieldId("expectedResult")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expected Result <span className="text-red-500">*</span></Label>
+                <Textarea
+                  id={fieldId("expectedResult")} aria-required="true" value={formData.expectedResult}
+                  onChange={(e) => setFormData({ ...formData, expectedResult: e.target.value })}
+                  placeholder="Hasil yang diharapkan"
+                  rows={2}
+                  className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
+                />
               </div>
-              <p className="text-[10px] text-muted-foreground/60 leading-tight">
-                DONE=100%, IN PROGRESS/READY TO RETEST=50%, LAINNYA=0%
-              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor={fieldId("actualResult")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Actual Result</Label>
+                <Select
+                  value={
+                    formData.actualResult === 'As Expected' ? 'As Expected' :
+                    formData.actualResult === 'Not As Expected' ? 'Not As Expected' :
+                    '__none__'
+                  }
+                  onValueChange={(val) => {
+                    const newActualResult = val === '__none__' ? '' : val;
+                    if (newActualResult === 'Not As Expected') {
+                      setFormData({ ...formData, actualResult: newActualResult, status: 'FAILED', progress: 0 });
+                    } else if (newActualResult === 'As Expected') {
+                      setFormData({ ...formData, actualResult: newActualResult, status: 'DONE', progress: 100 });
+                    } else {
+                      setFormData({ ...formData, actualResult: newActualResult, status: 'NOT DONE', progress: 0 });
+                    }
+                  }}
+                >
+                  <SelectTrigger id={fieldId("actualResult")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue placeholder="Pilih hasil..." /></SelectTrigger>
+                  <SelectContent className="border-border/60 bg-card rounded-xl shadow-lg">
+                    <SelectItem value="__none__" className="rounded-lg">-</SelectItem>
+                    <SelectItem value="As Expected" className="rounded-lg text-status-passed font-medium">As Expected</SelectItem>
+                    <SelectItem value="Not As Expected" className="rounded-lg text-status-failed font-medium">Not As Expected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor={fieldId("status")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</Label>
+                <Select value={formData.status} onValueChange={(v) => {
+                  const progress = v === 'DONE' ? 100 : (v === 'IN PROGRESS' || v === 'READY TO RETEST') ? 50 : 0;
+                  const actualResult = v === 'DONE'
+                    ? 'As Expected'
+                    : v === 'FAILED'
+                      ? 'Not As Expected'
+                      : formData.actualResult;
+                  setFormData({ ...formData, status: v, progress, actualResult });
+                }}>
+                  <SelectTrigger id={fieldId("status")} className="rounded-xl border-border/60 bg-secondary/30 text-foreground focus:ring-primary/20 focus:border-primary transition duration-200"><SelectValue /></SelectTrigger>
+                  <SelectContent className="border-border/60 bg-card rounded-xl shadow-lg">
+                    <SelectItem value="NOT DONE" className="rounded-lg">Not Done</SelectItem>
+                    <SelectItem value="IN PROGRESS" className="rounded-lg">In Progress</SelectItem>
+                    <SelectItem value="DONE" className="rounded-lg">Done</SelectItem>
+                    <SelectItem value="BLOCKED" className="rounded-lg">Blocked</SelectItem>
+                    <SelectItem value="FAILED" className="rounded-lg">Failed</SelectItem>
+                    <SelectItem value="READY TO RETEST" className="rounded-lg">Ready to Retest</SelectItem>
+                    <SelectItem value="TBA" className="rounded-lg">TBA (To Be Announced)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Progress (Otomatis)</Label>
+                <div className="flex items-center gap-3 h-9 px-3 rounded-xl border border-border/60 bg-secondary/20">
+                  <Progress value={formData.progress} className="h-2 flex-1 bg-muted-foreground/10" />
+                  <span className="text-xs font-bold min-w-[36px] text-right text-foreground">{formData.progress}%</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground/60 leading-tight">
+                  DONE=100%, IN PROGRESS/READY TO RETEST=50%, LAINNYA=0%
+                </p>
+              </div>
             </div>
           </div>
 
-          </fieldset>
-          <fieldset className="mt-6 flex min-w-0 flex-col gap-4 border-0 p-0">
-          <legend className="mb-4 text-sm font-semibold">Catatan tambahan</legend>
-          <div className="space-y-1.5">
-            <Label htmlFor={fieldId("remarks")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Remarks / Catatan</Label>
-            <Textarea
-              id={fieldId("remarks")} value={formData.remarks}
-              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-              placeholder="Catatan tambahan"
-              rows={2}
-              className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
-            />
-          </div>
+          <div className="rounded-xl border border-border/50 bg-secondary/15 p-4 space-y-4">
+            <div className="text-xs font-semibold text-foreground uppercase tracking-wider">Catatan Tambahan & Tag</div>
+            <div className="space-y-1.5">
+              <Label htmlFor={fieldId("remarks")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Remarks / Catatan</Label>
+              <Textarea
+                id={fieldId("remarks")} value={formData.remarks}
+                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                placeholder="Catatan tambahan"
+                rows={2}
+                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
+              />
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor={fieldId("tags")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tags</Label>
-            <Input id={fieldId("tags")} value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} placeholder="smoke, checkout, release" />
-            <p className="text-[10px] text-muted-foreground">Pisahkan beberapa tag dengan koma.</p>
+            <div className="space-y-1.5">
+              <Label htmlFor={fieldId("tags")} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tags</Label>
+              <Input
+                id={fieldId("tags")}
+                value={formData.tags}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                placeholder="smoke, checkout, release"
+                className="rounded-xl border-border/60 bg-secondary/30 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary transition duration-200"
+              />
+              <p className="text-[10px] text-muted-foreground">Pisahkan beberapa tag dengan koma.</p>
+            </div>
           </div>
-          </fieldset>
         </div>
 
-        <DialogFooter className="shrink-0 border-t border-border bg-card px-5 py-4 sm:px-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Batal</Button>
-          <Button onClick={handleSaveTestCase}>
-            <Save className="w-4 h-4" /> {editingTestCase ? 'Simpan Perubahan' : 'Buat Test Case'}
+        <DialogFooter className="shrink-0 border-t border-border/40 bg-secondary/10 px-6 py-4 flex items-center justify-end gap-2.5">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="h-9 rounded-xl border-border/60 bg-card text-muted-foreground font-medium text-xs px-4 hover:bg-secondary"
+          >
+            Batal
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSaveTestCase}
+            className="h-9 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-xs px-5 shadow-sm"
+          >
+            <Save className="h-3.5 w-3.5" />
+            {editingTestCase ? 'Simpan Perubahan' : 'Buat Test Case'}
           </Button>
         </DialogFooter>
       </DialogContent>

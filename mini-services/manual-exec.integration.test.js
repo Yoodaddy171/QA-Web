@@ -18,6 +18,8 @@ describe.skipIf(process.env.QA_RELAY_EXEC_INTEGRATION !== '1')('manual exec real
     let hits = 0;
     const fixture = http.createServer((req, res) => {
       if (req.url.startsWith('/dummy')) { hits++; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ ok: true })); }
+      else if (req.url.startsWith('/fixture.js')) { res.setHeader('Content-Type', 'application/javascript'); res.end('console.debug("exec-fixture-debug");'); }
+      else if (req.url === '/connection-failure') { req.socket.destroy(); }
       else { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><title>Local exec fixture</title><p>Local capture fixture</p>'); }
     });
     const fixturePort = await listen(fixture);
@@ -60,20 +62,59 @@ describe.skipIf(process.env.QA_RELAY_EXEC_INTEGRATION !== '1')('manual exec real
         await pause(250);
       }
       expect(pageReady).toBe(true);
-      const execution = await call(`/manual/${sessionId}/exec`, { expression: '(async () => { console.log("exec-fixture-marker"); return await Promise.all([0,1,2].map(i => fetch("/dummy?i="+i, {method:"POST"}).then(r => r.json()))); })()' });
-      expect(await execution.json()).toMatchObject({ success: true, result: [{ ok: true }, { ok: true }, { ok: true }], exceptionDetails: null });
+      const execution = await call(`/manual/${sessionId}/exec`, {
+        expression: `(async () => {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = '/fixture.js?token=synthetic-secret';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.append(script);
+          });
+          console.log('exec-fixture-marker');
+          const responses = await Promise.all([0, 1, 2].map(() => fetch('/dummy', { method: 'POST' }).then(r => r.json())));
+          const failed = await fetch('/connection-failure', { method: 'POST' }).then(() => false, () => true);
+          return { responses, failed };
+        })()`,
+      });
+      expect(await execution.json()).toMatchObject({
+        success: true, result: { responses: [{ ok: true }, { ok: true }, { ok: true }], failed: true }, exceptionDetails: null,
+      });
       let records = [];
       for (let i = 0; i < 40; i++) {
         const response = await call(`/logs/${testCaseId}?run=current`);
-        if (response.ok) records = (await response.text()).trim().split('\n').filter(Boolean).map(line => JSON.parse(line).automationEvent);
-        if (records.filter(row => JSON.stringify(row).includes('/dummy') && row.eventType === 'network.response').length >= 3) break;
+        if (response.ok) records = (await response.text()).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+        if (records.filter(row => row.automationEvent.eventType === 'network.response' && row.network?.url.endsWith('/dummy')).length >= 3
+          && records.some(row => row.automationEvent.eventType === 'network.response' && row.network?.url.endsWith('/connection-failure'))
+          && records.some(row => row.log === 'exec-fixture-debug')) break;
         await pause(250);
       }
       expect(hits).toBe(3);
       for (const eventType of ['network.request', 'network.response']) {
-        expect(records.filter(row => row.eventType === eventType && JSON.stringify(row).includes('/dummy')).length, JSON.stringify(records.map(r => ({ eventType: r.eventType, type: r.type })))).toBe(3);
+        expect(records.filter(row => row.automationEvent.eventType === eventType && row.network?.url.endsWith('/dummy'))).toHaveLength(3);
       }
-      expect(records.some(row => JSON.stringify(row).includes('exec-fixture-marker'))).toBe(true);
+      const completed = records.filter(row => row.automationEvent.eventType === 'network.response' && row.network?.url.endsWith('/dummy'));
+      expect(new Set(completed.map(row => row.network.data.requestId)).size).toBe(3);
+      for (const response of completed) {
+        const captured = response.network.data;
+        expect(captured).toMatchObject({
+          requestId: expect.any(String), resourceType: 'fetch', mimeType: 'application/json', protocol: 'http/1.1',
+        });
+        expect(captured.transferSize).toBeGreaterThan(0);
+        expect(response.automationEvent.metadata.networkDetails).toMatchObject({
+          requestId: captured.requestId, resourceType: 'fetch', mimeType: 'application/json',
+          protocol: 'http/1.1', transferSize: captured.transferSize,
+        });
+      }
+      const failed = records.find(row => row.automationEvent.eventType === 'network.response' && row.network?.url.endsWith('/connection-failure'));
+      expect(failed?.network).toMatchObject({ success: false, data: { failureText: expect.stringMatching(/^net::ERR_/) } });
+      expect(failed.automationEvent.metadata.networkDetails.failureText).toBe(failed.network.data.failureText);
+      expect(records.some(row => row.log === 'exec-fixture-marker')).toBe(true);
+      const debug = records.find(row => row.log === 'exec-fixture-debug');
+      expect(debug?.automationEvent).toMatchObject({ eventType: 'console', metadata: { legacy: { level: 'VERBOSE' }, consoleDetails: { type: 'debug', lineNumber: 0 } } });
+      const sourceUrl = new URL(debug.automationEvent.metadata.consoleDetails.url);
+      expect(sourceUrl.pathname).toBe('/fixture.js');
+      expect(sourceUrl.searchParams.get('token')).toBe('[REDACTED]');
       expect(fs.readdirSync(path.join(directory, 'logs')).length).toBeGreaterThan(0);
       console.log(`Verified real capture JSONL: ${path.join(directory, 'logs')}`);
     } finally {

@@ -3,59 +3,53 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Traceva login only: supplied artwork, integrated form, no global theme overrides. */
-.traceva-login { display: grid; min-height: 100svh; grid-template-columns: minmax(0, 1fr); background: var(--card); color: var(--foreground); }
+/* Traceva login: crafted enterprise QA aesthetic, grounded card structure, high-contrast accessible forms. */
+.traceva-login { display: grid; min-height: 100svh; grid-template-columns: minmax(0, 1fr); background: var(--background); color: var(--foreground); }
 .traceva-login-hero { display: none; }
-.traceva-login-panel { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 48px 24px; }
-.traceva-login-content { width: 100%; max-width: 420px; }
-.traceva-login-mobile-logo { margin-bottom: 56px; }
-.traceva-login-heading { margin-bottom: 36px; }
-.traceva-login-heading h1 { font-size: clamp(1.875rem, 2.25vw, 2.25rem); line-height: 1.22; font-weight: 600; letter-spacing: -0.03em; text-wrap: pretty; }
-.traceva-login-heading p { max-width: 36ch; margin-top: 12px; font-size: 0.9375rem; line-height: 1.7; color: var(--muted-foreground); }
-.traceva-login-form { display: flex; flex-direction: column; gap: 24px; }
-.traceva-login-field { display: flex; min-width: 0; flex-direction: column; gap: 10px; }
-.traceva-login-field [data-slot="label"] { line-height: 1.4; font-size: 0.875rem; font-weight: 500; }
-.traceva-login-field [data-slot="input"] { height: 48px; border-radius: 8px; padding-inline: 14px; background: var(--background); border-color: color-mix(in srgb, var(--outline) 80%, var(--card)); box-shadow: none; font-size: 1rem; caret-color: var(--primary); transition: border-color 160ms ease, box-shadow 160ms ease; }
-.traceva-login-field [data-slot="input"]:hover { border-color: color-mix(in srgb, var(--outline) 90%, var(--card)); }
+.traceva-login-panel { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 32px 20px; background: var(--background); }
+.traceva-login-card { width: 100%; max-width: 440px; border-radius: 1rem; border: 1px solid var(--border); background: var(--card); color: var(--card-foreground); padding: 36px 32px; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04); }
+.dark .traceva-login-card { border-color: rgba(255, 255, 255, 0.08); background: #111113; box-shadow: 0 20px 35px -10px rgb(0 0 0 / 0.5); }
+.traceva-login-content { width: 100%; }
+.traceva-login-mobile-logo { margin-bottom: 28px; display: flex; justify-content: center; }
+.traceva-login-heading { margin-bottom: 28px; }
+.traceva-login-heading h1 { font-size: 1.625rem; line-height: 1.25; font-weight: 700; letter-spacing: -0.025em; color: var(--foreground); text-wrap: pretty; }
+.traceva-login-heading p { margin-top: 8px; font-size: 0.875rem; line-height: 1.6; color: var(--muted-foreground); }
+.traceva-login-form { display: flex; flex-direction: column; gap: 20px; }
+.traceva-login-field { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.traceva-login-field [data-slot="label"] { line-height: 1.4; font-size: 0.8125rem; font-weight: 600; color: var(--foreground); }
+.traceva-login-field [data-slot="input"] { height: 46px; border-radius: 10px; padding-inline: 14px; background: var(--background); border: 1px solid var(--border); box-shadow: none; font-size: 0.9375rem; caret-color: var(--primary); transition: border-color 150ms ease, box-shadow 150ms ease; }
+.traceva-login-field [data-slot="input"]:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
 .traceva-login-field [data-slot="input"]:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 22%, transparent); }
 .traceva-login-field [data-slot="input"]:user-invalid { border-color: var(--destructive); }
-.traceva-login-field [data-slot="input"]::placeholder { color: color-mix(in srgb, var(--foreground) 60%, var(--background)); }
+.traceva-login-field [data-slot="input"]::placeholder { color: var(--muted-foreground); opacity: 0.7; }
 .traceva-login-field [data-slot="input"]:autofill { background: var(--background); color: var(--foreground); }
 .traceva-login-field [data-slot="input"]:-webkit-autofill { -webkit-text-fill-color: var(--foreground); box-shadow: inset 0 0 0 1000px var(--background); }
 .traceva-login-field [data-slot="input"]:-webkit-autofill:focus-visible { box-shadow: inset 0 0 0 1000px var(--background), 0 0 0 3px color-mix(in srgb, var(--ring) 22%, transparent); }
 .traceva-login-password-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.traceva-login-password-toggle[data-slot="button"] { min-height: 44px; padding: 0 8px; margin-block: -8px; color: var(--muted-foreground); font-size: 0.75rem; font-weight: 500; transform: none; }
+.traceva-login-password-toggle[data-slot="button"] { min-height: 44px; padding: 0 6px; margin-block: -8px; color: var(--muted-foreground); font-size: 0.75rem; font-weight: 500; transform: none; }
 .traceva-login-password-toggle[data-slot="button"]:hover { color: var(--foreground); }
-.traceva-login-hint { color: var(--muted-foreground); font-size: 0.75rem; line-height: 1.6; overflow-wrap: anywhere; }
+.traceva-login-hint { color: var(--muted-foreground); font-size: 0.75rem; line-height: 1.5; overflow-wrap: anywhere; }
 .traceva-login-token { position: relative; }
-.traceva-login-token > svg { position: absolute; left: 14px; top: 16px; color: var(--muted-foreground); pointer-events: none; }
+.traceva-login-token > svg { position: absolute; left: 14px; top: 15px; color: var(--muted-foreground); pointer-events: none; }
 .traceva-login-token [data-slot="input"] { padding-left: 40px; }
-.traceva-login-submit[data-slot="button"] { height: 48px; width: 100%; margin-top: 8px; justify-content: space-between; padding-inline: 18px; border-radius: 8px; box-shadow: none; font-weight: 600; transform: none; }
-.traceva-login-guest[data-slot="button"] { min-height: 44px; width: 100%; margin-top: -8px; color: var(--muted-foreground); font-weight: 500; transform: none; }
-.traceva-login-guest[data-slot="button"]:hover { color: var(--foreground); }
-.traceva-login-motion { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: var(--traceva-art-position); pointer-events: none; user-select: none; }
-.traceva-login-motion-toggle[data-slot="button"] { position: absolute; right: 24px; bottom: 24px; z-index: 0; min-height: 44px; color: var(--muted-foreground); font-size: 0.75rem; font-weight: 400; transform: none; }
-.traceva-login-loading { min-height: 250px; display: flex; align-items: center; gap: 12px; color: var(--muted-foreground); font-size: 0.875rem; }
-.traceva-login-error { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--destructive) 35%, var(--border)); border-radius: 8px; background: color-mix(in srgb, var(--destructive) 6%, var(--card)); color: var(--status-failed); font-size: 0.875rem; line-height: 1.6; overflow-wrap: anywhere; }
+.traceva-login-submit[data-slot="button"] { height: 46px; width: 100%; margin-top: 6px; justify-content: center; gap: 8px; padding-inline: 18px; border-radius: 10px; font-weight: 600; font-size: 0.875rem; transform: none; }
+.traceva-login-guest[data-slot="button"] { min-height: 44px; width: 100%; margin-top: -6px; color: var(--muted-foreground); font-size: 0.8125rem; font-weight: 500; transform: none; }
+.traceva-login-guest[data-slot="button"]:hover { color: var(--foreground); background: var(--secondary); }
+.traceva-login-loading { min-height: 220px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted-foreground); font-size: 0.875rem; }
+.traceva-login-error { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--destructive) 35%, var(--border)); border-radius: 8px; background: color-mix(in srgb, var(--destructive) 8%, var(--card)); color: var(--destructive); font-size: 0.8125rem; line-height: 1.5; overflow-wrap: anywhere; }
+.traceva-login-footer-meta { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-size: 0.6875rem; color: var(--muted-foreground); }
 @media (min-width: 1024px) {
-  .traceva-login { grid-template-columns: minmax(0, 1.35fr) minmax(400px, 1fr); }
-  .traceva-login-hero { --traceva-art-position: 72% center; position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 100svh; padding: clamp(40px, 4.5vw, 72px); overflow: hidden; isolation: isolate; background: var(--background); color: var(--foreground); }
-  .traceva-login-hero::before { content: ""; position: absolute; inset: 0; z-index: -3; background: url('/brand/traceva/login-background.webp') var(--traceva-art-position) / cover no-repeat; }
-  .traceva-login-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgb(0 0 0 / 8%) 40%, rgb(0 0 0 / 40%) 100%); pointer-events: none; }
-  .traceva-login-hero-logo { position: relative; align-self: flex-start; }
-  .traceva-login-story { position: relative; padding-top: 120px; padding-bottom: clamp(56px, 9vh, 96px); }
-  .traceva-login-story h2 { font-size: clamp(3.5rem, 5.2vw, 5rem); line-height: 1.06; font-weight: 500; letter-spacing: -0.035em; }
-  .traceva-login-story p { max-width: 34ch; margin-top: 24px; font-size: 1rem; line-height: 1.75; color: color-mix(in srgb, var(--foreground) 78%, transparent); }
-  .traceva-login-panel { padding: 48px clamp(36px, 4vw, 72px); }
+  .traceva-login { grid-template-columns: minmax(0, 1.25fr) minmax(440px, 1fr); }
+  .traceva-login-hero { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 100svh; padding: clamp(36px, 4vw, 56px); overflow: hidden; isolation: isolate; background: radial-gradient(circle at 10% 90%, rgba(99, 102, 241, 0.08) 0%, transparent 60%), #09090b; color: #ededf0; border-right: 1px solid rgba(255, 255, 255, 0.08); }
+  .traceva-login-panel { padding: 48px clamp(36px, 4vw, 72px); background: var(--background); }
   .traceva-login-mobile-logo { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .traceva-login-motion, .traceva-login-motion-toggle { display: none !important; }
   .traceva-login-field [data-slot="input"] { transition: none; }
 }
 @media (max-width: 479px) {
-  .traceva-login-panel { padding: 40px 24px; }
-  .traceva-login-heading { margin-bottom: 32px; }
+  .traceva-login-panel { padding: 24px 16px; }
+  .traceva-login-card { padding: 28px 20px; }
 }
 
 /* Phase 8C.2 opt-in surfaces: never target unrelated tables or inspector portals. */
@@ -128,10 +122,10 @@
 .qa-data-table tr.h-11 .line-clamp-2 { line-height: 1.125rem; }
 .qa-data-table [data-slot="badge"] {
   min-height: 1.5rem;
-  border-radius: var(--space-1);
+  border-radius: 6px;
   padding-inline: var(--space-2);
   font-size: var(--text-caption);
-  font-weight: 600;
+  font-weight: 500;
 }
 .qa-data-table tr[data-state="selected"] > .sticky {
   background: color-mix(in srgb, var(--primary) 8%, var(--card));
@@ -144,10 +138,13 @@
   font-size: var(--text-caption);
   line-height: 1.5;
 }
+@media (min-width: 768px) {
+  .qa-table-scroll-help { display: none; }
+}
 .qa-inspector-tabs [data-slot="tabs-trigger"][data-state="active"] {
-  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-  background: color-mix(in srgb, var(--primary) 10%, var(--card));
-  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: transparent;
+  color: var(--foreground);
   box-shadow: none;
 }
 .qa-case-form [data-slot="label"] {
@@ -193,6 +190,29 @@
 .test-case-detail-dialog[data-state="closed"] { animation-name: qa-inspector-out; }
 .qa-inspector-overlay[data-state="open"] { animation-name: qa-overlay-in; }
 .qa-inspector-overlay[data-state="closed"] { animation-name: qa-overlay-out; }
+
+.devlog-fullscreen-dialog[data-state="open"], .devlog-fullscreen-overlay[data-state="open"] {
+  animation: qa-overlay-in var(--motion-overlay) var(--motion-ease) both;
+}
+.devlog-fullscreen-dialog[data-state="closed"], .devlog-fullscreen-overlay[data-state="closed"] {
+  animation: qa-overlay-out var(--motion-fast) ease-in both;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes devlog-view-in { from { opacity: .82; } }
+  @keyframes devlog-detail-in { from { opacity: .65; translate: 6px 0; } }
+  @keyframes devlog-inline-detail-in { from { opacity: .65; translate: 0 -4px; } }
+  .devlog-view-enter { animation: devlog-view-in var(--motion-fast) var(--motion-ease) both; }
+  .devlog-detail-enter { animation: devlog-detail-in var(--motion-content) var(--motion-ease) both; }
+  .devlog-inline-detail-enter { animation: devlog-inline-detail-in var(--motion-content) var(--motion-ease) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .devlog-fullscreen-dialog[data-state], .devlog-fullscreen-overlay[data-state] {
+    animation: none;
+  }
+}
 
 /* Only transition-bearing surfaces need the transient palette guard. SVGs
    also receive transitions through parent arbitrary variants (no own class).
@@ -371,7 +391,7 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
 
 /* QADesk command surfaces: fast, restrained, and readable. */
 .command-canvas {
-  background-image: radial-gradient(circle at 70% -16%, color-mix(in srgb, var(--primary) 5%, transparent), transparent 30%);
+  background-image: none;
 }
 
 /* Shared QA operations surfaces: hierarchy comes from rhythm, not decoration. */
@@ -416,7 +436,7 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
   inset: 0 0 auto;
   z-index: 1;
   height: 1px;
-  content: "";
+  content: none;
   background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 35%, transparent) 55%, transparent);
 }
 
@@ -429,6 +449,12 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
 
 .signal-sweep::after {
   content: none;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes signal-sweep {
@@ -458,8 +484,8 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
   --popover-foreground: #ededf0;
 
   /* Primary - Indigo */
-  --primary: #818cf8;
-  --primary-foreground: #1e1b4b;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
 
   /* Secondary */
   --secondary: #1b1b1f;
@@ -477,8 +503,8 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
   --destructive: #dc2626;
 
   /* Borders & inputs */
-  --border: #26262b;
-  --input: #26262b;
+  --border: #1f1f24;
+  --input: #1f1f24;
   --ring: #818cf8;
 
   /* Charts */
@@ -514,12 +540,20 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
 @layer base {
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-feature-settings: normal;
     line-height: 1.5;
   }
   ::selection { background: color-mix(in srgb, var(--primary) 24%, transparent); }
   input, textarea { caret-color: var(--primary); }
   button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+  html {
+    scrollbar-gutter: stable;
+  }
+  html body[data-scroll-locked] {
+    overflow: hidden !important;
+    padding-right: 0px !important;
+    margin-right: 0px !important;
+  }
   html,
   body {
     max-width: 100%;
@@ -552,8 +586,8 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
 
 /* One semantic treatment for badges, selectors, and chart keys. */
 .qa-status {
-  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
-  background: color-mix(in srgb, currentColor 9%, var(--card));
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, currentColor 8%, transparent);
 }
 .qa-status-not-run { color: var(--status-not-run); }
 .qa-status-in-progress { color: var(--status-in-progress); }

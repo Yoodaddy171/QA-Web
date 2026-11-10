@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
     if (!projectId) return NextResponse.json({ error: 'Project scope wajib diisi.' }, { status: 400 });
     const status = url.searchParams.get('status');
     const search = url.searchParams.get('search');
+    const tab = url.searchParams.get('tab');
+    const moduleId = url.searchParams.get('moduleId');
     const page = parsePositiveInt(url.searchParams.get('page'), 1, 100000);
     const limit = parsePositiveInt(url.searchParams.get('limit'), 50, 200);
     const requestedSortBy = url.searchParams.get('sortBy') || 'createdAt';
@@ -34,7 +36,9 @@ export async function GET(req: NextRequest) {
     if (status) {
       if (!isBugFixStatus(status)) return NextResponse.json({ error: 'Status bug fix tidak valid.' }, { status: 400 });
       where.status = status;
-    }
+    } else if (tab === 'active') where.status = { not: 'VERIFIED & FIXED' };
+    else if (tab === 'resolved') where.status = 'VERIFIED & FIXED';
+    if (moduleId && moduleId !== 'all') where.moduleId = moduleId === 'unassigned' ? null : moduleId;
     if (search) {
       where.OR = [
         { testCaseId: { contains: search } },

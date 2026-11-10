@@ -49,7 +49,7 @@ describe('Bulk Dialogs revamp verification', () => {
       />
     );
 
-    expect(html).toContain('Update Status Massal');
+    expect(html).toContain('Update Massal Test Case');
     expect(html).toContain('5 item');
     expect(html).toContain('Terapkan (5)');
     expect(html).not.toContain('elevation-3');

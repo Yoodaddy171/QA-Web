@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, Check, ChevronsUpDown, Command, FolderOpen, HelpCircle, Plus, Search, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronsUpDown, Command, FolderOpen, HelpCircle, Plus, Search, UserRound, X } from 'lucide-react';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import {
   DashboardIcon,
@@ -91,6 +91,7 @@ interface AppShellProps {
     traceability: ReactNode;
     reports: ReactNode;
     settings: ReactNode;
+    profile?: ReactNode;
   };
 }
 
@@ -201,6 +202,13 @@ function WorkspaceCommandPalette({
                   <button type="button" onClick={() => { navigate('testcases'); window.setTimeout(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' })), 140); }} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
                     <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:text-primary"><Plus className="size-4" /></span>
                     <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Buat testcase</span><span className="block truncate text-xs text-muted-foreground">Mulai testcase baru dari mana saja</span></span>
+                  </button>
+                ) : null}
+                {(!normalizedQuery || 'profile akun user password sesi keamanan'.includes(normalizedQuery)) ? (
+                  <button data-cmd-item type="button" onClick={() => navigate('profile')} className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
+                    <span className="flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-hover:text-primary"><UserRound className="size-4" /></span>
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Profile User</span><span className="block truncate text-xs text-muted-foreground">Kelola identitas akun, password, dan sesi aktif</span></span>
+                    <ArrowRight className="size-4 text-muted-foreground opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100" />
                   </button>
                 ) : null}
                 {(!normalizedQuery || 'keyboard shortcut panduan bantuan tombol'.includes(normalizedQuery)) ? (
@@ -536,7 +544,7 @@ export function AppShell({
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const { guest, ready, canEdit } = useWorkspaceAccess();
   const allowedTabs = useAllowedTabs();
-  const tabAllowed = allowedTabs.some(item => item.value === activeTab);
+  const tabAllowed = activeTab === 'profile' || allowedTabs.some(item => item.value === activeTab);
   const firstAllowed = allowedTabs[0]?.value;
   useEffect(() => {
     if (!ready || tabAllowed || !firstAllowed) return;
@@ -545,7 +553,10 @@ export function AppShell({
   }, [ready, tabAllowed, firstAllowed, setActiveTab]);
   const reduceMotion = useReducedMotion();
   const activeItem = useMemo(
-    () => NAV_ITEMS.find((item) => item.value === activeTab) || NAV_ITEMS[0],
+    () =>
+      activeTab === 'profile'
+        ? { value: 'profile', label: 'User Profile', description: 'Account identity, security & workspace sessions', icon: UserRound }
+        : NAV_ITEMS.find((item) => item.value === activeTab) || NAV_ITEMS[0],
     [activeTab]
   );
   const ActiveIcon = activeItem.icon;
@@ -559,7 +570,7 @@ export function AppShell({
   useEffect(() => {
     const navigate = (event: Event) => {
       const tab = (event as CustomEvent<string>).detail;
-      if (NAV_ITEMS.some(item => item.value === tab) && (!guest || Boolean(guestTabPermission(tab) && guest.permissions.includes(guestTabPermission(tab)!)))) setActiveTab(tab);
+      if (tab === 'profile' || (NAV_ITEMS.some(item => item.value === tab) && (!guest || Boolean(guestTabPermission(tab) && guest.permissions.includes(guestTabPermission(tab)!))))) setActiveTab(tab);
     };
     window.addEventListener('qa-desk:set-tab', navigate);
     return () => window.removeEventListener('qa-desk:set-tab', navigate);
@@ -669,7 +680,7 @@ export function AppShell({
                 <HelpCircle className="size-4" />
               </Button>
               <NotificationCenter projectId={selectedProject} onNavigate={setActiveTab} />
-              <AccountMenu />
+              <AccountMenu onOpenProfile={() => setActiveTab('profile')} />
             </div>
           </header>
 

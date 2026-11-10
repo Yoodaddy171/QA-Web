@@ -119,6 +119,7 @@ async function entityProjectIds(pathname: string, req: NextRequest, body: Record
 }
 
 function requiredRole(pathname: string, method: string): WorkspaceRole {
+  if (pathname === '/api/auth/profile') return 'VIEWER';
   if (pathname === '/api/automation/scripts') return 'ADMIN';
   if (pathname.startsWith('/api/workspaces')) return 'ADMIN';
   if (pathname === '/api/ai/governance' && method === 'PATCH') return 'ADMIN';
@@ -164,7 +165,7 @@ async function authorizeRequest(req: NextRequest) {
     if (pathname.startsWith('/api/')) {
       const permission = guestRoutePermission(pathname, req.method);
       if (!permission || (permission !== 'common' && !guest.permissions.includes(permission))) return jsonError('Akses tamu tidak memiliki izin untuk tindakan ini.', 403);
-      if (pathname !== '/api/projects' && !projectIds.size) return jsonError('Project scope wajib diisi.', 400);
+      if (pathname !== '/api/projects' && pathname !== '/api/auth/profile' && !projectIds.size) return jsonError('Project scope wajib diisi.', 400);
       if ([...projectIds].some(id => !guest.projectIds.includes(id))) return jsonError('Project di luar cakupan akses tamu.', 403);
       if (permission === 'evidence.upload' || permission === 'bugs.create') {
         const executionId = decodeURIComponent(pathname.split('/')[5] || '');

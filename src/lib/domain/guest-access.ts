@@ -40,6 +40,7 @@ export function guestCan(access: GuestAccess | null | undefined, permission: Gue
 export function guestRoutePermission(pathname: string, method: string): GuestPermission | 'common' | null {
   const read = method === 'GET' || method === 'HEAD';
   if (pathname === '/api/projects' && read) return 'common';
+  if (pathname === '/api/auth/profile' && read) return 'common';
   if (/^\/api\/notifications(?:\/[^/]+)?$/.test(pathname) && (read || method === 'PATCH')) return 'common';
   if (read && pathname === '/api/stats') return 'dashboard.view';
   if (read && (pathname === '/api/testcases' || pathname === '/api/modules')) return 'cases.view';

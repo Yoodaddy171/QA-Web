@@ -34,14 +34,15 @@ import { buildWorkspaceViews } from '@/lib/client/workspace-tab-views';
 import { TestRunsPanel } from '@/components/TestRunsPanel';
 import { TraceabilityPanel } from '@/components/TraceabilityPanel';
 import { ReportsPanel } from '@/components/ReportsPanel';
+import { UserProfilePanel } from '@/components/UserProfilePanel';
 import { WorkspaceDialogsHost } from '@/components/WorkspaceDialogsHost';
 
 type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
 
 const LAST_ACTIVE_TAB_STORAGE_KEY = 'web-qa:last-active-tab';
-const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'testRuns', 'traceability', 'reports', 'settings'] as const;
+const APP_TABS = ['dashboard', 'testcases', 'bugfix', 'automated', 'testRuns', 'traceability', 'reports', 'settings', 'profile'] as const;
 type AppTab = typeof APP_TABS[number];
-const TAB_ROUTES: Record<AppTab, string> = { dashboard: 'dashboard', testcases: 'test-cases', bugfix: 'bugs', automated: 'automation', testRuns: 'test-runs', traceability: 'traceability', reports: 'reports', settings: 'settings' };
+const TAB_ROUTES: Record<AppTab, string> = { dashboard: 'dashboard', testcases: 'test-cases', bugfix: 'bugs', automated: 'automation', testRuns: 'test-runs', traceability: 'traceability', reports: 'reports', settings: 'settings', profile: 'profile' };
 const ROUTE_TABS = Object.fromEntries(Object.entries(TAB_ROUTES).map(([tab, route]) => [route, tab])) as Record<string, AppTab>;
 function workspaceRoute(pathname: string) {
   const match = pathname.match(/^\/projects\/([^/]+)\/([^/]+)\/?$/);
@@ -779,6 +780,7 @@ export default function TestCaseManager() {
           traceability: <TraceabilityPanel key={selectedProject} projectId={selectedProject} />,
           reports: <ReportsPanel key={selectedProject} projectId={selectedProject} onNavigate={(tab) => handleActiveTabChange(tab)} />,
           settings: workspaceViews.settings,
+          profile: <UserProfilePanel onNavigate={(tab) => handleActiveTabChange(tab)} />,
         }}
       </AppShell>
 

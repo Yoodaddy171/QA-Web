@@ -263,10 +263,17 @@ function WorkspaceCommandPalette({
     <Dialog open={open} onOpenChange={(nextOpen) => { onOpenChange(nextOpen); if (!nextOpen) setQuery(''); }}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-xl">
         <DialogHeader className="sr-only"><DialogTitle>Command palette</DialogTitle><DialogDescription>Cari menu, TC-ID, Bug, Requirement, atau aksi cepat.</DialogDescription></DialogHeader>
-        <div className="flex items-center gap-3 border-b border-border px-4">
-          {omnisearchLoading ? <Loader2 className="size-4 animate-spin text-primary" /> : <Search className="size-4 text-muted-foreground" />}
-          <Input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari TC-ID, Bug, Requirement, Test Cycle, menu, atau project..." className="h-14 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0" />
-          <Kbd size="sm">ESC</Kbd>
+        <div className="flex items-center gap-2.5 border-b border-border pl-4 pr-14">
+          {omnisearchLoading ? <Loader2 className="size-4 shrink-0 animate-spin text-primary" /> : <Search className="size-4 shrink-0 text-muted-foreground" />}
+          <Input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari TC-ID, Bug, Requirement, Test Cycle, menu, atau project..." className="h-14 flex-1 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0" />
+          <Kbd
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            title="Tutup (Esc)"
+            className="hidden sm:inline-flex cursor-pointer select-none text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground active:scale-95"
+          >
+            ESC
+          </Kbd>
         </div>
         <div ref={cmdListRef} className="max-h-[440px] overflow-y-auto p-2">
           {/* Live Omnisearch Entity Results */}

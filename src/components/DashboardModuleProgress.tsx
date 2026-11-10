@@ -208,7 +208,7 @@ export function DashboardModuleProgress({
                                 {mp.doneCount > 0 && (
                                   <Badge
                                     variant="outline"
-                                    className="gap-1 border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium px-1.5 py-0.5"
+                                    className="qa-status qa-status-passed gap-1 font-medium px-1.5 py-0.5"
                                   >
                                     <CheckCircle2 className="h-3 w-3" /> {mp.doneCount}
                                   </Badge>
@@ -216,7 +216,7 @@ export function DashboardModuleProgress({
                                 {mp.failedCount > 0 && (
                                   <Badge
                                     variant="outline"
-                                    className="gap-1 border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-medium px-1.5 py-0.5"
+                                    className="qa-status qa-status-failed gap-1 font-medium px-1.5 py-0.5"
                                   >
                                     <XCircle className="h-3 w-3" /> {mp.failedCount}
                                   </Badge>
@@ -224,7 +224,7 @@ export function DashboardModuleProgress({
                                 {mp.blockedCount > 0 && (
                                   <Badge
                                     variant="outline"
-                                    className="gap-1 border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium px-1.5 py-0.5"
+                                    className="qa-status qa-status-blocked gap-1 font-medium px-1.5 py-0.5"
                                   >
                                     <AlertTriangle className="h-3 w-3" /> {mp.blockedCount}
                                   </Badge>
@@ -232,13 +232,13 @@ export function DashboardModuleProgress({
                                 {mp.inProgressCount > 0 && (
                                   <Badge
                                     variant="outline"
-                                    className="gap-1 border-indigo-500/25 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-medium px-1.5 py-0.5"
+                                    className="qa-status qa-status-in-progress gap-1 font-medium px-1.5 py-0.5"
                                   >
                                     <Clock className="h-3 w-3" /> {mp.inProgressCount}
                                   </Badge>
                                 )}
                                 {mp.notDoneCount > 0 && (
-                                  <span className="text-muted-foreground/60 px-1">
+                                  <span className="text-muted-foreground px-1">
                                     {mp.notDoneCount} backlog
                                   </span>
                                 )}

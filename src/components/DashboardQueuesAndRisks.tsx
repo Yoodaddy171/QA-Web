@@ -42,10 +42,10 @@ const getPriorityDot = (priority: string) => {
 
 const getAgeBadgeStyle = (days: number) => {
   if (days >= 7) {
-    return 'border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-400';
+    return 'border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300';
   }
   if (days >= 3) {
-    return 'border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    return 'border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-300';
   }
   return 'border-border/60 bg-secondary/60 text-muted-foreground';
 };
@@ -112,7 +112,7 @@ export function DashboardQueuesAndRisks({
                     transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                   />
                 )}
-                <RefreshCw className={cn('h-3.5 w-3.5', isRetest ? 'text-cyan-500' : 'text-muted-foreground')} />
+                <RefreshCw className={cn('h-3.5 w-3.5', isRetest ? 'text-cyan-700 dark:text-cyan-400' : 'text-muted-foreground')} />
                 <span>Retest</span>
                 <span className="font-mono text-[11px] tabular-nums">({retestQueue.length})</span>
               </button>
@@ -134,7 +134,7 @@ export function DashboardQueuesAndRisks({
                     transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                   />
                 )}
-                <Clock className={cn('h-3.5 w-3.5', !isRetest ? 'text-amber-500' : 'text-muted-foreground')} />
+                <Clock className={cn('h-3.5 w-3.5', !isRetest ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')} />
                 <span>Umur Bug</span>
                 <span className="font-mono text-[11px] tabular-nums">({bugAging.length})</span>
               </button>
@@ -251,12 +251,12 @@ export function DashboardQueuesAndRisks({
               {visibleRisks.map((item) => {
                 const riskColor =
                   item.riskScore >= 70
-                    ? 'bg-rose-500 text-rose-600 dark:text-rose-400'
+                    ? 'bg-rose-500 text-rose-700 dark:text-rose-300'
                     : item.riskScore >= 40
-                      ? 'bg-orange-500 text-orange-600 dark:text-orange-400'
+                      ? 'bg-orange-500 text-orange-800 dark:text-orange-300'
                       : item.riskScore >= 20
-                        ? 'bg-amber-500 text-amber-600 dark:text-amber-400'
-                        : 'bg-emerald-500 text-emerald-600 dark:text-emerald-400';
+                        ? 'bg-amber-500 text-amber-800 dark:text-amber-300'
+                        : 'bg-emerald-500 text-emerald-700 dark:text-emerald-300';
 
                 return (
                   <button
@@ -303,15 +303,15 @@ export function DashboardQueuesAndRisks({
 
                     {/* Breakdown Chips */}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-mono tabular-nums text-muted-foreground">
-                      <span className={cn(item.failed > 0 && 'text-rose-500 font-semibold')}>
+                      <span className={cn(item.failed > 0 && 'text-rose-700 dark:text-rose-400 font-semibold')}>
                         {item.failed} failed
                       </span>
                       <span aria-hidden="true">·</span>
-                      <span className={cn(item.blocked > 0 && 'text-amber-500 font-semibold')}>
+                      <span className={cn(item.blocked > 0 && 'text-amber-800 dark:text-amber-400 font-semibold')}>
                         {item.blocked} blocked
                       </span>
                       <span aria-hidden="true">·</span>
-                      <span className={cn(item.readyToRetest > 0 && 'text-cyan-500 font-semibold')}>
+                      <span className={cn(item.readyToRetest > 0 && 'text-cyan-700 dark:text-cyan-400 font-semibold')}>
                         {item.readyToRetest} retest
                       </span>
                     </div>

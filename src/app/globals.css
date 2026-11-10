@@ -285,7 +285,7 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
   --color-bug-fixed: var(--bug-fixed);
 }
 
-/* ===== LIGHT MODE - Quiet Professional: neutral zinc + indigo ===== */
+/* ===== LIGHT MODE - Precision Instrument: tactile alabaster + cobalt signal ===== */
 :root {
   --radius: 0.625rem;
   --motion-fast: 120ms;
@@ -310,9 +310,9 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
   --text-title: 1.25rem;
   --text-display: 1.875rem;
 
-  /* Test execution states. */
-  --status-not-run: #475569;
-  --status-in-progress: #4338ca;
+  /* Test execution states (WCAG AA >= 5.0:1 on light surfaces). */
+  --status-not-run: #52545e;
+  --status-in-progress: #0369a1;
   --status-passed: #047857;
   --status-failed: #b91c1c;
   --status-blocked: #92400e;
@@ -321,71 +321,71 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
 
   /* Defect lifecycle states deliberately use a separate palette. */
   --bug-open: #c2410c;
-  --bug-fixing: #7e22ce;
+  --bug-fixing: #6d28d9;
   --bug-ready: #0369a1;
   --bug-fixed: #0f766e;
 
-  /* Core surfaces */
-  --background: #fafafa;
-  --foreground: #18181b;
+  /* Core surfaces: 3-tier luminance separation (canvas -> sidebar -> card) */
+  --background: #f3f4f6;
+  --foreground: #141417;
   --card: #ffffff;
-  --card-foreground: #18181b;
+  --card-foreground: #141417;
   --popover: #ffffff;
-  --popover-foreground: #18181b;
+  --popover-foreground: #141417;
 
-  /* Primary - Indigo */
-  --primary: #4f46e5;
+  /* Primary - Traceva Precision Cobalt-Ultramarine */
+  --primary: #2b44e8;
   --primary-foreground: #ffffff;
 
   /* Secondary */
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
+  --secondary: #ebedf0;
+  --secondary-foreground: #141417;
 
   /* Muted */
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
+  --muted: #f0f1f4;
+  --muted-foreground: #5e6068;
 
   /* Accent */
-  --accent: #eef2ff;
-  --accent-foreground: #4f46e5;
+  --accent: #eef1ff;
+  --accent-foreground: #2b44e8;
 
   /* Destructive */
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
 
   /* Borders & inputs */
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #6366f1;
+  --border: #dcdfe5;
+  --input: #cfd3dc;
+  --ring: #3b55f5;
 
   /* Charts */
-  --chart-1: #6366f1;
-  --chart-2: #0ea5e9;
-  --chart-3: #f59e0b;
-  --chart-4: #ec4899;
-  --chart-5: #10b981;
+  --chart-1: #2b44e8;
+  --chart-2: #0284c7;
+  --chart-3: #d97706;
+  --chart-4: #db2777;
+  --chart-5: #059669;
 
   /* Sidebar */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #3f3f46;
-  --sidebar-primary: #4f46e5;
+  --sidebar: #f8f9fb;
+  --sidebar-foreground: #27272d;
+  --sidebar-primary: #2b44e8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f4f5;
-  --sidebar-accent-foreground: #4f46e5;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: #6366f1;
+  --sidebar-accent: #ebedf0;
+  --sidebar-accent-foreground: #2b44e8;
+  --sidebar-border: #dcdfe5;
+  --sidebar-ring: #3b55f5;
 
   /* Material surfaces */
   --surface: #ffffff;
-  --surface-variant: #fafafa;
-  --on-surface: #18181b;
-  --on-surface-variant: #52525b;
-  --surface-container: #f4f4f5;
-  --surface-container-low: #fafafa;
-  --surface-container-high: #e4e4e7;
-  --surface-container-highest: #d4d4d8;
-  --outline: #71717a;
-  --outline-variant: #d4d4d8;
+  --surface-variant: #f3f4f6;
+  --on-surface: #141417;
+  --on-surface-variant: #52545e;
+  --surface-container: #ebedf0;
+  --surface-container-low: #f8f9fb;
+  --surface-container-high: #dcdfe5;
+  --surface-container-highest: #cfd3dc;
+  --outline: #5e6068;
+  --outline-variant: #cfd3dc;
 }
 
 
@@ -465,8 +465,8 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
 
 /* ===== DARK MODE - Quiet Professional: near-black zinc + indigo ===== */
 .dark {
-  --status-not-run: #94a3b8;
-  --status-in-progress: #a5b4fc;
+  --status-not-run: #9e9ea9;
+  --status-in-progress: #38bdf8;
   --status-passed: #34d399;
   --status-failed: #f87171;
   --status-blocked: #fbbf24;
@@ -478,63 +478,63 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
   --bug-fixed: #2dd4bf;
   --background: #09090b;
   --foreground: #ededf0;
-  --card: #111113;
+  --card: #121216;
   --card-foreground: #ededf0;
-  --popover: #111113;
+  --popover: #121216;
   --popover-foreground: #ededf0;
 
-  /* Primary - Indigo */
-  --primary: #6366f1;
+  /* Primary - Traceva Cobalt-Ultramarine (Dark Mode) */
+  --primary: #3d5af1;
   --primary-foreground: #ffffff;
 
   /* Secondary */
-  --secondary: #1b1b1f;
+  --secondary: #1b1b22;
   --secondary-foreground: #ededf0;
 
   /* Muted */
-  --muted: #1b1b1f;
-  --muted-foreground: #9d9da8;
+  --muted: #17171d;
+  --muted-foreground: #9e9ea9;
 
   /* Accent */
-  --accent: #22222a;
-  --accent-foreground: #c7d2fe;
+  --accent: #1e2238;
+  --accent-foreground: #dce3ff;
 
   /* Destructive */
   --destructive: #dc2626;
 
   /* Borders & inputs */
-  --border: #1f1f24;
-  --input: #1f1f24;
-  --ring: #818cf8;
+  --border: #262630;
+  --input: #2e2e3a;
+  --ring: #6880ff;
 
   /* Charts */
-  --chart-1: #818cf8;
+  --chart-1: #6880ff;
   --chart-2: #38bdf8;
   --chart-3: #fbbf24;
   --chart-4: #f472b6;
   --chart-5: #34d399;
 
   /* Sidebar */
-  --sidebar: #0d0d0f;
+  --sidebar: #0c0c10;
   --sidebar-foreground: #c9c9d1;
-  --sidebar-primary: #818cf8;
-  --sidebar-primary-foreground: #1e1b4b;
-  --sidebar-accent: #1b1b1f;
-  --sidebar-accent-foreground: #c7d2fe;
-  --sidebar-border: #202024;
-  --sidebar-ring: #818cf8;
+  --sidebar-primary: #6880ff;
+  --sidebar-primary-foreground: #090d26;
+  --sidebar-accent: #1b1b22;
+  --sidebar-accent-foreground: #dce3ff;
+  --sidebar-border: #24242d;
+  --sidebar-ring: #6880ff;
 
   /* Material surfaces */
-  --surface: #111113;
-  --surface-variant: #1b1b1f;
+  --surface: #121216;
+  --surface-variant: #1b1b22;
   --on-surface: #ededf0;
-  --on-surface-variant: #9d9da8;
-  --surface-container: #1b1b1f;
-  --surface-container-low: #0d0d0f;
-  --surface-container-high: #26262b;
-  --surface-container-highest: #34343b;
-  --outline: #9d9da8;
-  --outline-variant: #3f3f46;
+  --on-surface-variant: #9e9ea9;
+  --surface-container: #17171d;
+  --surface-container-low: #0c0c10;
+  --surface-container-high: #22222b;
+  --surface-container-highest: #2e2e3a;
+  --outline: #9e9ea9;
+  --outline-variant: #3f3f4a;
 }
 
 @layer base {
@@ -586,8 +586,8 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
 
 /* One semantic treatment for badges, selectors, and chart keys. */
 .qa-status {
-  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-  background: color-mix(in srgb, currentColor 8%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  background: color-mix(in srgb, currentColor 9%, transparent);
 }
 .qa-status-not-run { color: var(--status-not-run); }
 .qa-status-in-progress { color: var(--status-in-progress); }

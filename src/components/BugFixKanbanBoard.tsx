@@ -33,30 +33,30 @@ const KANBAN_COLUMNS: ColumnConfig[] = [
   {
     status: BUGFIX_STATUS.REPORTED,
     label: 'Reported',
-    badgeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-    accentBorder: 'border-t-amber-500',
-    bgLight: 'bg-amber-500/5',
+    badgeClass: 'qa-status qa-bug-open',
+    accentBorder: 'border-t-orange-600 dark:border-t-orange-400',
+    bgLight: 'bg-orange-500/5',
   },
   {
     status: BUGFIX_STATUS.FIXING,
     label: 'In Fix',
-    badgeClass: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-    accentBorder: 'border-t-blue-500',
-    bgLight: 'bg-blue-500/5',
+    badgeClass: 'qa-status qa-bug-fixing',
+    accentBorder: 'border-t-purple-700 dark:border-t-purple-400',
+    bgLight: 'bg-purple-500/5',
   },
   {
     status: BUGFIX_STATUS.READY_TO_RETEST,
     label: 'Ready to Retest',
-    badgeClass: 'bg-teal-500/15 text-teal-400 border-teal-500/30',
-    accentBorder: 'border-t-teal-500',
-    bgLight: 'bg-teal-500/5',
+    badgeClass: 'qa-status qa-bug-ready',
+    accentBorder: 'border-t-sky-700 dark:border-t-sky-400',
+    bgLight: 'bg-sky-500/5',
   },
   {
     status: BUGFIX_STATUS.VERIFIED_FIXED,
     label: 'Fixed & Verified',
-    badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-    accentBorder: 'border-t-emerald-500',
-    bgLight: 'bg-emerald-500/5',
+    badgeClass: 'qa-status qa-bug-fixed',
+    accentBorder: 'border-t-teal-700 dark:border-t-teal-400',
+    bgLight: 'bg-teal-500/5',
   },
 ];
 
@@ -101,8 +101,8 @@ export function BugFixKanbanBoard({
             {/* Column Cards Container */}
             <div className="flex flex-1 flex-col gap-2.5 p-3 overflow-y-auto max-h-[calc(100vh-270px)] min-h-[300px]">
               {colItems.length === 0 ? (
-                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border/40 py-8 text-center">
-                  <p className="text-xs text-muted-foreground/60">Tidak ada bug di kolom ini</p>
+                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border/60 py-8 text-center">
+                  <p className="text-xs text-muted-foreground">Tidak ada bug di kolom ini</p>
                 </div>
               ) : (
                 colItems.map((item) => (
@@ -155,8 +155,8 @@ export function BugFixKanbanBoard({
                     </div>
 
                     {/* Bottom Status Controls */}
-                    <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px]">
-                      <span className="text-[10px] text-muted-foreground/80">
+                    <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2 text-[11px]">
+                      <span className="text-[10px] text-muted-foreground">
                         {formatDate(item.reportedAt)}
                       </span>
 
@@ -178,7 +178,7 @@ export function BugFixKanbanBoard({
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-6 border-blue-500/30 bg-blue-500/10 px-2 text-[10px] font-medium text-blue-400 hover:bg-blue-500/20"
+                              className="qa-status qa-bug-fixing h-6 px-2 text-[10px] font-medium hover:opacity-90"
                               onClick={() => onStatusChange(item.id, BUGFIX_STATUS.FIXING)}
                             >
                               Fix <ArrowRight className="ml-1 size-3" />
@@ -189,7 +189,7 @@ export function BugFixKanbanBoard({
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-6 border-teal-500/30 bg-teal-500/10 px-2 text-[10px] font-medium text-teal-400 hover:bg-teal-500/20"
+                              className="qa-status qa-bug-ready h-6 px-2 text-[10px] font-medium hover:opacity-90"
                               onClick={() => onStatusChange(item.id, BUGFIX_STATUS.READY_TO_RETEST)}
                             >
                               Retest <ArrowRight className="ml-1 size-3" />

@@ -75,10 +75,10 @@ type TestPlanOption = { id: string; name: string; status: string };
 type Activity = { id: string; action: string; field?: string | null; beforeValue?: unknown; afterValue?: unknown; actor?: string | null; createdAt: string };
 
 const EXECUTION_ACTIONS = [
-  { status: TEST_EXECUTION_STATUS.PASSED, label: 'Pass', shortcut: 'P', icon: Check, activeClass: 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent shadow-xs' },
+  { status: TEST_EXECUTION_STATUS.PASSED, label: 'Pass', shortcut: 'P', icon: Check, activeClass: 'bg-emerald-700 hover:bg-emerald-800 text-white border-transparent shadow-xs' },
   { status: TEST_EXECUTION_STATUS.FAILED, label: 'Fail', shortcut: 'F', icon: X, activeClass: 'bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent shadow-xs' },
-  { status: TEST_EXECUTION_STATUS.BLOCKED, label: 'Blocked', shortcut: 'B', icon: CircleAlert, activeClass: 'bg-amber-600 hover:bg-amber-700 text-white border-transparent shadow-xs' },
-  { status: TEST_EXECUTION_STATUS.RETEST, label: 'Retest', shortcut: 'R', icon: RefreshCw, activeClass: 'bg-cyan-600 hover:bg-cyan-700 text-white border-transparent shadow-xs' },
+  { status: TEST_EXECUTION_STATUS.BLOCKED, label: 'Blocked', shortcut: 'B', icon: CircleAlert, activeClass: 'bg-amber-700 hover:bg-amber-800 text-white border-transparent shadow-xs' },
+  { status: TEST_EXECUTION_STATUS.RETEST, label: 'Retest', shortcut: 'R', icon: RefreshCw, activeClass: 'bg-cyan-700 hover:bg-cyan-800 text-white border-transparent shadow-xs' },
 ];
 const RUN_CASES_PER_PAGE = 10;
 const MAX_EVIDENCE_FILE_SIZE = 25 * 1024 * 1024;
@@ -99,7 +99,7 @@ function statusDotClass(status: string) {
   if (status === TEST_EXECUTION_STATUS.FAILED) return 'bg-rose-500';
   if (status === TEST_EXECUTION_STATUS.BLOCKED) return 'bg-amber-500';
   if (status === TEST_EXECUTION_STATUS.RETEST) return 'bg-cyan-500';
-  if (status === TEST_EXECUTION_STATUS.IN_PROGRESS) return 'bg-blue-500';
+  if (status === TEST_EXECUTION_STATUS.IN_PROGRESS) return 'bg-sky-500';
   return 'bg-muted-foreground/40';
 }
 

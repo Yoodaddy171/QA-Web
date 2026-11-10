@@ -36,7 +36,7 @@ const badgeVariants = cva(
         verifiedfixed:
           "qa-status qa-bug-fixed",
         tba:
-          "border-purple-400/30 bg-purple-300/20 text-purple-700 dark:text-purple-400",
+          "border-violet-500/25 bg-violet-500/10 text-violet-800 dark:text-violet-300",
       },
     },
     defaultVariants: {

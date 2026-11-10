@@ -23,7 +23,7 @@ export function getStatusColor(status: string) {
     case BUGFIX_STATUS.VERIFIED_FIXED:
       return 'qa-status qa-bug-fixed';
     case TESTCASE_STATUS.TBA:
-      return 'bg-purple-50 text-purple-700 border border-purple-200/60 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20';
+      return 'border border-violet-500/25 bg-violet-500/10 text-violet-800 dark:text-violet-300';
     default:
       return 'qa-status qa-status-not-run';
   }
@@ -59,16 +59,16 @@ export function getStatusIcon(status: string) {
 
 export function getPriorityColor(priority: string) {
   switch (priority) {
-    case 'Critical': return 'bg-red-50 text-red-700 border border-red-200/60 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/20';
-    case 'High': return 'bg-orange-50 text-orange-700 border border-orange-200/60 dark:bg-orange-500/15 dark:text-orange-400 dark:border-orange-500/20';
-    case 'Medium': return 'bg-blue-50 text-blue-700 border border-blue-200/60 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/20';
-    case 'Low': return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20';
-    default: return 'bg-slate-50 text-slate-700 border border-slate-200/60 dark:bg-slate-500/15 dark:text-slate-400 dark:border-slate-500/20';
+    case 'Critical': return 'bg-red-500/10 text-red-700 border border-red-500/25 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30 font-semibold';
+    case 'High': return 'bg-amber-500/10 text-amber-800 border border-amber-500/25 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30';
+    case 'Medium': return 'bg-secondary/80 text-foreground border border-border';
+    case 'Low': return 'bg-secondary/45 text-muted-foreground border border-border/80';
+    default: return 'bg-secondary/45 text-muted-foreground border border-border/80';
   }
 }
 
 export function getTestTypeColor(type: string) {
   return type === 'Positive'
-    ? 'bg-sky-50 text-sky-700 border border-sky-200/60 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20'
-    : 'bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20';
+    ? 'bg-secondary/75 text-foreground border border-border'
+    : 'bg-secondary/45 text-muted-foreground border border-border/90';
 }

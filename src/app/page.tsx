@@ -1,13 +1,8 @@
 'use client';
 
 import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { AppShell } from '@/components/AppShell';
 import { WorkspaceAccessProvider, useWorkspacePermissions } from '@/components/WorkspaceAccess';
@@ -39,16 +34,7 @@ import { buildWorkspaceViews } from '@/lib/client/workspace-tab-views';
 import { TestRunsPanel } from '@/components/TestRunsPanel';
 import { TraceabilityPanel } from '@/components/TraceabilityPanel';
 import { ReportsPanel } from '@/components/ReportsPanel';
-const ProjectModuleDialogs = dynamic(() => import('@/components/ProjectModuleDialogs').then(module => module.ProjectModuleDialogs));
-const TestCaseDialog = dynamic(() => import('@/components/TestCaseDialog').then(module => module.TestCaseDialog));
-const TestCaseDetailDialog = dynamic(() => import('@/components/TestCaseDetailDialog').then(module => module.TestCaseDetailDialog));
-const AIRefineDialog = dynamic(() => import('@/components/AIRefineDialog').then(module => module.AIRefineDialog));
-const BulkStatusDialog = dynamic(() => import('@/components/BulkStatusDialog').then(module => module.BulkStatusDialog));
-const BulkExecutionDialog = dynamic(() => import('@/components/BulkExecutionDialog').then(module => module.BulkExecutionDialog));
-const BulkAssignDialog = dynamic(() => import('@/components/BulkAssignDialog').then(module => module.BulkAssignDialog));
-const ImportExcelDialog = dynamic(() => import('@/components/ImportExcelDialog').then(module => module.ImportExcelDialog));
-const AIGenerateDialog = dynamic(() => import('@/components/AIGenerateDialog').then(module => module.AIGenerateDialog));
-const FloatingAIChat = dynamic(() => import('@/components/FloatingAIChat').then(module => module.FloatingAIChat), { ssr: false });
+import { WorkspaceDialogsHost } from '@/components/WorkspaceDialogsHost';
 
 type ModuleRiskItem = NonNullable<Stats['moduleRisks']>[number];
 
@@ -795,9 +781,12 @@ export default function TestCaseManager() {
           settings: workspaceViews.settings,
         }}
       </AppShell>
-      {/* ============== DIALOGS ============== */}
 
-      {(showCreateProject || showCreateModule) && <ProjectModuleDialogs
+      <WorkspaceDialogsHost
+        access={access}
+        selectedProject={selectedProject}
+        selectedProjectName={selectedProjectName}
+        modules={modules}
         showCreateProject={showCreateProject}
         showCreateModule={showCreateModule}
         newProjectName={newProjectName}
@@ -808,29 +797,17 @@ export default function TestCaseManager() {
         setNewProjectName={setNewProjectName}
         setNewProjectDesc={setNewProjectDesc}
         setNewModuleName={setNewModuleName}
-        onCreateProject={handleCreateProject}
-        onCreateModule={handleCreateModule}
-      />}
-
-      {/* Create/Edit Test Case Dialog */}
-      {access.canEdit && showTestCaseDialog && <TestCaseDialog
-        open={showTestCaseDialog}
-        onOpenChange={(open) => {
-          setShowTestCaseDialog(open);
-          if (!open) setDraftTestCase(null);
-        }}
+        handleCreateProject={handleCreateProject}
+        handleCreateModule={handleCreateModule}
+        showTestCaseDialog={showTestCaseDialog}
+        setShowTestCaseDialog={setShowTestCaseDialog}
+        setDraftTestCase={setDraftTestCase}
         editingTestCase={editingTestCase}
-        initialTestCase={draftTestCase}
-        selectedProject={selectedProject}
-        modules={modules}
-        onSaveSuccess={() => loadAll(selectedProject)}
-      />}
-
-      {/* Detail View Dialog */}
-      {viewTestCase?.projectId === selectedProject && <TestCaseDetailDialog
-        open={showDetailDialog}
-        onOpenChange={setShowDetailDialog}
+        draftTestCase={draftTestCase}
+        loadAll={loadAll}
         viewTestCase={viewTestCase}
+        showDetailDialog={showDetailDialog}
+        setShowDetailDialog={setShowDetailDialog}
         socketReady={socketReady}
         liveLogs={liveLogs}
         activeDevLogTab={activeDevLogTab}
@@ -858,140 +835,77 @@ export default function TestCaseManager() {
         generateAISummary={generateAISummary}
         loadLogHistory={loadLogHistory}
         filterConsoleLogs={filterConsoleLogs}
-        getStatusColor={getStatusColor}
-        getStatusIcon={getStatusIcon}
-        getStatusBadgeVariant={getStatusBadgeVariant}
-        getTestTypeColor={getTestTypeColor}
-        getPriorityColor={getPriorityColor}
-        onEdit={openEditDialog}
-        onRefine={FEATURES.aiTestcaseFlows ? openAIRefineDialog : undefined}
-        onCopyId={(id) => {
-          navigator.clipboard.writeText(id);
-          toast({ variant: 'success', title: 'ID Disalin', description: 'Internal ID berhasil disalin untuk Katalon.' });
-        }}
-        testCaseList={navigationContextList ?? []}
-        onNavigate={handleNavigate}
-      />}
-
-      {FEATURES.aiTestcaseFlows && showAIRefineDialog && (
-        <AIRefineDialog
-          open={showAIRefineDialog}
-          onOpenChange={(open) => {
-            setShowAIRefineDialog(open);
-            if (!open) {
-              setAiRefinedCase(null);
-              setRefiningTestCase(null);
-            }
-          }}
-          testCase={refiningTestCase}
-          refinedCase={aiRefinedCase}
-          refining={aiRefining}
-          saving={aiRefineSaving}
-          onRefine={handleAIRefine}
-          onApply={handleApplyAIRefinement}
-          onReset={() => setAiRefinedCase(null)}
-          getPriorityColor={getPriorityColor}
-          getTestTypeColor={getTestTypeColor}
-        />
-      )}
-      {/* Delete Confirmation */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Test Case?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {selectedIds.size > 0
-                ? `${selectedIds.size} test case yang dipilih akan dihapus. Tindakan ini tidak bisa dibatalkan.`
-                : 'Test case ini akan dihapus. Tindakan ini tidak bisa dibatalkan.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (selectedIds.size > 0) handleBulkDelete();
-                else if (editingTestCase) handleDeleteTestCase(editingTestCase.id);
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {showBulkAction && <BulkStatusDialog
-        open={showBulkAction}
-        selectedCount={selectedIds.size}
+        openEditDialog={openEditDialog}
+        openAIRefineDialog={openAIRefineDialog}
+        toast={toast}
+        navigationContextList={navigationContextList}
+        handleNavigate={handleNavigate}
+        showAIRefineDialog={showAIRefineDialog}
+        setShowAIRefineDialog={setShowAIRefineDialog}
+        setAiRefinedCase={setAiRefinedCase}
+        setRefiningTestCase={setRefiningTestCase}
+        refiningTestCase={refiningTestCase}
+        aiRefinedCase={aiRefinedCase}
+        aiRefining={aiRefining}
+        aiRefineSaving={aiRefineSaving}
+        handleAIRefine={handleAIRefine}
+        handleApplyAIRefinement={handleApplyAIRefinement}
+        showDeleteConfirm={showDeleteConfirm}
+        setShowDeleteConfirm={setShowDeleteConfirm}
+        selectedIds={selectedIds}
+        handleBulkDelete={handleBulkDelete}
+        handleDeleteTestCase={handleDeleteTestCase}
+        showBulkAction={showBulkAction}
         bulkStatus={bulkStatus}
-        onOpenChange={setShowBulkAction}
+        setShowBulkAction={setShowBulkAction}
         setBulkStatus={setBulkStatus}
-        onSubmit={handleBulkStatusUpdate}
-      />}
-      {showBulkExecution && <BulkExecutionDialog open={showBulkExecution} selectedCount={selectedIds.size} testRuns={testRunOptions} testRunId={bulkExecutionRun} status={bulkExecutionStatus} tester={bulkExecutionTester} onOpenChange={setShowBulkExecution} onTestRunChange={setBulkExecutionRun} onStatusChange={setBulkExecutionStatus} onTesterChange={setBulkExecutionTester} onSubmit={handleBulkExecution} />}
-      {showBulkAssign && <BulkAssignDialog open={showBulkAssign} selectedCount={selectedIds.size} testRuns={testRunOptions} testRunId={bulkAssignRun} assignee={bulkAssignee} onOpenChange={setShowBulkAssign} onTestRunChange={setBulkAssignRun} onAssigneeChange={setBulkAssignee} onSubmit={handleBulkAssign} />}
-
-      {/* Import Excel Dialog */}
-      {showImportDialog && <ImportExcelDialog
-        open={showImportDialog}
-        onOpenChange={(open) => {
-          setShowImportDialog(open);
-          if (!open) resetImportPreview();
-        }}
-        createModules={importCreateModules}
-        onCreateModulesChange={setImportCreateModules}
+        handleBulkStatusUpdate={handleBulkStatusUpdate}
+        showBulkExecution={showBulkExecution}
+        testRunOptions={testRunOptions}
+        bulkExecutionRun={bulkExecutionRun}
+        bulkExecutionStatus={bulkExecutionStatus}
+        bulkExecutionTester={bulkExecutionTester}
+        setShowBulkExecution={setShowBulkExecution}
+        setBulkExecutionRun={setBulkExecutionRun}
+        setBulkExecutionStatus={setBulkExecutionStatus}
+        setBulkExecutionTester={setBulkExecutionTester}
+        handleBulkExecution={handleBulkExecution}
+        showBulkAssign={showBulkAssign}
+        bulkAssignRun={bulkAssignRun}
+        bulkAssignee={bulkAssignee}
+        setShowBulkAssign={setShowBulkAssign}
+        setBulkAssignRun={setBulkAssignRun}
+        setBulkAssignee={setBulkAssignee}
+        handleBulkAssign={handleBulkAssign}
+        showImportDialog={showImportDialog}
+        setShowImportDialog={setShowImportDialog}
+        resetImportPreview={resetImportPreview}
+        importCreateModules={importCreateModules}
+        setImportCreateModules={setImportCreateModules}
         importing={importing}
-        previewing={previewingImport}
-        selectedFileName={selectedImportFile?.name || ''}
+        previewingImport={previewingImport}
+        selectedImportFile={selectedImportFile}
         importPreview={importPreview}
         fileInputRef={fileInputRef}
-        onChooseFile={() => fileInputRef.current?.click()}
-        onConfirmImport={handleConfirmImportExcel}
+        handleConfirmImportExcel={handleConfirmImportExcel}
         lastImportBatchId={lastImportBatchId}
-        onUndoImport={handleUndoImport}
-        onMappingChange={handleImportMappingChange}
-        onClearPreview={resetImportPreview}
-      />}
-
-      {/* AI Generate Dialog */}
-      {access.canEdit && FEATURES.aiTestcaseFlows && (
-        <>
-          {showAIDialog && <AIGenerateDialog
-            open={showAIDialog}
-            onOpenChange={(open) => {
-              setShowAIDialog(open);
-              if (!open) {
-                setAiGeneratedCases([]);
-                setAiSelectedCases(new Set());
-              }
-            }}
-            projectId={selectedProject}
-            modules={modules}
-            aiGenerating={aiGenerating}
-            aiGeneratedCases={aiGeneratedCases}
-            aiSelectedCases={aiSelectedCases}
-            aiSaving={aiSaving}
-            handleAIGenerate={handleAIGenerate}
-            handleAISaveSelected={handleAISaveSelected}
-            toggleAISelectAll={toggleAISelectAll}
-            toggleAISelect={toggleAISelect}
-            resetGeneratedCases={() => {
-              setAiGeneratedCases([]);
-              setAiSelectedCases(new Set());
-            }}
-            getTestTypeColor={getTestTypeColor}
-            getPriorityColor={getPriorityColor}
-          />}
-
-          <FloatingAIChat
-            projectId={selectedProject}
-            projectName={selectedProjectName}
-            selectedTestCase={viewTestCase?.projectId === selectedProject ? viewTestCase : null}
-            onOpenTestCaseId={openTestCaseFromChat}
-            onCreateTestCaseDraft={openDraftCreateDialog}
-          />
-        </>
-      )}
+        handleUndoImport={handleUndoImport}
+        handleImportMappingChange={handleImportMappingChange}
+        showAIDialog={showAIDialog}
+        setShowAIDialog={setShowAIDialog}
+        setAiGeneratedCases={setAiGeneratedCases}
+        setAiSelectedCases={setAiSelectedCases}
+        aiGenerating={aiGenerating}
+        aiGeneratedCases={aiGeneratedCases}
+        aiSelectedCases={aiSelectedCases}
+        aiSaving={aiSaving}
+        handleAIGenerate={handleAIGenerate}
+        handleAISaveSelected={handleAISaveSelected}
+        toggleAISelectAll={toggleAISelectAll}
+        toggleAISelect={toggleAISelect}
+        openTestCaseFromChat={openTestCaseFromChat}
+        openDraftCreateDialog={openDraftCreateDialog}
+      />
     </div>
     </WorkspaceAccessProvider>
     </ErrorBoundary>

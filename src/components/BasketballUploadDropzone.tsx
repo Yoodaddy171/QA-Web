@@ -49,22 +49,24 @@ interface ArcGeometry {
   dots: Array<{ x: number; y: number; r: number; opacity: number }>;
 }
 
-function formatFileSize(bytes?: number) {
-  if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return '';
-  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${bytes} B`;
+import {
+  StandardUploadDropzone,
+  formatFileSize,
+  getFileExtensionBadge,
+} from '@/components/basketball/StandardUploadDropzone';
+
+export function BasketballUploadDropzone(props: BasketballUploadDropzoneProps) {
+  const { isBasketballEnabled: globalBasketballEnabled } = useBasketballDropzoneSetting();
+  const isBasketballActive = props.interactiveDropzone ?? globalBasketballEnabled;
+
+  if (!isBasketballActive) {
+    return <StandardUploadDropzone {...props} />;
+  }
+
+  return <BasketballCourtDropzone {...props} />;
 }
 
-function getFileExtensionBadge(fileName?: string, fallback = 'DOC') {
-  if (!fileName) return fallback;
-  const parts = fileName.trim().split('.');
-  if (parts.length < 2) return fallback;
-  const ext = parts[parts.length - 1].toUpperCase().slice(0, 4);
-  return ext || fallback;
-}
-
-export function BasketballUploadDropzone({
+function BasketballCourtDropzone({
   title = 'Upload files',
   subtitle = 'Drag and drop, or take the shot.',
   dropLabel = 'Drop files here',
@@ -84,10 +86,8 @@ export function BasketballUploadDropzone({
   inputAriaLabel,
   compact = false,
   className,
-  interactiveDropzone,
 }: BasketballUploadDropzoneProps) {
-  const { isBasketballEnabled: globalBasketballEnabled } = useBasketballDropzoneSetting();
-  const isBasketballActive = interactiveDropzone ?? globalBasketballEnabled;
+  const isBasketballActive = true;
 
   const internalInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = externalInputRef ?? internalInputRef;
@@ -837,65 +837,12 @@ export function BasketballUploadDropzone({
         </div>
       </div>
 
-      {!isBasketballActive ? (
-        /* Standard Clean Dropzone Mode (Active when Basketball Feature is turned OFF in Settings) */
-        <div
-          role="button"
-          tabIndex={disabled ? -1 : 0}
-          aria-label={`${dropLabel} - ${subtitle}`}
-          onClick={() => {
-            if (!showFileCard && !disabled && !busy) {
-              fileInputRef.current?.click();
-            }
-          }}
-          onKeyDown={(event) => {
-            if ((event.key === 'Enter' || event.key === ' ') && !disabled && !busy) {
-              event.preventDefault();
-              fileInputRef.current?.click();
-            }
-          }}
-          className={cn(
-            'relative flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-8 text-center transition-all duration-200 focus-visible:outline-2 focus-visible:outline-ring',
-            compact ? 'min-h-[148px] py-6' : 'min-h-[180px]',
-            isDraggingOver
-              ? 'border-indigo-500 bg-indigo-500/8 shadow-inner'
-              : 'border-border/80 bg-background/60 hover:border-indigo-500/50 hover:bg-background/90'
-          )}
-        >
-          {!showFileCard ? (
-            <div className="pointer-events-none flex flex-col items-center gap-1.5">
-              <div className="mb-0.5 flex size-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">
-                <Upload className="size-5" />
-              </div>
-              <p className="text-xs font-semibold text-foreground sm:text-sm">{dropLabel}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {helperText || 'Drag and drop file ke sini atau klik untuk memilih file'}
-              </p>
-              {helperBadges && helperBadges.length > 0 && (
-                <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
-                  {helperBadges.map((ext) => (
-                    <span
-                      key={ext}
-                      className="rounded border border-border/70 bg-secondary/80 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-muted-foreground"
-                    >
-                      {ext.startsWith('.') ? ext : `.${ext}`}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            renderFileCard()
-          )}
-        </div>
-      ) : (
-        <>
-        {/* Full-Card Dashed Court Dropzone (1:1 Pixel-Accurate Pro Half-Court, Extended Vertically) */}
-        <div
+      {/* Full-Card Dashed Court Dropzone (1:1 Pixel-Accurate Pro Half-Court, Extended Vertically) */}
+      <div
         ref={courtRef}
         role="button"
         tabIndex={disabled ? -1 : 0}
-        aria-label={`${dropLabel} — ${subtitle}`}
+        aria-label={`${dropLabel} - ${subtitle}`}
         onClick={() => {
           if (!showFileCard && !disabled && !busy) {
             pendingPickAfterShotRef.current = false;
@@ -1679,8 +1626,6 @@ export function BasketballUploadDropzone({
             </text>
           </svg>
         </div>
-      )}
-        </>
       )}
     </div>
   );

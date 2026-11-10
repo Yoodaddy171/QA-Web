@@ -44,6 +44,7 @@ import { TestCaseEvidenceTab } from '@/components/TestCaseEvidenceTab';
 import { TestCaseBugsTab } from '@/components/TestCaseBugsTab';
 import { TestCaseHistoryTab } from '@/components/TestCaseHistoryTab';
 import { TestCaseExecutionTab } from '@/components/TestCaseExecutionTab';
+import { TestCaseAutomationTab } from '@/components/TestCaseAutomationTab';
 import { ManualCaptureCommand } from '@/components/ManualCaptureCommand';
 import { ManualRecordingPreview } from '@/components/ManualRecordingPreview';
 import { SystemDevLogHeader } from '@/components/SystemDevLogHeader';
@@ -1110,129 +1111,50 @@ export function TestCaseDetailDialog({
                     <TestCaseCommentsTab key={sourceTestCaseId} projectId={viewTestCase.projectId} testCaseId={sourceTestCaseId} onDirtyChange={setHasUnsavedComment} />
                   )}
                   {!guest && activeMainTab === 'logs' && (
-                    <TabsContent value="logs" className="space-y-4 mt-0 outline-none h-full flex flex-col">
-                      <motion.div
-                        key="logs"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                        className="h-full flex flex-col"
-                      >
-                        <div className="flex flex-col flex-1 min-h-0">
-                          <div role="group" aria-label="Mode Automation" className="inline-flex h-8 items-center rounded-lg border border-border bg-secondary/50 p-0.5 mb-4">
-                            <Button type="button" size="sm" variant={automationMode === 'results' ? 'secondary' : 'ghost'} aria-pressed={automationMode === 'results'} onClick={() => showAutomationMode('results')} className="h-7 rounded-md px-3 text-xs font-medium"><Film className="size-3.5" />Hasil</Button>
-                            {canAdmin && <Button type="button" size="sm" variant={automationMode === 'script' ? 'secondary' : 'ghost'} aria-pressed={automationMode === 'script'} onClick={() => showAutomationMode('script')} className="h-7 rounded-md px-3 text-xs font-medium"><Code2 className="size-3.5" />Script</Button>}
-                            <Button type="button" size="sm" variant={automationMode === 'capture' ? 'secondary' : 'ghost'} aria-pressed={automationMode === 'capture'} onClick={() => { setScriptSelection(null); showAutomationMode('capture'); }} className="h-7 rounded-md px-3 text-xs font-medium"><MonitorDot className="size-3.5" />Capture Manual{isManualCaptureActive && <span className="text-xs">· Aktif</span>}</Button>
-                          </div>
-                          {canAdmin && <PlaywrightScriptPanel key={sourceTestCaseId} projectId={viewTestCase.projectId} testCaseId={sourceTestCaseId} view={automationMode === 'capture' ? 'hidden' : automationMode} selectedRunId={selectedScript?.runId || null} captureStartedAt={captureRecording?.startedAt || captureLiveLogs[0]?.timestamp} onShowResults={() => showAutomationMode('results')} onCaptureResults={() => setScriptSelection(null)} onInspect={inspectScriptRun} onDirtyChange={setHasUnsavedScript} onRunsDeleted={ids => setScriptSelection(previous => previous && ids.includes(previous.runId) ? null : previous)} />}
-                          {automationMode === 'capture' && <div className="shrink-0 space-y-4">
-                            <p className="text-sm text-muted-foreground">Rekam interaksi di browser, lalu buka Hasil untuk meninjau video dan devlog.</p>
-                            <div className="rounded-xl border border-border bg-card dark:border-border dark:bg-card overflow-hidden">
-                              <button
-                                type="button"
-                                onClick={() => setExpandedGuide(expandedGuide === 'manual' ? null : 'manual')}
-                                className="w-full flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-xs font-bold text-foreground uppercase tracking-wider dark:text-foreground hover:bg-secondary/20 transition-colors"
-                              >
-                                <span>Manual Capture</span>
-                                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-300", expandedGuide === 'manual' && "rotate-180")} />
-                              </button>
-                              <AnimatePresence>
-                                {expandedGuide === 'manual' && (
-                                  <motion.div
-                                    initial={false}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.18 }}
-                                    className="overflow-hidden"
-                                  >
-                                    <div className="border-t border-border px-4 pb-4 pt-3 text-xs leading-relaxed text-muted-foreground font-medium dark:border-border/50 dark:text-muted-foreground">
-                                      <ol className="ml-4 list-decimal space-y-2">
-                                        <li>Masukkan URL website yang ingin dites pada input Manual Capture.</li>
-                                        <li>Pilih Browser Kosong untuk sesi bersih, atau Profiled Browser untuk memakai ulang login/cookies profil Traceva.</li>
-                                        <li>Klik Start. Traceva akan membuka browser capture dan mulai merekam interaksi.</li>
-                                        <li>Lakukan testing manual di browser yang terbuka.</li>
-                                        <li>Klik Stop dari Traceva setelah selesai, lalu buka Hasil untuk meninjau rekaman.</li>
-                                      </ol>
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-
-                          <MutationAction><ManualCaptureCommand {...manualCaptureCommandProps} /></MutationAction>
-                          <DevLogGuide expandedGuide={expandedGuide} setExpandedGuide={setExpandedGuide} />
-                          </div>}
-
-                          {automationMode === 'results' && <div className="flex min-w-0 shrink-0 flex-col gap-3">
-                          {!selectedScript && <p className="text-xs text-muted-foreground">Sumber: Capture manual / integrasi{isManualCaptureActive ? ' · Perekaman aktif. Buka Capture Manual untuk menghentikan.' : ''}</p>}
-                          <ManualRecordingPreview {...manualRecordingPreviewProps} />
-                          <SystemDevLogHeader {...systemDevLogHeaderProps} />
-
-                          <div className="flex h-[min(680px,calc(100dvh-8rem))] min-h-[360px] max-h-[680px] min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-background text-xs">
-                            {aiSummary && !selectedScript && (
-                              <div className="border-b border-indigo-100 bg-indigo-50 p-4 animate-in fade-in slide-in-from-top-2 duration-500 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider dark:text-status-in-progress">
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                    AI Result Summary
-                                  </div>
-                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-indigo-700/60 hover:text-indigo-700 dark:text-status-in-progress/50 dark:hover:text-status-in-progress" onClick={() => setAiSummary(null)}>
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                                <div className="text-foreground leading-relaxed whitespace-pre-wrap text-xs prose prose-sm max-w-none dark:prose-invert dark:text-foreground">
-                                  {aiSummary}
-                                </div>
-                              </div>
-                            )}
-                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent dark:scrollbar-thumb-slate-700">
-                              <div key={activeDevLogTab} className="devlog-view-enter h-full min-h-0">
-                              {activeDevLogTab === 'execution' ? (
-                                <ExecutionLogView
-                                  stepLogs={viewTestCase.stepLogs}
-                                  logs={executionLogs}
-                                  evidenceLogs={liveLogs}
-                                  logEndRef={logEndRef}
-                                  formatRelativeTime={formatRelativeTime}
-                                  onSelectLog={logActions.seekRecordingFromLog}
-                                />
-                              ) : activeDevLogTab === 'console' ? (
-                                <ConsoleLogView
-                                  groupedConsoleLogs={groupedConsoleLogs}
-                                  query={consoleQuery}
-                                  levels={consoleLevels}
-                                  onQueryChange={setConsoleQuery}
-                                  onLevelsChange={setConsoleLevels}
-                                  logEndRef={logEndRef}
-                                  expandedLogId={expandedLogId}
-                                  setExpandedLogId={setExpandedLogId}
-                                  seekRecordingFromLog={logActions.seekRecordingFromLog}
-                                  formatRelativeTime={formatRelativeTime}
-                                  getConsoleLogText={getConsoleLogText}
-                                  formatPrettyValue={formatPrettyValue}
-                                />
-                              ) : (
-                                <NetworkLogView
-                                  filters={networkFilters}
-                                  onFiltersChange={setNetworkFilters}
-                                  totalCount={fullscreenNetworkGroups.length}
-                                  groupedNetworkLogs={groupedNetworkLogs}
-                                  logEndRef={logEndRef}
-                                  seekRecordingFromLog={logActions.seekRecordingFromLog}
-                                  expandedLogId={expandedLogId}
-                                  setExpandedLogId={setExpandedLogId}
-                                  networkCodeWrap={networkCodeWrap}
-                                  setNetworkCodeWrap={setNetworkCodeWrap}
-                                />
-                              )}
-                              </div>
-                            </div>
-                          </div>
-                          </div>}
-                        </div>
-                      </motion.div>
-                    </TabsContent>
+                    <TestCaseAutomationTab
+                      viewTestCase={viewTestCase}
+                      sourceTestCaseId={sourceTestCaseId}
+                      canAdmin={canAdmin}
+                      automationMode={automationMode}
+                      showAutomationMode={showAutomationMode}
+                      selectedScript={selectedScript}
+                      setScriptSelection={() => setScriptSelection(null)}
+                      isManualCaptureActive={isManualCaptureActive}
+                      captureStartedAt={captureRecording?.startedAt || captureLiveLogs[0]?.timestamp}
+                      inspectScriptRun={inspectScriptRun}
+                      setHasUnsavedScript={setHasUnsavedScript}
+                      onScriptRunsDeleted={ids =>
+                        setScriptSelection(previous => (previous && ids.includes(previous.runId) ? null : previous))
+                      }
+                      expandedGuide={expandedGuide}
+                      setExpandedGuide={setExpandedGuide}
+                      manualCaptureCommandProps={manualCaptureCommandProps}
+                      manualRecordingPreviewProps={manualRecordingPreviewProps}
+                      systemDevLogHeaderProps={systemDevLogHeaderProps}
+                      aiSummary={aiSummary}
+                      setAiSummary={setAiSummary}
+                      activeDevLogTab={activeDevLogTab}
+                      executionLogs={executionLogs}
+                      liveLogs={liveLogs}
+                      logEndRef={logEndRef}
+                      formatRelativeTime={formatRelativeTime}
+                      seekRecordingFromLog={logActions.seekRecordingFromLog}
+                      groupedConsoleLogs={groupedConsoleLogs}
+                      consoleQuery={consoleQuery}
+                      consoleLevels={consoleLevels}
+                      setConsoleQuery={setConsoleQuery}
+                      setConsoleLevels={setConsoleLevels}
+                      expandedLogId={expandedLogId}
+                      setExpandedLogId={setExpandedLogId}
+                      getConsoleLogText={getConsoleLogText}
+                      formatPrettyValue={formatPrettyValue}
+                      networkFilters={networkFilters}
+                      setNetworkFilters={setNetworkFilters}
+                      fullscreenNetworkCount={fullscreenNetworkGroups.length}
+                      groupedNetworkLogs={groupedNetworkLogs}
+                      networkCodeWrap={networkCodeWrap}
+                      setNetworkCodeWrap={setNetworkCodeWrap}
+                    />
                   )}
                   </>}
                 </div>

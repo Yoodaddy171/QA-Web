@@ -21,6 +21,7 @@ function Table({ className, containerClassName, containerProps, ...props }: Reac
   return (
     <div
       data-slot="table-container"
+      data-lenis-prevent
       className={cn("relative w-full overflow-x-auto", containerClassName)}
       {...containerProps}
     >

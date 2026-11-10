@@ -32,6 +32,17 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
         touchMultiplier: 1.0,
         infinite: false,
         syncTouch: false, // Menjaga scroll sentuh mobile tetap natural bawaan OS
+        prevent: (node) => {
+          if (!node || typeof (node as HTMLElement).closest !== 'function') return false;
+          // Jangan cegah scroll native di tabel, modal, dropdown, atau kontainer data
+          return Boolean(
+            (node as HTMLElement).hasAttribute?.('data-lenis-prevent') ||
+            (node as HTMLElement).closest('[data-lenis-prevent]') ||
+            (node as HTMLElement).closest('[data-slot="table-container"]') ||
+            (node as HTMLElement).closest('[role="region"]') ||
+            (node as HTMLElement).closest('table')
+          );
+        },
       }}
     >
       {children}

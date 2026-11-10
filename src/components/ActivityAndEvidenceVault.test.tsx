@@ -15,6 +15,10 @@ const { mockDb, mockGuestSafeResponse } = vi.hoisted(() => ({
     testRun: {
       findMany: vi.fn(),
     },
+    module: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
   },
   mockGuestSafeResponse: vi.fn(async (data: unknown) => data),
 }));
@@ -33,8 +37,10 @@ vi.mock('@/hooks/use-toast', () => ({
 
 import { ActivityNotificationPanel } from './ActivityNotificationPanel';
 import { EvidenceVaultPanel } from './EvidenceVaultPanel';
+import { StorageMaintenanceCard } from './StorageMaintenanceCard';
 import { GET as getActivity } from '@/app/api/activity/route';
 import { GET as getEvidenceGallery } from '@/app/api/evidence/gallery/route';
+import { PUT as putModule } from '@/app/api/modules/route';
 
 describe('ActivityNotificationPanel & EvidenceVaultPanel', () => {
   beforeEach(() => {
@@ -145,6 +151,39 @@ describe('ActivityNotificationPanel & EvidenceVaultPanel', () => {
       videoCount: 0,
       failedEvidenceCount: 1,
       runs: [{ id: 'run-1', name: 'Cycle 1 RC', status: 'IN PROGRESS' }],
+    });
+  });
+
+  it('renders StorageMaintenanceCard header, SHA-256 button, and backup button without em dashes', () => {
+    const html = renderToStaticMarkup(<StorageMaintenanceCard projectId="proj-1" />);
+    expect(html).toContain('Storage Integrity &amp; Database Backup');
+    expect(html).toContain('Verifikasi Checksum SHA-256');
+    expect(html).toContain('Buat Snapshot Backup');
+    expect(html).not.toContain('\u2014');
+  });
+
+  it('PUT /api/modules updates a module name cleanly', async () => {
+    mockDb.module.findUnique.mockResolvedValue({ id: 'mod-1' });
+    mockDb.module.update.mockResolvedValue({
+      id: 'mod-1',
+      name: 'Payment & Settlement',
+      projectId: 'proj-1',
+      _count: { testCases: 14 },
+    });
+
+    const req = new NextRequest('http://localhost/api/modules', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'mod-1', name: '  Payment & Settlement  ' }),
+    });
+    const res = await putModule(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.name).toBe('Payment & Settlement');
+    expect(mockDb.module.update).toHaveBeenCalledWith({
+      where: { id: 'mod-1' },
+      data: { name: 'Payment & Settlement' },
+      include: { _count: { select: { testCases: true } } },
     });
   });
 });

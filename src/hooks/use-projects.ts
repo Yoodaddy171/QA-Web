@@ -121,8 +121,21 @@ export function useProjects() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => loadProjects(), 0);
-    return () => window.clearTimeout(timer);
+    const onProjectsUpdated = () => void loadProjects();
+    window.addEventListener('qa-desk:projects-updated', onProjectsUpdated);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('qa-desk:projects-updated', onProjectsUpdated);
+    };
   }, [loadProjects]);
+
+  useEffect(() => {
+    const onModulesUpdated = () => {
+      if (selectedProject) void loadModules(selectedProject);
+    };
+    window.addEventListener('qa-desk:modules-updated', onModulesUpdated);
+    return () => window.removeEventListener('qa-desk:modules-updated', onModulesUpdated);
+  }, [loadModules, selectedProject]);
 
   useEffect(() => {
     if (selectedProject) {

@@ -51,6 +51,29 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const id = cleanText(body.id);
+    const name = cleanText(body.name);
+    if (!id) return NextResponse.json({ error: 'ID module wajib diisi' }, { status: 400 });
+    if (!name) return NextResponse.json({ error: 'Nama module wajib diisi' }, { status: 400 });
+
+    const existing = await db.module.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) return NextResponse.json({ error: 'Module not found' }, { status: 404 });
+
+    const updated = await db.module.update({
+      where: { id },
+      data: { name },
+      include: { _count: { select: { testCases: true } } },
+    });
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error('PUT /api/modules error:', error);
+    return NextResponse.json({ error: 'Failed to update module' }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   try {
     const url = new URL(req.url);

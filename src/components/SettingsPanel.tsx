@@ -21,9 +21,13 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import { AISettingsCard } from '@/components/AISettingsCard';
 import { ProjectKnowledgeCard } from '@/components/ProjectKnowledgeCard';
 import { SystemReadinessCard } from '@/components/SystemReadinessCard';
+import { StorageMaintenanceCard } from '@/components/StorageMaintenanceCard';
 import { DropzoneSettingsCard } from '@/components/DropzoneSettingsCard';
 import { WorkspaceMembersCard } from '@/components/WorkspaceMembersCard';
 import { GuestAccessCard } from '@/components/GuestAccessCard';
@@ -85,6 +89,74 @@ function ProjectSettingsPanel({
   const [geminiStatus, setGeminiStatus] = useState('Not configured');
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState('');
   const [aiMessage, setAiMessage] = useState('');
+
+  // Project edit state
+  const [editingProject, setEditingProject] = useState<{
+    id: string;
+    name: string;
+    description: string;
+    automationContext: string;
+  } | null>(null);
+  const [savingProject, setSavingProject] = useState(false);
+  const [projectMessage, setProjectMessage] = useState('');
+
+  // Module edit state
+  const [editingModule, setEditingModule] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [savingModule, setSavingModule] = useState(false);
+  const [moduleMessage, setModuleMessage] = useState('');
+
+  const handleSaveProject = async () => {
+    if (!editingProject || !editingProject.name.trim()) return;
+    setSavingProject(true);
+    setProjectMessage('');
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingProject.id,
+          name: editingProject.name.trim(),
+          description: editingProject.description.trim(),
+          automationContext: editingProject.automationContext.trim(),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Gagal memperbarui project.');
+      setEditingProject(null);
+      window.dispatchEvent(new CustomEvent('qa-desk:projects-updated'));
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : 'Gagal memperbarui project.');
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
+  const handleSaveModule = async () => {
+    if (!editingModule || !editingModule.name.trim()) return;
+    setSavingModule(true);
+    setModuleMessage('');
+    try {
+      const response = await fetch('/api/modules', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingModule.id,
+          name: editingModule.name.trim(),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Gagal memperbarui nama module.');
+      setEditingModule(null);
+      window.dispatchEvent(new CustomEvent('qa-desk:modules-updated'));
+    } catch (error) {
+      setModuleMessage(error instanceof Error ? error.message : 'Gagal memperbarui nama module.');
+    } finally {
+      setSavingModule(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab !== 'ai' || !canAdmin) return;
@@ -263,6 +335,7 @@ function ProjectSettingsPanel({
         <div className="space-y-5">
           <DropzoneSettingsCard />
           <SystemReadinessCard />
+          {canAdmin && <StorageMaintenanceCard projectId={selectedProject} />}
         </div>
       </TabsContent>
       <TabsContent value="team" className="mt-0">
@@ -316,13 +389,18 @@ function ProjectSettingsPanel({
                     <div>
                       <p className="break-words text-sm font-semibold text-foreground">{project.name}</p>
                       {project.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{project.description}</p>}
-                      <div className="flex items-center gap-2 mt-1.5">
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
                         <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground font-mono tabular-nums text-xs font-medium uppercase rounded-lg">
                           {project._count?.testCases || 0} Test Cases
                         </Badge>
                         <Badge variant="outline" className="bg-secondary/50 border-border/60 text-muted-foreground font-mono tabular-nums text-xs font-medium uppercase rounded-lg">
                           {project._count?.modules || 0} Modules
                         </Badge>
+                        {project.automationContext && (
+                          <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary text-[11px] font-medium rounded-lg">
+                            Automation Context Aktif
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -335,6 +413,26 @@ function ProjectSettingsPanel({
                     >
                       {selectedProject === project.id ? 'Aktif' : 'Pilih'}
                     </Button>
+                    {canAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Edit project ${project.name}`}
+                        title="Edit nama, deskripsi, dan Automation Context"
+                        className="size-9 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        onClick={() => {
+                          setProjectMessage('');
+                          setEditingProject({
+                            id: project.id,
+                            name: project.name,
+                            description: project.description || '',
+                            automationContext: project.automationContext || '',
+                          });
+                        }}
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Button>
+                    )}
                     {selectedProject === project.id && canAdmin && <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" aria-label={`Hapus project ${project.name}`} className="size-9 text-destructive hover:bg-destructive/10 hover:text-destructive">
@@ -415,7 +513,7 @@ function ProjectSettingsPanel({
                   initial={false}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0 }}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-secondary/30 pl-4 pr-2 py-2.5 hover:bg-secondary/50 hover:border-primary/30 transition duration-200 group/mod"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-secondary/30 pl-4 pr-2 py-2.5 hover:bg-secondary/50 hover:border-primary/30 transition duration-200 group/mod"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/50 text-muted-foreground group-hover/mod:text-primary transition-colors">
@@ -426,14 +524,30 @@ function ProjectSettingsPanel({
                       <p className="text-xs font-mono font-semibold tabular-nums text-muted-foreground uppercase">{module._count?.testCases || 0} Cases</p>
                     </div>
                   </div>
-                  <MutationAction><Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-9 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => onDeleteModule(module.id)}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button></MutationAction>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <MutationAction><Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Ubah nama module ${module.name}`}
+                      title="Ubah nama module"
+                      className="size-8 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      onClick={() => {
+                        setModuleMessage('');
+                        setEditingModule({ id: module.id, name: module.name });
+                      }}
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </Button></MutationAction>
+                    <MutationAction><Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Hapus module ${module.name}`}
+                      className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => onDeleteModule(module.id)}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button></MutationAction>
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -442,6 +556,118 @@ function ProjectSettingsPanel({
       </Card>
       </TabsContent>
       </Tabs>
+
+      {/* Edit Project & Automation Context Dialog */}
+      <Dialog open={Boolean(editingProject)} onOpenChange={(open) => { if (!open) setEditingProject(null); }}>
+        <DialogContent className="sm:max-w-lg rounded-2xl border-border bg-card text-foreground shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold tracking-tight">Edit Project & Automation Context</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Perbarui nama project, deskripsi, atau konfigurasi lingkungan otomasi pengujian (base URL, kredensial staging, atau instruksi AI).
+            </DialogDescription>
+          </DialogHeader>
+          {editingProject && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-project-name" className="text-xs font-semibold">Nama Project</Label>
+                <Input
+                  id="edit-project-name"
+                  value={editingProject.name}
+                  onChange={(e) => setEditingProject({ ...editingProject, name: e.target.value })}
+                  placeholder="Contoh: IAPAYS 2.0 Refactor"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-project-desc" className="text-xs font-semibold">Deskripsi Project</Label>
+                <Input
+                  id="edit-project-desc"
+                  value={editingProject.description}
+                  onChange={(e) => setEditingProject({ ...editingProject, description: e.target.value })}
+                  placeholder="Deskripsi singkat cakupan pengujian project"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-project-automation" className="text-xs font-semibold">
+                  Automation Context (Target URL / Environment Notes)
+                </Label>
+                <Textarea
+                  id="edit-project-automation"
+                  rows={4}
+                  value={editingProject.automationContext}
+                  onChange={(e) => setEditingProject({ ...editingProject, automationContext: e.target.value })}
+                  placeholder="Contoh: Base URL: https://staging.example.com | Gunakan role Treasury Approver untuk skenario signature..."
+                  className="text-xs font-mono"
+                />
+              </div>
+              {projectMessage && (
+                <p className="text-xs font-medium text-destructive">{projectMessage}</p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="border-t border-border/40 pt-3">
+            <Button variant="outline" size="sm" onClick={() => setEditingProject(null)}>
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              disabled={savingProject || !editingProject?.name.trim()}
+              onClick={() => void handleSaveProject()}
+              className="gap-1.5"
+            >
+              {savingProject ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Simpan Perubahan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit / Rename Module Dialog */}
+      <Dialog open={Boolean(editingModule)} onOpenChange={(open) => { if (!open) setEditingModule(null); }}>
+        <DialogContent className="sm:max-w-md rounded-2xl border-border bg-card text-foreground shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold tracking-tight">Ubah Nama Module</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Perbarui nama module tanpa mengubah relasi test case yang sudah terhubung.
+            </DialogDescription>
+          </DialogHeader>
+          {editingModule && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-module-name" className="text-xs font-semibold">Nama Module</Label>
+                <Input
+                  id="edit-module-name"
+                  value={editingModule.name}
+                  onChange={(e) => setEditingModule({ ...editingModule, name: e.target.value })}
+                  placeholder="Contoh: Payment & Treasury"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && editingModule.name.trim()) {
+                      e.preventDefault();
+                      void handleSaveModule();
+                    }
+                  }}
+                />
+              </div>
+              {moduleMessage && (
+                <p className="text-xs font-medium text-destructive">{moduleMessage}</p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="border-t border-border/40 pt-3">
+            <Button variant="outline" size="sm" onClick={() => setEditingModule(null)}>
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              disabled={savingModule || !editingModule?.name.trim()}
+              onClick={() => void handleSaveModule()}
+              className="gap-1.5"
+            >
+              {savingModule ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Simpan Nama
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

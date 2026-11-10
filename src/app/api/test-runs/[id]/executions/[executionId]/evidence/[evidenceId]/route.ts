@@ -20,7 +20,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       try {
         const thumb = await evidenceThumbnail(`${projectId}:${evidence.id}:${evidence.sha256}:${evidence.updatedAt.toISOString()}`, () => evidenceStorage.read(evidence.storagePath));
         return new NextResponse(new Uint8Array(thumb), { headers: { 'Content-Type': 'image/webp', 'Content-Length': String(thumb.length), 'Cache-Control': actor?.guest ? 'private, no-store' : 'private, max-age=3600', Vary: 'Cookie', 'X-Content-Type-Options': 'nosniff' } });
-      } catch { return NextResponse.json({ error: 'Thumbnail belum tersedia. Buka gambar asli.' }, { status: 503 }); }
+      } catch {
+        // Fall through to serve the original image if thumbnail generation is busy or unavailable
+      }
     }
     const file = await evidenceStorage.read(evidence.storagePath);
     const inlineSafe = ['image/png', 'image/jpeg', 'image/webp', 'video/mp4', 'video/webm'].includes(evidence.mimeType);

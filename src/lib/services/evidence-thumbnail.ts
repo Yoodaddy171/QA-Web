@@ -1,5 +1,3 @@
-import sharp from 'sharp';
-
 const cache = new Map<string, Buffer>();
 const pending = new Map<string, Promise<Buffer>>();
 const waiters: Array<() => void> = [];
@@ -21,6 +19,7 @@ export async function evidenceThumbnail(key: string, read: () => Promise<Readabl
   const task = (async () => {
     await acquire();
     try {
+      const { default: sharp } = await import('sharp');
       const reader = (await read()).getReader();
       const chunks: Uint8Array[] = []; let size = 0;
       try {

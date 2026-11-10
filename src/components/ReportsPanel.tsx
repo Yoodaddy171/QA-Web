@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { MutationAction } from '@/components/WorkspaceAccess';
 import { ArrowLeft, FileCheck, FileCode2, FileText, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -113,7 +114,13 @@ function ProjectReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
 
   if (isCreating || editingReport) {
     return (
-      <div className="qa-module-page">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+        className="qa-module-page"
+      >
         <Button variant="ghost" onClick={closeForm} className="mb-4 gap-2">
           <ArrowLeft className="h-4 w-4" /> Kembali ke Reports
         </Button>
@@ -124,13 +131,19 @@ function ProjectReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
           onReportSaved={upsertReport}
           onCancel={closeForm}
         />
-      </div>
+      </motion.div>
     );
   }
 
   if (selectedReport) {
     return (
-      <div className="qa-module-page">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+        className="qa-module-page"
+      >
         <Button variant="ghost" onClick={() => setSelectedReport(null)} className="mb-4 gap-2">
           <ArrowLeft className="h-4 w-4" /> Kembali ke Reports
         </Button>
@@ -143,7 +156,7 @@ function ProjectReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
           }}
           onNavigate={onNavigate}
         />
-      </div>
+      </motion.div>
     );
   }
 
@@ -153,7 +166,12 @@ function ProjectReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
   };
 
   return (
-    <div className="qa-module-page flex flex-col gap-5">
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+      className="qa-module-page flex flex-col gap-5"
+    >
       <div className="qa-module-toolbar flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -199,6 +217,6 @@ function ProjectReportsPanel({ projectId, onNavigate }: ReportsPanelProps) {
         total={total} matchedTotal={matchedTotal} loading={isLoading} error={isLoading ? null : loadError}
         onRetry={() => setRevision(current => current + 1)} />
       {!isLoading && !loadError && nextCursor && <Button variant="outline" disabled={loadingMore || Boolean(openingId)} onClick={() => void loadMore()}>{loadingMore ? 'Memuat…' : 'Muat report berikutnya'}</Button>}
-    </div>
+    </motion.div>
   );
 }

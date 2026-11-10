@@ -11,6 +11,7 @@ import type { ReportData } from '@/lib/services/report-types';
 import { generateHTMLReport } from '@/lib/services/report-export';
 import { copyText } from '@/lib/client/copy-text';
 import { SimpleTooltip } from '@/components/ui/tooltip';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 interface ReportViewerProps {
   report: ReportData;
@@ -157,8 +158,10 @@ export function ReportViewer({ report, onEdit, onReportChange, onNavigate }: Rep
           ['Blocked', blocked, 'text-amber-500'],
           ['Not run', pending, 'text-muted-foreground'],
         ].map(([label, value, color]) => (
-          <div key={label} className="rounded-lg border border-border/60 bg-card p-4 shadow-sm">
-            <div className={`text-2xl font-bold font-mono tabular-nums ${color}`}>{value}</div>
+          <div key={String(label)} className="rounded-lg border border-border/60 bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border">
+            <div className={`text-2xl font-bold font-mono tabular-nums ${color}`}>
+              {typeof value === 'number' ? <AnimatedNumber value={value} /> : value}
+            </div>
             <div className="text-sm text-muted-foreground">{label}</div>
           </div>
         ))}

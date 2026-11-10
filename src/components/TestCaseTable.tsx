@@ -522,11 +522,24 @@ export function TestCaseTable({
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
             <div className="flex flex-wrap items-center gap-2 pt-1" aria-label="Active filters">
               <span className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Active</span>
-              {activeFilterChips.map(chip => (
-                <button key={chip.key} type="button" onClick={() => { chip.clear(); resetPage(); }} className="group inline-flex max-w-56 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/7 px-2.5 py-1 text-xs font-semibold text-primary transition-colors duration-150 hover:border-primary/40 hover:bg-primary/12" aria-label={`Remove filter ${chip.label}`}>
-                  <span className="truncate">{chip.label}</span><X className="h-3 w-3 opacity-60 group-hover:opacity-100" />
-                </button>
-              ))}
+              <AnimatePresence mode="popLayout" initial={false}>
+                {activeFilterChips.map(chip => (
+                  <motion.button
+                    layout
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85, y: -4 }}
+                    transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+                    key={chip.key}
+                    type="button"
+                    onClick={() => { chip.clear(); resetPage(); }}
+                    className="group inline-flex max-w-56 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/7 px-2.5 py-1 text-xs font-semibold text-primary transition-colors duration-150 hover:border-primary/40 hover:bg-primary/12 active:scale-95"
+                    aria-label={`Remove filter ${chip.label}`}
+                  >
+                    <span className="truncate">{chip.label}</span><X className="h-3 w-3 opacity-60 group-hover:opacity-100" />
+                  </motion.button>
+                ))}
+              </AnimatePresence>
               <button type="button" onClick={resetFilters} className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Clear all</button>
             </div>
           </motion.div>

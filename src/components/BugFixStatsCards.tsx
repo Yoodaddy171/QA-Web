@@ -23,10 +23,10 @@ export function BugFixStatsCards({ stats }: { stats: BugFixStats }) {
   return (
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       {cards.map(({ value, label, color, icon: Icon }) => (
-        <Card key={label} variant="outlined" padding="none" className="bg-card">
+        <Card key={label} variant="outlined" padding="none" className="group bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-xs">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Icon className={cn('size-5 shrink-0', color)} />
+              <Icon className={cn('size-5 shrink-0 transition-transform duration-150 group-hover:scale-105', color)} />
               <div><AnimatedNumber value={value} className="block text-2xl font-semibold tabular-nums text-foreground" /><p className={cn('text-xs font-medium', color)}>{label}</p></div>
             </div>
           </CardContent>

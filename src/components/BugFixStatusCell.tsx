@@ -25,9 +25,14 @@ type Props = {
 export const BugFixStatusCell = memo(function BugFixStatusCell({ id, displayId, status, color, onChange }: Props) {
   const [activated, setActivated] = useState(false);
   const [open, setOpen] = useState(false);
+  const [justChanged, setJustChanged] = useState(false);
   const label = `Status for bug ${displayId}`;
   const optionsId = `bug-status-options-${id}`;
-  const triggerClass = cn('h-8 w-[178px] rounded-lg border px-2 text-xs font-semibold shadow-none', color);
+  const triggerClass = cn(
+    'h-8 w-[178px] rounded-lg border px-2 text-xs font-semibold shadow-none transition-transform duration-150 ease-[var(--motion-ease)] active:scale-[0.97]',
+    justChanged && 'scale-[1.03]',
+    color
+  );
   const activate = () => { setActivated(true); setOpen(true); };
 
   if (!activated) return (
@@ -44,7 +49,11 @@ export const BugFixStatusCell = memo(function BugFixStatusCell({ id, displayId, 
 
   return (
     <Select open={open} onOpenChange={setOpen} value={status} onValueChange={value => {
-      if (value !== status && canTransitionBugFixStatus(status, value)) onChange(id, value);
+      if (value !== status && canTransitionBugFixStatus(status, value)) {
+        setJustChanged(true);
+        window.setTimeout(() => setJustChanged(false), 180);
+        onChange(id, value);
+      }
     }}>
       <SelectTrigger aria-label={label} aria-controls={optionsId} data-bug-status-kind="radix" className={triggerClass}><SelectValue /></SelectTrigger>
       <SelectContent id={optionsId} className="rounded-2xl bg-card border border-border/50 shadow-lg text-foreground">

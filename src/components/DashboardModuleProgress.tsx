@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SimpleTooltip } from '@/components/ui/tooltip';
 import { Collapse } from '@/components/ui/collapse';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import {
   Select,
   SelectContent,
@@ -129,16 +130,18 @@ export function DashboardModuleProgress({
                       <div className="hidden sm:flex items-center gap-2 w-32 cursor-pointer">
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                           <div
-                            className="h-full rounded-full bg-primary transition-all duration-300"
+                            className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
                             style={{ width: `${Math.min(mod.avgProgress, 100)}%` }}
                           />
                         </div>
                       </div>
                     </SimpleTooltip>
 
-                    <span className="w-10 text-right font-mono text-xs font-bold tabular-nums text-foreground">
-                      {mod.avgProgress}%
-                    </span>
+                    <AnimatedNumber
+                      value={mod.avgProgress}
+                      suffix="%"
+                      className="w-10 text-right font-mono text-xs font-bold tabular-nums text-foreground inline-block"
+                    />
 
                     <div className="rounded-md p-1 hover:bg-secondary text-muted-foreground">
                       {isExpanded ? (
@@ -188,13 +191,15 @@ export function DashboardModuleProgress({
                               <div className="flex items-center gap-2">
                                 <div className="h-1.5 w-16 overflow-hidden rounded-full bg-secondary">
                                   <div
-                                    className="h-full rounded-full bg-primary"
+                                    className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
                                     style={{ width: `${Math.min(mp.progressPercent, 100)}%` }}
                                   />
                                 </div>
-                                <span className="font-mono text-[11px] font-medium tabular-nums text-muted-foreground">
-                                  {mp.progressPercent}%
-                                </span>
+                                <AnimatedNumber
+                                  value={mp.progressPercent}
+                                  suffix="%"
+                                  className="font-mono text-[11px] font-medium tabular-nums text-muted-foreground inline-block"
+                                />
                               </div>
                             </TableCell>
                             <TableCell tooltip={`Selesai: ${mp.doneCount}; gagal: ${mp.failedCount}; blocked: ${mp.blockedCount}; berlangsung: ${mp.inProgressCount}; belum dijalankan: ${mp.notDoneCount}`} className="py-2.5">

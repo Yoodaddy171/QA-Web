@@ -4,6 +4,7 @@ import { Profiler, createContext, useContext, useEffect, useMemo, useState, type
 import { MotionConfig } from 'framer-motion';
 import { UI_MOTION } from '@/lib/client/ui-motion';
 import { createThemeTransitionGuard } from '@/lib/client/theme-transition';
+import { SmoothScrollProvider } from './SmoothScrollProvider';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -80,7 +81,9 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <AppThemeProvider>
       <MotionConfig reducedMotion="user" transition={{ duration: UI_MOTION.content, ease: UI_MOTION.ease }}>
-        {content}
+        <SmoothScrollProvider>
+          {content}
+        </SmoothScrollProvider>
       </MotionConfig>
     </AppThemeProvider>
   );

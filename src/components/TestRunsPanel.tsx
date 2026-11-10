@@ -26,6 +26,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { useToast } from '@/hooks/use-toast';
 import { TEST_EXECUTION_STATUS, TEST_RUN_STATUS } from '@/lib/domain/test-run';
 import { resolveExecutionShortcut } from '@/lib/client/execution-shortcuts';
+import { fireParticleCelebration, playVerdictStamp } from '@/lib/client/gsap-motion';
 import { cn } from '@/lib/utils';
 import {
   type Activity,
@@ -105,6 +106,8 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
   const evidenceRequests = useRef(new LatestRequest());
   const currentRunId = useRef<string | null>(null);
   const currentExecutionId = useRef<string | null>(null);
+  const workbenchCardRef = useRef<HTMLDivElement | null>(null);
+  const badgeRef = useRef<HTMLDivElement | null>(null);
 
   const [draft] = useState(() => new RunDraft(
     (key, value) => window.localStorage.setItem(key, value),
@@ -422,12 +425,24 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Gagal menyimpan execution.');
       setSelectedRun(current => !current || current.id !== selectedRun.id ? current : { ...current, testCases: current.testCases.map(item => item.id === activeCase.id ? { ...item, executions: [data] } : item) });
+      if (badgeRef.current && !reducedMotion) {
+        playVerdictStamp(badgeRef.current);
+      }
       try {
         const overviewResponse = await fetch(`/api/test-runs/${selectedRun.id}?projectId=${encodeURIComponent(projectId)}&view=summary`);
         const overview = await overviewResponse.json();
         if (!overviewResponse.ok) throw new Error('Ringkasan belum dapat dimuat.');
         setRuns(current => current.map(item => item.id === overview.id ? { ...item, summary: overview.summary, progress: overview.progress, _count: overview._count, status: overview.status } : item));
         setSelectedRun(current => !current || current.id !== overview.id ? current : { ...current, summary: overview.summary, progress: overview.progress, _count: overview._count, status: overview.status });
+        if (
+          overview.progress === 100 &&
+          overview.summary.failed === 0 &&
+          overview.summary.blocked === 0 &&
+          workbenchCardRef.current &&
+          !reducedMotion
+        ) {
+          fireParticleCelebration(workbenchCardRef.current);
+        }
       } catch {
         toast({ title: 'Execution tersimpan', description: 'Ringkasan belum diperbarui. Muat ulang jika diperlukan; jangan mengirim ulang hasil.' });
       }
@@ -444,7 +459,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
       setOptimisticStatus(null);
       setIsSaving(false);
     }
-  }, [canExecute, activeCase, notes, notesProjectScope, projectId, selectedRun, toast, draft]);
+  }, [canExecute, activeCase, notes, notesProjectScope, projectId, selectedRun, toast, draft, reducedMotion]);
 
   const chooseCase = useCallback((nextIndex: number, direction?: number) => {
     if (!selectedRun || isSaving || !draft.flush()) return;
@@ -884,7 +899,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
               </AnimatePresence>
 
               {/* COLUMN 2: Unified Main Execution Workbench */}
-              <div className="min-w-0 flex flex-col rounded-xl border border-border bg-card shadow-2xs overflow-hidden">
+              <div ref={workbenchCardRef} className="relative min-w-0 flex flex-col rounded-xl border border-border bg-card shadow-2xs overflow-hidden">
                 {activeCase ? (
                   <AnimatePresence mode="wait" initial={false} custom={slideDirection}>
                     <motion.div
@@ -919,6 +934,7 @@ export function TestRunsPanel({ projectId }: { projectId: string }) {
 
                           <div className="flex items-center gap-2 shrink-0">
                             <motion.div
+                              ref={badgeRef}
                               key={visibleExecutionStatus}
                               initial={reducedMotion ? false : { scale: 0.82, opacity: 0.8 }}
                               animate={{ scale: 1, opacity: 1 }}

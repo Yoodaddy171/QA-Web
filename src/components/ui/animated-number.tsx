@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
+import React, { useEffect, useRef } from 'react';
+import { useReducedMotion } from 'framer-motion';
+import { gsap, useGSAP } from '@/lib/client/gsap-motion';
 
 interface AnimatedNumberProps {
   value: number;
@@ -9,25 +10,35 @@ interface AnimatedNumberProps {
   suffix?: string;
 }
 
-// Springy count-up for stat numbers. Renders the final value on the server
-// so the number is correct without JS; the spring only runs client-side.
 export function AnimatedNumber({ value, className, suffix = '' }: AnimatedNumberProps) {
   const ref = useRef<HTMLSpanElement>(null);
+  const countRef = useRef({ val: 0 });
   const reduceMotion = useReducedMotion();
-  const motionValue = useMotionValue(value);
-  const spring = useSpring(motionValue, { stiffness: 110, damping: 22 });
 
-  useEffect(() => {
+  useGSAP(() => {
     if (reduceMotion) {
       if (ref.current) ref.current.textContent = `${value}${suffix}`;
+      countRef.current.val = value;
       return;
     }
-    motionValue.set(value);
-    const unsubscribe = spring.on('change', (latest) => {
-      if (ref.current) ref.current.textContent = `${Math.round(latest)}${suffix}`;
+
+    gsap.to(countRef.current, {
+      val: value,
+      duration: 0.65,
+      ease: 'power2.out',
+      onUpdate: () => {
+        if (ref.current) {
+          ref.current.textContent = `${Math.round(countRef.current.val)}${suffix}`;
+        }
+      },
     });
-    return unsubscribe;
-  }, [value, suffix, motionValue, spring, reduceMotion]);
+  }, [value, suffix, reduceMotion]);
+
+  useEffect(() => {
+    if (ref.current && reduceMotion) {
+      ref.current.textContent = `${value}${suffix}`;
+    }
+  }, [value, suffix, reduceMotion]);
 
   return (
     <span ref={ref} className={className}>

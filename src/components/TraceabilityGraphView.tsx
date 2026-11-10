@@ -218,13 +218,54 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
               </div>
             </div>
           ) : !positioned.length ? <div className="grid h-full place-content-center p-6 text-center text-sm text-muted-foreground">Tidak ada object yang cocok dengan filter. Gunakan “Semua yang dimuat” untuk memulihkan tampilan.</div> : <div className="absolute left-0 top-0" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`, transformOrigin: '0 0' }}>
-            <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width="1" height="1" aria-hidden="true"><defs><marker id={marker} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7" fill="var(--muted-foreground)" /></marker></defs>{visibleEdges.map(e => {
-              const source = positions.get(e.source)!, target = positions.get(e.target)!;
-              const forward = target.x >= source.x, sx = source.x + (forward ? GRAPH_NODE_WIDTH : 0), tx = target.x + (forward ? 0 : GRAPH_NODE_WIDTH), sy = source.y + GRAPH_NODE_HEIGHT / 2, ty = target.y + GRAPH_NODE_HEIGHT / 2;
-              const curve = Math.max(60, Math.abs(tx - sx) / 2) * (forward ? 1 : -1);
-              const active = e.source === selectedId || e.target === selectedId;
-              return <path key={e.id} data-graph-edge={e.id} data-source={e.source} data-target={e.target} data-relation={e.label} d={`M${sx},${sy} C${sx + curve},${sy} ${tx - curve},${ty} ${tx},${ty}`} fill="none" stroke={active ? 'var(--primary)' : 'var(--muted-foreground)'} opacity={active ? 1 : selectedId ? 0.2 : 0.4} strokeWidth={active ? 2 : 1.2} markerEnd={`url(#${marker})`} />;
-            })}</svg>
+            <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width="1" height="1" aria-hidden="true">
+              <defs>
+                <style>{`
+                  @keyframes tracePulseFlow {
+                    from { stroke-dashoffset: 24; }
+                    to { stroke-dashoffset: 0; }
+                  }
+                  .active-trace-edge {
+                    stroke-dasharray: 6 3;
+                    animation: tracePulseFlow 1s linear infinite;
+                  }
+                  @media (prefers-reduced-motion: reduce) {
+                    .active-trace-edge {
+                      animation: none !important;
+                      stroke-dasharray: none !important;
+                    }
+                  }
+                `}</style>
+                <marker id={marker} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                  <path d="M0,0 L7,3.5 L0,7" fill="var(--muted-foreground)" />
+                </marker>
+                <marker id={`${marker}-active`} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                  <path d="M0,0 L7,3.5 L0,7" fill="var(--primary)" />
+                </marker>
+              </defs>
+              {visibleEdges.map(e => {
+                const source = positions.get(e.source)!, target = positions.get(e.target)!;
+                const forward = target.x >= source.x, sx = source.x + (forward ? GRAPH_NODE_WIDTH : 0), tx = target.x + (forward ? 0 : GRAPH_NODE_WIDTH), sy = source.y + GRAPH_NODE_HEIGHT / 2, ty = target.y + GRAPH_NODE_HEIGHT / 2;
+                const curve = Math.max(60, Math.abs(tx - sx) / 2) * (forward ? 1 : -1);
+                const active = e.source === selectedId || e.target === selectedId;
+                return (
+                  <path
+                    key={e.id}
+                    data-graph-edge={e.id}
+                    data-source={e.source}
+                    data-target={e.target}
+                    data-relation={e.label}
+                    d={`M${sx},${sy} C${sx + curve},${sy} ${tx - curve},${ty} ${tx},${ty}`}
+                    fill="none"
+                    stroke={active ? 'var(--primary)' : 'var(--muted-foreground)'}
+                    opacity={active ? 1 : selectedId ? 0.2 : 0.4}
+                    strokeWidth={active ? 2 : 1.2}
+                    className={cn(active && 'active-trace-edge')}
+                    markerEnd={active ? `url(#${marker}-active)` : `url(#${marker})`}
+                  />
+                );
+              })}
+            </svg>
             {positioned.map(n => { const meta = TYPE_META[n.type], Icon = meta.icon, active = n.id === selectedId; return <button key={n.id} data-graph-node={n.id} type="button" aria-pressed={active} aria-label={`${meta.label}: ${n.label}${n.id === data?.rootId ? ', fokus graph' : ''}`} title={`${meta.label}: ${n.label} · ${n.title} · ${n.status}`} className={cn('absolute flex flex-col gap-2 overflow-hidden rounded-xl border bg-card p-3 text-left text-foreground transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-ring', active ? 'border-primary ring-2 ring-primary/30' : 'border-border')} style={{ left: n.x, top: n.y, width: GRAPH_NODE_WIDTH, height: GRAPH_NODE_HEIGHT, opacity: !selectedId || neighbors.has(n.id) ? 1 : 0.75 }} onFocus={event => { if (!event.currentTarget.matches(':focus-visible')) return; if (viewport.current) { viewport.current.scrollLeft = 0; viewport.current.scrollTop = 0; } setView(v => ({ ...v, x: size.width / 2 - (n.x + GRAPH_NODE_WIDTH / 2) * v.zoom, y: size.height / 2 - (n.y + GRAPH_NODE_HEIGHT / 2) * v.zoom })); }} onClick={() => setSelectedId(n.id)}>
               <span className="flex items-center gap-2"><Icon className={cn('size-4 shrink-0', meta.tone)} /><span className="truncate text-xs font-semibold">{n.label}</span><span className="ml-auto text-xs text-muted-foreground">{meta.label}</span></span><span className="line-clamp-2 text-xs leading-4 text-muted-foreground">{n.title}</span><span className="mt-auto flex items-center gap-2 text-xs"><span className={cn('truncate', meta.tone)}>{n.status || meta.label}</span>{n.id === data?.rootId && <span className="ml-auto text-primary">Fokus</span>}</span>
             </button>; })}

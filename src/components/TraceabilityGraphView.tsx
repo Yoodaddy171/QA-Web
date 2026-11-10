@@ -64,8 +64,7 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
       }
       const orbs = graphStageRef.current.querySelectorAll<SVGCircleElement>('[data-graph-orb]');
       orbs.forEach((orb) => {
-        const targetSelector = orb.getAttribute('data-orb-target');
-        const pathEl = targetSelector ? graphStageRef.current?.querySelector<SVGPathElement>(targetSelector) : null;
+        const pathEl = orb.parentElement?.querySelector<SVGPathElement>('[data-graph-edge]') ?? null;
         if (!pathEl) return;
         gsap.to(orb, {
           motionPath: {
@@ -281,10 +280,11 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
                 const forward = target.x >= source.x, sx = source.x + (forward ? GRAPH_NODE_WIDTH : 0), tx = target.x + (forward ? 0 : GRAPH_NODE_WIDTH), sy = source.y + GRAPH_NODE_HEIGHT / 2, ty = target.y + GRAPH_NODE_HEIGHT / 2;
                 const curve = Math.max(60, Math.abs(tx - sx) / 2) * (forward ? 1 : -1);
                 const active = e.source === selectedId || e.target === selectedId;
+                const safeEdgeDomId = `trace-edge-${uid.replace(/[^a-zA-Z0-9_-]/g, '')}-${e.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
                 return (
                   <g key={e.id}>
                     <path
-                      id={`trace-edge-${uid.replace(/:/g, '')}-${e.id}`}
+                      id={safeEdgeDomId}
                       data-graph-edge={e.id}
                       data-source={e.source}
                       data-target={e.target}
@@ -300,7 +300,7 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
                     {active && (
                       <circle
                         data-graph-orb={e.id}
-                        data-orb-target={`#trace-edge-${uid.replace(/:/g, '')}-${e.id}`}
+                        data-orb-target={`#${safeEdgeDomId}`}
                         r="3.2"
                         fill="var(--primary)"
                         opacity="0.9"

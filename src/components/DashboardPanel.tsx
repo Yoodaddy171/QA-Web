@@ -176,6 +176,42 @@ export function DashboardPanel({
 }: DashboardPanelProps) {
   const [chartView, setChartView] = useState<'status' | 'priority'>('status');
   const [showAllPages, setShowAllPages] = useState(false);
+  const gaugeArcRef = useRef<SVGPathElement>(null);
+  const verdictBadgeRef = useRef<HTMLSpanElement>(null);
+  const verdictHeadlineRef = useRef<HTMLHeadingElement>(null);
+
+  const releaseRecommendation = stats?.releaseReadiness?.recommendation;
+  const verdictHeadline =
+    releaseRecommendation === 'NOT READY'
+      ? 'Release belum siap'
+      : releaseRecommendation === 'READY'
+        ? 'Release siap diluncurkan'
+        : 'Siap dengan risiko';
+
+  useGSAP(
+    () => {
+      if (!stats || !isMotionAllowed()) return;
+      const pct = Math.min(Math.max(stats.overallProgress, 0), 100);
+      if (gaugeArcRef.current) {
+        gsap.fromTo(
+          gaugeArcRef.current,
+          { drawSVG: '0%' },
+          { drawSVG: `${pct}%`, duration: 0.95, ease: 'power3.out' }
+        );
+      }
+      if (verdictBadgeRef.current && releaseRecommendation) {
+        scrambleDecodeText(verdictBadgeRef.current, releaseRecommendation, { duration: 0.45 });
+      }
+      if (verdictHeadlineRef.current) {
+        gsap.fromTo(
+          verdictHeadlineRef.current,
+          { y: 10, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.4, ease: 'back.out(1.6)', clearProps: 'y,opacity' }
+        );
+      }
+    },
+    { dependencies: [stats?.overallProgress, releaseRecommendation, verdictHeadline] }
+  );
 
   if (!stats) {
     return (
@@ -212,13 +248,6 @@ export function DashboardPanel({
       ]
     : [];
 
-  const verdictHeadline =
-    release?.recommendation === 'NOT READY'
-      ? 'Release belum siap'
-      : release?.recommendation === 'READY'
-        ? 'Release siap diluncurkan'
-        : 'Siap dengan risiko';
-
   const verdictReason = release
     ? `${release.reason}. Status inventori: ${stats.failedCount} failed, ${stats.blockedCount} blocked.`
     : `${stats.doneCount} dari ${stats.totalTestCases} skenario telah terverifikasi. ${stats.failedCount} failed, ${stats.blockedCount} blocked.`;
@@ -252,35 +281,6 @@ export function DashboardPanel({
       : release?.recommendation === 'NOT READY'
         ? '#f43f5e'
         : '#f59e0b';
-
-  const gaugeArcRef = useRef<SVGPathElement>(null);
-  const verdictBadgeRef = useRef<HTMLSpanElement>(null);
-  const verdictHeadlineRef = useRef<HTMLHeadingElement>(null);
-
-  useGSAP(
-    () => {
-      if (!isMotionAllowed()) return;
-      const pct = Math.min(Math.max(stats.overallProgress, 0), 100);
-      if (gaugeArcRef.current) {
-        gsap.fromTo(
-          gaugeArcRef.current,
-          { drawSVG: '0%' },
-          { drawSVG: `${pct}%`, duration: 0.95, ease: 'power3.out' }
-        );
-      }
-      if (verdictBadgeRef.current && release?.recommendation) {
-        scrambleDecodeText(verdictBadgeRef.current, release.recommendation, { duration: 0.45 });
-      }
-      if (verdictHeadlineRef.current) {
-        gsap.fromTo(
-          verdictHeadlineRef.current,
-          { y: 10, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.4, ease: 'back.out(1.6)', clearProps: 'y,opacity' }
-        );
-      }
-    },
-    { dependencies: [stats.overallProgress, release?.recommendation, verdictHeadline] }
-  );
 
   return (
     <div className="flex flex-col gap-6">

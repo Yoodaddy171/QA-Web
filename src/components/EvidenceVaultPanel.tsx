@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Camera,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Download,
   ExternalLink,
   Eye,
@@ -20,6 +22,7 @@ import {
   UserRound,
   XCircle,
 } from 'lucide-react';
+import { ExecutionMarkdown } from '@/components/ExecutionMarkdown';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import {
   gsap,
@@ -551,97 +554,176 @@ export function EvidenceVaultPanel({ projectId, onNavigate }: EvidenceVaultPanel
 
       {/* Lightbox Preview Dialog */}
       <Dialog open={Boolean(selectedItem)} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DialogContent className="max-w-4xl overflow-hidden p-0">
-          {selectedItem && (
-            <div className="flex flex-col">
-              <DialogHeader className="border-b border-border/60 px-6 py-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 pr-6">
-                  <div>
-                    <DialogTitle className="flex items-center gap-2 text-base font-bold">
-                      <span className="font-mono text-primary">{selectedItem.testCase.testCaseId}</span>
-                      <span>·</span>
-                      <span className="truncate">{selectedItem.fileName}</span>
-                    </DialogTitle>
-                    <DialogDescription className="mt-1 text-xs">
-                      Cycle: {selectedItem.run.name} · Halaman: {selectedItem.testCase.page} · Ukuran:{' '}
-                      {formatBytes(selectedItem.sizeBytes)}
-                    </DialogDescription>
+        <DialogContent className="flex max-h-[88dvh] w-[min(95vw,1120px)] max-w-5xl sm:max-w-5xl flex-col gap-0 overflow-hidden p-0">
+          {selectedItem && (() => {
+            const currentIndex = items.findIndex((candidate) => candidate.id === selectedItem.id);
+            const prevItem = currentIndex > 0 ? items[currentIndex - 1] : null;
+            const nextItem =
+              currentIndex >= 0 && currentIndex < items.length - 1 ? items[currentIndex + 1] : null;
+
+            return (
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <DialogHeader className="shrink-0 border-b border-border/60 bg-card px-6 py-3.5 pr-14">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <DialogTitle className="flex flex-wrap items-center gap-2 text-base font-bold">
+                        <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary">
+                          {selectedItem.testCase.testCaseId}
+                        </span>
+                        <span className="truncate text-sm sm:text-base">{selectedItem.fileName}</span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-[11px] font-bold',
+                            statusBadgeStyle(selectedItem.execution.status)
+                          )}
+                        >
+                          {selectedItem.execution.status}
+                        </Badge>
+                      </DialogTitle>
+                      <DialogDescription className="mt-1 truncate text-xs">
+                        Cycle: {selectedItem.run.name} · Halaman: {selectedItem.testCase.page} · Ukuran:{' '}
+                        {formatBytes(selectedItem.sizeBytes)}
+                      </DialogDescription>
+                    </div>
+
+                    {items.length > 1 && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="mr-1 font-mono text-xs text-muted-foreground tabular-nums">
+                          {currentIndex + 1} / {items.length}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-8 rounded-lg"
+                          disabled={!prevItem}
+                          onClick={() => prevItem && setSelectedItem(prevItem)}
+                          aria-label="Bukti sebelumnya"
+                        >
+                          <ChevronLeft className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-8 rounded-lg"
+                          disabled={!nextItem}
+                          onClick={() => nextItem && setSelectedItem(nextItem)}
+                          aria-label="Bukti berikutnya"
+                        >
+                          <ChevronRight className="size-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={cn('text-xs font-bold', statusBadgeStyle(selectedItem.execution.status))}
-                  >
-                    {selectedItem.execution.status}
-                  </Badge>
-                </div>
-              </DialogHeader>
+                </DialogHeader>
 
-              <div className="flex max-h-[62vh] items-center justify-center overflow-auto bg-black/90 p-4">
-                {selectedItem.mimeType.startsWith('image/') ? (
-                  <img
-                    src={buildFileUrl(selectedItem, false)}
-                    alt={selectedItem.fileName}
-                    className="max-h-[56vh] w-auto rounded-lg object-contain"
-                  />
-                ) : selectedItem.mimeType.startsWith('video/') ? (
-                  <video
-                    src={buildFileUrl(selectedItem, false)}
-                    controls
-                    autoPlay
-                    className="max-h-[56vh] w-full rounded-lg"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center gap-3 py-12 text-white">
-                    <FileText className="size-12 text-white/60" />
-                    <p className="text-sm font-medium">{selectedItem.fileName}</p>
-                    <p className="text-xs text-white/60">
-                      Gunakan tombol Unduh File di bawah untuk membuka artefak ini.
-                    </p>
+                <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_370px]">
+                  {/* Left Stage: Image / Video Preview */}
+                  <div className="relative flex max-h-[46dvh] min-h-[240px] items-center justify-center overflow-auto bg-slate-950/95 p-4 lg:max-h-[75dvh] lg:p-6">
+                    {selectedItem.mimeType.startsWith('image/') ? (
+                      <img
+                        src={buildFileUrl(selectedItem, false)}
+                        alt={selectedItem.fileName}
+                        className="max-h-[40dvh] w-auto rounded-lg object-contain shadow-2xl lg:max-h-[66dvh]"
+                      />
+                    ) : selectedItem.mimeType.startsWith('video/') ? (
+                      <video
+                        src={buildFileUrl(selectedItem, false)}
+                        controls
+                        autoPlay
+                        className="max-h-[40dvh] w-full rounded-lg shadow-2xl lg:max-h-[66dvh]"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 py-12 text-white">
+                        <FileText className="size-12 text-white/60" />
+                        <p className="text-sm font-medium">{selectedItem.fileName}</p>
+                        <p className="text-xs text-white/60">
+                          Gunakan tombol Unduh File untuk membuka artefak ini.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className="flex flex-col gap-3 border-t border-border/60 bg-card px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1 text-xs">
-                  <p className="font-semibold text-foreground">
-                     Skenario: {selectedItem.testCase.testAction}
-                  </p>
-                  {selectedItem.execution.actualResult && (
-                    <p className="text-muted-foreground">
-                      Hasil Aktual: {selectedItem.execution.actualResult}
-                    </p>
-                  )}
-                  {selectedItem.execution.notes && (
-                    <p className="text-muted-foreground">Catatan: {selectedItem.execution.notes}</p>
-                  )}
-                </div>
+                  {/* Right Sidebar: Scrollable Execution Details & Sticky Action Buttons */}
+                  <div className="flex max-h-[38dvh] min-h-0 flex-col border-t border-border/60 bg-card lg:max-h-[75dvh] lg:border-l lg:border-t-0">
+                    <div className="flex-1 space-y-3.5 overflow-y-auto p-5 text-xs">
+                      <div className="rounded-xl border border-border/60 bg-secondary/25 p-3.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Skenario Pengujian
+                        </p>
+                        <p className="mt-1 font-semibold leading-relaxed text-foreground">
+                          {selectedItem.testCase.testAction}
+                        </p>
+                      </div>
 
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <Button asChild variant="outline" size="sm" className="gap-1.5">
-                    <a
-                      href={buildFileUrl(selectedItem, false)}
-                      download={selectedItem.fileName}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <Download className="size-3.5" />
-                      Unduh File
-                    </a>
-                  </Button>
-                  <Button asChild size="sm" className="gap-1.5">
-                    <a
-                      href={buildHtmlReportUrl(selectedItem.testCase.id)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <ExternalLink className="size-3.5" />
-                      Laporan Evidence HTML
-                    </a>
-                  </Button>
+                      {selectedItem.execution.actualResult && (
+                        <div className="rounded-xl border border-border/60 bg-secondary/20 p-3.5">
+                          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Hasil Aktual
+                          </p>
+                          <div className="text-xs text-foreground/90 [&_p]:text-xs [&_li]:text-xs">
+                            <ExecutionMarkdown>{selectedItem.execution.actualResult}</ExecutionMarkdown>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedItem.execution.notes && (
+                        <div className="rounded-xl border border-border/60 bg-secondary/20 p-3.5">
+                          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Catatan Eksekusi
+                          </p>
+                          <div className="text-xs text-muted-foreground [&_p]:text-xs [&_li]:text-xs">
+                            <ExecutionMarkdown>{selectedItem.execution.notes}</ExecutionMarkdown>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/50 bg-background p-3 text-[11px]">
+                        <div>
+                          <span className="block text-[10px] text-muted-foreground">Tester</span>
+                          <span className="font-medium text-foreground">
+                            {selectedItem.execution.tester || 'QA Tester'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-muted-foreground">Waktu Unggah</span>
+                          <span className="font-medium text-foreground">
+                            {formatDateTime(selectedItem.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid shrink-0 grid-cols-2 gap-2.5 border-t border-border/60 bg-card/95 p-4">
+                      <Button asChild variant="outline" size="sm" className="w-full gap-1.5 text-xs">
+                        <a
+                          href={buildFileUrl(selectedItem, false)}
+                          download={selectedItem.fileName}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Download className="size-3.5" />
+                          Unduh File
+                        </a>
+                      </Button>
+                      <Button asChild size="sm" className="w-full gap-1.5 text-xs">
+                        <a
+                          href={buildHtmlReportUrl(selectedItem.testCase.id)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ExternalLink className="size-3.5" />
+                          Laporan HTML
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

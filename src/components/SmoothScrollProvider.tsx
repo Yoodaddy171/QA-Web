@@ -27,9 +27,9 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
     <ReactLenis
       root
       options={{
-        lerp: 0.075, // Memberikan bobot inersia yang mantap dan terasa berat-mewah
-        wheelMultiplier: 0.85, // Tahanan roda mouse stabil agar tidak melompat
-        touchMultiplier: 1.0,
+        lerp: 0.115, // Lebih ringan, responsif, dan tetap halus tanpa tersendat
+        wheelMultiplier: 1.0, // Jarak putaran roda mouse natural dan tidak kaku
+        touchMultiplier: 1.1,
         infinite: false,
         syncTouch: false, // Menjaga scroll sentuh mobile tetap natural bawaan OS
         prevent: (node) => {

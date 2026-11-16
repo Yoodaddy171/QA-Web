@@ -563,13 +563,83 @@ html[data-theme-changing] :is([class*="transition"], .qa-interactive)::after {
     @apply border-border outline-ring/50;
   }
 
-  /* Theme transition - scoped to key surfaces only, not all elements */
-  html:not([data-no-transition]) body,
-  html:not([data-no-transition]) [data-slot="card"],
-  html:not([data-no-transition]) header,
-  html:not([data-no-transition]) main,
-  html:not([data-no-transition]) nav {
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+  /* Theme transition - smooth palette fade across structural surfaces on user toggle */
+  html[data-theme-transition]:not([data-no-transition]),
+  html[data-theme-transition]:not([data-no-transition]) :is(
+    body,
+    header,
+    main,
+    nav,
+    aside,
+    section,
+    div,
+    p,
+    span,
+    h1,
+    h2,
+    h3,
+    h4,
+    label,
+    th,
+    td,
+    svg,
+    [data-slot="sidebar"],
+    [data-slot="sidebar-container"],
+    [data-slot="sidebar-inner"],
+    [data-slot="sidebar-inset"],
+    [data-slot="card"],
+    [data-slot="table"],
+    [data-slot="input"],
+    [data-slot="select-trigger"],
+    [data-slot="tabs-list"],
+    [data-slot="dropdown-menu-content"],
+    [data-slot="dialog-content"],
+    .traceva-login,
+    .traceva-login-panel,
+    .traceva-login-card
+  ) {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-duration: 320ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html[data-theme-transition]:not([data-no-transition]),
+    html[data-theme-transition]:not([data-no-transition]) :is(
+      body,
+      header,
+      main,
+      nav,
+      aside,
+      section,
+      div,
+      p,
+      span,
+      h1,
+      h2,
+      h3,
+      h4,
+      label,
+      th,
+      td,
+      svg,
+      [data-slot="sidebar"],
+      [data-slot="sidebar-container"],
+      [data-slot="sidebar-inner"],
+      [data-slot="sidebar-inset"],
+      [data-slot="card"],
+      [data-slot="table"],
+      [data-slot="input"],
+      [data-slot="select-trigger"],
+      [data-slot="tabs-list"],
+      [data-slot="dropdown-menu-content"],
+      [data-slot="dialog-content"],
+      .traceva-login,
+      .traceva-login-panel,
+      .traceva-login-card
+    ) {
+      transition-duration: 0ms;
+    }
   }
 
   /* Scrollbar - Material style */

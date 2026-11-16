@@ -24,6 +24,29 @@ const TYPE_META = {
 const SEED_TYPES: GraphSeedType[] = ['TestCase', 'Requirement', 'TestRun', 'BugFix'];
 type Option = { id: string; label: string; status: string };
 
+function getNodeStatusTone(status?: string | null, fallbackTone = 'text-muted-foreground'): string {
+  if (!status) return fallbackTone;
+  const s = status.toUpperCase().trim();
+  if (s === 'FAILED' || s === 'GAGAL' || s === 'SUDAH DILAPORKAN') return 'text-status-failed';
+  if (s === 'BLOCKED' || s === 'TERBLOKIR' || s === 'SEDANG DI FIX') return 'text-status-blocked';
+  if (s === 'PASSED' || s === 'VERIFIED' || s === 'COMPLETED' || s === 'DONE' || s === 'VERIFIED & FIXED') return 'text-status-passed';
+  if (s === 'IN_PROGRESS' || s === 'IN PROGRESS' || s === 'ACTIVE') return 'text-status-in-progress';
+  if (s === 'RETEST' || s === 'READY TO RETEST') return 'text-status-retest';
+  if (s === 'DRAFT') return 'text-muted-foreground';
+  return fallbackTone;
+}
+
+function getStatusBadgeVariant(status?: string | null): 'failed' | 'blocked' | 'success' | 'inprogress' | 'readyretest' | 'outline' {
+  if (!status) return 'outline';
+  const s = status.toUpperCase().trim();
+  if (s === 'FAILED' || s === 'GAGAL' || s === 'SUDAH DILAPORKAN') return 'failed';
+  if (s === 'BLOCKED' || s === 'TERBLOKIR' || s === 'SEDANG DI FIX') return 'blocked';
+  if (s === 'PASSED' || s === 'VERIFIED' || s === 'COMPLETED' || s === 'DONE' || s === 'VERIFIED & FIXED') return 'success';
+  if (s === 'IN_PROGRESS' || s === 'IN PROGRESS' || s === 'ACTIVE') return 'inprogress';
+  if (s === 'RETEST' || s === 'READY TO RETEST') return 'readyretest';
+  return 'outline';
+}
+
 export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onFocusChange }: { projectId: string; onOpenNode: (node: TraceGraphNode) => void; initialFocus?: GraphFocus; onFocusChange: (focus: GraphFocus) => void }) {
   const uid = useId();
   const marker = `graph-arrow-${uid.replace(/:/g, '')}`;
@@ -121,6 +144,98 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Prevent default page scroll and browser zoom
+      e.preventDefault();
+      e.stopPropagation();
+
+      const rect = el.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+
+      if (e.ctrlKey || e.metaKey) {
+        // Pinch-to-zoom on touchpad, or Ctrl+Wheel on mouse
+        const zoomFactor = Math.exp(-e.deltaY * 0.01);
+        setView(v => {
+          const nextZoom = Math.max(0.08, Math.min(2.5, v.zoom * zoomFactor));
+          const scaleRatio = nextZoom / v.zoom;
+          const nextX = cursorX - (cursorX - v.x) * scaleRatio;
+          const nextY = cursorY - (cursorY - v.y) * scaleRatio;
+          return { x: nextX, y: nextY, zoom: nextZoom };
+        });
+      } else {
+        // Two-finger swipe on touchpad to pan
+        setView(v => ({
+          ...v,
+          x: v.x - e.deltaX,
+          y: v.y - e.deltaY,
+        }));
+      }
+    };
+
+    let touchDist = 0;
+    let touchZoom = 1;
+    let touchCenter = { x: 0, y: 0 };
+    let touchView = { x: 0, y: 0 };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        touchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const rect = el.getBoundingClientRect();
+        touchCenter = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+        setView(current => {
+          touchZoom = current.zoom;
+          touchView = { x: current.x, y: current.y };
+          return current;
+        });
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const scale = currentDist / (touchDist || currentDist);
+        const rect = el.getBoundingClientRect();
+        const currentCenter = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+
+        const nextZoom = Math.max(0.08, Math.min(2.5, touchZoom * scale));
+        const scaleRatio = nextZoom / touchZoom;
+        const dx = currentCenter.x - touchCenter.x;
+        const dy = currentCenter.y - touchCenter.y;
+        const nextX = touchCenter.x - (touchCenter.x - touchView.x) * scaleRatio + dx;
+        const nextY = touchCenter.y - (touchCenter.y - touchView.y) * scaleRatio + dy;
+
+        setView({ x: nextX, y: nextY, zoom: nextZoom });
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    el.addEventListener('touchstart', handleTouchStart, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+
   const selected = data?.nodes.find(n => n.id === selectedId);
   const neighbors = useMemo(() => directGraphNeighbors(selectedId, data?.edges || []), [selectedId, data]);
   const neighborFilter = onlyConnected ? neighbors : null;
@@ -175,8 +290,8 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
         <div className="flex flex-col gap-2"><Label htmlFor={`${uid}-search`}>Cari nama atau ID</Label><div className="relative"><Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" /><Input id={`${uid}-search`} value={query} maxLength={120} onFocus={() => setSearchOpen(true)} onChange={e => { setQuery(e.target.value); setOptions([]); setHasMore(false); setSearchLoading(true); setSearchOpen(true); }} placeholder="Contoh: AUTH-001 atau judul requirement" className="pl-9" /></div></div>
         <Button variant="outline" onClick={() => setReload(v => v + 1)} disabled={loading || searchLoading}><RefreshCw data-icon="inline-start" />Muat ulang</Button>
       </div>}
-      {searchOpen && <div className="max-h-48 overflow-y-auto rounded-lg border border-border" aria-label="Hasil pencarian fokus graph" aria-busy={searchLoading}>
-        {searchLoading ? <p className="p-3 text-sm text-muted-foreground" role="status">Mencari object...</p> : searchError ? <p className="p-3 text-sm text-destructive" role="alert">{searchError}</p> : options.length ? options.map(o => <button key={o.id} type="button" className="flex w-full flex-wrap items-center justify-between gap-2 border-b border-border p-3 text-left text-sm last:border-0 hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-ring" onClick={() => chooseSeed({ type: seedType, id: o.id })}><span className="min-w-0 flex-1 break-words">{o.label}</span><Badge variant="outline">{o.status}</Badge></button>) : <p className="p-3 text-sm text-muted-foreground">Tidak ada object yang cocok pada project ini.</p>}
+      {searchOpen && <div data-lenis-prevent className="max-h-48 overflow-y-auto overscroll-contain rounded-lg border border-border" aria-label="Hasil pencarian fokus graph" aria-busy={searchLoading}>
+        {searchLoading ? <p className="p-3 text-sm text-muted-foreground" role="status">Mencari object...</p> : searchError ? <p className="p-3 text-sm text-destructive" role="alert">{searchError}</p> : options.length ? options.map(o => <button key={o.id} type="button" className="flex w-full flex-wrap items-center justify-between gap-2 border-b border-border p-3 text-left text-sm last:border-0 hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-ring" onClick={() => chooseSeed({ type: seedType, id: o.id })}><span className="min-w-0 flex-1 break-words">{o.label}</span><Badge variant={getStatusBadgeVariant(o.status)}>{o.status}</Badge></button>) : <p className="p-3 text-sm text-muted-foreground">Tidak ada object yang cocok pada project ini.</p>}
         {hasMore && <p className="border-t border-border p-3 text-xs text-muted-foreground">20 hasil pertama. Ketik ID atau nama yang lebih spesifik.</p>}
         {seed && <Button className="m-2" size="sm" variant="ghost" onClick={() => setSearchOpen(false)}>Tutup pencarian</Button>}
       </div>}
@@ -196,10 +311,10 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
         <div className="qa-module-toolbar flex flex-wrap items-center gap-2 border-b border-border p-3">
           <Button variant="outline" size="icon" aria-label="Zoom out graph" disabled={!data} onClick={() => zoomBy(1 / 1.2)}><Minus /></Button><span data-testid="graph-zoom" className="w-12 text-center text-xs tabular-nums">{Math.round(view.zoom * 100)}%</span><Button variant="outline" size="icon" aria-label="Zoom in graph" disabled={!data} onClick={() => zoomBy(1.2)}><Plus /></Button>
           <Button variant="outline" size="sm" onClick={fit} disabled={!visibleNodes.length}><Focus data-icon="inline-start" />Paskan semua</Button><Button variant="ghost" size="sm" title="Kembalikan posisi dan zoom ke node pilihan; pilihan dan filter tetap" disabled={!selected || !positions.has(selected.id)} onClick={focusSelected}><RotateCcw data-icon="inline-start" />Reset tampilan</Button>
-          <span className="text-xs text-muted-foreground">Drag ruang kosong untuk pan · Tab pilih node · panah untuk pan saat canvas terfokus</span>
+          <span className="text-xs text-muted-foreground">Geser 2 jari touchpad / drag untuk pan · Pinch / Ctrl+scroll untuk zoom · Tab pilih node</span>
         </div>
         {data && view.zoom < 0.7 && <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground">Mode ringkasan: label diperkecil. Gunakan Zoom + atau Reset tampilan untuk membaca pilihan.</p>}
-        <div ref={viewport} role="region" aria-label="Canvas graph relasi, gunakan Tab untuk memilih node" tabIndex={0} className="relative h-[480px] overflow-hidden bg-background focus-visible:outline-2 focus-visible:outline-ring sm:h-[560px]" style={{ touchAction: 'pan-y' }}
+        <div ref={viewport} data-lenis-prevent role="region" aria-label="Canvas graph relasi, gunakan Tab untuk memilih node" tabIndex={0} className="relative h-[480px] cursor-grab select-none overflow-hidden bg-background active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-ring sm:h-[560px]" style={{ touchAction: 'none' }}
           onKeyDown={e => { if (e.target !== e.currentTarget) return; const delta: Record<string, [number, number]> = { ArrowLeft: [40, 0], ArrowRight: [-40, 0], ArrowUp: [0, 40], ArrowDown: [0, -40] }; if (delta[e.key]) { e.preventDefault(); const [x,y] = delta[e.key]; setView(v => ({ ...v, x: v.x + x, y: v.y + y })); } else if (e.key === 'Home') { e.preventDefault(); fit(); } }}
           onPointerDown={e => { if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return; drag.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, startX: view.x, startY: view.y }; e.currentTarget.setPointerCapture(e.pointerId); }}
           onPointerMove={e => { const d = drag.current; if (d && d.pointerId === e.pointerId) setView(v => ({ ...v, x: d.startX + e.clientX - d.x, y: d.startY + e.clientY - d.y })); }}
@@ -310,22 +425,88 @@ export function TraceabilityGraphView({ projectId, onOpenNode, initialFocus, onF
                 );
               })}
             </svg>
-            {positioned.map(n => { const meta = TYPE_META[n.type], Icon = meta.icon, active = n.id === selectedId; return <button key={n.id} data-graph-node={n.id} type="button" aria-pressed={active} aria-label={`${meta.label}: ${n.label}${n.id === data?.rootId ? ', fokus graph' : ''}`} title={`${meta.label}: ${n.label} · ${n.title} · ${n.status}`} className={cn('absolute flex flex-col gap-2 overflow-hidden rounded-xl border bg-card p-3 text-left text-foreground transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-ring', active ? 'border-primary ring-2 ring-primary/30' : 'border-border')} style={{ left: n.x, top: n.y, width: GRAPH_NODE_WIDTH, height: GRAPH_NODE_HEIGHT, opacity: !selectedId || neighbors.has(n.id) ? 1 : 0.75 }} onFocus={event => { if (!event.currentTarget.matches(':focus-visible')) return; if (viewport.current) { viewport.current.scrollLeft = 0; viewport.current.scrollTop = 0; } setView(v => ({ ...v, x: size.width / 2 - (n.x + GRAPH_NODE_WIDTH / 2) * v.zoom, y: size.height / 2 - (n.y + GRAPH_NODE_HEIGHT / 2) * v.zoom })); }} onClick={() => setSelectedId(n.id)}>
-              <span className="flex items-center gap-2"><Icon className={cn('size-4 shrink-0', meta.tone)} /><span className="truncate text-xs font-semibold">{n.label}</span><span className="ml-auto text-xs text-muted-foreground">{meta.label}</span></span><span className="line-clamp-2 text-xs leading-4 text-muted-foreground">{n.title}</span><span className="mt-auto flex items-center gap-2 text-xs"><span className={cn('truncate', meta.tone)}>{n.status || meta.label}</span>{n.id === data?.rootId && <span className="ml-auto text-primary">Fokus</span>}</span>
-            </button>; })}
+            {positioned.map(n => {
+              const meta = TYPE_META[n.type], Icon = meta.icon, active = n.id === selectedId;
+              const isBug = n.type === 'BugFix';
+              const statusTone = getNodeStatusTone(n.status, meta.tone);
+              const iconTone = isBug ? 'text-status-failed' : n.type === 'Execution' ? statusTone : meta.tone;
+              const isFailed = n.status?.toUpperCase() === 'FAILED' || n.status === 'SUDAH DILAPORKAN';
+              const isBlocked = n.status?.toUpperCase() === 'BLOCKED' || n.status === 'SEDANG DI FIX';
+              return (
+                <button
+                  key={n.id}
+                  data-graph-node={n.id}
+                  type="button"
+                  aria-pressed={active}
+                  aria-label={`${meta.label}: ${n.label}${n.id === data?.rootId ? ', fokus graph' : ''}`}
+                  title={`${meta.label}: ${n.label} · ${n.title} · ${n.status}`}
+                  className={cn(
+                    'absolute flex flex-col gap-2 overflow-hidden rounded-xl border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                    isBug
+                      ? 'bg-rose-500/8 border-rose-500/40 hover:border-rose-500/70 shadow-2xs'
+                      : 'bg-card text-foreground hover:border-primary',
+                    active
+                      ? 'border-primary ring-2 ring-primary/30'
+                      : !isBug && (isFailed ? 'border-status-failed/40' : isBlocked ? 'border-status-blocked/40' : 'border-border')
+                  )}
+                  style={{
+                    left: n.x,
+                    top: n.y,
+                    width: GRAPH_NODE_WIDTH,
+                    height: GRAPH_NODE_HEIGHT,
+                    opacity: !selectedId || neighbors.has(n.id) ? 1 : 0.75,
+                  }}
+                  onFocus={event => {
+                    if (!event.currentTarget.matches(':focus-visible')) return;
+                    if (viewport.current) {
+                      viewport.current.scrollLeft = 0;
+                      viewport.current.scrollTop = 0;
+                    }
+                    setView(v => ({
+                      ...v,
+                      x: size.width / 2 - (n.x + GRAPH_NODE_WIDTH / 2) * v.zoom,
+                      y: size.height / 2 - (n.y + GRAPH_NODE_HEIGHT / 2) * v.zoom,
+                    }));
+                  }}
+                  onClick={() => setSelectedId(n.id)}
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon className={cn('size-4 shrink-0', iconTone)} />
+                    <span className={cn('truncate text-xs font-semibold', isBug ? 'text-status-failed font-bold' : 'text-foreground')}>
+                      {isBug ? `BUG · ${n.label}` : n.label}
+                    </span>
+                    <Badge
+                      variant={isBug ? 'failed' : 'outline'}
+                      className={cn('ml-auto text-[10px] py-0 px-1.5 h-4', isBug ? 'qa-status qa-status-failed font-bold' : 'text-muted-foreground')}
+                    >
+                      {isBug ? 'Bug Defect' : meta.label}
+                    </Badge>
+                  </span>
+                  <span className="line-clamp-2 text-xs leading-4 text-muted-foreground">
+                    {isBug ? `Temuan: ${n.title}` : n.title}
+                  </span>
+                  <span className="mt-auto flex items-center gap-2 text-xs">
+                    <span className={cn('truncate font-semibold', isBug ? 'text-status-failed' : statusTone)}>
+                      {n.status || meta.label}
+                    </span>
+                    {n.id === data?.rootId && <span className="ml-auto text-primary font-medium">Fokus</span>}
+                  </span>
+                </button>
+              );
+            })}
           </div>}
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-border p-3" aria-label="Legenda entity graph">{GRAPH_TYPES.map(t => { const meta = TYPE_META[t], Icon = meta.icon; return <span key={t} className="flex items-center gap-1.5 text-xs"><Icon className={cn('size-3.5', meta.tone)} />{meta.label}</span>; })}<span className="text-xs text-muted-foreground">Panah mengikuti arti relasi; bukan urutan proses.</span></div>
       </div>
 
       <aside className="min-w-0 rounded-xl border border-border bg-card p-4" aria-label="Detail node terpilih" aria-live="polite">
-        {selected && !loading && !error ? <><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">{TYPE_META[selected.type].label}</h3><Badge variant="outline">{selected.status || 'Context'}</Badge></div><p className="mt-3 break-words text-sm font-semibold">{selected.label}</p><p className="mt-2 break-words text-sm leading-6 text-muted-foreground">{selected.title}</p>{selected.moduleName && <p className="mt-2 text-xs text-muted-foreground">Module: {selected.moduleName}</p>}
+        {selected && !loading && !error ? <><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">{selected.type === 'BugFix' ? 'Bug Defect' : TYPE_META[selected.type].label}</h3><Badge variant={getStatusBadgeVariant(selected.status)}>{selected.status || 'Context'}</Badge></div><p className="mt-3 break-words text-sm font-semibold">{selected.type === 'BugFix' ? `BUG · ${selected.label}` : selected.label}</p><p className="mt-2 break-words text-sm leading-6 text-muted-foreground">{selected.type === 'BugFix' ? `Temuan Bug: ${selected.title}` : selected.title}</p>{selected.moduleName && <p className="mt-2 text-xs text-muted-foreground">Module: {selected.moduleName}</p>}
           {selected.details && <dl className="mt-4 flex flex-col gap-2 text-xs">{Object.entries(selected.details).filter(([key]) => key !== 'Cycle ID').map(([key,value]) => <div key={key} className="flex flex-col gap-1 border-t border-border pt-2"><dt className="text-muted-foreground">{key}</dt><dd className="break-words">{value}</dd></div>)}</dl>}
           <div className="mt-4 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={focusSelected} disabled={!positions.has(selected.id)}><Focus data-icon="inline-start" />Pusatkan</Button>{canNavigate && <Button size="sm" variant="outline" onClick={() => onOpenNode(selected)}>{selected.type === 'BugFix' ? 'Buka menu Bugs' : selected.type === 'Execution' ? 'Buka cycle' : selected.type === 'TestCase' ? 'Buka testcase' : selected.type === 'Requirement' ? 'Lihat requirement' : 'Buka cycle'}<ArrowUpRight data-icon="inline-end" /></Button>}{SEED_TYPES.includes(selected.type as GraphSeedType) && <Button size="sm" onClick={() => chooseSeed({ type: selected.type as GraphSeedType, id: selected.entityId })}>Lihat hubungan object ini</Button>}</div>
           <details className="mt-4 text-xs"><summary className="cursor-pointer text-muted-foreground">ID teknis</summary><p className="mt-2 break-all font-mono">UUID: {selected.entityId}</p><p className="mt-2 break-all">Project: {projectId}</p><Button size="sm" variant="ghost" onClick={async () => { try { await navigator.clipboard.writeText(selected.entityId); setCopyFeedback('ID disalin.'); } catch { setCopyFeedback('Gagal menyalin. Pilih ID di atas secara manual.'); } }}>Salin ID</Button><p role="status">{copyFeedback}</p></details>
           {selected.type === 'BugFix' && <p className="mt-3 text-xs leading-5 text-muted-foreground">Buka menu Bugs, lalu cari {selected.label}. Navigasi ini tidak langsung memilih satu Bug.</p>}
           {!positions.has(selected.id) && <p className="mt-3 text-xs text-muted-foreground">Node terpilih disembunyikan filter aktif.</p>}
-          <h4 className="mt-6 text-sm font-semibold">Relasi dalam area ini ({links.length})</h4><div className="mt-3 flex max-h-80 flex-col gap-2 overflow-y-auto">{links.length ? links.map(l => { const other = nodeMap.get(l.source === selected.id ? l.target : l.source); return other ? <button key={l.id} type="button" className="rounded-lg border border-border p-3 text-left text-xs hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-ring" onClick={() => { setSelectedId(other.id); const n = positions.get(other.id); if (n) { if (viewport.current) { viewport.current.scrollLeft = 0; viewport.current.scrollTop = 0; } setView({ zoom: 1, x: size.width / 2 - n.x - GRAPH_NODE_WIDTH / 2, y: size.height / 2 - n.y - GRAPH_NODE_HEIGHT / 2 }); } }}><span className="block text-muted-foreground">{l.source === selected.id ? '→' : '←'} {l.label}</span><span className="mt-1 block break-words font-semibold">{TYPE_META[other.type].label}: {other.label}</span></button> : null; }) : <p className="text-xs text-muted-foreground">Belum ada hubungan pada area yang dimuat. Ini bukan jaminan bahwa seluruh riwayat sudah dimuat.</p>}</div>
+          <h4 className="mt-6 text-sm font-semibold">Relasi dalam area ini ({links.length})</h4><div data-lenis-prevent className="mt-3 flex max-h-80 flex-col gap-2 overflow-y-auto overscroll-contain pr-1 [&>*]:shrink-0">{links.length ? links.map(l => { const other = nodeMap.get(l.source === selected.id ? l.target : l.source); return other ? <button key={l.id} type="button" className="shrink-0 rounded-lg border border-border p-3 text-left text-xs hover:bg-secondary/50 focus-visible:outline-2 focus-visible:outline-ring" onClick={() => { setSelectedId(other.id); const n = positions.get(other.id); if (n) { if (viewport.current) { viewport.current.scrollLeft = 0; viewport.current.scrollTop = 0; } setView({ zoom: 1, x: size.width / 2 - n.x - GRAPH_NODE_WIDTH / 2, y: size.height / 2 - n.y - GRAPH_NODE_HEIGHT / 2 }); } }}><span className="block text-muted-foreground">{l.source === selected.id ? '→' : '←'} {l.label}</span><span className="mt-1 block break-words font-semibold">{TYPE_META[other.type].label}: {other.label}</span></button> : null; }) : <p className="text-xs text-muted-foreground">Belum ada hubungan pada area yang dimuat. Ini bukan jaminan bahwa seluruh riwayat sudah dimuat.</p>}</div>
         </> : (
           <div className="flex flex-col gap-4 text-xs">
             <div className="rounded-lg border border-border/60 bg-secondary/30 p-3.5 space-y-2">

@@ -27,9 +27,23 @@ export const GRAPH_NODE_HEIGHT = 112;
 
 // Fixed relationship tiers, stable ordering, no randomized force layout/reflow loop.
 export function layoutTraceGraph(nodes: TraceGraphNode[]) {
-  const tiers: GraphEntityType[][] = [['Module', 'Requirement'], ['TestCase'], ['TestPlan', 'TestRun'], ['Execution'], ['BugFix']];
+  const tiers: GraphEntityType[][] = [
+    ['Module', 'Requirement'],
+    ['TestCase'],
+    ['TestPlan', 'TestRun', 'BugFix'],
+    ['Execution'],
+  ];
+  const typeOrder: Record<GraphEntityType, number> = {
+    Module: 0,
+    Requirement: 1,
+    TestCase: 2,
+    TestPlan: 3,
+    TestRun: 4,
+    BugFix: 5,
+    Execution: 6,
+  };
   return tiers.flatMap((types, column) => nodes.filter(n => types.includes(n.type))
-    .sort((a, b) => a.type.localeCompare(b.type) || a.label.localeCompare(b.label) || a.id.localeCompare(b.id))
+    .sort((a, b) => (typeOrder[a.type] - typeOrder[b.type]) || a.label.localeCompare(b.label) || a.id.localeCompare(b.id))
     .map((node, row) => ({ ...node, x: 32 + column * 300, y: 32 + row * 148 })));
 }
 

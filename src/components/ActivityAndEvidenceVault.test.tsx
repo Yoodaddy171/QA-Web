@@ -55,6 +55,12 @@ describe('ActivityNotificationPanel & EvidenceVaultPanel', () => {
     expect(html).not.toContain('\u2014');
   });
 
+  it('renders ActivityNotificationPanel pagination controls properly', () => {
+    const html = renderToStaticMarkup(<ActivityNotificationPanel projectId="proj-1" />);
+    expect(html).not.toContain('\u2014');
+    expect(html).not.toContain('\u2013');
+  });
+
   it('renders EvidenceVaultPanel header, KPIs, and filter bar without em dashes', () => {
     const html = renderToStaticMarkup(<EvidenceVaultPanel projectId="proj-1" />);
     expect(html).toContain('Evidence Vault &amp; Media Gallery');

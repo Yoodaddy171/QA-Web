@@ -15,7 +15,10 @@ import {
   HardDrive,
   Image as ImageIcon,
   Layers,
+  Minus,
+  Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   ShieldAlert,
   Sparkles,
@@ -134,6 +137,355 @@ function statusBadgeStyle(status: string) {
     return 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400';
   }
   return 'border-border bg-secondary text-muted-foreground';
+}
+
+interface EvidenceInteractiveImageViewerProps {
+  src: string;
+  alt: string;
+}
+
+function EvidenceInteractiveImageViewer({ src, alt }: EvidenceInteractiveImageViewerProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [view, setView] = useState<{ x: number; y: number; zoom: number }>({ x: 0, y: 0, zoom: 1 });
+  const [imgDimensions, setImgDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const drag = useRef<{ pointerId: number; x: number; y: number; startX: number; startY: number } | null>(null);
+
+  const calculateFit = useCallback((imgW: number, imgH: number, contW: number, contH: number) => {
+    if (!imgW || !imgH || !contW || !contH) return { x: 0, y: 0, zoom: 1 };
+    const pad = 24;
+    const availW = Math.max(80, contW - pad * 2);
+    const availH = Math.max(80, contH - pad * 2);
+    const fitScale = Math.min(availW / imgW, availH / imgH, 1.0);
+    const zoom = Math.max(0.08, Number(fitScale.toFixed(3)));
+    const x = (contW - imgW * zoom) / 2;
+    const y = (contH - imgH * zoom) / 2;
+    return { x, y, zoom };
+  }, []);
+
+  const handleFit = useCallback(() => {
+    if (!containerRef.current || !imgDimensions) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const fitted = calculateFit(imgDimensions.width, imgDimensions.height, rect.width, rect.height);
+    setView(fitted);
+  }, [imgDimensions, calculateFit]);
+
+  useEffect(() => {
+    setIsLoaded(false);
+    setImgDimensions(null);
+    setView({ x: 0, y: 0, zoom: 1 });
+  }, [src]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (!imgDimensions) return;
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) {
+        setView((current) => {
+          const defaultFit = calculateFit(imgDimensions.width, imgDimensions.height, width, height);
+          if (Math.abs(current.zoom - defaultFit.zoom) < 0.1 || current.x === 0) {
+            return defaultFit;
+          }
+          return current;
+        });
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [imgDimensions, calculateFit]);
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const nw = e.currentTarget.naturalWidth || 1200;
+    const nh = e.currentTarget.naturalHeight || 800;
+    setImgDimensions({ width: nw, height: nh });
+    setIsLoaded(true);
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const fitted = calculateFit(nw, nh, rect.width, rect.height);
+      setView(fitted);
+    }
+  };
+
+  const zoomBy = useCallback((factor: number) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    setView((v) => {
+      const nextZoom = Math.max(0.1, Math.min(6, v.zoom * factor));
+      const scaleRatio = nextZoom / v.zoom;
+      const nextX = centerX - (centerX - v.x) * scaleRatio;
+      const nextY = centerY - (centerY - v.y) * scaleRatio;
+      return { x: nextX, y: nextY, zoom: nextZoom };
+    });
+  }, []);
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current || !imgDimensions) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const defaultFit = calculateFit(imgDimensions.width, imgDimensions.height, rect.width, rect.height);
+
+    if (view.zoom > defaultFit.zoom * 1.25) {
+      handleFit();
+    } else {
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+      const targetZoom = Math.max(defaultFit.zoom * 2.2, 1.5);
+      const scaleRatio = targetZoom / view.zoom;
+      const nextX = cursorX - (cursorX - view.x) * scaleRatio;
+      const nextY = cursorY - (cursorY - view.y) * scaleRatio;
+      setView({ x: nextX, y: nextY, zoom: targetZoom });
+    }
+  };
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const rect = el.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+
+      if (e.ctrlKey || e.metaKey) {
+        const zoomFactor = Math.exp(-e.deltaY * 0.01);
+        setView((v) => {
+          const nextZoom = Math.max(0.1, Math.min(6, v.zoom * zoomFactor));
+          const scaleRatio = nextZoom / v.zoom;
+          const nextX = cursorX - (cursorX - v.x) * scaleRatio;
+          const nextY = cursorY - (cursorY - v.y) * scaleRatio;
+          return { x: nextX, y: nextY, zoom: nextZoom };
+        });
+      } else {
+        setView((v) => ({
+          ...v,
+          x: v.x - e.deltaX,
+          y: v.y - e.deltaY,
+        }));
+      }
+    };
+
+    let touchDist = 0;
+    let touchZoom = 1;
+    let touchCenter = { x: 0, y: 0 };
+    let touchView = { x: 0, y: 0 };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        touchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const rect = el.getBoundingClientRect();
+        touchCenter = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+        setView((current) => {
+          touchZoom = current.zoom;
+          touchView = { x: current.x, y: current.y };
+          return current;
+        });
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const scale = currentDist / (touchDist || currentDist);
+        const rect = el.getBoundingClientRect();
+        const currentCenter = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+
+        const nextZoom = Math.max(0.1, Math.min(6, touchZoom * scale));
+        const scaleRatio = nextZoom / touchZoom;
+        const dx = currentCenter.x - touchCenter.x;
+        const dy = currentCenter.y - touchCenter.y;
+        const nextX = touchCenter.x - (touchCenter.x - touchView.x) * scaleRatio + dx;
+        const nextY = touchCenter.y - (touchCenter.y - touchView.y) * scaleRatio + dy;
+
+        setView({ x: nextX, y: nextY, zoom: nextZoom });
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    el.addEventListener('touchstart', handleTouchStart, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
+    drag.current = {
+      pointerId: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      startX: view.x,
+      startY: view.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (d && d.pointerId === e.pointerId) {
+      setView((v) => ({
+        ...v,
+        x: d.startX + e.clientX - d.x,
+        y: d.startY + e.clientY - d.y,
+      }));
+    }
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (drag.current?.pointerId === e.pointerId) {
+      drag.current = null;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    }
+  };
+
+  const onPointerCancel = () => {
+    drag.current = null;
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return;
+    const delta: Record<string, [number, number]> = {
+      ArrowLeft: [40, 0],
+      ArrowRight: [-40, 0],
+      ArrowUp: [0, 40],
+      ArrowDown: [0, -40],
+    };
+    if (delta[e.key]) {
+      e.preventDefault();
+      const [x, y] = delta[e.key];
+      setView((v) => ({ ...v, x: v.x + x, y: v.y + y }));
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      handleFit();
+    } else if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      zoomBy(1.25);
+    } else if (e.key === '-') {
+      e.preventDefault();
+      zoomBy(1 / 1.25);
+    }
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      data-lenis-prevent
+      role="region"
+      aria-label="Penampil gambar interaktif bukti pengujian"
+      tabIndex={0}
+      onDoubleClick={handleDoubleClick}
+      onKeyDown={handleKeyDown}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      className="relative h-full w-full min-h-[300px] overflow-hidden bg-slate-950 cursor-grab active:cursor-grabbing select-none focus-visible:outline-2 focus-visible:outline-ring"
+      style={{ touchAction: 'none' }}
+    >
+      <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-md border border-white/10 bg-black/60 px-2.5 py-1 text-[11px] text-white/70 backdrop-blur-md">
+        Touchpad: 2 jari geser · Pinch zoom · Drag untuk pan · Dobel klik zoom
+      </div>
+
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border border-white/15 bg-slate-900/90 px-3 py-1.5 shadow-2xl backdrop-blur-md text-white">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7 rounded-full text-white/80 hover:bg-white/15 hover:text-white"
+          onClick={() => zoomBy(1 / 1.25)}
+          aria-label="Perkecil zoom"
+        >
+          <Minus className="size-3.5" />
+        </Button>
+        <span className="min-w-[46px] text-center font-mono text-xs font-semibold tabular-nums text-white">
+          {Math.round(view.zoom * 100)}%
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7 rounded-full text-white/80 hover:bg-white/15 hover:text-white"
+          onClick={() => zoomBy(1.25)}
+          aria-label="Perbesar zoom"
+        >
+          <Plus className="size-3.5" />
+        </Button>
+        <div className="mx-1 h-3.5 w-px bg-white/20" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 rounded-full px-2.5 text-xs text-white/80 hover:bg-white/15 hover:text-white"
+          onClick={handleFit}
+          aria-label="Paskan tampilan"
+        >
+          <RotateCcw className="size-3" />
+          Paskan
+        </Button>
+      </div>
+
+      {!isLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center text-white/60">
+          <div className="flex flex-col items-center gap-2">
+            <RefreshCw className="size-6 animate-spin text-primary" />
+            <span className="text-xs">Memuat gambar...</span>
+          </div>
+        </div>
+      )}
+
+      <div
+        className="absolute left-0 top-0 transition-transform duration-75 ease-out select-none will-change-transform"
+        style={{
+          transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
+          transformOrigin: '0 0',
+        }}
+      >
+        <img
+          src={src}
+          alt={alt}
+          onLoad={handleImageLoad}
+          draggable={false}
+          className={cn(
+            'pointer-events-none select-none rounded shadow-2xl transition-opacity duration-200',
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          )}
+          style={
+            imgDimensions
+              ? {
+                  width: imgDimensions.width,
+                  height: imgDimensions.height,
+                  maxWidth: 'none',
+                  maxHeight: 'none',
+                }
+              : { maxWidth: 'none', maxHeight: 'none' }
+          }
+        />
+      </div>
+    </div>
+  );
 }
 
 function VaultKpiCard({
@@ -554,7 +906,7 @@ export function EvidenceVaultPanel({ projectId, onNavigate }: EvidenceVaultPanel
 
       {/* Lightbox Preview Dialog */}
       <Dialog open={Boolean(selectedItem)} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DialogContent className="flex max-h-[88dvh] w-[min(95vw,1120px)] max-w-5xl sm:max-w-5xl flex-col gap-0 overflow-hidden p-0">
+        <DialogContent className="flex h-[92dvh] max-h-[92dvh] w-[min(96vw,1560px)] max-w-[1560px] sm:max-w-[1560px] flex-col gap-0 overflow-hidden p-0 rounded-2xl border-border/80 shadow-2xl">
           {selectedItem && (() => {
             const currentIndex = items.findIndex((candidate) => candidate.id === selectedItem.id);
             const prevItem = currentIndex > 0 ? items[currentIndex - 1] : null;
@@ -619,22 +971,23 @@ export function EvidenceVaultPanel({ projectId, onNavigate }: EvidenceVaultPanel
                   </div>
                 </DialogHeader>
 
-                <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_370px]">
+                <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_380px]">
                   {/* Left Stage: Image / Video Preview */}
-                  <div className="relative flex max-h-[46dvh] min-h-[240px] items-center justify-center overflow-auto bg-slate-950/95 p-4 lg:max-h-[75dvh] lg:p-6">
+                  <div className="relative flex h-[50dvh] min-h-[280px] lg:h-full items-center justify-center overflow-hidden bg-slate-950/95">
                     {selectedItem.mimeType.startsWith('image/') ? (
-                      <img
+                      <EvidenceInteractiveImageViewer
                         src={buildFileUrl(selectedItem, false)}
                         alt={selectedItem.fileName}
-                        className="max-h-[40dvh] w-auto rounded-lg object-contain shadow-2xl lg:max-h-[66dvh]"
                       />
                     ) : selectedItem.mimeType.startsWith('video/') ? (
-                      <video
-                        src={buildFileUrl(selectedItem, false)}
-                        controls
-                        autoPlay
-                        className="max-h-[40dvh] w-full rounded-lg shadow-2xl lg:max-h-[66dvh]"
-                      />
+                      <div className="flex h-full w-full items-center justify-center p-4 lg:p-6">
+                        <video
+                          src={buildFileUrl(selectedItem, false)}
+                          controls
+                          autoPlay
+                          className="max-h-full max-w-full rounded-lg shadow-2xl object-contain"
+                        />
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center gap-3 py-12 text-white">
                         <FileText className="size-12 text-white/60" />
@@ -647,8 +1000,11 @@ export function EvidenceVaultPanel({ projectId, onNavigate }: EvidenceVaultPanel
                   </div>
 
                   {/* Right Sidebar: Scrollable Execution Details & Sticky Action Buttons */}
-                  <div className="flex max-h-[38dvh] min-h-0 flex-col border-t border-border/60 bg-card lg:max-h-[75dvh] lg:border-l lg:border-t-0">
-                    <div className="flex-1 space-y-3.5 overflow-y-auto p-5 text-xs">
+                  <div className="flex h-full min-h-0 flex-col border-t border-border/60 bg-card lg:border-l lg:border-t-0">
+                    <div
+                      data-lenis-prevent
+                      className="flex-1 space-y-3.5 overflow-y-auto overscroll-contain p-5 text-xs"
+                    >
                       <div className="rounded-xl border border-border/60 bg-secondary/25 p-3.5">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                           Skenario Pengujian

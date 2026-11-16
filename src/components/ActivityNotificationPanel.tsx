@@ -7,6 +7,8 @@ import {
   Bell,
   BellRing,
   CheckCheck,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   CircleCheck,
   Clock3,
@@ -204,6 +206,143 @@ function CenterKpiCard({
   );
 }
 
+interface ActivityPaginationBarProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+  pageSizeOptions?: number[];
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+  itemLabel?: string;
+}
+
+function ActivityPaginationBar({
+  currentPage,
+  totalPages,
+  totalItems,
+  pageSize,
+  pageSizeOptions = [10, 15, 25, 50],
+  onPageChange,
+  onPageSizeChange,
+  itemLabel = 'item',
+}: ActivityPaginationBarProps) {
+  if (totalItems <= 0) return null;
+
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, totalItems);
+
+  const getPageNumbers = () => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages: (number | 'ellipsis')[] = [];
+    pages.push(1);
+    if (currentPage > 3) {
+      pages.push('ellipsis');
+    }
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    if (currentPage < totalPages - 2) {
+      pages.push('ellipsis');
+    }
+    pages.push(totalPages);
+    return pages;
+  };
+
+  const pageNumbers = getPageNumbers();
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 bg-secondary/15 px-5 py-3 text-xs">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-muted-foreground">
+          Menampilkan <span className="font-semibold text-foreground tabular-nums">{startIndex} - {endIndex}</span> dari{' '}
+          <span className="font-semibold text-foreground tabular-nums">{totalItems}</span> {itemLabel}
+        </span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="hidden sm:inline">Per halaman:</span>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(val) => onPageSizeChange(Number(val))}
+          >
+            <SelectTrigger className="h-7 w-[68px] text-xs font-mono">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {pageSizeOptions.map((opt) => (
+                <SelectItem key={opt} value={String(opt)}>
+                  {opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 ml-auto">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 px-2.5 text-xs gap-1"
+          disabled={currentPage <= 1}
+          onClick={() => onPageChange(currentPage - 1)}
+          aria-label={`Halaman ${itemLabel} sebelumnya`}
+        >
+          <ChevronLeft className="size-3.5" />
+          <span className="hidden sm:inline">Sebelumnya</span>
+        </Button>
+
+        <div className="flex items-center gap-1">
+          {pageNumbers.map((p, idx) => {
+            if (p === 'ellipsis') {
+              return (
+                <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground select-none">
+                  ...
+                </span>
+              );
+            }
+            const isActive = p === currentPage;
+            return (
+              <Button
+                key={p}
+                type="button"
+                variant={isActive ? 'default' : 'ghost'}
+                size="sm"
+                className={cn(
+                  'h-7 min-w-[28px] px-2 text-xs font-mono tabular-nums',
+                  isActive && 'pointer-events-none font-bold'
+                )}
+                onClick={() => onPageChange(p)}
+                aria-label={`Ke halaman ${p}`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {p}
+              </Button>
+            );
+          })}
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 px-2.5 text-xs gap-1"
+          disabled={currentPage >= totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+          aria-label={`Halaman ${itemLabel} berikutnya`}
+        >
+          <span className="hidden sm:inline">Berikutnya</span>
+          <ChevronRight className="size-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ActivityNotificationPanel({
   projectId,
   onNavigate,
@@ -223,6 +362,8 @@ export function ActivityNotificationPanel({
   const [notifReadFilter, setNotifReadFilter] = useState<'all' | 'unread' | 'read'>('all');
   const [notifSeverityFilter, setNotifSeverityFilter] = useState<string>('all');
   const [markingAll, setMarkingAll] = useState(false);
+  const [notifPage, setNotifPage] = useState(1);
+  const [notifPageSize, setNotifPageSize] = useState(15);
 
   // Activity Audit state
   const [activities, setActivities] = useState<ActivityRecord[]>([]);
@@ -237,6 +378,8 @@ export function ActivityNotificationPanel({
   const [auditEntityFilter, setAuditEntityFilter] = useState<string>('all');
   const [auditActionFilter, setAuditActionFilter] = useState<string>('all');
   const [auditActorFilter, setAuditActorFilter] = useState<string>('all');
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState(15);
 
   const loadNotifications = useCallback(async () => {
     if (!projectId) {
@@ -275,7 +418,7 @@ export function ActivityNotificationPanel({
     try {
       const params = new URLSearchParams({
         projectId,
-        limit: '120',
+        limit: '300',
       });
       if (auditEntityFilter !== 'all') params.set('entityType', auditEntityFilter);
       if (auditActionFilter !== 'all') params.set('action', auditActionFilter);
@@ -310,6 +453,14 @@ export function ActivityNotificationPanel({
     }, 120);
     return () => window.clearTimeout(timer);
   }, [loadAuditLog]);
+
+  useEffect(() => {
+    setNotifPage(1);
+  }, [notifSearch, notifReadFilter, notifSeverityFilter]);
+
+  useEffect(() => {
+    setAuditPage(1);
+  }, [auditSearch, auditEntityFilter, auditActionFilter, auditActorFilter]);
 
   useGSAP(
     () => {
@@ -346,6 +497,24 @@ export function ActivityNotificationPanel({
       return true;
     });
   }, [notifications, notifSearch, notifReadFilter, notifSeverityFilter]);
+
+  const notifTotal = filteredNotifications.length;
+  const notifTotalPages = Math.max(1, Math.ceil(notifTotal / notifPageSize));
+  const safeNotifPage = Math.min(Math.max(1, notifPage), notifTotalPages);
+  const notifStartIndex = (safeNotifPage - 1) * notifPageSize;
+  const paginatedNotifications = useMemo(
+    () => filteredNotifications.slice(notifStartIndex, notifStartIndex + notifPageSize),
+    [filteredNotifications, notifStartIndex, notifPageSize]
+  );
+
+  const auditTotal = activities.length;
+  const auditTotalPages = Math.max(1, Math.ceil(auditTotal / auditPageSize));
+  const safeAuditPage = Math.min(Math.max(1, auditPage), auditTotalPages);
+  const auditStartIndex = (safeAuditPage - 1) * auditPageSize;
+  const paginatedActivities = useMemo(
+    () => activities.slice(auditStartIndex, auditStartIndex + auditPageSize),
+    [activities, auditStartIndex, auditPageSize]
+  );
 
   const markAllAsRead = async () => {
     if (!projectId || unreadCount === 0 || markingAll) return;
@@ -615,7 +784,7 @@ export function ActivityNotificationPanel({
                 </div>
               ) : (
                 <div className="divide-y divide-border/50">
-                  {filteredNotifications.map((item) => {
+                  {paginatedNotifications.map((item) => {
                     const sev =
                       SEVERITY_CONFIG[item.severity as keyof typeof SEVERITY_CONFIG] ||
                       SEVERITY_CONFIG.info;
@@ -672,6 +841,19 @@ export function ActivityNotificationPanel({
                 </div>
               )}
             </CardContent>
+            <ActivityPaginationBar
+              currentPage={safeNotifPage}
+              totalPages={notifTotalPages}
+              totalItems={notifTotal}
+              pageSize={notifPageSize}
+              pageSizeOptions={[10, 15, 25, 50]}
+              onPageChange={setNotifPage}
+              onPageSizeChange={(sz) => {
+                setNotifPageSize(sz);
+                setNotifPage(1);
+              }}
+              itemLabel="notifikasi"
+            />
           </Card>
         </TabsContent>
 
@@ -756,7 +938,7 @@ export function ActivityNotificationPanel({
                 </div>
               ) : (
                 <div className="divide-y divide-border/50">
-                  {activities.map((act) => {
+                  {paginatedActivities.map((act) => {
                     const hasBefore = act.beforeValue !== null && act.beforeValue !== undefined;
                     const hasAfter = act.afterValue !== null && act.afterValue !== undefined;
                     return (
@@ -831,6 +1013,19 @@ export function ActivityNotificationPanel({
                 </div>
               )}
             </CardContent>
+            <ActivityPaginationBar
+              currentPage={safeAuditPage}
+              totalPages={auditTotalPages}
+              totalItems={auditTotal}
+              pageSize={auditPageSize}
+              pageSizeOptions={[10, 15, 25, 50]}
+              onPageChange={setAuditPage}
+              onPageSizeChange={(sz) => {
+                setAuditPageSize(sz);
+                setAuditPage(1);
+              }}
+              itemLabel="aktivitas"
+            />
           </Card>
         </TabsContent>
       </Tabs>

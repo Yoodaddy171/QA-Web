@@ -23,11 +23,26 @@ function getSystemTheme(): 'light' | 'dark' {
 }
 
 let guardThemeTransition: (() => void) | undefined;
-function applyTheme(theme: Theme) {
+let themeTransitionTimer: number | undefined;
+function applyTheme(theme: Theme, animate = false) {
   const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
-  if (document.documentElement.classList.contains('dark') !== (resolvedTheme === 'dark')) {
-    guardThemeTransition ??= createThemeTransitionGuard(document.documentElement, callback => window.requestAnimationFrame(callback));
-    guardThemeTransition();
+  const isChanging = document.documentElement.classList.contains('dark') !== (resolvedTheme === 'dark');
+  if (isChanging) {
+    if (animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      delete document.documentElement.dataset.themeChanging;
+      document.documentElement.dataset.themeTransition = '';
+      if (themeTransitionTimer !== undefined) {
+        window.clearTimeout(themeTransitionTimer);
+      }
+      themeTransitionTimer = window.setTimeout(() => {
+        delete document.documentElement.dataset.themeTransition;
+        themeTransitionTimer = undefined;
+      }, 380);
+    } else {
+      delete document.documentElement.dataset.themeTransition;
+      guardThemeTransition ??= createThemeTransitionGuard(document.documentElement, callback => window.requestAnimationFrame(callback));
+      guardThemeTransition();
+    }
   }
   document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
   return resolvedTheme;
@@ -50,7 +65,7 @@ function AppThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (theme !== 'system') return;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => setResolvedTheme(applyTheme('system'));
+    const handleChange = () => setResolvedTheme(applyTheme('system', true));
     media.addEventListener('change', handleChange);
     return () => media.removeEventListener('change', handleChange);
   }, [theme]);
@@ -61,7 +76,7 @@ function AppThemeProvider({ children }: { children: ReactNode }) {
     setTheme: (nextTheme) => {
       window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
       setThemeState(nextTheme);
-      setResolvedTheme(applyTheme(nextTheme));
+      setResolvedTheme(applyTheme(nextTheme, true));
     },
   }), [theme, resolvedTheme]);
 

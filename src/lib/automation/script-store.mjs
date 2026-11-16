@@ -7,7 +7,7 @@ export const ACTIVE_SCRIPT_STATES = ['QUEUED', 'RUNNING'];
 export function runnerRoot(env = process.env) {
   const root = env.QA_SCRIPT_RUNNER_DIR || path.join(storagePaths.dataRoot(env), 'automation');
   if (!path.isAbsolute(root) || root.split(/[\\/]/).some(part => part.toLowerCase() === '.next')) throw new Error('QA_SCRIPT_RUNNER_DIR harus absolut dan di luar .next.');
-  return path.resolve(root);
+  return path.resolve(/*turbopackIgnore: true*/ root);
 }
 export function caseDirectory(root, projectId, testCaseId) {
   if (!projectId || !testCaseId) throw new Error('Project dan testcase wajib diisi.');
@@ -31,7 +31,7 @@ export function validateScript(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Script wajib berupa objek konfigurasi yang valid.');
   if (typeof input.script !== 'string' || !input.script.trim() || Buffer.byteLength(input.script) > 100_000) throw new Error('Script wajib diisi, maksimal 100 KB.');
   const timeoutSeconds = Number(input.timeoutSeconds ?? 60);
-  if (!Number.isInteger(timeoutSeconds) || timeoutSeconds < 10 || timeoutSeconds > 180) throw new Error('Batas waktu harus 10–180 detik.');
+  if (!Number.isInteger(timeoutSeconds) || timeoutSeconds < 10 || timeoutSeconds > 180) throw new Error('Batas waktu harus 10-180 detik.');
   const baseURL = String(input.baseURL || '').trim();
   if (baseURL) {
     let parsed;
@@ -175,7 +175,7 @@ async function unlinkedPath(root, destination) {
 export async function deleteScriptRuns(root, projectId, testCaseId, runIds) {
   if (!Array.isArray(runIds) || runIds.length < 1 || runIds.length > 20 || new Set(runIds).size !== runIds.length
     || runIds.some(id => typeof id !== 'string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(id))) {
-    throw new ScriptHistoryError(400, 'Pilih 1–20 run unik dengan ID yang valid.');
+    throw new ScriptHistoryError(400, 'Pilih 1-20 run unik dengan ID yang valid.');
   }
   const directory = caseDirectory(root, projectId, testCaseId);
   await unlinkedPath(root, directory);

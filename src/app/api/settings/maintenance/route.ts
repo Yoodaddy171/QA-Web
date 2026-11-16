@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
         if (!rec.sha256) {
           noRecordedHashCount++;
         } else if (verifyHashes) {
-          const buf = await fs.readFile(absPath);
+          const buf = await fs.readFile(/*turbopackIgnore: true*/ absPath);
           const digest = crypto.createHash('sha256').update(buf).digest('hex');
           if (digest === rec.sha256) hashVerifiedCount++;
           else hashMismatchCount++;

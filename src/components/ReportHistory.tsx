@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useWorkspaceAccess } from '@/components/WorkspaceAccess';
@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { DEFAULT_REPORT_FILTERS, normalizeSearch, type ReportFilters } from '@/lib/domain/report-filters';
+import { gsap, useGSAP, isMotionAllowed } from '@/lib/client/gsap-motion';
 
 interface ReportHistoryProps {
   reports: ReportSummary[];
@@ -29,8 +30,30 @@ interface ReportHistoryProps {
 export function ReportHistory({ reports, onViewReport, openingId, filters, onFiltersChange, total, matchedTotal, loading, error, onRetry }: ReportHistoryProps) {
   const { canEdit } = useWorkspaceAccess();
   const searchId = useId();
+  const listRef = useRef<HTMLDivElement>(null);
   const { search, status: statusFilter, type: typeFilter } = filters;
   const resetFilters = () => onFiltersChange({ ...DEFAULT_REPORT_FILTERS });
+
+  useGSAP(
+    () => {
+      if (!listRef.current || !isMotionAllowed()) return;
+      const cards = listRef.current.querySelectorAll('[data-report-card]');
+      if (!cards.length) return;
+      gsap.fromTo(
+        cards,
+        { y: 14, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.35,
+          stagger: 0.045,
+          ease: 'power2.out',
+          clearProps: 'y,opacity',
+        }
+      );
+    },
+    { dependencies: [reports], scope: listRef }
+  );
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('id-ID', {
@@ -188,60 +211,63 @@ export function ReportHistory({ reports, onViewReport, openingId, filters, onFil
           className="rounded-xl border border-border bg-card py-12"
         />
       ) : (
-        reports.map((report) => (
-          <div
-            key={report.id}
-            className="rounded-xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
-          >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">
-                    {report.reportType === 'TEST_STATUS_REPORT' ? 'Test Status Report' : 'Test Planning Document'}
-                  </h3>
-                  <span className="text-sm text-muted-foreground">v{report.version}</span>
-                  <Badge variant={report.status === 'FINAL' ? 'success' : 'secondary'}>{report.status}</Badge>
-                </div>
+        <div ref={listRef} className="flex flex-col gap-3">
+          {reports.map((report) => (
+            <div
+              key={report.id}
+              data-report-card
+              className="rounded-xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">
+                      {report.reportType === 'TEST_STATUS_REPORT' ? 'Test Status Report' : 'Test Planning Document'}
+                    </h3>
+                    <span className="text-sm text-muted-foreground">v{report.version}</span>
+                    <Badge variant={report.status === 'FINAL' ? 'success' : 'secondary'}>{report.status}</Badge>
+                  </div>
 
-                <div className="grid gap-x-6 gap-y-2 text-xs leading-5 text-muted-foreground sm:grid-cols-2">
-                  <p>
-                    <span className="font-medium text-foreground">Project:</span> {report.projectName}
-                  </p>
-                  <p>
-                    <span className="font-medium text-foreground">Periode:</span>{' '}
-                    {formatDate(report.reportingPeriodStart)} - {formatDate(report.reportingPeriodEnd)}
-                  </p>
-                  <p>
-                    <span className="font-medium text-foreground">Dibuat:</span> {formatDate(report.generatedAt)}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2 sm:col-span-2">
-                    <Badge variant="success" className="font-mono tabular-nums">
-                      {report.metrics.totalPassed} Passed
-                    </Badge>
-                    <Badge variant="failed" className="font-mono tabular-nums">
-                      {report.metrics.totalFailed} Failed
-                    </Badge>
-                    <Badge variant="outline" className="font-mono tabular-nums">
-                      {report.metrics.passRate.toFixed(1)}% pass rate
-                    </Badge>
+                  <div className="grid gap-x-6 gap-y-2 text-xs leading-5 text-muted-foreground sm:grid-cols-2">
+                    <p>
+                      <span className="font-medium text-foreground">Project:</span> {report.projectName}
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">Periode:</span>{' '}
+                      {formatDate(report.reportingPeriodStart)} - {formatDate(report.reportingPeriodEnd)}
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">Dibuat:</span> {formatDate(report.generatedAt)}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2 sm:col-span-2">
+                      <Badge variant="success" className="font-mono tabular-nums">
+                        {report.metrics.totalPassed} Passed
+                      </Badge>
+                      <Badge variant="failed" className="font-mono tabular-nums">
+                        {report.metrics.totalFailed} Failed
+                      </Badge>
+                      <Badge variant="outline" className="font-mono tabular-nums">
+                        {report.metrics.passRate.toFixed(1)}% pass rate
+                      </Badge>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-9 shrink-0 self-start"
-                onClick={() => onViewReport(report)}
-                disabled={Boolean(openingId)}
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                {openingId === report.id ? 'Membuka…' : 'Lihat'}
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-9 shrink-0 self-start"
+                  onClick={() => onViewReport(report)}
+                  disabled={Boolean(openingId)}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  {openingId === report.id ? 'Membuka…' : 'Lihat'}
+                </Button>
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </div>
   );
